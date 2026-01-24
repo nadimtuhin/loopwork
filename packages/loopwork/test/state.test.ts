@@ -11,7 +11,7 @@ describe('StateManager', () => {
   let stateManager: StateManager
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-test-'))
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-test-')))
     config = {
       projectRoot: tempDir,
       outputDir: path.join(tempDir, 'output'),
@@ -98,10 +98,10 @@ describe('StateManager', () => {
       expect(fs.existsSync(stateFile)).toBe(true)
 
       const content = fs.readFileSync(stateFile, 'utf-8')
-      expect(content).toContain('LAST_ISSUE=123')
-      expect(content).toContain('LAST_ITERATION=5')
-      expect(content).toContain('SESSION_ID=test-session-123')
-      expect(content).toContain('SAVED_AT=')
+      expect(content.toString()).toContain('LAST_ISSUE=123')
+      expect(content.toString()).toContain('LAST_ITERATION=5')
+      expect(content.toString()).toContain('SESSION_ID=test-session-123')
+      expect(content.toString()).toContain('SAVED_AT=')
     })
 
     test('overwrites previous state', () => {
@@ -110,9 +110,9 @@ describe('StateManager', () => {
 
       const stateFile = path.join(tempDir, '.loopwork-state')
       const content = fs.readFileSync(stateFile, 'utf-8')
-      expect(content).toContain('LAST_ISSUE=200')
-      expect(content).toContain('LAST_ITERATION=10')
-      expect(content).not.toContain('LAST_ISSUE=100')
+      expect(content.toString()).toContain('LAST_ISSUE=200')
+      expect(content.toString()).toContain('LAST_ITERATION=10')
+      expect(content.toString()).not.toContain('LAST_ISSUE=100')
     })
   })
 
@@ -258,7 +258,7 @@ describe('StateManager with namespace', () => {
 
     const stateFile = stateManager.getStateFile()
     const content = fs.readFileSync(stateFile, 'utf-8')
-    expect(content).toContain('NAMESPACE=my-namespace')
+    expect(content.toString()).toContain('NAMESPACE=my-namespace')
   })
 
   test('namespace does not affect lock acquisition for different namespaces', () => {

@@ -9,7 +9,10 @@ describe('LoopworkMonitor', () => {
   let monitor: LoopworkMonitor
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ralph-monitor-test-'))
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ralph-monitor-test-')))
+    // Create dummy src/index.ts so spawn doesn't fail
+    fs.mkdirSync(path.join(tempDir, 'src'), { recursive: true })
+    fs.writeFileSync(path.join(tempDir, 'src', 'index.ts'), 'console.log("dummy")')
     monitor = new LoopworkMonitor(tempDir)
   })
 
@@ -24,12 +27,13 @@ describe('LoopworkMonitor', () => {
 
   test('getRunningProcesses cleans up dead processes', () => {
     const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    const dummyLog = path.join(tempDir, 'test.log')
     fs.writeFileSync(stateFile, JSON.stringify({
       processes: [{
         namespace: 'dead-ns',
         pid: 999999999,
         startedAt: new Date().toISOString(),
-        logFile: '/tmp/test.log',
+        logFile: dummyLog,
         args: [],
       }]
     }))
@@ -48,7 +52,7 @@ describe('LoopworkMonitor', () => {
         namespace: 'alive-ns',
         pid: process.pid,
         startedAt: new Date().toISOString(),
-        logFile: '/tmp/test.log',
+        logFile: path.join(tempDir, 'test.log'),
         args: [],
       }]
     }))
@@ -111,7 +115,7 @@ describe('LoopworkMonitor', () => {
         namespace: 'test-ns',
         pid: process.pid,
         startedAt: new Date().toISOString(),
-        logFile: '/tmp/test.log',
+        logFile: path.join(tempDir, 'test.log'),
         args: [],
       }]
     }))

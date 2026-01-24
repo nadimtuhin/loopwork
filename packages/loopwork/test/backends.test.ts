@@ -12,6 +12,12 @@ import {
 } from '../src/backends'
 
 describe('Backend Factory', () => {
+  let tempTasksFile: string
+
+  beforeEach(() => {
+    tempTasksFile = path.join(fs.realpathSync(os.tmpdir()), `tasks-${Math.random().toString(36).slice(2)}.json`)
+  })
+
   test('creates GitHubTaskAdapter for github type', () => {
     const backend = createBackend({ type: 'github' })
     expect(backend.name).toBe('github')
@@ -19,7 +25,7 @@ describe('Backend Factory', () => {
   })
 
   test('creates JsonTaskAdapter for json type', () => {
-    const backend = createBackend({ type: 'json', tasksFile: '/tmp/tasks.json' })
+    const backend = createBackend({ type: 'json', tasksFile: tempTasksFile })
     expect(backend.name).toBe('json')
     expect(backend).toBeInstanceOf(JsonTaskAdapter)
   })
@@ -53,7 +59,7 @@ describe('TaskBackend Interface', () => {
     },
     {
       name: 'JsonTaskAdapter',
-      create: () => new JsonTaskAdapter({ type: 'json', tasksFile: '/tmp/nonexistent.json' }),
+      create: () => new JsonTaskAdapter({ type: 'json', tasksFile: path.join(os.tmpdir(), `nonexistent-${Math.random().toString(36).slice(2)}.json`) }),
     },
   ]
 

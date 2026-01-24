@@ -9,8 +9,14 @@ import type { PluginTask } from '../src/plugins'
 const originalFetch = global.fetch
 let mockFetch: ReturnType<typeof mock>
 
-beforeEach(() => {
-  mockFetch = mock(() =>
+  const originalTodoistToken = process.env.TODOIST_API_TOKEN
+  const originalTodoistProject = process.env.TODOIST_PROJECT_ID
+
+  beforeEach(() => {
+    delete process.env.TODOIST_API_TOKEN
+    delete process.env.TODOIST_PROJECT_ID
+    mockFetch = mock(() =>
+
     Promise.resolve({
       ok: true,
       status: 200,
@@ -25,7 +31,13 @@ afterEach(() => {
   global.fetch = originalFetch
 })
 
-describe('Asana Plugin', () => {
+  afterEach(() => {
+    process.env.TODOIST_API_TOKEN = originalTodoistToken
+    process.env.TODOIST_PROJECT_ID = originalTodoistProject
+  })
+
+  describe('Asana Plugin', () => {
+
   const mockTask: PluginTask = {
     id: 'TASK-001',
     title: 'Test task',
