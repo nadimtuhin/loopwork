@@ -43,7 +43,7 @@ export interface LoopworkConfig {
  * Default configuration values
  */
 export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
-  cli: 'opencode',
+  cli: 'claude',
   maxIterations: 50,
   timeout: 600,
   namespace: 'default',
