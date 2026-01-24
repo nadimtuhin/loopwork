@@ -16,7 +16,7 @@ describe('loopwork-config-types', () => {
       })
 
       expect(config.backend).toEqual({ type: 'json', tasksFile: 'tasks.json' })
-      expect(config.cli).toBe('opencode')
+      expect(config.cli).toBe('claude')
       expect(config.maxIterations).toBe(50)
       expect(config.timeout).toBe(600)
       expect(config.namespace).toBe('default')
@@ -122,7 +122,7 @@ describe('loopwork-config-types', () => {
 
   describe('defaults', () => {
     test('has expected default values', () => {
-      expect(defaults.cli).toBe('opencode')
+      expect(defaults.cli).toBe('claude')
       expect(defaults.maxIterations).toBe(50)
       expect(defaults.timeout).toBe(600)
       expect(defaults.namespace).toBe('default')

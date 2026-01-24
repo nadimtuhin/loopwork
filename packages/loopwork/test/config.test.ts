@@ -7,7 +7,7 @@ describe('Config', () => {
     test('has expected default values', () => {
       expect(DEFAULT_CONFIG.maxIterations).toBe(50)
       expect(DEFAULT_CONFIG.timeout).toBe(600)
-      expect(DEFAULT_CONFIG.cli).toBe('opencode')
+      expect(DEFAULT_CONFIG.cli).toBe('claude')
       expect(DEFAULT_CONFIG.autoConfirm).toBe(false)
       expect(DEFAULT_CONFIG.dryRun).toBe(false)
     })
