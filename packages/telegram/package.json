@@ -1,0 +1,9 @@
+{
+  "name": "@loopwork/telegram",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun"
+  }
+}

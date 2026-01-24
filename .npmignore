@@ -1,0 +1,70 @@
+# Development files
+tsconfig.json
+loopwork.config.ts
+
+# Tests
+test/
+*.test.ts
+*.spec.ts
+coverage/
+.nyc_output/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# State and temp files
+.loopwork/
+.loopwork.lock/
+*.state.json
+tmp/
+temp/
+*.tmp
+logs/
+loopwork-runs/
+**/loopwork-runs/
+
+# Build artifacts in examples
+examples/**/node_modules/
+examples/**/*.lock
+examples/**/bun.lockb
+
+# Dependencies (users will install their own)
+node_modules/
+*.lock
+bun.lockb
+yarn.lock
+package-lock.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Markdown files except README, CHANGELOG, and SECURITY
+*.md
+!README.md
+!CHANGELOG.md
+!SECURITY.md
+!examples/**/*.md
+
+# Include .env.example (but not .env)
+!.env.example
