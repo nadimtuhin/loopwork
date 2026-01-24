@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Enhanced `loopwork init` command** with comprehensive project setup:
+  - `.gitignore` management - Adds/updates with recommended patterns (`.loopwork-state/`, `.env`, etc.)
+  - `README.md` generation - Creates project documentation with quick start guide
+  - `.loopwork-state/` directory - Created upfront for state management
+  - PRD templates - Feature and bugfix templates in `.specs/tasks/templates/`
+  - Optional plugin configuration - Interactive prompts for Telegram, Discord, cost tracking
+  - Smart import generation - Only imports plugins that are enabled
+  - Idempotent behavior - Safe to run multiple times, prompts before overwriting
+  - User-friendly prompts - Clear success messages and helpful next steps
+
+### Changed
+- `init` command now creates a complete project structure
+- Cost tracking is now optional (was always enabled before)
+- Plugin configuration uses environment variables with clear guidance
+
 ## [0.2.0] - 2026-01-24
 
 ### Added

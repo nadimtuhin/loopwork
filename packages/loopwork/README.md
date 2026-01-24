@@ -32,6 +32,31 @@ See [examples/](./examples/) for more.
 
 ### From Scratch
 
+Use the interactive init command to set up a new project:
+
+```bash
+# Install loopwork
+bun install loopwork
+
+# Initialize your project (interactive)
+loopwork init
+```
+
+The init command will guide you through:
+- **Backend selection** - Choose between GitHub Issues or JSON files
+- **AI CLI tool** - Select claude, opencode, or gemini
+- **Plugin configuration** - Optionally enable Telegram, Discord, cost tracking
+- **Project setup** - Creates .gitignore, README.md, templates, and state directory
+
+After initialization, you'll have:
+- ✅ `loopwork.config.ts` - Main configuration file
+- ✅ `.specs/tasks/` - Task directory with sample task and PRD templates
+- ✅ `.loopwork-state/` - State directory for resume capability
+- ✅ `.gitignore` - Updated with loopwork patterns
+- ✅ `README.md` - Project documentation
+
+Or manually create your config:
+
 ```bash
 # Install
 bun install
@@ -332,6 +357,28 @@ Task description here
 ```
 
 ## CLI Usage
+
+### Initialize a Project
+
+```bash
+# Interactive setup wizard
+loopwork init
+
+# Creates:
+# - loopwork.config.ts (configuration)
+# - .specs/tasks/ (task directory)
+# - .specs/tasks/templates/ (PRD templates)
+# - .loopwork-state/ (state directory)
+# - .gitignore (with loopwork patterns)
+# - README.md (project documentation)
+```
+
+The init command is **idempotent** - safe to run multiple times. It will:
+- Prompt before overwriting existing files
+- Only add missing patterns to .gitignore
+- Skip existing directories
+
+### Run Loopwork
 
 ```bash
 # Basic run
