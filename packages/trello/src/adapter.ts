@@ -6,8 +6,8 @@ import type {
   FindTaskOptions, 
   UpdateResult, 
   PingResult 
-} from '../../loopwork/src/contracts';
-import type { Priority, TaskStatus } from '../../loopwork/src/contracts';
+} from 'loopwork/contracts';
+import type { Priority, TaskStatus } from 'loopwork/contracts';
 
 export class TrelloTaskAdapter implements TaskBackend {
   readonly name = 'trello';
