@@ -9,7 +9,7 @@
  * 3. Set DISCORD_WEBHOOK_URL env var
  */
 
-import type { LoopworkPlugin, PluginTask } from '../contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper } from '../../loopwork/src/contracts'
 
 export interface DiscordConfig {
   webhookUrl?: string
@@ -180,10 +180,10 @@ function formatDuration(seconds: number): string {
 /**
  * Create Discord plugin wrapper
  */
-export function withDiscord(config: DiscordConfig = {}) {
+export function withDiscord(config: DiscordConfig = {}): ConfigWrapper {
   const webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL
 
-  return (baseConfig: any) => ({
+  return (baseConfig) => ({
     ...baseConfig,
     discord: {
       webhookUrl,

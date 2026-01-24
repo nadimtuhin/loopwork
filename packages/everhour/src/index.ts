@@ -12,7 +12,7 @@
  * 4. Add everhourId or asanaGid to task metadata
  */
 
-import type { LoopworkPlugin, PluginTask } from '../contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper } from '../../loopwork/src/contracts'
 
 export interface EverhourConfig {
   apiKey?: string
@@ -169,16 +169,17 @@ export class EverhourClient {
 /**
  * Create Everhour plugin wrapper
  */
-export function withEverhour(config: EverhourConfig = {}) {
+export function withEverhour(config: EverhourConfig = {}): ConfigWrapper {
   const apiKey = config.apiKey || process.env.EVERHOUR_API_KEY
 
-  return (baseConfig: any) => ({
+  return (baseConfig) => ({
     ...baseConfig,
     everhour: {
       apiKey,
       autoStartTimer: config.autoStartTimer ?? true,
       autoStopTimer: config.autoStopTimer ?? true,
       projectId: config.projectId,
+      dailyLimit: config.dailyLimit ?? 8,
     },
   })
 }
