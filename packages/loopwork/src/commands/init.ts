@@ -260,21 +260,21 @@ export async function init() {
   if (pluginConfigs.some(p => p.includes('withCostTracking'))) {
     pluginPackages.push({
       name: 'cost-tracking',
-      package: '@loopwork/cost-tracking',
+      package: '@loopwork-ai/cost-tracking',
       imports: ['withCostTracking']
     })
   }
   if (pluginConfigs.some(p => p.includes('withTelegram'))) {
     pluginPackages.push({
       name: 'telegram',
-      package: '@loopwork/telegram',
+      package: '@loopwork-ai/telegram',
       imports: ['withTelegram']
     })
   }
   if (pluginConfigs.some(p => p.includes('withDiscord'))) {
     pluginPackages.push({
       name: 'discord',
-      package: '@loopwork/discord',
+      package: '@loopwork-ai/discord',
       imports: ['withDiscord']
     })
   }

@@ -187,7 +187,7 @@ Use the logger from `packages/loopwork/src/core/utils.ts`:
 ### Adding a New Plugin Package
 
 1. Create directory: `packages/my-plugin/`
-2. Add `package.json` with name `@loopwork/my-plugin`
+2. Add `package.json` with name `@loopwork-ai/my-plugin`
 3. Create `src/index.ts` exporting plugin factory
 4. Add `test/index.test.ts` with tests
 5. Add to workspace in root `package.json`

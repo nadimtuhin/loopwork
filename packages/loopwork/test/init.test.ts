@@ -170,8 +170,8 @@ export default compose(
 import { withJSONBackend } from 'loopwork'
 
 // Plugin imports
-import { withCostTracking } from '@loopwork/cost-tracking'
-import { withTelegram } from '@loopwork/telegram'
+import { withCostTracking } from '@loopwork-ai/cost-tracking'
+import { withTelegram } from '@loopwork-ai/telegram'
 
 export default compose(
   withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
@@ -186,8 +186,8 @@ export default compose(
     // Verify correct imports
     expect(correctConfig).toContain("from 'loopwork'")
     expect(correctConfig).not.toContain("from './src")
-    expect(configWithPlugins).toContain("from '@loopwork/cost-tracking'")
-    expect(configWithPlugins).toContain("from '@loopwork/telegram'")
+    expect(configWithPlugins).toContain("from '@loopwork-ai/cost-tracking'")
+    expect(configWithPlugins).toContain("from '@loopwork-ai/telegram'")
   })
 
   test('generated config can be imported from loopwork package', async () => {

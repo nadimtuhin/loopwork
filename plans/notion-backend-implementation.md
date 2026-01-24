@@ -10,14 +10,14 @@ Implement a Notion backend for Loopwork that allows managing tasks via a Notion 
 
 ## Architecture
 - **Package**: `packages/notion`
-- **Scope**: `@loopwork/notion`
+- **Scope**: `@loopwork-ai/notion`
 - **Dependencies**: `loopwork` (workspace), `@notionhq/client`.
 
 ## Configuration
 The backend will be configured via `loopwork.config.ts` using a `withNotionBackend` wrapper.
 
 ```typescript
-import { withNotionBackend } from '@loopwork/notion'
+import { withNotionBackend } from '@loopwork-ai/notion'
 
 export default compose(
   withNotionBackend({
