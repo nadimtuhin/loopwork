@@ -6,15 +6,18 @@
     "packages/dashboard/web"
   ],
   "scripts": {
-    "build": "bun run --filter './packages/*' build",
-    "test": "bun run --filter './packages/*' test",
-    "dev:loopwork": "cd packages/loopwork && bun run dev",
-    "dev:dashboard": "cd packages/dashboard && bun run dev",
-    "dev:web": "cd packages/dashboard/web && bun run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "dev:loopwork": "turbo run dev --filter loopwork",
+    "dev:dashboard": "turbo run dev --filter @loopwork/dashboard",
+    "dev:web": "turbo run dev --filter @loopwork/dashboard-web",
     "publish:all": "bun run build && bun run --filter './packages/*' publish"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "turbo": "^2.7.6",
+    "typescript": "^5.0.0"
   }
 }
