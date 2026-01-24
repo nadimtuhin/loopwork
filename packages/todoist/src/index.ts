@@ -10,7 +10,7 @@
  * 3. Add todoistId to task metadata in your tasks file
  */
 
-import type { LoopworkPlugin, PluginTask } from '../contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper } from '../../loopwork/src/contracts'
 
 export interface TodoistConfig {
   apiToken?: string
@@ -167,10 +167,10 @@ export class TodoistClient {
 /**
  * Create Todoist plugin wrapper
  */
-export function withTodoist(config: TodoistConfig = {}) {
+export function withTodoist(config: TodoistConfig = {}): ConfigWrapper {
   const apiToken = config.apiToken || process.env.TODOIST_API_TOKEN
 
-  return (baseConfig: any) => ({
+  return (baseConfig) => ({
     ...baseConfig,
     todoist: {
       apiToken,
