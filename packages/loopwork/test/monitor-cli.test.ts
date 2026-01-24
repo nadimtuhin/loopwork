@@ -23,11 +23,19 @@ describe('Monitor CLI', () => {
       const cwd = path.join(__dirname, '..')
       const child = spawn('bun', ['run', 'src/monitor/index.ts', ...args], {
         cwd,
-        env: { ...process.env, TEST_PROJECT_ROOT: tempDir },
+        env: { ...process.env, TEST_PROJECT_ROOT: tempDir, FORCE_COLOR: '0' },
+        stdio: ['ignore', 'pipe', 'pipe']
       })
 
       let stdout = ''
       let stderr = ''
+      let resolved = false
+
+      const finish = (exitCode: number | null) => {
+        if (resolved) return
+        resolved = true
+        resolve({ stdout, stderr, exitCode })
+      }
 
       child.stdout?.on('data', (data) => {
         stdout += data.toString()
@@ -38,14 +46,26 @@ describe('Monitor CLI', () => {
       })
 
       child.on('close', (exitCode) => {
-        resolve({ stdout, stderr, exitCode })
+        finish(exitCode)
       })
 
-      // Timeout after 5 seconds
+      child.on('error', (err) => {
+        stderr += err.message
+        finish(null)
+      })
+
+      // Timeout after 10 seconds (increased for CI)
       setTimeout(() => {
-        child.kill()
-        resolve({ stdout, stderr, exitCode: null })
-      }, 5000)
+        if (!resolved) {
+          child.kill('SIGTERM')
+          setTimeout(() => {
+            if (!resolved) {
+              child.kill('SIGKILL')
+              finish(null)
+            }
+          }, 1000)
+        }
+      }, 10000)
     })
   }
 

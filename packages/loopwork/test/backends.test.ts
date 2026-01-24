@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -10,6 +10,7 @@ import {
   type Task,
   type BackendConfig,
 } from '../src/backends'
+import * as utils from '../src/core/utils'
 
 describe('Backend Factory', () => {
   let tempTasksFile: string
@@ -124,6 +125,13 @@ describe('JsonTaskAdapter', () => {
       tasksFile,
       tasksDir: tempDir,
     })
+
+    // Mock logger
+    spyOn(utils.logger, 'info').mockImplementation(() => {})
+    spyOn(utils.logger, 'success').mockImplementation(() => {})
+    spyOn(utils.logger, 'warn').mockImplementation(() => {})
+    spyOn(utils.logger, 'error').mockImplementation(() => {})
+    spyOn(utils.logger, 'debug').mockImplementation(() => {})
   })
 
   afterEach(() => {
