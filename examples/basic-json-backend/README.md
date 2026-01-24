@@ -1,28 +1,35 @@
 # Basic JSON Backend
 
-A simple TypeScript project with basic utility functions.
+A simple TypeScript project demonstrating how to use Loopwork with a local JSON file as a task management backend.
 
 ## Functions
 
 ### sayHello()
-Returns a greeting message.
+Returns a greeting message: `'Hello, World!'`.
 
 ### sum(a, b)
-Adds two numbers together.
+Adds two numbers together and returns the result.
 
 ## Usage
 
+### Installation
 ```bash
 bun install
-bun test
 ```
 
-## Example
+### Running the project
+You can use the provided quick-start script for an interactive experience:
+```bash
+./quick-start.sh
+```
 
-```typescript
-import { sayHello } from './hello'
-import { sum } from './math'
+Or run the scripts directly:
+```bash
+bun run start     # Run Loopwork execution
+bun run dry-run   # Run without executing actions
+```
 
-console.log(sayHello()) // 'Hello, World!'
-console.log(sum(2, 3))  // 5
+### Testing
+```bash
+bun test
 ```

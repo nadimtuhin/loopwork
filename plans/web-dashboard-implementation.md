@@ -2,15 +2,25 @@
 
 ## Overview
 
-Build a modern web-based dashboard for Loopwork as a **separate package in a monorepo** using a **phased approach** - starting with an MVP for quick validation, then iteratively adding features based on user feedback.
+Restructure Loopwork into a **monorepo architecture** with all plugins as separate packages, and add a modern web-based dashboard.
 
 **Architecture**: Monorepo with Bun workspaces
 **Packages**:
-- `loopwork` - Core CLI and framework (existing)
-- `@loopwork/dashboard` - Web UI dashboard plugin (new)
-**Tech Stack**: Next.js 14 + Bun HTTP Server + Server-Sent Events (SSE) + TailwindCSS
-**Installation**: `bun add @loopwork/dashboard`
-**Deployment Model**: Dashboard runs as a plugin, accessible at `http://localhost:3333`
+- `loopwork` - Core CLI and framework
+- `@loopwork/dashboard` - Web UI dashboard plugin
+- `@loopwork/telegram` - Telegram notifications & bot
+- `@loopwork/discord` - Discord webhook notifications
+- `@loopwork/asana` - Asana integration
+- `@loopwork/everhour` - Time tracking integration
+- `@loopwork/todoist` - Todoist task sync
+- `@loopwork/cost-tracking` - Token usage & cost monitoring
+
+**Benefits**:
+- Independent versioning per plugin
+- Opt-in dependencies (install only what you need)
+- Easier community contributions (focused PRs)
+- Clearer separation of concerns
+- Smaller core package size
 
 ---
 
@@ -164,63 +174,121 @@ Existing Loopwork Architecture
 ```
 loopwork/                              # MONOREPO ROOT
 ├── packages/
-│   ├── loopwork/                      # Core package (existing, moved)
+│   ├── loopwork/                      # Core package
 │   │   ├── src/
-│   │   │   ├── commands/
-│   │   │   ├── core/
-│   │   │   ├── backends/
-│   │   │   ├── plugins/
-│   │   │   ├── contracts/             # Exported for dashboard
+│   │   │   ├── commands/              # CLI commands
+│   │   │   ├── core/                  # Core logic (cli, state, config)
+│   │   │   ├── backends/              # JSON & GitHub backends
+│   │   │   ├── monitor/               # Background process manager
+│   │   │   ├── dashboard/             # TUI dashboard (keep in core)
+│   │   │   ├── mcp/                   # MCP server
+│   │   │   ├── contracts/             # Exported interfaces
 │   │   │   │   ├── plugin.ts
 │   │   │   │   ├── backend.ts
-│   │   │   │   └── task.ts
+│   │   │   │   ├── task.ts
+│   │   │   │   └── config.ts
 │   │   │   └── index.ts
 │   │   ├── bin/
 │   │   ├── test/
 │   │   ├── package.json               # name: "loopwork"
+│   │   └── README.md
+│   │
+│   ├── dashboard/                     # Web UI Dashboard
+│   │   ├── src/
+│   │   │   ├── plugin/
+│   │   │   │   ├── index.ts           # Plugin implementation
+│   │   │   │   ├── server.ts          # Bun HTTP server
+│   │   │   │   ├── routes.ts          # API handlers
+│   │   │   │   ├── broadcaster.ts     # SSE broadcaster
+│   │   │   │   ├── file-watcher.ts    # File watching
+│   │   │   │   └── types.ts           # TypeScript types
+│   │   │   └── index.ts               # Package entry
+│   │   │
+│   │   ├── web/                       # Next.js app
+│   │   │   ├── app/
+│   │   │   │   ├── layout.tsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── namespaces/[id]/page.tsx
+│   │   │   │   ├── tasks/[id]/page.tsx
+│   │   │   │   ├── costs/page.tsx
+│   │   │   │   └── logs/page.tsx
+│   │   │   ├── components/
+│   │   │   │   ├── TaskList.tsx
+│   │   │   │   ├── TaskCard.tsx
+│   │   │   │   ├── StatsPanel.tsx
+│   │   │   │   ├── NamespaceSelector.tsx
+│   │   │   │   ├── EventStream.tsx
+│   │   │   │   ├── TaskActions.tsx
+│   │   │   │   ├── LiveLogs.tsx
+│   │   │   │   └── CostChart.tsx
+│   │   │   ├── lib/
+│   │   │   │   ├── api.ts
+│   │   │   │   ├── sse.ts
+│   │   │   │   ├── store.ts
+│   │   │   │   └── types.ts
+│   │   │   ├── package.json
+│   │   │   └── next.config.js
+│   │   │
+│   │   ├── dist/                      # Compiled output
+│   │   ├── package.json               # name: "@loopwork/dashboard"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
-│   └── dashboard/                     # NEW PACKAGE
-│       ├── src/
-│       │   ├── plugin/
-│       │   │   ├── index.ts           # Plugin implementation
-│       │   │   ├── server.ts          # Bun HTTP server
-│       │   │   ├── routes.ts          # API handlers
-│       │   │   ├── broadcaster.ts     # SSE broadcaster
-│       │   │   ├── file-watcher.ts    # File watching
-│       │   │   └── types.ts           # TypeScript types
-│       │   └── index.ts               # Package entry
-│       │
-│       ├── web/                       # Next.js app
-│       │   ├── app/
-│       │   │   ├── layout.tsx
-│       │   │   ├── page.tsx
-│       │   │   ├── namespaces/[id]/page.tsx
-│       │   │   ├── tasks/[id]/page.tsx
-│       │   │   ├── costs/page.tsx
-│       │   │   └── logs/page.tsx
-│       │   ├── components/
-│       │   │   ├── TaskList.tsx
-│       │   │   ├── TaskCard.tsx
-│       │   │   ├── StatsPanel.tsx
-│       │   │   ├── NamespaceSelector.tsx
-│       │   │   ├── EventStream.tsx
-│       │   │   ├── TaskActions.tsx
-│       │   │   ├── LiveLogs.tsx
-│       │   │   └── CostChart.tsx
-│       │   ├── lib/
-│       │   │   ├── api.ts
-│       │   │   ├── sse.ts
-│       │   │   ├── store.ts
-│       │   │   └── types.ts
-│       │   ├── package.json
-│       │   └── next.config.js
-│       │
-│       ├── dist/                      # Compiled output
-│       ├── package.json               # name: "@loopwork/dashboard"
-│       ├── tsconfig.json
-│       └── README.md
+│   ├── telegram/                      # Telegram notifications & bot
+│   │   ├── src/
+│   │   │   ├── notifications.ts       # Notification plugin
+│   │   │   ├── bot.ts                 # Interactive bot
+│   │   │   ├── index.ts               # Package entry
+│   │   │   └── types.ts               # Shared types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/telegram"
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── discord/                       # Discord webhook notifications
+│   │   ├── src/
+│   │   │   ├── index.ts               # Main plugin + client
+│   │   │   └── types.ts               # TypeScript types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/discord"
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── asana/                         # Asana integration
+│   │   ├── src/
+│   │   │   ├── index.ts               # Main plugin + client
+│   │   │   └── types.ts               # TypeScript types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/asana"
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── everhour/                      # Time tracking integration
+│   │   ├── src/
+│   │   │   ├── index.ts               # Main plugin + client
+│   │   │   └── types.ts               # TypeScript types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/everhour"
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── todoist/                       # Todoist task sync
+│   │   ├── src/
+│   │   │   ├── index.ts               # Main plugin + client
+│   │   │   └── types.ts               # TypeScript types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/todoist"
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── cost-tracking/                 # Token usage & cost monitoring
+│   │   ├── src/
+│   │   │   ├── index.ts               # Main plugin + tracker
+│   │   │   └── types.ts               # TypeScript types
+│   │   ├── dist/
+│   │   ├── package.json               # name: "@loopwork/cost-tracking"
+│   │   ├── tsconfig.json
+│   │   └── README.md
 │
 ├── examples/                          # Shared examples (existing)
 ├── docs/                              # Shared documentation
@@ -245,6 +313,48 @@ loopwork/                              # MONOREPO ROOT
 **Modified Files**:
 - `README.md` - Update for monorepo structure
 - `.gitignore` - Add workspace-specific ignores
+
+### Extracted Packages (From src/plugins/)
+
+**New Packages**:
+1. `packages/telegram/` - Move from `src/plugins/telegram/`
+   - `src/notifications.ts` - Notification plugin
+   - `src/bot.ts` - Interactive bot
+   - `src/index.ts` - Package entry (NEW - exports both)
+   - `src/types.ts` - Shared types (NEW)
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
+
+2. `packages/discord/` - Move from `src/plugins/discord.ts`
+   - `src/index.ts` - Renamed from discord.ts
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
+
+3. `packages/asana/` - Move from `src/plugins/asana.ts`
+   - `src/index.ts` - Renamed from asana.ts
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
+
+4. `packages/everhour/` - Move from `src/plugins/everhour.ts`
+   - `src/index.ts` - Renamed from everhour.ts
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
+
+5. `packages/todoist/` - Move from `src/plugins/todoist.ts`
+   - `src/index.ts` - Renamed from todoist.ts
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
+
+6. `packages/cost-tracking/` - Move from `src/plugins/cost-tracking.ts`
+   - `src/index.ts` - Renamed from cost-tracking.ts
+   - `package.json` - Package metadata (NEW)
+   - `tsconfig.json` - TypeScript config (NEW)
+   - `README.md` - Plugin documentation (NEW)
 
 ### New Package: `packages/dashboard/`
 
@@ -271,12 +381,139 @@ loopwork/                              # MONOREPO ROOT
    - `tsconfig.json` - Extends base config
    - `README.md` - Dashboard docs
 
-### Existing Package: `packages/loopwork/` (Minor Changes)
+### Existing Package: `packages/loopwork/` (Significant Changes)
 
-**Modified Files**:
-- `src/contracts/index.ts` - Export plugin/backend interfaces
-- `package.json` - May need to update exports
-- `README.md` - Link to dashboard package
+**Files to Modify**:
+
+1. **`src/plugins/index.ts`** (Major cleanup)
+   - **Remove**: All plugin config wrappers (`withTelegram`, `withDiscord`, `withAsana`, `withEverhour`, `withTodoist`, `withCostTracking`)
+   - **Keep**: Core helpers only
+     - `defineConfig`, `defineConfigAsync`
+     - `compose`, `withPlugin`
+     - `PluginRegistry` class
+     - Backend wrappers (`withGitHub`, `withJSON`)
+   - **Update**: Remove plugin imports at top of file
+
+2. **`src/contracts/config.ts`**
+   - **Remove**: Plugin-specific config type definitions (these move to individual packages)
+     - `TelegramConfig`, `DiscordConfig`, `AsanaConfig`, `EverhourConfig`, `TodoistConfig`, `CostTrackingConfig`
+   - **Keep**: Core config types only
+     - `LoopworkConfig`, `BackendConfig`, `PluginConfig`
+
+3. **`src/contracts/index.ts`**
+   - **Add**: Export plugin/backend interfaces for use by plugins
+   - **Update**: Remove plugin-specific config types
+
+4. **`package.json`**
+   - **Update**: Exports field to include contracts
+   - **Update**: Remove any plugin-specific dependencies
+
+5. **`README.md`**
+   - **Update**: Add links to all plugin packages
+   - **Update**: Installation instructions to show opt-in plugin installation
+   - **Add**: Migration guide for existing users
+
+**Example of cleaned `src/plugins/index.ts`:**
+
+```typescript
+/**
+ * Plugin System (Core Only)
+ *
+ * Plugin implementations moved to separate packages:
+ * - @loopwork/telegram
+ * - @loopwork/discord
+ * - @loopwork/asana
+ * - @loopwork/everhour
+ * - @loopwork/todoist
+ * - @loopwork/cost-tracking
+ * - @loopwork/dashboard
+ */
+
+import type {
+  LoopworkConfig,
+  LoopworkPlugin,
+  ConfigWrapper,
+} from '../contracts'
+import { DEFAULT_CONFIG } from '../contracts'
+
+// ============================================================================
+// Config Helpers
+// ============================================================================
+
+export function defineConfig(config: LoopworkConfig): LoopworkConfig {
+  return {
+    ...DEFAULT_CONFIG,
+    ...config,
+    plugins: config.plugins || [],
+  }
+}
+
+export function defineConfigAsync(
+  fn: () => Promise<LoopworkConfig> | LoopworkConfig
+): () => Promise<LoopworkConfig> {
+  return async () => {
+    const config = await fn()
+    return defineConfig(config)
+  }
+}
+
+export function compose(...wrappers: ConfigWrapper[]): ConfigWrapper {
+  return (config) => wrappers.reduce((cfg, wrapper) => wrapper(cfg), config)
+}
+
+// ============================================================================
+// Plugin Wrappers
+// ============================================================================
+
+export function withPlugin(plugin: LoopworkPlugin): ConfigWrapper {
+  return (config) => ({
+    ...config,
+    plugins: [...(config.plugins || []), plugin],
+  })
+}
+
+// ============================================================================
+// Backend Wrappers (stay in core)
+// ============================================================================
+
+export function withGitHub(options: { repo?: string } = {}): ConfigWrapper {
+  return (config) => ({
+    ...config,
+    backend: {
+      type: 'github',
+      repo: options.repo,
+    },
+  })
+}
+
+export function withJSON(options: { tasksFile?: string; tasksDir?: string } = {}): ConfigWrapper {
+  return (config) => ({
+    ...config,
+    backend: {
+      type: 'json',
+      tasksFile: options.tasksFile || '.specs/tasks/tasks.json',
+      tasksDir: options.tasksDir,
+    },
+  })
+}
+
+// ============================================================================
+// Plugin Registry
+// ============================================================================
+
+class PluginRegistry {
+  // ... (unchanged)
+}
+
+export const plugins = new PluginRegistry()
+
+// ============================================================================
+// Re-exports
+// ============================================================================
+
+export type { LoopworkPlugin, ConfigWrapper } from '../contracts'
+export { DEFAULT_CONFIG as defaults } from '../contracts'
+```
 
 ---
 
@@ -414,19 +651,31 @@ export function createWebDashboardPlugin(config?: {
 **Installation & Usage**:
 
 ```bash
-# Install both packages
-bun add loopwork @loopwork/dashboard
+# Install core
+bun add loopwork
+
+# Install plugins you need (opt-in)
+bun add @loopwork/dashboard
+bun add @loopwork/telegram
+bun add @loopwork/cost-tracking
 ```
 
 ```typescript
 // loopwork.config.ts
 import { compose, defineConfig } from 'loopwork'
 import { withJSONBackend } from 'loopwork'
-import { withDashboard } from '@loopwork/dashboard'  // ← Separate package in monorepo
+import { withDashboard } from '@loopwork/dashboard'
+import { withTelegram } from '@loopwork/telegram'
+import { withCostTracking } from '@loopwork/cost-tracking'
 
 export default compose(
   withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
-  withDashboard({ port: 3333, enabled: true })
+  withDashboard({ port: 3333 }),
+  withTelegram({
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    chatId: process.env.TELEGRAM_CHAT_ID
+  }),
+  withCostTracking({ dailyBudget: 10.00 })
 )(defineConfig({
   cli: 'claude',
   maxIterations: 50
@@ -738,12 +987,198 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 }
 ```
 
-### Exports
+### packages/telegram/package.json
+
+```json
+{
+  "name": "@loopwork/telegram",
+  "version": "0.1.0",
+  "description": "Telegram notifications & bot plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "telegram", "notifications", "bot", "plugin"]
+}
+```
+
+### packages/discord/package.json
+
+```json
+{
+  "name": "@loopwork/discord",
+  "version": "0.1.0",
+  "description": "Discord webhook notifications plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "discord", "notifications", "webhooks", "plugin"]
+}
+```
+
+### packages/asana/package.json
+
+```json
+{
+  "name": "@loopwork/asana",
+  "version": "0.1.0",
+  "description": "Asana integration plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "asana", "tasks", "integration", "plugin"]
+}
+```
+
+### packages/everhour/package.json
+
+```json
+{
+  "name": "@loopwork/everhour",
+  "version": "0.1.0",
+  "description": "Everhour time tracking plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "everhour", "time-tracking", "integration", "plugin"]
+}
+```
+
+### packages/todoist/package.json
+
+```json
+{
+  "name": "@loopwork/todoist",
+  "version": "0.1.0",
+  "description": "Todoist task sync plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "todoist", "tasks", "sync", "plugin"]
+}
+```
+
+### packages/cost-tracking/package.json
+
+```json
+{
+  "name": "@loopwork/cost-tracking",
+  "version": "0.1.0",
+  "description": "Token usage & cost monitoring plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": ["loopwork", "cost-tracking", "tokens", "monitoring", "plugin"]
+}
+```
+
+### Package Exports
 
 ```typescript
 // packages/dashboard/src/index.ts
 export { createDashboardPlugin, withDashboard } from './plugin'
 export type { DashboardConfig, DashboardEvent } from './plugin/types'
+
+// packages/telegram/src/index.ts
+export { createTelegramPlugin, createTelegramHookPlugin, withTelegram } from './notifications'
+export { TelegramTaskBot } from './bot'
+export type { TelegramConfig, NotificationPayload } from './notifications'
+
+// packages/discord/src/index.ts
+export { createDiscordPlugin, withDiscord, DiscordClient } from './discord'
+export type { DiscordConfig } from './discord'
+
+// packages/asana/src/index.ts
+export { createAsanaPlugin, withAsana, AsanaClient } from './asana'
+export type { AsanaConfig } from './asana'
+
+// packages/everhour/src/index.ts
+export { createEverhourPlugin, withEverhour, EverhourClient, asanaToEverhour } from './everhour'
+export type { EverhourConfig } from './everhour'
+
+// packages/todoist/src/index.ts
+export { createTodoistPlugin, withTodoist, TodoistClient } from './todoist'
+export type { TodoistConfig } from './todoist'
+
+// packages/cost-tracking/src/index.ts
+export {
+  createCostTrackingPlugin,
+  CostTracker,
+  MODEL_PRICING,
+  formatCost,
+  formatTokens
+} from './cost-tracking'
+export type {
+  CostTrackingConfig,
+  TokenUsage,
+  UsageEntry,
+  UsageSummary
+} from './cost-tracking'
 ```
 
 ---
@@ -774,26 +1209,65 @@ cat > package.json << 'EOF'
 EOF
 ```
 
-### 3. Create Dashboard Package
+### 3. Extract Plugin Packages
+
+```bash
+# Create plugin package directories
+mkdir -p packages/telegram/src
+mkdir -p packages/discord/src
+mkdir -p packages/asana/src
+mkdir -p packages/everhour/src
+mkdir -p packages/todoist/src
+mkdir -p packages/cost-tracking/src
+
+# Move telegram plugin (directory structure)
+git mv src/plugins/telegram packages/telegram/src/
+# Flatten structure: move notifications.ts and bot.ts to src/
+mv packages/telegram/src/telegram/notifications.ts packages/telegram/src/
+mv packages/telegram/src/telegram/bot.ts packages/telegram/src/
+rmdir packages/telegram/src/telegram
+
+# Move other plugins (single files)
+git mv src/plugins/discord.ts packages/discord/src/index.ts
+git mv src/plugins/asana.ts packages/asana/src/index.ts
+git mv src/plugins/everhour.ts packages/everhour/src/index.ts
+git mv src/plugins/todoist.ts packages/todoist/src/index.ts
+git mv src/plugins/cost-tracking.ts packages/cost-tracking/src/index.ts
+
+# Create package.json for each plugin
+# (Use templates from Package Configuration section above)
+```
+
+**What to extract from src/plugins/index.ts:**
+- Remove plugin config wrappers (`withTelegram`, `withDiscord`, etc.) - these move to individual packages
+- Keep only core helpers: `defineConfig`, `defineConfigAsync`, `compose`, `withPlugin`, `PluginRegistry`
+- Backends (`withGitHub`, `withJSON`) stay in core
+
+### 4. Create Dashboard Package
 
 ```bash
 mkdir -p packages/dashboard/src/plugin
 mkdir -p packages/dashboard/web
 ```
 
-### 4. Install Dependencies
+### 5. Install Dependencies
 
 ```bash
 # Root level (installs all workspace dependencies)
 bun install
 
-# Add dashboard-specific deps
-cd packages/dashboard
-bun add chokidar
-bun add -D tsup
+# Add plugin-specific deps (all plugins use tsup)
+cd packages/dashboard && bun add chokidar && bun add -D tsup
+cd ../telegram && bun add -D tsup
+cd ../discord && bun add -D tsup
+cd ../asana && bun add -D tsup
+cd ../everhour && bun add -D tsup
+cd ../todoist && bun add -D tsup
+cd ../cost-tracking && bun add -D tsup
+cd ../..
 ```
 
-### 5. Setup Shared TypeScript Config
+### 6. Setup Shared TypeScript Config
 
 ```bash
 # Create tsconfig.base.json at root
@@ -812,7 +1286,32 @@ cat > tsconfig.base.json << 'EOF'
 EOF
 ```
 
-### 6. Create Plugin Core
+### 7. Create Plugin Entry Points
+
+For each plugin package, create `src/index.ts` that exports all public APIs (see "Package Exports" section above).
+
+For telegram, also create `src/types.ts` for shared types between notifications and bot.
+
+### 8. Update Import Paths
+
+After extracting plugins, update any files that import from the old paths:
+
+```typescript
+// OLD (monolithic)
+import { withTelegram } from '../plugins'
+import { withDiscord } from '../plugins'
+
+// NEW (monorepo)
+import { withTelegram } from '@loopwork/telegram'
+import { withDiscord } from '@loopwork/discord'
+```
+
+**Files to update:**
+- `packages/loopwork/src/plugins/index.ts` - Remove extracted plugin wrappers
+- `packages/loopwork/src/contracts/config.ts` - May reference plugin types
+- Example configs and tests
+
+### 9. Create Plugin Core (Dashboard)
 
 1. `packages/dashboard/src/plugin/index.ts`
 2. `packages/dashboard/src/plugin/server.ts`
@@ -820,14 +1319,14 @@ EOF
 4. `packages/dashboard/src/plugin/routes.ts`
 5. `packages/dashboard/src/plugin/types.ts`
 
-### 7. Setup Next.js App
+### 10. Setup Next.js App
 
 ```bash
 cd packages/dashboard/web
 bunx create-next-app@latest . --typescript --tailwind --app --no-src-dir
 ```
 
-### 8. Build & Test
+### 11. Build & Test
 
 ```bash
 # From repo root
@@ -835,17 +1334,28 @@ bun run build              # Builds all packages
 bun run dev:loopwork       # Run loopwork
 bun run dev:dashboard      # Run dashboard plugin dev
 bun run dev:web            # Run Next.js dev server
+
+# Test individual plugins
+cd packages/telegram && bun run build
+cd packages/discord && bun run build
+# ... etc
 ```
 
-### 9. Publish to npm
+### 12. Publish to npm
 
 ```bash
-# Publish individual packages
+# Publish core first
 cd packages/loopwork
 npm publish
 
-cd ../dashboard
-npm publish --access public  # For scoped @loopwork/dashboard
+# Publish plugins
+cd ../telegram && npm publish --access public
+cd ../discord && npm publish --access public
+cd ../asana && npm publish --access public
+cd ../everhour && npm publish --access public
+cd ../todoist && npm publish --access public
+cd ../cost-tracking && npm publish --access public
+cd ../dashboard && npm publish --access public
 ```
 
 ---
@@ -860,7 +1370,22 @@ npm publish --access public  # For scoped @loopwork/dashboard
 - [ ] Update `.gitignore` for monorepo
 - [ ] Test that existing `loopwork` still works
 
-### Phase 2: Dashboard Package
+### Phase 2: Extract Plugin Packages
+- [ ] Create plugin package directories (telegram, discord, asana, everhour, todoist, cost-tracking)
+- [ ] Move `src/plugins/telegram/` to `packages/telegram/src/`
+- [ ] Move `src/plugins/discord.ts` to `packages/discord/src/index.ts`
+- [ ] Move `src/plugins/asana.ts` to `packages/asana/src/index.ts`
+- [ ] Move `src/plugins/everhour.ts` to `packages/everhour/src/index.ts`
+- [ ] Move `src/plugins/todoist.ts` to `packages/todoist/src/index.ts`
+- [ ] Move `src/plugins/cost-tracking.ts` to `packages/cost-tracking/src/index.ts`
+- [ ] Create `package.json` for each plugin package
+- [ ] Create entry point `index.ts` for each plugin
+- [ ] Update import paths in `packages/loopwork/src/plugins/index.ts`
+- [ ] Remove plugin wrappers from core (keep only compose, defineConfig, etc.)
+- [ ] Update contract types in `packages/loopwork/src/contracts/`
+- [ ] Test that plugins still work locally
+
+### Phase 3: Dashboard Package
 - [ ] Create `packages/dashboard/` structure
 - [ ] Setup package.json with workspace dependency
 - [ ] Create plugin core (`src/plugin/`)
@@ -868,21 +1393,33 @@ npm publish --access public  # For scoped @loopwork/dashboard
 - [ ] Configure build scripts
 - [ ] Write README
 
-### Phase 3: Integration
+### Phase 4: Integration
 - [ ] Export contracts from `loopwork` package
-- [ ] Import contracts in dashboard
-- [ ] Test local workspace linking
+- [ ] Import contracts in all plugin packages
+- [ ] Test local workspace linking for all packages
 - [ ] Write integration tests
 - [ ] Update main README
+- [ ] Update example configs to use new import paths
 
-### Phase 4: CI/CD
+### Phase 5: Build & Verify
+- [ ] Build all packages successfully
+- [ ] Test each plugin package individually
+- [ ] Test dashboard package
+- [ ] Verify all peer dependencies resolve correctly
+- [ ] Run existing tests with new structure
+- [ ] Update tests to import from new paths
+
+### Phase 6: CI/CD
 - [ ] Update GitHub Actions for monorepo
 - [ ] Setup changesets or similar for versioning
 - [ ] Configure separate publish workflows
-- [ ] Test publishing both packages
+- [ ] Test publishing all packages to npm
+- [ ] Setup dependency update automation (Dependabot)
 
-### Phase 5: Documentation
+### Phase 7: Documentation
 - [ ] Update main README for monorepo
 - [ ] Document development workflow
-- [ ] Add examples using both packages
+- [ ] Add examples using plugin packages
 - [ ] Create migration guide for users
+- [ ] Document publishing process
+- [ ] Add contributing guidelines for plugins

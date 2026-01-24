@@ -7,12 +7,12 @@
     },
     {
       "id": "TASK-002",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium"
     },
     {
       "id": "TASK-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "low"
     }
   ]
