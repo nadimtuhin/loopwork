@@ -2,7 +2,7 @@
 
 > **AI-powered task automation with pluggable backends and extensible integrations**
 
-[![npm version](https://img.shields.io/npm/v/loopwork.svg)](https://www.npmjs.com/package/loopwork)
+[![npm version](https://img.shields.io/npm/v/@loopwork-ai/loopwork.svg)](https://www.npmjs.com/package/@loopwork-ai/loopwork)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Loopwork is an extensible task automation framework that runs AI CLI tools (Claude, OpenCode, Gemini) against task backlogs from various sources (GitHub Issues, JSON files, or custom backends). Features a Next.js-style composable plugin architecture for integrations with time tracking, notifications, and project management tools.
@@ -41,9 +41,9 @@ cd examples/basic-json-backend
 ### Install from npm
 
 ```bash
-npm install -g loopwork
+npm install -g @loopwork-ai/loopwork
 # or
-bun install -g loopwork
+bun install -g @loopwork-ai/loopwork
 
 # Initialize a new project
 loopwork init
@@ -56,8 +56,8 @@ loopwork init
 Create a `loopwork.config.ts` file:
 
 ```typescript
-import { defineConfig, compose } from 'loopwork/contracts'
-import { withJSONBackend } from 'loopwork'
+import { defineConfig, compose } from '@loopwork-ai/loopwork/contracts'
+import { withJSONBackend } from '@loopwork-ai/loopwork'
 
 export default compose(
   withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
@@ -75,8 +75,8 @@ import {
   compose,
   withTelegram,
   withCostTracking,
-} from 'loopwork/contracts'
-import { withJSONBackend } from 'loopwork'
+} from '@loopwork-ai/loopwork/contracts'
+import { withJSONBackend } from '@loopwork-ai/loopwork'
 
 export default compose(
   withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
