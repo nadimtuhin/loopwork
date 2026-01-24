@@ -1,0 +1,12 @@
+# Loopwork output
+.loopwork-output-*
+.loopwork-state*
+.loopwork*.lock
+
+# Generated files
+*.log
+node_modules/
+dist/
+
+# OS files
+.DS_Store

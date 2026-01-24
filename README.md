@@ -15,6 +15,23 @@ An extensible task automation framework that runs AI CLI tools against task back
 
 ## Quick Start
 
+### Try the Example
+
+```bash
+# Install dependencies
+bun install
+
+# Run the basic example
+cd examples/basic-json-backend
+./quick-start.sh  # Interactive menu
+# OR
+bun run start --dry-run  # Preview tasks
+```
+
+See [examples/](./examples/) for more.
+
+### From Scratch
+
 ```bash
 # Install
 bun install

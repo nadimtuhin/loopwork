@@ -1,0 +1,15 @@
+{
+  "name": "loopwork-example-basic",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Basic example of using Loopwork with JSON backend",
+  "scripts": {
+    "start": "bun run ../../src/index.ts",
+    "dry-run": "bun run ../../src/index.ts --dry-run",
+    "build": "echo 'No build needed for example'"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
