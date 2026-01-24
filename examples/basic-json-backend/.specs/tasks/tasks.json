@@ -1,0 +1,19 @@
+{
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-002",
+      "status": "in-progress",
+      "priority": "medium"
+    },
+    {
+      "id": "TASK-003",
+      "status": "pending",
+      "priority": "low"
+    }
+  ]
+}
