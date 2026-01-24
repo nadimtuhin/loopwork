@@ -19,8 +19,9 @@
  *   4. Run: bun run src/telegram-bot.ts
  */
 
-import { createBackend, type TaskBackend, type Task } from '../../backends'
-import type { BackendConfig } from '../../backends/types'
+import { createBackend } from '../../loopwork/src/backends'
+import type { TaskBackend, Task } from '../../loopwork/src/contracts'
+import type { BackendConfig } from '../../loopwork/src/contracts'
 
 interface TelegramUpdate {
   update_id: number

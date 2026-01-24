@@ -9,7 +9,7 @@
  * 3. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID env vars
  */
 
-import type { LoopworkPlugin, PluginTask, LoopStats, PluginTaskResult } from '../../contracts'
+import type { LoopworkPlugin, PluginTask, LoopStats, PluginTaskResult } from '../../loopwork/src/contracts'
 
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error'
 
