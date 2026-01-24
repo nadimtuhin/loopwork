@@ -2,12 +2,12 @@
   "tasks": [
     {
       "id": "TASK-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high"
     },
     {
       "id": "TASK-002",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium"
     },
     {
