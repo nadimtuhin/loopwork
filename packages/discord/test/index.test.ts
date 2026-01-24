@@ -18,6 +18,7 @@ describe('Discord Plugin', () => {
   const mockTask = {
     id: 'TASK-001',
     title: 'Test task',
+    metadata: {},
   } as any
 
   describe('DiscordClient', () => {
@@ -84,8 +85,8 @@ describe('Discord Plugin', () => {
         notifyOnComplete: false,
       })
 
-      await plugin.onTaskStart?.(mockTask)
-      await plugin.onTaskComplete?.(mockTask, { duration: 30 })
+      await plugin.onTaskStart?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' })
+      await plugin.onTaskComplete?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' }, { duration: 30 })
 
       expect(mockFetch).not.toHaveBeenCalled()
     })
@@ -98,7 +99,7 @@ describe('Discord Plugin', () => {
         notifyOnFail: true,
       })
 
-      await plugin.onTaskFailed?.(mockTask, 'Test error')
+      await plugin.onTaskFailed?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' }, 'Test error')
 
       expect(mockFetch).toHaveBeenCalled()
     })
@@ -111,7 +112,7 @@ describe('Discord Plugin', () => {
         mentionOnFail: '<@&123456>',
       })
 
-      await plugin.onTaskFailed?.(mockTask, 'Test error')
+      await plugin.onTaskFailed?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' }, 'Test error')
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://discord.com/webhook',
