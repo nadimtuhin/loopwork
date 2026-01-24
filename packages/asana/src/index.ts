@@ -11,7 +11,7 @@
  * 4. Add asanaGid to task metadata in your tasks file
  */
 
-import type { LoopworkPlugin, PluginTask } from '../contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper } from '../../loopwork/src/contracts'
 
 export interface AsanaConfig {
   accessToken?: string
@@ -98,15 +98,16 @@ export class AsanaClient {
 /**
  * Create Asana plugin wrapper
  */
-export function withAsana(config: AsanaConfig = {}) {
+export function withAsana(config: AsanaConfig = {}): ConfigWrapper {
   const accessToken = config.accessToken || process.env.ASANA_ACCESS_TOKEN
   const projectId = config.projectId || process.env.ASANA_PROJECT_ID
 
-  return (baseConfig: any) => ({
+  return (baseConfig) => ({
     ...baseConfig,
     asana: {
       accessToken,
       projectId,
+      workspaceId: config.workspaceId,
       autoCreate: config.autoCreate ?? false,
       syncStatus: config.syncStatus ?? true,
     },
