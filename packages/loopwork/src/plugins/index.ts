@@ -20,6 +20,12 @@ import { logger } from '../core/utils'
 export { withJSONBackend, withGitHubBackend }
 
 // ============================================================================
+// Re-exports from bundled plugins
+// ============================================================================
+
+export { createClaudeCodePlugin, withClaudeCode } from './claude-code'
+
+// ============================================================================
 // Config Helpers
 // ============================================================================
 
