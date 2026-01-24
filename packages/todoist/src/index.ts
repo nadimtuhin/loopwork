@@ -21,12 +21,13 @@ export interface TodoistConfig {
   addComments?: boolean
 }
 
-interface TodoistTask {
+export interface TodoistTask {
   id: string
   content: string
   description: string
   is_completed: boolean
   project_id: string
+  parent_id?: string
   priority: number
   labels: string[]
 }
@@ -87,6 +88,7 @@ export class TodoistClient {
   async createTask(content: string, options?: {
     description?: string
     projectId?: string
+    parentId?: string
     priority?: 1 | 2 | 3 | 4
     labels?: string[]
   }): Promise<TodoistTask> {
@@ -94,6 +96,7 @@ export class TodoistClient {
       content,
       description: options?.description,
       project_id: options?.projectId,
+      parent_id: options?.parentId,
       priority: options?.priority,
       labels: options?.labels,
     })
