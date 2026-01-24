@@ -1,6 +1,6 @@
 {
   "name": "loopwork",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Loopwork - AI task runner with pluggable backends",
   "main": "src/index.ts",
   "bin": {
