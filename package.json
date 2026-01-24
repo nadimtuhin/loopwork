@@ -1,5 +1,6 @@
 {
   "name": "loopwork-monorepo",
+  "packageManager": "bun@1.1.24",
   "private": true,
   "workspaces": [
     "packages/*",
