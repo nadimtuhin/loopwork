@@ -1,12 +1,18 @@
-# Loopwork output
-.loopwork-output-*
-.loopwork-state*
-.loopwork*.lock
+# Loopwork generated files
+loopwork-runs/
+.loopwork/
+*.state.json
 
-# Generated files
-*.log
+# Node modules
 node_modules/
-dist/
+*.lock
+bun.lockb
 
-# OS files
-.DS_Store
+# Build outputs
+dist/
+build/
+bin/
+
+# Logs
+logs/
+*.log

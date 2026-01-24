@@ -6,11 +6,22 @@
   "bin": {
     "loopwork": "bin/loopwork"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "examples/"
+  ],
   "scripts": {
     "start": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --compile --outfile bin/loopwork",
     "test": "bun test",
-    "setup-labels": "bun run src/setup-labels.ts"
+    "setup-labels": "bun run src/setup-labels.ts",
+    "prepack": "npm run build",
+    "pack:dry": "npm pack --dry-run",
+    "pack:check": "npm pack && tar -tzf *.tgz && rm *.tgz",
+    "prepublishOnly": "npm run build && npm run test"
   },
   "dependencies": {
     "chalk": "^5.3.0",
@@ -22,5 +33,25 @@
     "@types/bun": "latest",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0"
-  }
+  },
+  "keywords": [
+    "ai",
+    "automation",
+    "task-runner",
+    "github",
+    "workflow",
+    "cli",
+    "loopwork",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/loopwork/issues"
+  },
+  "homepage": "https://github.com/nadimtuhin/loopwork#readme",
+  "author": "Nadim Tuhin",
+  "license": "MIT"
 }
