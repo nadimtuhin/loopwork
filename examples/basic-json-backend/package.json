@@ -1,0 +1,16 @@
+{
+  "name": "loopwork-example-basic",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Basic example of using Loopwork with JSON backend",
+  "scripts": {
+    "start": "../../packages/loopwork/bin/loopwork",
+    "dry-run": "../../packages/loopwork/bin/loopwork --dry-run",
+    "test": "bun test",
+    "build": "echo 'No build needed for example'"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "loopwork",
+  "version": "0.3.1",
+  "description": "Loopwork - AI task runner with pluggable backends",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts/index.ts"
+  },
+  "bin": {
+    "loopwork": "bin/loopwork"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    ".env.example",
+    "examples/"
+  ],
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --compile --outfile bin/loopwork && bun build ./src/index.ts --outdir dist --target node --external bun",
+    "test": "bun test",
+    "setup-labels": "bun run src/setup-labels.ts",
+    "posts:generate": "bun run scripts/generate-posts.ts",
+    "posts:schedule": "bun run scripts/schedule-linkedin-posts.ts",
+    "posts:preview": "bun run scripts/generate-posts.ts markdown",
+    "prepack": "npm run build",
+    "pack:dry": "npm pack --dry-run",
+    "pack:check": "npm pack && tar -tzf *.tgz && rm *.tgz",
+    "prepublishOnly": "npm run build && npm run test",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:check": "npm outdated && npm audit",
+    "security:fix": "npm audit fix",
+    "security:trivy": "trivy fs . --severity CRITICAL,HIGH,MEDIUM || echo 'Trivy not installed. Run: brew install aquasecurity/trivy/trivy'"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "ink": "^4.4.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0"
+  },
+  "keywords": [
+    "ai",
+    "automation",
+    "task-runner",
+    "github",
+    "workflow",
+    "cli",
+    "loopwork",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/loopwork/issues"
+  },
+  "homepage": "https://github.com/nadimtuhin/loopwork#readme",
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

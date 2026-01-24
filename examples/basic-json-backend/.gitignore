@@ -1,0 +1,18 @@
+# Loopwork generated files
+loopwork-runs/
+.loopwork/
+*.state.json
+
+# Node modules
+node_modules/
+*.lock
+bun.lockb
+
+# Build outputs
+dist/
+build/
+bin/
+
+# Logs
+logs/
+*.log
