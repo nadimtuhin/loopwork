@@ -1,0 +1,12 @@
+# Trivy Ignore Rules
+# Use this file to suppress false positives and known acceptable risks
+# Format: CVE-YYYY-NNNNN or vulnerability ID
+
+# Example: Ignore specific CVE
+# CVE-2024-12345
+
+# Example: Ignore by package (use with caution)
+# pkg:npm/package-name@version
+
+# Add your ignore rules below:
+

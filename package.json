@@ -11,6 +11,8 @@
     "src/",
     "README.md",
     "CHANGELOG.md",
+    "SECURITY.md",
+    ".env.example",
     "examples/"
   ],
   "scripts": {
@@ -21,7 +23,11 @@
     "prepack": "npm run build",
     "pack:dry": "npm pack --dry-run",
     "pack:check": "npm pack && tar -tzf *.tgz && rm *.tgz",
-    "prepublishOnly": "npm run build && npm run test"
+    "prepublishOnly": "npm run build && npm run test",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:check": "npm outdated && npm audit",
+    "security:fix": "npm audit fix",
+    "security:trivy": "trivy fs . --severity CRITICAL,HIGH,MEDIUM || echo 'Trivy not installed. Run: brew install aquasecurity/trivy/trivy'"
   },
   "dependencies": {
     "chalk": "^5.3.0",

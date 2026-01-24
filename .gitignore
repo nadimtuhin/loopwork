@@ -48,3 +48,7 @@ loopwork-runs/
 tmp/
 temp/
 *.tmp
+
+# Security scanning
+trivy-results.sarif
+.trivycache/

@@ -59,8 +59,12 @@ package-lock.json
 .env.local
 .env.*.local
 
-# Markdown files except README and CHANGELOG
+# Markdown files except README, CHANGELOG, and SECURITY
 *.md
 !README.md
 !CHANGELOG.md
+!SECURITY.md
 !examples/**/*.md
+
+# Include .env.example (but not .env)
+!.env.example
