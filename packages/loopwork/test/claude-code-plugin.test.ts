@@ -18,6 +18,13 @@ describe('Claude Code Plugin', () => {
     }
     fs.mkdirSync(TEST_DIR, { recursive: true })
     process.chdir(TEST_DIR)
+
+    // Mock all logger methods to prevent stdout/stderr issues in CI
+    spyOn(logger, 'info').mockImplementation(() => {})
+    spyOn(logger, 'success').mockImplementation(() => {})
+    spyOn(logger, 'warn').mockImplementation(() => {})
+    spyOn(logger, 'error').mockImplementation(() => {})
+    spyOn(logger, 'debug').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -270,6 +277,7 @@ describe('Claude Code Plugin', () => {
     test('logs success when skill file created', async () => {
       fs.mkdirSync('.claude', { recursive: true })
 
+      // Re-mock to track calls (global mock is already active)
       const successSpy = spyOn(logger, 'success').mockImplementation(() => {})
 
       const plugin = createClaudeCodePlugin()
@@ -278,12 +286,12 @@ describe('Claude Code Plugin', () => {
       await plugin.onConfigLoad!(config)
 
       expect(successSpy).toHaveBeenCalledWith(expect.stringContaining('loopwork.md'))
-      successSpy.mockRestore()
     })
 
     test('logs success when CLAUDE.md updated', async () => {
       fs.mkdirSync('.claude', { recursive: true })
 
+      // Re-mock to track calls (global mock is already active)
       const successSpy = spyOn(logger, 'success').mockImplementation(() => {})
 
       const plugin = createClaudeCodePlugin()
@@ -292,13 +300,13 @@ describe('Claude Code Plugin', () => {
       await plugin.onConfigLoad!(config)
 
       expect(successSpy).toHaveBeenCalledWith(expect.stringContaining('CLAUDE.md'))
-      successSpy.mockRestore()
     })
 
     test('logs info when CLAUDE.md already has Loopwork section', async () => {
       fs.mkdirSync('.claude', { recursive: true })
       fs.writeFileSync(CLAUDE_MD, '## Loopwork Integration\n\nExisting')
 
+      // Re-mock to track calls (global mock is already active)
       const infoSpy = spyOn(logger, 'info').mockImplementation(() => {})
 
       const plugin = createClaudeCodePlugin()
@@ -307,7 +315,6 @@ describe('Claude Code Plugin', () => {
       await plugin.onConfigLoad!(config)
 
       expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('already has Loopwork'))
-      infoSpy.mockRestore()
     })
   })
 

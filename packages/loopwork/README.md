@@ -187,6 +187,7 @@ TODOIST_PROJECT_ID=...
 
 | Plugin | Purpose | Config Wrapper |
 |--------|---------|----------------|
+| Claude Code | Claude Code integration (skills & CLAUDE.md) | `withClaudeCode()` |
 | Telegram | Notifications & bot commands | `withTelegram()` |
 | Discord | Webhook notifications | `withDiscord()` |
 | Asana | Task sync & comments | `withAsana()` |
@@ -487,6 +488,49 @@ For integration with Claude Desktop or other MCP clients:
 | `loopwork_check_dependencies` | Check if deps met |
 | `loopwork_count_pending` | Count pending |
 | `loopwork_backend_status` | Health check |
+
+## Claude Code Integration
+
+The `withClaudeCode()` plugin automatically detects Claude Code and sets up seamless integration:
+
+**What it does:**
+- Detects `.claude/` directory or `CLAUDE.md` file
+- Creates `.claude/skills/loopwork.md` with task management skills
+- Updates `CLAUDE.md` with Loopwork documentation
+- Only runs on first detection (idempotent)
+
+**Available Skills:**
+- `/loopwork:run` - Run the task automation loop
+- `/loopwork:resume` - Resume from saved state
+- `/loopwork:status` - Check current progress
+- `/loopwork:task-new` - Create new tasks
+- `/loopwork:config` - View configuration
+
+**Usage:**
+```typescript
+import { defineConfig, withClaudeCode } from 'loopwork'
+import { withJSONBackend } from 'loopwork/backends'
+
+export default compose(
+  withJSONBackend(),
+  withClaudeCode(), // Auto-detects and sets up
+)(defineConfig({ cli: 'claude' }))
+```
+
+**Options:**
+```typescript
+withClaudeCode({
+  enabled: true,               // Enable/disable (default: true)
+  skillsDir: '.claude/skills', // Skills directory (default)
+  claudeMdPath: 'CLAUDE.md'    // CLAUDE.md path (default)
+})
+```
+
+The plugin is smart:
+- Skips setup if Claude Code not detected
+- Never overwrites existing skill files
+- Never duplicates CLAUDE.md sections
+- Prefers `.claude/CLAUDE.md` over root `CLAUDE.md`
 
 ## Telegram Bot
 
