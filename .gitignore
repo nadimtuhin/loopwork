@@ -38,6 +38,8 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # State files
 .loopwork/
@@ -61,3 +63,9 @@ packages/*/node_modules
 # Loopwork state and cost tracking
 .loopwork-state*
 .loopwork-cost-tracking*
+
+# Build caches
+.turbo/
+
+# Internal notes
+.sisyphus/

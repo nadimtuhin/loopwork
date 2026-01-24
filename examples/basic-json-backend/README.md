@@ -1,6 +1,6 @@
-# Basic JSON Backend
+# My Project
 
-Basic example of using Loopwork with JSON backend. A simple TypeScript project with basic utility functions.
+A simple TypeScript project with basic utility functions.
 
 ## Functions
 
@@ -12,5 +12,7 @@ Adds two numbers together.
 
 ## Usage
 
-`npm install`
-`npm test`
+```bash
+bun install
+bun test
+```

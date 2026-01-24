@@ -22,6 +22,8 @@ export interface EverhourConfig {
   autoStopTimer?: boolean
   /** Default project ID for new time entries */
   projectId?: string
+  /** Daily hours limit (default: 8) */
+  dailyLimit?: number
 }
 
 interface EverhourTimeEntry {

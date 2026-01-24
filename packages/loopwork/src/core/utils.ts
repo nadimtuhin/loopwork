@@ -117,17 +117,16 @@ export class StreamLogger {
   private printLine(line: string) {
     process.stdout.write('\r\x1b[K')
     const timestamp = chalk.gray(getTimestamp())
-    // Add padding to align with [INFO] lines (6 chars + 1 space = 7 chars)
-    const separator = chalk.gray('       │')
+    const separator = chalk.gray(' │')
     const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
 
     // Clean up the line: remove leading | and extra spaces from tool output
     let cleanedLine = line.replace(/^\s*\|\s*/, '')
 
     // Calculate available width for content
-    // Terminal width - timestamp (12) - separator (8) - prefix (~20) - margin (5)
+    // Terminal width - timestamp (12) - separator (3) - prefix (~20) - margin (5)
     const terminalWidth = process.stdout.columns || 120
-    const reservedWidth = 12 + 8 + (this.prefix ? this.prefix.length + 3 : 0) + 5
+    const reservedWidth = 12 + 3 + (this.prefix ? this.prefix.length + 3 : 0) + 5
     const contentWidth = Math.max(60, terminalWidth - reservedWidth)
 
     // Wrap long lines
@@ -139,7 +138,7 @@ export class StreamLogger {
         process.stdout.write(`${timestamp}${separator}${prefixStr} ${chalk.dim(wrappedLines[i])}\n`)
       } else {
         // Continuation lines: indent to align with first line content
-        const indent = ' '.repeat(12 + 8 + (this.prefix ? this.prefix.length + 3 : 0))
+        const indent = ' '.repeat(12 + 3 + (this.prefix ? this.prefix.length + 3 : 0))
         process.stdout.write(`${indent} ${chalk.dim(wrappedLines[i])}\n`)
       }
     }
