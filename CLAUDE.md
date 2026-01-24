@@ -159,6 +159,39 @@ When creating a new plugin:
 4. Check for required metadata fields (e.g., `asanaGid`) before making API calls
 5. Use proper error handling - plugins should never crash the main loop
 
+#### Claude Code Integration Plugin
+
+The `withClaudeCode()` plugin is a bundled/default plugin in the core package:
+
+**Location:** `packages/loopwork/src/plugins/claude-code.ts`
+
+**Features:**
+- Auto-detects Claude Code (`.claude/` directory or `CLAUDE.md` file)
+- Creates `.claude/skills/loopwork.md` with task management skills
+- Updates `CLAUDE.md` with Loopwork documentation
+- Idempotent - safe to run multiple times
+- Skips setup if Claude Code not detected
+
+**Available Skills:**
+- `/loopwork:run` - Run the task automation loop
+- `/loopwork:resume` - Resume from saved state
+- `/loopwork:status` - Check current progress
+- `/loopwork:task-new` - Create new tasks
+- `/loopwork:config` - View configuration
+
+**Usage in config:**
+```typescript
+import { compose, defineConfig, withClaudeCode } from 'loopwork'
+import { withJSONBackend } from 'loopwork/backends'
+
+export default compose(
+  withJSONBackend(),
+  withClaudeCode(), // Auto-detects and sets up
+)(defineConfig({ cli: 'claude' }))
+```
+
+**Tests:** `test/claude-code-plugin.test.ts` (23 tests covering all functionality)
+
 ### Logging
 
 Use the logger from `packages/loopwork/src/core/utils.ts`:
