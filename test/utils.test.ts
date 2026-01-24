@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach, spyOn } from 'bun:test'
-import { logger } from '../src/core/utils'
+import { logger, StreamLogger } from '../src/core/utils'
 
 describe('utils', () => {
   describe('logger', () => {
@@ -55,6 +55,65 @@ describe('utils', () => {
       expect(consoleSpy).toHaveBeenCalled()
 
       process.env.LOOPWORK_DEBUG = originalDebug
+    })
+  })
+
+  describe('StreamLogger', () => {
+    let stdoutSpy: ReturnType<typeof spyOn>
+
+    beforeEach(() => {
+      stdoutSpy = spyOn(process.stdout, 'write').mockImplementation(() => true)
+    })
+
+    afterEach(() => {
+      stdoutSpy.mockRestore()
+    })
+
+    test('buffers partial lines until newline', () => {
+      const logger = new StreamLogger()
+      logger.log('partial ')
+      expect(stdoutSpy).not.toHaveBeenCalled()
+
+      logger.log('line\n')
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls[0][0] as string
+      expect(output).toContain('partial line')
+    })
+
+    test('flushes remaining buffer', () => {
+      const logger = new StreamLogger()
+      logger.log('remaining content')
+      expect(stdoutSpy).not.toHaveBeenCalled()
+
+      logger.flush()
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls[0][0] as string
+      expect(output).toContain('remaining content')
+    })
+
+    test('prefixes output correctly', () => {
+      const logger = new StreamLogger('TEST-PREFIX')
+      logger.log('prefixed line\n')
+      const output = stdoutSpy.mock.calls[0][0] as string
+      expect(output).toContain('[TEST-PREFIX]')
+      expect(output).toContain('prefixed line')
+    })
+
+    test('works without prefix', () => {
+      const logger = new StreamLogger()
+      logger.log('no prefix line\n')
+      const output = stdoutSpy.mock.calls[0][0] as string
+      expect(output).not.toContain('[')
+      expect(output).toContain('no prefix line')
+    })
+
+    test('verifies visual formatting (pipe, dim)', () => {
+      const logger = new StreamLogger()
+      logger.log('formatted line\n')
+      const output = stdoutSpy.mock.calls[0][0] as string
+      
+      expect(output).toContain('│')
+      expect(output).toContain('formatted line')
     })
   })
 })

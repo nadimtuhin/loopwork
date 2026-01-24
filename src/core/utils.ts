@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 
-function getTimestamp(): string {
+export function getTimestamp(): string {
   return new Date().toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
@@ -10,16 +10,25 @@ function getTimestamp(): string {
 }
 
 export const logger = {
-  info: (msg: string) =>
-    console.log(chalk.gray(getTimestamp()), chalk.blue('[INFO]'), msg),
-  success: (msg: string) =>
-    console.log(chalk.gray(getTimestamp()), chalk.green('[SUCCESS]'), msg),
-  warn: (msg: string) =>
-    console.log(chalk.gray(getTimestamp()), chalk.yellow('[WARN]'), msg),
-  error: (msg: string) =>
-    console.log(chalk.gray(getTimestamp()), chalk.red('[ERROR]'), msg),
+  info: (msg: string) => {
+    process.stdout.write('\r\x1b[K')
+    console.log(chalk.gray(getTimestamp()), chalk.blue('[INFO]'), msg)
+  },
+  success: (msg: string) => {
+    process.stdout.write('\r\x1b[K')
+    console.log(chalk.gray(getTimestamp()), chalk.green('[SUCCESS]'), msg)
+  },
+  warn: (msg: string) => {
+    process.stdout.write('\r\x1b[K')
+    console.log(chalk.gray(getTimestamp()), chalk.yellow('[WARN]'), msg)
+  },
+  error: (msg: string) => {
+    process.stdout.write('\r\x1b[K')
+    console.log(chalk.gray(getTimestamp()), chalk.red('[ERROR]'), msg)
+  },
   debug: (msg: string) => {
     if (process.env.LOOPWORK_DEBUG === 'true') {
+      process.stdout.write('\r\x1b[K')
       console.log(chalk.gray(getTimestamp()), chalk.cyan('[DEBUG]'), msg)
     }
   },
@@ -83,7 +92,39 @@ export async function promptUser(
       resolve(defaultValue)
     }
 
-    process.stdin.once('data', onData)
     process.stdin.once('error', onError)
   })
+}
+
+export class StreamLogger {
+  private buffer: string = ''
+  private prefix: string = ''
+
+  constructor(prefix?: string) {
+    this.prefix = prefix || ''
+  }
+
+  log(chunk: string | Buffer) {
+    this.buffer += chunk.toString('utf8')
+    const lines = this.buffer.split('\n')
+    this.buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      this.printLine(line)
+    }
+  }
+
+  private printLine(line: string) {
+    const timestamp = chalk.gray(getTimestamp())
+    const separator = chalk.gray(' │')
+    const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
+    process.stdout.write(`${timestamp}${separator}${prefixStr} ${chalk.dim(line)}\n`)
+  }
+
+  flush() {
+    if (this.buffer) {
+      this.printLine(this.buffer)
+      this.buffer = ''
+    }
+  }
 }

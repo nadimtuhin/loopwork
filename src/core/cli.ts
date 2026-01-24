@@ -1,25 +1,26 @@
 import { spawn, spawnSync, ChildProcess } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { logger } from './utils'
+import { logger, StreamLogger } from './utils'
 import type { Config } from './config'
 
 export interface CliConfig {
   name: string
+  displayName?: string
   cli: 'opencode' | 'claude'
   model: string
 }
 
 // Default model pools
 export const EXEC_MODELS: CliConfig[] = [
-  { name: 'sonnet-claude', cli: 'claude', model: 'sonnet' },
-  { name: 'sonnet-opencode', cli: 'opencode', model: 'google/antigravity-claude-sonnet-4-5' },
-  { name: 'gemini-3-flash', cli: 'opencode', model: 'google/antigravity-gemini-3-flash' },
+  { name: 'sonnet-claude', displayName: 'claude', cli: 'claude', model: 'sonnet' },
+  { name: 'sonnet-opencode', displayName: 'sonnet', cli: 'opencode', model: 'google/antigravity-claude-sonnet-4-5' },
+  { name: 'gemini-3-flash', displayName: 'gemini-flash', cli: 'opencode', model: 'google/antigravity-gemini-3-flash' },
 ]
 
 export const FALLBACK_MODELS: CliConfig[] = [
-  { name: 'opus-claude', cli: 'claude', model: 'opus' },
-  { name: 'gemini-3-pro', cli: 'opencode', model: 'google/antigravity-gemini-3-pro' },
+  { name: 'opus-claude', displayName: 'opus', cli: 'claude', model: 'opus' },
+  { name: 'gemini-3-pro', displayName: 'gemini-pro', cli: 'opencode', model: 'google/antigravity-gemini-3-pro' },
 ]
 
 export class CliExecutor {
@@ -110,6 +111,7 @@ export class CliExecutor {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const cliConfig = this.getNextCliConfig()
+      const displayName = cliConfig.displayName || cliConfig.name
       const cliPath = this.cliPaths.get(cliConfig.cli)
 
       if (!cliPath) {
@@ -132,9 +134,9 @@ export class CliExecutor {
         ? `opencode run --model ${cliConfig.model} "<prompt>"`
         : `claude -p --dangerously-skip-permissions --model ${cliConfig.model}`
 
-      logger.info(`[${cliConfig.name}] Executing: ${cmdDisplay}`)
-      logger.info(`[${cliConfig.name}] Timeout: ${timeoutSecs}s`)
-      logger.info(`[${cliConfig.name}] Log file: ${outputFile}`)
+      logger.info(`[${displayName}] Executing: ${cmdDisplay}`)
+      logger.info(`[${displayName}] Timeout: ${timeoutSecs}s`)
+      logger.info(`[${displayName}] Log file: ${outputFile}`)
       logger.info('─────────────────────────────────────')
       logger.info('📝 Streaming CLI output below...')
       logger.info('─────────────────────────────────────')
@@ -142,13 +144,17 @@ export class CliExecutor {
       const result = await this.spawnWithTimeout(
         cliPath,
         args,
-        { env, input: cliConfig.cli === 'claude' ? prompt : undefined },
+        {
+          env,
+          input: cliConfig.cli === 'claude' ? prompt : undefined,
+          prefix: displayName,
+        },
         outputFile,
         timeoutSecs
       )
 
       if (result.timedOut) {
-        logger.error(`Timed out with ${cliConfig.name}`)
+        logger.error(`Timed out with ${displayName}`)
         continue
       }
 
@@ -158,13 +164,13 @@ export class CliExecutor {
         : ''
 
       if (/rate.*limit|too.*many.*request|429|RESOURCE_EXHAUSTED/i.test(output)) {
-        logger.warn(`Rate limited on ${cliConfig.name}, waiting 30s...`)
+        logger.warn(`Rate limited on ${displayName}, waiting 30s...`)
         await new Promise(r => setTimeout(r, 30000))
         continue
       }
 
       if (/quota.*exceed|billing.*limit/i.test(output)) {
-        logger.warn(`Quota exhausted for ${cliConfig.name}`)
+        logger.warn(`Quota exhausted for ${displayName}`)
         this.switchToFallback()
         continue
       }
@@ -186,7 +192,7 @@ export class CliExecutor {
   private spawnWithTimeout(
     command: string,
     args: string[],
-    options: { env?: NodeJS.ProcessEnv; input?: string },
+    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string },
     outputFile: string,
     timeoutSecs: number
   ): Promise<{ exitCode: number; timedOut: boolean }> {
@@ -194,6 +200,7 @@ export class CliExecutor {
       const writeStream = fs.createWriteStream(outputFile)
       let timedOut = false
       const startTime = Date.now()
+      const streamLogger = new StreamLogger(options.prefix)
 
       const child = spawn(command, args, {
         env: options.env,
@@ -212,12 +219,12 @@ export class CliExecutor {
 
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
-        process.stdout.write(data)
+        streamLogger.log(data)
       })
 
       child.stderr?.on('data', (data) => {
         writeStream.write(data)
-        process.stderr.write(data)
+        streamLogger.log(data)
       })
 
       if (child.stdin) {
@@ -236,6 +243,7 @@ export class CliExecutor {
       child.on('close', (code) => {
         clearInterval(progressInterval)
         clearTimeout(timer)
+        streamLogger.flush()
         writeStream.end()
         this.currentSubprocess = null
         const totalTime = Math.floor((Date.now() - startTime) / 1000)
@@ -265,6 +273,7 @@ export class CliExecutor {
       child.on('error', (err) => {
         clearInterval(progressInterval)
         clearTimeout(timer)
+        streamLogger.flush()
         writeStream.end()
         this.currentSubprocess = null
         logger.error(`Spawn error: ${err.message}`)
