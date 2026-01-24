@@ -16,7 +16,7 @@ async function ask(question: string, defaultValue: string): Promise<string> {
   })
 }
 
-async function safeWriteFile(filePath: string, content: string, description: string): Promise<boolean> {
+export async function safeWriteFile(filePath: string, content: string, description: string): Promise<boolean> {
   if (fs.existsSync(filePath)) {
     const overwrite = await promptUser(`${filePath} already exists. Overwrite? (y/N): `, 'n')
     if (overwrite.toLowerCase() !== 'y') {
@@ -35,7 +35,7 @@ async function safeWriteFile(filePath: string, content: string, description: str
   return true
 }
 
-async function updateGitignore() {
+export async function updateGitignore() {
   const gitignorePath = '.gitignore'
   const requiredPatterns = [
     '.loopwork-state/',
@@ -88,7 +88,7 @@ async function updateGitignore() {
   logger.success(`Updated .gitignore with ${missingPatterns.length} new pattern(s)`)
 }
 
-async function createReadme(projectName: string, aiTool: string) {
+export async function createReadme(projectName: string, aiTool: string) {
   const readmeContent = `# ${projectName}
 
 AI-powered task automation project using Loopwork.
@@ -126,7 +126,7 @@ Tasks are managed through the configured backend. Check \`.specs/tasks/\` for PR
   await safeWriteFile('README.md', readmeContent, 'README.md')
 }
 
-async function createPrdTemplates(templatesDir: string) {
+export async function createPrdTemplates(templatesDir: string) {
   const shouldCreate = await promptUser('Create PRD template files? (Y/n): ', 'y')
 
   if (shouldCreate.toLowerCase() !== 'y' && shouldCreate.toLowerCase() !== '') {
@@ -191,7 +191,7 @@ What should happen instead
   )
 }
 
-async function setupPlugins(): Promise<string[]> {
+export async function setupPlugins(): Promise<string[]> {
   const plugins: string[] = []
 
   logger.info('\nOptional plugin configuration:')

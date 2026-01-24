@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "rm -rf .next",
     "build": "next build",
+    "test": "echo 'No tests for dashboard-web'",
     "start": "next start",
     "lint": "next lint"
   },
