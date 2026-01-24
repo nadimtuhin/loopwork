@@ -20,6 +20,7 @@
     "examples/"
   ],
   "scripts": {
+    "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --compile --outfile bin/loopwork && bun build ./src/index.ts --outdir dist --target node --external bun",
     "test": "bun test",
@@ -27,13 +28,10 @@
     "posts:generate": "bun run scripts/generate-posts.ts",
     "posts:schedule": "bun run scripts/schedule-linkedin-posts.ts",
     "posts:preview": "bun run scripts/generate-posts.ts markdown",
-    "prepack": "npm run build",
+    "prepack": "bun run build",
     "pack:dry": "npm pack --dry-run",
     "pack:check": "npm pack && tar -tzf *.tgz && rm *.tgz",
-    "prepublishOnly": "npm run build && npm run test",
-    "security:audit": "npm audit --audit-level=moderate",
-    "security:check": "npm outdated && npm audit",
-    "security:fix": "npm audit fix",
+    "prepublishOnly": "bun run build && bun run test",
     "security:trivy": "trivy fs . --severity CRITICAL,HIGH,MEDIUM || echo 'Trivy not installed. Run: brew install aquasecurity/trivy/trivy'"
   },
   "dependencies": {
