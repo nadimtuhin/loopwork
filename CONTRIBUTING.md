@@ -211,7 +211,7 @@ cd packages/your-plugin
 
 ```json
 {
-  "name": "@loopwork/your-plugin",
+  "name": "@loopwork-ai/your-plugin",
   "version": "0.1.0",
   "main": "src/index.ts",
   "scripts": {

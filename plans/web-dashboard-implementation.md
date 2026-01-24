@@ -7,13 +7,13 @@ Restructure Loopwork into a **monorepo architecture** with all plugins as separa
 **Architecture**: Monorepo with Bun workspaces
 **Packages**:
 - `loopwork` - Core CLI and framework
-- `@loopwork/dashboard` - Web UI dashboard plugin
-- `@loopwork/telegram` - Telegram notifications & bot
-- `@loopwork/discord` - Discord webhook notifications
-- `@loopwork/asana` - Asana integration
-- `@loopwork/everhour` - Time tracking integration
-- `@loopwork/todoist` - Todoist task sync
-- `@loopwork/cost-tracking` - Token usage & cost monitoring
+- `@loopwork-ai/dashboard` - Web UI dashboard plugin
+- `@loopwork-ai/telegram` - Telegram notifications & bot
+- `@loopwork-ai/discord` - Discord webhook notifications
+- `@loopwork-ai/asana` - Asana integration
+- `@loopwork-ai/everhour` - Time tracking integration
+- `@loopwork-ai/todoist` - Todoist task sync
+- `@loopwork-ai/cost-tracking` - Token usage & cost monitoring
 
 **Benefits**:
 - Independent versioning per plugin
@@ -230,7 +230,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   └── next.config.js
 │   │   │
 │   │   ├── dist/                      # Compiled output
-│   │   ├── package.json               # name: "@loopwork/dashboard"
+│   │   ├── package.json               # name: "@loopwork-ai/dashboard"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -241,7 +241,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Package entry
 │   │   │   └── types.ts               # Shared types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/telegram"
+│   │   ├── package.json               # name: "@loopwork-ai/telegram"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -250,7 +250,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Main plugin + client
 │   │   │   └── types.ts               # TypeScript types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/discord"
+│   │   ├── package.json               # name: "@loopwork-ai/discord"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -259,7 +259,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Main plugin + client
 │   │   │   └── types.ts               # TypeScript types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/asana"
+│   │   ├── package.json               # name: "@loopwork-ai/asana"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -268,7 +268,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Main plugin + client
 │   │   │   └── types.ts               # TypeScript types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/everhour"
+│   │   ├── package.json               # name: "@loopwork-ai/everhour"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -277,7 +277,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Main plugin + client
 │   │   │   └── types.ts               # TypeScript types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/todoist"
+│   │   ├── package.json               # name: "@loopwork-ai/todoist"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │   │
@@ -286,7 +286,7 @@ loopwork/                              # MONOREPO ROOT
 │   │   │   ├── index.ts               # Main plugin + tracker
 │   │   │   └── types.ts               # TypeScript types
 │   │   ├── dist/
-│   │   ├── package.json               # name: "@loopwork/cost-tracking"
+│   │   ├── package.json               # name: "@loopwork-ai/cost-tracking"
 │   │   ├── tsconfig.json
 │   │   └── README.md
 │
@@ -420,13 +420,13 @@ loopwork/                              # MONOREPO ROOT
  * Plugin System (Core Only)
  *
  * Plugin implementations moved to separate packages:
- * - @loopwork/telegram
- * - @loopwork/discord
- * - @loopwork/asana
- * - @loopwork/everhour
- * - @loopwork/todoist
- * - @loopwork/cost-tracking
- * - @loopwork/dashboard
+ * - @loopwork-ai/telegram
+ * - @loopwork-ai/discord
+ * - @loopwork-ai/asana
+ * - @loopwork-ai/everhour
+ * - @loopwork-ai/todoist
+ * - @loopwork-ai/cost-tracking
+ * - @loopwork-ai/dashboard
  */
 
 import type {
@@ -655,18 +655,18 @@ export function createWebDashboardPlugin(config?: {
 bun add loopwork
 
 # Install plugins you need (opt-in)
-bun add @loopwork/dashboard
-bun add @loopwork/telegram
-bun add @loopwork/cost-tracking
+bun add @loopwork-ai/dashboard
+bun add @loopwork-ai/telegram
+bun add @loopwork-ai/cost-tracking
 ```
 
 ```typescript
 // loopwork.config.ts
 import { compose, defineConfig } from 'loopwork'
 import { withJSONBackend } from 'loopwork'
-import { withDashboard } from '@loopwork/dashboard'
-import { withTelegram } from '@loopwork/telegram'
-import { withCostTracking } from '@loopwork/cost-tracking'
+import { withDashboard } from '@loopwork-ai/dashboard'
+import { withTelegram } from '@loopwork-ai/telegram'
+import { withCostTracking } from '@loopwork-ai/cost-tracking'
 
 export default compose(
   withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
@@ -932,7 +932,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/dashboard",
+  "name": "@loopwork-ai/dashboard",
   "version": "0.1.0",
   "description": "Web UI dashboard plugin for Loopwork",
   "main": "dist/index.js",
@@ -991,7 +991,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/telegram",
+  "name": "@loopwork-ai/telegram",
   "version": "0.1.0",
   "description": "Telegram notifications & bot plugin for Loopwork",
   "main": "dist/index.js",
@@ -1016,7 +1016,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/discord",
+  "name": "@loopwork-ai/discord",
   "version": "0.1.0",
   "description": "Discord webhook notifications plugin for Loopwork",
   "main": "dist/index.js",
@@ -1041,7 +1041,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/asana",
+  "name": "@loopwork-ai/asana",
   "version": "0.1.0",
   "description": "Asana integration plugin for Loopwork",
   "main": "dist/index.js",
@@ -1066,7 +1066,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/everhour",
+  "name": "@loopwork-ai/everhour",
   "version": "0.1.0",
   "description": "Everhour time tracking plugin for Loopwork",
   "main": "dist/index.js",
@@ -1091,7 +1091,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/todoist",
+  "name": "@loopwork-ai/todoist",
   "version": "0.1.0",
   "description": "Todoist task sync plugin for Loopwork",
   "main": "dist/index.js",
@@ -1116,7 +1116,7 @@ Set `enabled: false` or remove plugin from config - existing functionality unaff
 
 ```json
 {
-  "name": "@loopwork/cost-tracking",
+  "name": "@loopwork-ai/cost-tracking",
   "version": "0.1.0",
   "description": "Token usage & cost monitoring plugin for Loopwork",
   "main": "dist/index.js",
@@ -1302,8 +1302,8 @@ import { withTelegram } from '../plugins'
 import { withDiscord } from '../plugins'
 
 // NEW (monorepo)
-import { withTelegram } from '@loopwork/telegram'
-import { withDiscord } from '@loopwork/discord'
+import { withTelegram } from '@loopwork-ai/telegram'
+import { withDiscord } from '@loopwork-ai/discord'
 ```
 
 **Files to update:**

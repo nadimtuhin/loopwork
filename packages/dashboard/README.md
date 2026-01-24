@@ -1,4 +1,4 @@
-# @loopwork/dashboard
+# @loopwork-ai/dashboard
 
 A real-time monitoring dashboard for Loopwork.
 
@@ -7,7 +7,7 @@ A real-time monitoring dashboard for Loopwork.
 Add the dashboard package to your project:
 
 ```bash
-bun add @loopwork/dashboard
+bun add @loopwork-ai/dashboard
 ```
 
 ## Configuration
@@ -16,7 +16,7 @@ Register the dashboard plugin in your `loopwork.config.ts`:
 
 ```typescript
 import { defineConfig } from 'loopwork'
-import { withDashboard } from '@loopwork/dashboard'
+import { withDashboard } from '@loopwork-ai/dashboard'
 
 export default defineConfig({
   // your configuration

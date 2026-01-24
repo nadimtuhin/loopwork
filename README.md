@@ -114,13 +114,13 @@ loopwork --feature auth
 |--------|---------|-------------|
 | JSON Backend | Local JSON task files | Built-in |
 | GitHub Backend | GitHub Issues | Built-in |
-| Telegram | Bot commands & notifications | `@loopwork/telegram` |
-| Discord | Webhook notifications | `@loopwork/discord` |
-| Asana | Task sync & comments | `@loopwork/asana` |
-| Everhour | Time tracking | `@loopwork/everhour` |
-| Todoist | Task sync | `@loopwork/todoist` |
-| Cost Tracking | Token/cost monitoring | `@loopwork/cost-tracking` |
-| Notion | Notion database backend | `@loopwork/notion` |
+| Telegram | Bot commands & notifications | `@loopwork-ai/telegram` |
+| Discord | Webhook notifications | `@loopwork-ai/discord` |
+| Asana | Task sync & comments | `@loopwork-ai/asana` |
+| Everhour | Time tracking | `@loopwork-ai/everhour` |
+| Todoist | Task sync | `@loopwork-ai/todoist` |
+| Cost Tracking | Token/cost monitoring | `@loopwork-ai/cost-tracking` |
+| Notion | Notion database backend | `@loopwork-ai/notion` |
 
 ## 📝 Task Format
 

@@ -12,8 +12,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "dev:loopwork": "turbo run dev --filter loopwork",
-    "dev:dashboard": "turbo run dev --filter @loopwork/dashboard",
-    "dev:web": "turbo run dev --filter @loopwork/dashboard-web",
+    "dev:dashboard": "turbo run dev --filter @loopwork-ai/dashboard",
+    "dev:web": "turbo run dev --filter @loopwork-ai/dashboard-web",
     "publish:all": "bun run build && bun run --filter './packages/*' publish"
   },
   "devDependencies": {
