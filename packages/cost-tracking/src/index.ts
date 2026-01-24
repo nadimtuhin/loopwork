@@ -6,7 +6,14 @@
 
 import fs from 'fs'
 import path from 'path'
-import type { LoopworkPlugin, PluginTask, LoopStats } from '../contracts'
+import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper } from '../../loopwork/src/contracts'
+
+export interface CostTrackingConfig {
+  enabled?: boolean
+  defaultModel?: string
+  dailyBudget?: number
+  alertThreshold?: number
+}
 
 // ============================================================================
 // Token Pricing (per 1M tokens, in USD)
@@ -326,6 +333,20 @@ export class CostTracker {
 // ============================================================================
 // Cost Tracking Hook Plugin
 // ============================================================================
+
+/**
+ * Add cost tracking wrapper
+ */
+export function withCostTracking(options: CostTrackingConfig = {}): ConfigWrapper {
+  return (config) => ({
+    ...config,
+    costTracking: {
+      enabled: true,
+      defaultModel: 'claude-3.5-sonnet',
+      ...options,
+    },
+  })
+}
 
 export function createCostTrackingPlugin(
   projectRoot: string,
