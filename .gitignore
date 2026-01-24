@@ -52,3 +52,11 @@ temp/
 # Security scanning
 trivy-results.sarif
 .trivycache/
+
+# Workspace artifacts
+packages/*/dist
+packages/*/node_modules
+
+# Loopwork state and cost tracking
+.loopwork-state*
+.loopwork-cost-tracking*
