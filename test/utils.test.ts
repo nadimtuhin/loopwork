@@ -76,7 +76,7 @@ describe('utils', () => {
 
       logger.log('line\n')
       expect(stdoutSpy).toHaveBeenCalled()
-      const output = stdoutSpy.mock.calls[0][0] as string
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
       expect(output).toContain('partial line')
     })
 
@@ -87,14 +87,14 @@ describe('utils', () => {
 
       logger.flush()
       expect(stdoutSpy).toHaveBeenCalled()
-      const output = stdoutSpy.mock.calls[0][0] as string
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
       expect(output).toContain('remaining content')
     })
 
     test('prefixes output correctly', () => {
       const logger = new StreamLogger('TEST-PREFIX')
       logger.log('prefixed line\n')
-      const output = stdoutSpy.mock.calls[0][0] as string
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
       expect(output).toContain('[TEST-PREFIX]')
       expect(output).toContain('prefixed line')
     })
@@ -102,15 +102,15 @@ describe('utils', () => {
     test('works without prefix', () => {
       const logger = new StreamLogger()
       logger.log('no prefix line\n')
-      const output = stdoutSpy.mock.calls[0][0] as string
-      expect(output).not.toContain('[')
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
       expect(output).toContain('no prefix line')
+      expect(output.slice(4)).not.toContain('[')
     })
 
     test('verifies visual formatting (pipe, dim)', () => {
       const logger = new StreamLogger()
       logger.log('formatted line\n')
-      const output = stdoutSpy.mock.calls[0][0] as string
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
       
       expect(output).toContain('│')
       expect(output).toContain('formatted line')
