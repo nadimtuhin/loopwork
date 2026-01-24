@@ -23,6 +23,11 @@ export const logger = {
       console.log(chalk.gray(getTimestamp()), chalk.cyan('[DEBUG]'), msg)
     }
   },
+  update: (msg: string) => {
+    process.stdout.write(
+      `\r\x1b[K${chalk.gray(getTimestamp())} ${chalk.blue('[INFO]')} ${msg}`
+    )
+  },
 }
 
 export async function promptUser(

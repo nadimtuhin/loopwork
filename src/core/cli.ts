@@ -134,6 +134,10 @@ export class CliExecutor {
 
       logger.info(`[${cliConfig.name}] Executing: ${cmdDisplay}`)
       logger.info(`[${cliConfig.name}] Timeout: ${timeoutSecs}s`)
+      logger.info(`[${cliConfig.name}] Log file: ${outputFile}`)
+      logger.info('─────────────────────────────────────')
+      logger.info('📝 Streaming CLI output below...')
+      logger.info('─────────────────────────────────────')
 
       const result = await this.spawnWithTimeout(
         cliPath,
@@ -189,6 +193,7 @@ export class CliExecutor {
     return new Promise((resolve) => {
       const writeStream = fs.createWriteStream(outputFile)
       let timedOut = false
+      const startTime = Date.now()
 
       const child = spawn(command, args, {
         env: options.env,
@@ -196,6 +201,14 @@ export class CliExecutor {
       })
 
       this.currentSubprocess = child
+
+      // Progress logging every second
+      const progressInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+        const remaining = Math.max(0, timeoutSecs - elapsed)
+
+        logger.update(`⏱️  Running for ${elapsed}s (timeout in ${remaining}s)`)
+      }, 1000)
 
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
@@ -221,13 +234,36 @@ export class CliExecutor {
       }, timeoutSecs * 1000)
 
       child.on('close', (code) => {
+        clearInterval(progressInterval)
         clearTimeout(timer)
         writeStream.end()
         this.currentSubprocess = null
+        const totalTime = Math.floor((Date.now() - startTime) / 1000)
+        const minutes = Math.floor(totalTime / 60)
+        const seconds = totalTime % 60
+        const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
+
+        // Get final file size
+        let finalSize = 'N/A'
+        try {
+          if (fs.existsSync(outputFile)) {
+            const stats = fs.statSync(outputFile)
+            const sizeKB = (stats.size / 1024).toFixed(1)
+            finalSize = `${sizeKB} KB`
+          }
+        } catch {}
+
+        logger.info('─────────────────────────────────────')
+        logger.info(`✓ CLI execution completed in ${timeStr}`)
+        logger.info(`Exit code: ${code ?? 1}`)
+        logger.info(`Output size: ${finalSize}`)
+        logger.info(`Log file: ${outputFile}`)
+        logger.info('─────────────────────────────────────')
         resolve({ exitCode: code ?? 1, timedOut })
       })
 
       child.on('error', (err) => {
+        clearInterval(progressInterval)
         clearTimeout(timer)
         writeStream.end()
         this.currentSubprocess = null
