@@ -59,13 +59,19 @@ export class LoopworkMonitor {
     // Spawn background process
     const logStream = fs.openSync(logFile, 'a')
 
+    // Find the real package root - either we are in it, or it's in packages/loopwork
+    const currentPkgDir = path.join(this.projectRoot, 'packages/loopwork')
+    const spawnCwd = fs.existsSync(currentPkgDir) ? currentPkgDir : this.projectRoot
+
     const child: ChildProcess = spawn('bun', ['run', 'src/index.ts', ...fullArgs], {
-      cwd: path.join(this.projectRoot, 'packages/loopwork'),
+      cwd: spawnCwd,
       detached: true,
       stdio: ['ignore', logStream, logStream],
     })
 
-    child.unref()
+    if (child.unref) {
+      child.unref()
+    }
 
     if (!child.pid) {
       return { success: false, error: 'Failed to spawn process' }
@@ -174,32 +180,36 @@ export class LoopworkMonitor {
     const namespaces: { name: string; status: 'running' | 'stopped'; lastRun?: string }[] = []
 
     if (fs.existsSync(runsDir)) {
-      const dirs = fs.readdirSync(runsDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-
-      for (const name of dirs) {
-        const isRunning = running.some(p => p.namespace === name)
-        const nsDir = path.join(runsDir, name)
-
-        // Find last run timestamp
-        let lastRun: string | undefined
-        const runDirs = fs.readdirSync(nsDir, { withFileTypes: true })
-          .filter(d => d.isDirectory() && d.name !== 'monitor-logs')
+      try {
+        const dirs = fs.readdirSync(runsDir, { withFileTypes: true })
+          .filter(d => d.isDirectory())
           .map(d => d.name)
-          .sort()
-          .reverse()
 
-        if (runDirs.length > 0) {
-          lastRun = runDirs[0]
+        for (const name of dirs) {
+          const isRunning = running.some(p => p.namespace === name)
+          const nsDir = path.join(runsDir, name)
+
+          // Find last run timestamp
+          let lastRun: string | undefined
+          try {
+            const runDirs = fs.readdirSync(nsDir, { withFileTypes: true })
+              .filter(d => d.isDirectory() && d.name !== 'monitor-logs')
+              .map(d => d.name)
+              .sort()
+              .reverse()
+
+            if (runDirs.length > 0) {
+              lastRun = runDirs[0]
+            }
+          } catch (e) {}
+
+          namespaces.push({
+            name,
+            status: isRunning ? 'running' : 'stopped',
+            lastRun,
+          })
         }
-
-        namespaces.push({
-          name,
-          status: isRunning ? 'running' : 'stopped',
-          lastRun,
-        })
-      }
+      } catch (e) {}
     }
 
     return { running, namespaces }
@@ -220,13 +230,15 @@ export class LoopworkMonitor {
       // Find most recent log file
       const logsDir = path.join(this.projectRoot, 'loopwork-runs', namespace, 'monitor-logs')
       if (fs.existsSync(logsDir)) {
-        const files = fs.readdirSync(logsDir)
-          .filter(f => f.endsWith('.log'))
-          .sort()
-          .reverse()
-        if (files.length > 0) {
-          logFile = path.join(logsDir, files[0])
-        }
+        try {
+          const files = fs.readdirSync(logsDir)
+            .filter(f => f.endsWith('.log'))
+            .sort()
+            .reverse()
+          if (files.length > 0) {
+            logFile = path.join(logsDir, files[0])
+          }
+        } catch (e) {}
       }
     }
 
@@ -255,14 +267,24 @@ export class LoopworkMonitor {
     try {
       if (fs.existsSync(this.stateFile)) {
         const content = fs.readFileSync(this.stateFile, 'utf-8')
+        if (!content || content.trim() === 'undefined') {
+          return { processes: [] }
+        }
         return JSON.parse(content)
       }
-    } catch {}
+    } catch (e) {
+      console.error(`Failed to load monitor state: ${e}`)
+    }
     return { processes: [] }
   }
 
   private saveState(state: MonitorState): void {
-    fs.writeFileSync(this.stateFile, JSON.stringify(state, null, 2))
+    try {
+      if (!state) state = { processes: [] }
+      fs.writeFileSync(this.stateFile, JSON.stringify(state, null, 2))
+    } catch (e) {
+      console.error(`Failed to save monitor state: ${e}`)
+    }
   }
 }
 
