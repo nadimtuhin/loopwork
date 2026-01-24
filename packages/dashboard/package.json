@@ -1,0 +1,41 @@
+{
+  "name": "@loopwork/dashboard",
+  "version": "0.1.0",
+  "description": "Web UI dashboard plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "web/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "dev:web": "cd web && bun run dev",
+    "build:web": "cd web && bun run build",
+    "prepublishOnly": "bun run build && bun run build:web"
+  },
+  "peerDependencies": {
+    "loopwork": "workspace:*"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3"
+  },
+  "devDependencies": {
+    "loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": [
+    "loopwork",
+    "dashboard",
+    "plugin",
+    "ui",
+    "monitoring"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git",
+    "directory": "packages/dashboard"
+  }
+}
