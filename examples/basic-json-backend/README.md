@@ -1,28 +1,24 @@
-# Basic JSON Backend Example
+# Basic JSON Backend
 
-A simple TypeScript project demonstrating Loopwork with a JSON backend, featuring basic utility functions.
+A simple TypeScript project with basic utility functions.
 
 ## Functions
 
 ### sayHello()
 Returns a greeting message.
 
-### sum(a: number, b: number)
-Adds two numbers together. Supports integers and decimals.
+### sum(a, b)
+Adds two numbers together.
 
 ## Usage
 
-### Install dependencies
 ```bash
 bun install
-```
-
-### Run tests
-```bash
 bun test
 ```
 
-### Example Code
+## Example
+
 ```typescript
 import { sayHello } from './hello'
 import { sum } from './math'
