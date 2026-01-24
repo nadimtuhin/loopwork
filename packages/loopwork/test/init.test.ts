@@ -1,44 +1,17 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, spyOn, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 
-// Setup module mocks BEFORE importing the module under test
-const mockLogger = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-  update: () => {}
-}
-
+// Track mock responses BEFORE any imports
 let promptResponses = new Map<string, string>()
-const mockPromptUser = async (question: string, defaultValue: string) => {
-  for (const [key, value] of promptResponses.entries()) {
-    if (question.includes(key)) {
-      return value
-    }
-  }
-  return defaultValue
-}
-
-// Mock the utils module
-mock.module('../src/core/utils', () => ({
-  promptUser: mockPromptUser,
-  logger: mockLogger,
-  getTimestamp: () => '00:00:00',
-  StreamLogger: class StreamLogger {
-    log() {}
-    flush() {}
-  }
-}))
-
-// Mock readline module for ask() function
 let readlineAnswer = ''
+
+// Setup readline module mock BEFORE importing the code under test
 mock.module('readline', () => ({
   default: {
     createInterface: () => ({
       question: (q: string, cb: (answer: string) => void) => {
+        // Invoke callback immediately in the same tick
         cb(readlineAnswer)
       },
       close: () => {}
@@ -52,8 +25,11 @@ mock.module('readline', () => ({
   })
 }))
 
-// Now import the module under test
-const { safeWriteFile, updateGitignore, createReadme, createPrdTemplates, setupPlugins, init } = await import('../src/commands/init')
+// Now it's safe to import utils (we'll spy on it after)
+import * as utils from '../src/core/utils'
+
+// Import the module under test AFTER mocks are set up
+import { safeWriteFile, updateGitignore, createReadme, createPrdTemplates, setupPlugins, init } from '../src/commands/init'
 
 describe('Init Command', () => {
   const testDir = path.join('/tmp', 'loopwork-init-test-' + Date.now())
@@ -68,6 +44,24 @@ describe('Init Command', () => {
 
     // Reset mock responses
     promptResponses.clear()
+    readlineAnswer = ''
+
+    // Setup mocks for each test
+    spyOn(utils, 'promptUser').mockImplementation(async (question: string, defaultValue: string) => {
+      for (const [key, value] of promptResponses.entries()) {
+        if (question.includes(key)) {
+          return value
+        }
+      }
+      return defaultValue
+    })
+
+    spyOn(utils.logger, 'info').mockImplementation(() => {})
+    spyOn(utils.logger, 'success').mockImplementation(() => {})
+    spyOn(utils.logger, 'warn').mockImplementation(() => {})
+    spyOn(utils.logger, 'error').mockImplementation(() => {})
+    spyOn(utils.logger, 'debug').mockImplementation(() => {})
+    spyOn(utils.logger, 'update').mockImplementation(() => {})
   })
 
   afterEach(() => {

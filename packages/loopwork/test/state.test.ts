@@ -1,9 +1,10 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { StateManager } from '../src/core/state'
 import type { Config } from '../src/core/config'
+import * as utils from '../src/core/utils'
 
 describe('StateManager', () => {
   let tempDir: string
@@ -24,6 +25,13 @@ describe('StateManager', () => {
       debug: false,
     } as Config
     stateManager = new StateManager(config)
+
+    // Mock logger to avoid CI issues with stdout/stderr
+    spyOn(utils.logger, 'info').mockImplementation(() => {})
+    spyOn(utils.logger, 'success').mockImplementation(() => {})
+    spyOn(utils.logger, 'warn').mockImplementation(() => {})
+    spyOn(utils.logger, 'error').mockImplementation(() => {})
+    spyOn(utils.logger, 'debug').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -173,6 +181,13 @@ describe('StateManager with namespace', () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-ns-test-'))
+
+    // Mock logger for all namespace tests too
+    spyOn(utils.logger, 'info').mockImplementation(() => {})
+    spyOn(utils.logger, 'success').mockImplementation(() => {})
+    spyOn(utils.logger, 'warn').mockImplementation(() => {})
+    spyOn(utils.logger, 'error').mockImplementation(() => {})
+    spyOn(utils.logger, 'debug').mockImplementation(() => {})
   })
 
   afterEach(() => {
