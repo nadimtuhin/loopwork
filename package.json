@@ -8,8 +8,8 @@
   "scripts": {
     "build": "bun run --filter './packages/*' build",
     "test": "bun run --filter './packages/*' test",
-    "dev:loopwork": "bun --cwd packages/loopwork run dev",
-    "dev:dashboard": "bun --cwd packages/dashboard run dev",
+    "dev:loopwork": "cd packages/loopwork && bun run dev",
+    "dev:dashboard": "cd packages/dashboard && bun run dev",
     "dev:web": "cd packages/dashboard/web && bun run dev",
     "publish:all": "bun run build && bun run --filter './packages/*' publish"
   },
