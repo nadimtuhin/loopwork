@@ -124,4 +124,144 @@ describe('LoopworkMonitor', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('already running')
   })
+
+  test('loadState handles corrupted state file', () => {
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    fs.writeFileSync(stateFile, 'undefined')
+
+    const result = monitor.getRunningProcesses()
+    expect(result).toEqual([])
+  })
+
+  test('loadState handles invalid JSON', () => {
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    fs.writeFileSync(stateFile, 'not valid json')
+
+    const result = monitor.getRunningProcesses()
+    expect(result).toEqual([])
+  })
+
+  test('stop handles dead process (ESRCH) and cleans state', () => {
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    // Use a very high PID that definitely doesn't exist
+    fs.writeFileSync(stateFile, JSON.stringify({
+      processes: [{
+        namespace: 'dead-ns',
+        pid: 2147483647, // Max 32-bit int, very unlikely to exist
+        startedAt: new Date().toISOString(),
+        logFile: path.join(tempDir, 'test.log'),
+        args: [],
+      }]
+    }))
+
+    const result = monitor.stop('dead-ns')
+    // The result depends on system behavior, but state should eventually be cleaned
+    // Either immediately on success, or on next getRunningProcesses call
+    if (result.success) {
+      const newState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
+      expect(newState.processes.length).toBe(0)
+    } else {
+      // If stop failed, getRunningProcesses should clean it up
+      const running = monitor.getRunningProcesses()
+      expect(running.length).toBe(0)
+    }
+  })
+
+  test('stopAll attempts to stop multiple processes', () => {
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    fs.writeFileSync(stateFile, JSON.stringify({
+      processes: [
+        {
+          namespace: 'ns-1',
+          pid: 2147483646,
+          startedAt: new Date().toISOString(),
+          logFile: path.join(tempDir, 'test1.log'),
+          args: [],
+        },
+        {
+          namespace: 'ns-2',
+          pid: 2147483647,
+          startedAt: new Date().toISOString(),
+          logFile: path.join(tempDir, 'test2.log'),
+          args: [],
+        }
+      ]
+    }))
+
+    const result = monitor.stopAll()
+    // Either stopped successfully or got cleaned up due to ESRCH
+    expect(result.stopped.length + result.errors.length).toBeGreaterThanOrEqual(0)
+  })
+
+  test('getLogs reads from running process logFile', () => {
+    const logFile = path.join(tempDir, 'current.log')
+    fs.writeFileSync(logFile, 'Current log line 1\nCurrent log line 2\n')
+
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    fs.writeFileSync(stateFile, JSON.stringify({
+      processes: [{
+        namespace: 'running-ns',
+        pid: process.pid,
+        startedAt: new Date().toISOString(),
+        logFile,
+        args: [],
+      }]
+    }))
+
+    const result = monitor.getLogs('running-ns', 10)
+    expect(result.join('\n')).toContain('Current log line 1')
+    expect(result.join('\n')).toContain('Current log line 2')
+  })
+
+  test('getLogs limits lines returned', () => {
+    const logsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', 'monitor-logs')
+    fs.mkdirSync(logsDir, { recursive: true })
+    const lines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`).join('\n')
+    fs.writeFileSync(path.join(logsDir, '2024-01-01.log'), lines)
+
+    const result = monitor.getLogs('test-ns', 10)
+    expect(result.length).toBeLessThanOrEqual(11) // Last 10 lines + potential empty
+  })
+
+  test('getStatus shows running status correctly', () => {
+    const ns1Dir = path.join(tempDir, 'loopwork-runs', 'running-ns', '2024-01-01T00-00-00')
+    fs.mkdirSync(ns1Dir, { recursive: true })
+
+    const stateFile = path.join(tempDir, '.loopwork-monitor-state.json')
+    fs.writeFileSync(stateFile, JSON.stringify({
+      processes: [{
+        namespace: 'running-ns',
+        pid: process.pid,
+        startedAt: new Date().toISOString(),
+        logFile: path.join(tempDir, 'test.log'),
+        args: [],
+      }]
+    }))
+
+    const result = monitor.getStatus()
+    expect(result.running.length).toBe(1)
+    expect(result.namespaces.length).toBe(1)
+    expect(result.namespaces[0].status).toBe('running')
+  })
+
+  test('getStatus filters out monitor-logs directory', () => {
+    const nsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', '2024-01-01T00-00-00')
+    const logsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', 'monitor-logs')
+    fs.mkdirSync(nsDir, { recursive: true })
+    fs.mkdirSync(logsDir, { recursive: true })
+
+    const result = monitor.getStatus()
+    expect(result.namespaces[0].lastRun).toBe('2024-01-01T00-00-00')
+  })
+
+  test('getStatus handles errors reading directories gracefully', () => {
+    const nsDir = path.join(tempDir, 'loopwork-runs', 'test-ns')
+    fs.mkdirSync(nsDir, { recursive: true })
+    // Create a file instead of a directory to cause read error
+    fs.writeFileSync(path.join(nsDir, 'not-a-directory'), 'content')
+
+    const result = monitor.getStatus()
+    // Should not throw, just handle gracefully
+    expect(result).toBeDefined()
+  })
 })

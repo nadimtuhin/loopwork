@@ -1,0 +1,242 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Loopwork is a monorepo for an AI-powered task automation framework. It runs AI CLI tools (Claude, OpenCode, Gemini) against task backlogs from various sources with a plugin-based architecture.
+
+## Monorepo Structure
+
+This is a Bun workspace monorepo with the following packages:
+
+- `packages/loopwork/` - Core framework with task backends (JSON, GitHub), CLI runner, state management
+- `packages/telegram/` - Telegram bot plugin for notifications and commands
+- `packages/discord/` - Discord webhook plugin for notifications
+- `packages/asana/` - Asana API integration plugin for task sync
+- `packages/everhour/` - Everhour time tracking plugin
+- `packages/todoist/` - Todoist task sync plugin
+- `packages/cost-tracking/` - Token usage and cost monitoring plugin
+- `packages/notion/` - Notion database backend plugin
+- `packages/dashboard/` - Interactive dashboard package
+- `packages/dashboard/web/` - Next.js web UI (nested workspace)
+
+## Development Commands
+
+```bash
+# Install dependencies (use Bun, not npm)
+bun install
+
+# Build all packages
+bun run build
+
+# Run tests for all packages
+bun run test
+
+# Run specific package tests
+bun --cwd packages/loopwork test
+bun --cwd packages/asana test
+
+# Development mode (specific packages)
+bun run dev:loopwork          # Watch mode for core package
+bun run dev:dashboard         # Dashboard server
+bun run dev:web               # Next.js web UI
+
+# Run loopwork CLI directly from source
+bun --cwd packages/loopwork run start
+
+# Build the loopwork binary
+cd packages/loopwork && bun run build
+```
+
+## Testing
+
+- Test framework: Bun's built-in test runner
+- Test files: `test/**/*.test.ts` in each package
+- Use `describe`, `test`, `expect`, `mock`, `beforeEach`, `afterEach` from `bun:test`
+- Global fetch is mocked in integration tests for external APIs
+- E2E tests exist in `packages/loopwork/test/e2e.test.ts`
+
+## Core Architecture
+
+### Plugin System
+
+The plugin architecture is inspired by Next.js composable config:
+
+1. **Plugins** implement `LoopworkPlugin` interface with lifecycle hooks:
+   - `onConfigLoad(config)` - Modify config at load time
+   - `onBackendReady(backend)` - Called when backend initialized
+   - `onLoopStart(namespace)` - Called when task loop starts
+   - `onLoopEnd(stats)` - Called when loop completes
+   - `onTaskStart(context)` - Called before task execution
+   - `onTaskComplete(context, result)` - Called after successful task
+   - `onTaskFailed(context, error)` - Called on task failure
+
+2. **Config composition** uses `compose()` and `defineConfig()`:
+   ```typescript
+   export default compose(
+     withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+     withTelegram({ botToken: '...', chatId: '...' }),
+     withCostTracking({ dailyBudget: 10.00 })
+   )(defineConfig({ cli: 'claude', maxIterations: 50 }))
+   ```
+
+3. **Backend adapters** implement `TaskBackend` interface:
+   - `JsonTaskAdapter` - Local JSON files + markdown PRDs
+   - `GithubTaskAdapter` - GitHub Issues with labels
+
+### Task Backend Contract
+
+All backends must implement `TaskBackend` interface from `contracts/backend.ts`:
+- Task CRUD operations (findNextTask, getTask, markCompleted, etc.)
+- Sub-task hierarchy (getSubTasks, createSubTask, parentId field)
+- Task dependencies (getDependencies, getDependents, areDependenciesMet)
+- Priority management (setPriority)
+- Status lifecycle: pending → in-progress → completed/failed
+
+### CLI Execution Model
+
+The `CliExecutor` class (`packages/loopwork/src/core/cli.ts`) manages AI CLI execution:
+
+- **Model pools**: Primary execution models (Sonnet, Gemini Flash) and fallback models (Opus, Gemini Pro)
+- **Auto-retry**: Automatically cycles through models on failure
+- **Rate limit handling**: Detects rate limits and waits 30s before retry
+- **Timeout handling**: Kills processes that exceed timeout, tries next model
+- **Streaming output**: Real-time CLI output logged to console and files
+- **CLI detection**: Auto-discovers `claude` and `opencode` CLIs in PATH and common locations
+
+### State Management
+
+State persistence in `packages/loopwork/src/core/state.ts`:
+- Uses JSON files in `.loopwork-state` (default) or custom path
+- Tracks: current task, iteration count, completed tasks, failed tasks, circuit breaker state
+- File locking prevents concurrent write conflicts (same mechanism as JSON backend)
+- Resume capability: `--resume` flag continues from saved state
+
+### File Locking Pattern
+
+The JSON backend uses filesystem-based locking (`packages/loopwork/src/backends/json.ts`):
+- Lock file: `{tasksFile}.lock` contains process PID
+- Stale lock detection: Locks >30s old or from dead processes are removed
+- Retry mechanism: 100ms retry interval, 5s timeout
+- Used for: Task status updates, creating sub-tasks, managing dependencies
+
+## Configuration Files
+
+- `loopwork.config.ts` or `loopwork.config.js` - Main config (supports TypeScript or CommonJS)
+- `.specs/tasks/tasks.json` - JSON backend task registry
+- `.specs/tasks/{TASK-ID}.md` - PRD files for each task
+- `.loopwork-state` - Session state for resume functionality
+
+## Important Patterns
+
+### PRD File Structure
+
+When using JSON backend, PRD files follow this pattern:
+```markdown
+# TASK-001: Task Title
+
+## Goal
+Brief description of what to accomplish
+
+## Requirements
+- Requirement 1
+- Requirement 2
+```
+
+### Task ID Conventions
+
+- Top-level tasks: `{FEATURE}-{NUM}` (e.g., `AUTH-001`, `TASK-001`)
+- Sub-tasks: `{PARENT_ID}{letter}` (e.g., `AUTH-001a`, `AUTH-001b`)
+- Auto-generated incrementally
+
+### Plugin Development
+
+When creating a new plugin:
+1. Export a factory function like `createMyPlugin(options)`
+2. Return an object implementing `LoopworkPlugin`
+3. Handle missing credentials gracefully (return warning plugin)
+4. Check for required metadata fields (e.g., `asanaGid`) before making API calls
+5. Use proper error handling - plugins should never crash the main loop
+
+### Logging
+
+Use the logger from `packages/loopwork/src/core/utils.ts`:
+- `logger.info()` - General information
+- `logger.warn()` - Warnings
+- `logger.error()` - Errors
+- `logger.debug()` - Debug info (only shown when debug: true)
+- `logger.update()` - Same-line updates (progress indicators)
+
+### Streaming Output
+
+`StreamLogger` class provides buffered streaming with CLI prefixes:
+- Buffers partial lines to prevent splitting
+- Adds color-coded prefixes for multi-CLI execution
+- Call `flush()` on completion to output remaining buffer
+
+## Common Development Tasks
+
+### Adding a New Backend
+
+1. Create `packages/loopwork/src/backends/my-backend.ts`
+2. Implement `TaskBackend` interface
+3. Export from `packages/loopwork/src/backends/index.ts`
+4. Add integration test in `packages/loopwork/test/backends.test.ts`
+
+### Adding a New Plugin Package
+
+1. Create directory: `packages/my-plugin/`
+2. Add `package.json` with name `@loopwork/my-plugin`
+3. Create `src/index.ts` exporting plugin factory
+4. Add `test/index.test.ts` with tests
+5. Add to workspace in root `package.json`
+6. Update main README's plugin table
+
+### Running Examples
+
+The `examples/basic-json-backend/` demonstrates minimal setup:
+```bash
+cd examples/basic-json-backend
+./quick-start.sh  # Interactive menu
+# Or manually:
+bun run ../../packages/loopwork/src/index.ts
+```
+
+## TypeScript Configuration
+
+- Uses Bun's native TypeScript support
+- `moduleResolution: "bundler"` for Bun compatibility
+- `allowImportingTsExtensions: true` - import `.ts` files directly
+- `noEmit: true` - No JS compilation, Bun runs TS directly
+- Shared base config in `packages/loopwork/tsconfig.json`
+
+## Publishing
+
+```bash
+# Build and test before publishing
+bun run build
+bun run test
+
+# Publish all packages (from root)
+bun run publish:all
+
+# Or individual package
+cd packages/loopwork
+npm publish
+```
+
+## Security
+
+- `SECURITY.md` exists for vulnerability reporting
+- Trivy scanning available: `bun run security:trivy` (in loopwork package)
+- Never commit API tokens or credentials
+- Use environment variables for sensitive config
+
+## Important Notes
+
+- **Always use Bun, not npm/yarn** - This project is built for Bun
+- **File locking is critical** - Don't bypass lock mechanisms in backends
+- **Plugins must be fault-tolerant** - A failing plugin shouldn't crash the loop
+- **CLI paths are auto-detected** - Don't hardcode paths to `claude` or `opencode`
+- **Test timeouts**: Default is 5000ms, increase for integration tests
