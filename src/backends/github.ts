@@ -11,7 +11,7 @@ const DEPENDS_PATTERN = /(?:^|\n)\s*(?:Depends on|depends on|Dependencies|depend
 interface GitHubIssue {
   number: number
   title: string
-  body: string
+  body?: string
   state: 'open' | 'closed'
   labels: { name: string }[]
   url: string
@@ -75,7 +75,10 @@ export class GitHubTaskAdapter implements TaskBackend {
 
   async findNextTask(options?: FindTaskOptions): Promise<Task | null> {
     const tasks = await this.listPendingTasks(options)
-    return tasks[0] || null
+    const task = tasks[0] || null
+    if (!task) return null
+
+    return this.getTask(task.id)
   }
 
   async getTask(taskId: string): Promise<Task | null> {
@@ -101,7 +104,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     try {
       return await this.withRetry(async () => {
         const labelArg = labels.join(',')
-        const result = await $`gh issue list ${this.repoFlag()} --label "${labelArg}" --state open --json number,title,body,labels,url --limit 100`.quiet()
+        const result = await $`gh issue list ${this.repoFlag()} --label "${labelArg}" --state open --json number,title,labels,url --limit 100`.quiet()
         const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
         return issues.map(issue => this.adaptIssue(issue))
       })

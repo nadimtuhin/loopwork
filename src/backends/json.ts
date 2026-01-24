@@ -143,11 +143,12 @@ export class JsonTaskAdapter implements TaskBackend {
     if (options?.startFrom) {
       const startIdx = tasks.findIndex(t => t.id === options.startFrom)
       if (startIdx >= 0) {
-        return tasks[startIdx]
+        return this.getTask(tasks[startIdx].id)
       }
     }
 
-    return tasks[0] || null
+    if (!tasks[0]) return null
+    return this.getTask(tasks[0].id)
   }
 
   async getTask(taskId: string): Promise<Task | null> {
@@ -194,18 +195,35 @@ export class JsonTaskAdapter implements TaskBackend {
 
     const tasks: Task[] = []
     for (const entry of entries) {
-      const task = await this.loadFullTask(entry, data)
-      if (task) {
-        // Check if task dependencies are met
-        if (!options?.includeBlocked && task.dependsOn && task.dependsOn.length > 0) {
-          const depsMet = await this.areDependenciesMetInternal(task.dependsOn, data)
-          if (!depsMet) continue // Skip blocked tasks
-        }
-        tasks.push(task)
+      // Check if task dependencies are met
+      if (!options?.includeBlocked && entry.dependsOn && entry.dependsOn.length > 0) {
+        const depsMet = await this.areDependenciesMetInternal(entry.dependsOn, data)
+        if (!depsMet) continue // Skip blocked tasks
       }
+
+      const task = this.loadTaskSummary(entry, data)
+      tasks.push(task)
     }
 
     return tasks
+  }
+
+  private loadTaskSummary(entry: JsonTaskEntry, data: JsonTasksFile): Task {
+    const featureInfo = entry.feature && data.features?.[entry.feature]
+
+    return {
+      id: entry.id,
+      title: entry.id,
+      description: '',
+      status: entry.status,
+      priority: entry.priority || 'medium',
+      feature: entry.feature,
+      parentId: entry.parentId,
+      dependsOn: entry.dependsOn,
+      metadata: {
+        featureName: featureInfo?.name,
+      },
+    }
   }
 
   /**
