@@ -115,6 +115,7 @@ export class StreamLogger {
   }
 
   private printLine(line: string) {
+    process.stdout.write('\r\x1b[K')
     const timestamp = chalk.gray(getTimestamp())
     const separator = chalk.gray(' │')
     const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''

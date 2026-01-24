@@ -144,10 +144,16 @@ export class StateManager {
    * Clear saved state
    */
   clearState(): void {
-    if (fs.existsSync(this.stateFile)) {
-      fs.unlinkSync(this.stateFile)
-      if (this.config.debug) {
-        console.log('State cleared')
+    try {
+      if (fs.existsSync(this.stateFile)) {
+        fs.unlinkSync(this.stateFile)
+        if (this.config.debug) {
+          console.log('State cleared')
+        }
+      }
+    } catch (e: any) {
+      if (e.code !== 'ENOENT') {
+        console.error('Failed to clear state')
       }
     }
   }
