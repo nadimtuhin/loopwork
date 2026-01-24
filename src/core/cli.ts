@@ -117,8 +117,6 @@ export class CliExecutor {
         continue
       }
 
-      logger.info(`[${cliConfig.name}] Executing (timeout: ${timeoutSecs}s)...`)
-
       const env = { ...process.env }
       let args: string[]
 
@@ -128,6 +126,14 @@ export class CliExecutor {
       } else {
         args = ['-p', '--dangerously-skip-permissions', '--model', cliConfig.model]
       }
+
+      // Show command being executed
+      const cmdDisplay = cliConfig.cli === 'opencode'
+        ? `opencode run --model ${cliConfig.model} "<prompt>"`
+        : `claude -p --dangerously-skip-permissions --model ${cliConfig.model}`
+
+      logger.info(`[${cliConfig.name}] Executing: ${cmdDisplay}`)
+      logger.info(`[${cliConfig.name}] Timeout: ${timeoutSecs}s`)
 
       const result = await this.spawnWithTimeout(
         cliPath,

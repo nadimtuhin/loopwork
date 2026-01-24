@@ -41,28 +41,42 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
   return null
 }
 
-export async function getConfig(): Promise<Config> {
-  const program = new Command()
+export async function getConfig(cliOptions?: Partial<Config> & { config?: string, yes?: boolean, task?: string }): Promise<Config> {
+  // If cliOptions is an empty object, treat it as undefined so we parse CLI args
+  const hasCliOptions = cliOptions && Object.keys(cliOptions).length > 0
 
-  program
-    .option('--backend <type>', 'Task backend: github or json (auto-detects if not specified)')
-    .option('--repo <owner/repo>', 'GitHub repository (defaults to current repo)')
-    .option('--tasks-file <path>', 'Path to tasks.json file (for json backend)')
-    .option('--feature <name>', 'Filter by feature label (feat:<name>)')
-    .option('--task <id>', 'Start from specific task ID')
-    .option('--max-iterations <number>', 'Maximum iterations before stopping', '50')
-    .option('--timeout <seconds>', 'Timeout per task in seconds', '600')
-    .option('--cli <name>', 'CLI to use (opencode, claude, gemini)', 'opencode')
-    .option('--model <id>', 'Specific model ID')
-    .option('--resume', 'Resume from last saved state')
-    .option('--dry-run', 'Show what would be done without executing')
-    .option('-y, --yes', 'Non-interactive mode, auto-continue on errors')
-    .option('--debug', 'Enable debug logging')
-    .option('--namespace <name>', 'Namespace for running multiple loops', 'default')
-    .option('--config <path>', 'Path to config file (loopwork.config.ts)')
-    .parse(process.argv)
+  const rawOptions = (hasCliOptions ? cliOptions : null) || (() => {
+    const program = new Command()
 
-  const options = program.opts()
+    program
+      .option('--backend <type>', 'Task backend: github or json (auto-detects if not specified)')
+      .option('--repo <owner/repo>', 'GitHub repository (defaults to current repo)')
+      .option('--tasks-file <path>', 'Path to tasks.json file (for json backend)')
+      .option('--feature <name>', 'Filter by feature label (feat:<name>)')
+      .option('--task <id>', 'Start from specific task ID')
+      .option('--max-iterations <number>', 'Maximum iterations before stopping')
+      .option('--timeout <seconds>', 'Timeout per task in seconds')
+      .option('--cli <name>', 'CLI to use (opencode, claude, gemini)')
+      .option('--model <id>', 'Specific model ID')
+      .option('--resume', 'Resume from last saved state')
+      .option('--dry-run', 'Show what would be done without executing')
+      .option('-y, --yes', 'Non-interactive mode, auto-continue on errors')
+      .option('--debug', 'Enable debug logging')
+      .option('--namespace <name>', 'Namespace for running multiple loops')
+      .option('--config <path>', 'Path to config file (loopwork.config.ts)')
+      .parse(process.argv)
+
+    return program.opts()
+  })()
+
+  const options = {
+    ...rawOptions,
+    yes: rawOptions.yes ?? rawOptions.autoConfirm,
+    task: rawOptions.task ?? rawOptions.startTask,
+    backend: typeof rawOptions.backend === 'string' ? rawOptions.backend : rawOptions.backend?.type,
+    tasksFile: rawOptions.tasksFile || (rawOptions.backend as any)?.tasksFile,
+    repo: rawOptions.repo || (rawOptions.backend as any)?.repo,
+  }
 
   // Find project root
   let currentDir = process.cwd()
