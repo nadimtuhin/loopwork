@@ -33,11 +33,5 @@ export type {
 // Config types
 export type {
   LoopworkConfig,
-  TelegramConfig,
-  DiscordConfig,
-  AsanaConfig,
-  EverhourConfig,
-  TodoistConfig,
-  CostTrackingConfig,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
