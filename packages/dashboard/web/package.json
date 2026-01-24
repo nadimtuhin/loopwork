@@ -1,5 +1,5 @@
 {
-  "name": "@loopwork/dashboard-web",
+  "name": "@loopwork-ai/dashboard-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {

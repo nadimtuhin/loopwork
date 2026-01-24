@@ -1,5 +1,5 @@
 {
-  "name": "@loopwork/dashboard",
+  "name": "@loopwork-ai/dashboard",
   "version": "0.1.0",
   "description": "Web UI dashboard plugin for Loopwork",
   "main": "dist/index.js",

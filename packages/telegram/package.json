@@ -1,5 +1,5 @@
 {
-  "name": "@loopwork/telegram",
+  "name": "@loopwork-ai/telegram",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "src/index.ts",

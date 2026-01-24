@@ -1,5 +1,5 @@
 {
-  "name": "@loopwork/everhour",
+  "name": "@loopwork-ai/everhour",
   "version": "0.2.0",
   "main": "dist/index.js",
   "types": "src/index.ts",
