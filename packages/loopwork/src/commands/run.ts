@@ -6,8 +6,8 @@ import { createBackend, type TaskBackend, type Task } from '../backends'
 import { CliExecutor } from '../core/cli'
 import { logger } from '../core/utils'
 import { plugins } from '../plugins'
-import { createCostTrackingPlugin } from '../plugins/cost-tracking'
-import { createTelegramHookPlugin } from '../plugins/telegram/notifications'
+import { createCostTrackingPlugin } from '../../../cost-tracking/src/index'
+import { createTelegramHookPlugin } from '../../../telegram/src/notifications'
 import type { TaskContext } from '../contracts/plugin'
 
 function generateSuccessCriteria(task: Task): string[] {
