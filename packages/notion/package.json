@@ -13,7 +13,7 @@
     "@notionhq/client": "^2.2.15"
   },
   "peerDependencies": {
-    "loopwork": "workspace:*"
+    "@loopwork-ai/loopwork": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
