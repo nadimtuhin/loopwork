@@ -1,5 +1,5 @@
 {
-  "name": "@loopwork/notion",
+  "name": "@loopwork-ai/notion",
   "version": "0.1.1",
   "type": "module",
   "main": "dist/index.js",
