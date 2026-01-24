@@ -14,6 +14,8 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "dev:web": "cd web && bun run dev",
     "build:web": "cd web && bun run build",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
     "prepublishOnly": "bun run build && bun run build:web"
   },
   "peerDependencies": {
