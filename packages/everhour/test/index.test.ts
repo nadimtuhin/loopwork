@@ -96,7 +96,7 @@ describe('Everhour Plugin', () => {
       )
 
       const plugin = createEverhourPlugin({ apiKey: 'test-key' })
-      await plugin.onTaskStart?.(mockTask)
+      await plugin.onTaskStart?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' })
 
       // Should have started timer with as:123456789
       expect(mockFetch).toHaveBeenCalledWith(
@@ -122,7 +122,7 @@ describe('Everhour Plugin', () => {
       } as any
 
       const plugin = createEverhourPlugin({ apiKey: 'test-key' })
-      await plugin.onTaskStart?.(taskWithEverhourId)
+      await plugin.onTaskStart?.({ task: taskWithEverhourId, iteration: 1, startTime: new Date(), namespace: 'test' })
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.everhour.com/timers',

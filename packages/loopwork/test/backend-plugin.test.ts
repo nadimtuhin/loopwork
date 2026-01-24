@@ -8,6 +8,7 @@ import {
   requireBackend
 } from '../src/backends/plugin'
 import { defineConfig } from '../src/plugins'
+import { logger } from '../src/core/utils'
 
 describe('Backend Plugin System', () => {
   describe('withJSONBackend', () => {
@@ -113,7 +114,7 @@ describe('Backend Plugin System', () => {
     test('GitHub plugin onConfigLoad warns if repo missing', async () => {
       const originalRepo = process.env.GITHUB_REPOSITORY
       delete process.env.GITHUB_REPOSITORY
-      const spy = spyOn(console, 'warn').mockImplementation(() => {})
+      const spy = spyOn(logger, 'warn').mockImplementation(() => {})
       try {
         const plugin = createGitHubBackendPlugin({})
         const config = defineConfig({})

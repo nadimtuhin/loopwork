@@ -85,9 +85,9 @@ describe('Todoist Plugin', () => {
 
     test('skips tasks without todoistId', async () => {
       const plugin = createTodoistPlugin({ apiToken: 'test-token' })
-      const taskWithoutId = { id: 'TASK-001', title: 'Test' } as any
+      const taskWithoutId = { id: 'TASK-001', title: 'Test', metadata: {} } as any
 
-      await plugin.onTaskStart?.(taskWithoutId)
+      await plugin.onTaskStart?.({ task: taskWithoutId, iteration: 1, startTime: new Date(), namespace: 'test' })
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
@@ -102,7 +102,7 @@ describe('Todoist Plugin', () => {
       )
 
       const plugin = createTodoistPlugin({ apiToken: 'test-token' })
-      await plugin.onTaskComplete?.(mockTask, { duration: 45 })
+      await plugin.onTaskComplete?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' }, { duration: 45 })
 
       expect(mockFetch).toHaveBeenCalled()
     })

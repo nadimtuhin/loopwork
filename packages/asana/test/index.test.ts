@@ -116,8 +116,8 @@ describe('Asana Plugin', () => {
         projectId: 'project-123',
       })
 
-      const taskWithoutGid = { id: 'TASK-001', title: 'Test' } as any
-      await plugin.onTaskStart?.(taskWithoutGid)
+      const taskWithoutGid = { id: 'TASK-001', title: 'Test', metadata: {} } as any
+      await plugin.onTaskStart?.({ task: taskWithoutGid, iteration: 1, startTime: new Date(), namespace: 'test' })
 
       // Should not have called fetch
       expect(mockFetch).not.toHaveBeenCalled()
@@ -136,7 +136,7 @@ describe('Asana Plugin', () => {
         projectId: 'project-123',
       })
 
-      await plugin.onTaskComplete?.(mockTask, { duration: 60 })
+      await plugin.onTaskComplete?.({ task: mockTask, iteration: 1, startTime: new Date(), namespace: 'test' }, { duration: 60 })
 
       // Should have called API twice (complete + comment)
       expect(mockFetch).toHaveBeenCalled()
