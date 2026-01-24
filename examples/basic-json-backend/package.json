@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Basic example of using Loopwork with JSON backend",
   "scripts": {
-    "start": "bun run ../../src/index.ts",
-    "dry-run": "bun run ../../src/index.ts --dry-run",
+    "start": "../../packages/loopwork/bin/loopwork",
+    "dry-run": "../../packages/loopwork/bin/loopwork --dry-run",
+    "test": "bun test",
     "build": "echo 'No build needed for example'"
   },
   "devDependencies": {
