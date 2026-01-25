@@ -11,7 +11,12 @@ const CLAUDE_MD = path.join(TEST_DIR, 'CLAUDE.md')
 const CLAUDE_DIR_MD = path.join(TEST_DIR, '.claude/CLAUDE.md')
 
 describe('Claude Code Plugin', () => {
+  let originalDir: string
+
   beforeEach(() => {
+    // Save original directory
+    originalDir = process.cwd()
+
     // Clean up test directory
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true })
@@ -28,7 +33,12 @@ describe('Claude Code Plugin', () => {
   })
 
   afterEach(() => {
-    process.chdir('/Users/nadimtuhin/opensource/loopwork/packages/loopwork')
+    // Go back to original directory
+    process.chdir(originalDir)
+    // Clean up test directory
+    if (fs.existsSync(TEST_DIR)) {
+      fs.rmSync(TEST_DIR, { recursive: true, force: true })
+    }
   })
 
   describe('Plugin creation', () => {
