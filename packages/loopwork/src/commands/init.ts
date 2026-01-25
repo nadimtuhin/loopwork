@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { promptUser, logger } from '../core/utils'
+import { logger } from '../core/utils'
 import readline from 'readline'
 
 async function ask(question: string, defaultValue: string): Promise<string> {
@@ -18,7 +18,7 @@ async function ask(question: string, defaultValue: string): Promise<string> {
 
 export async function safeWriteFile(filePath: string, content: string, description: string): Promise<boolean> {
   if (fs.existsSync(filePath)) {
-    const overwrite = await promptUser(`${filePath} already exists. Overwrite? (y/N): `, 'n')
+    const overwrite = await ask(`${filePath} already exists. Overwrite? (y/N)`, 'n')
     if (overwrite.toLowerCase() !== 'y') {
       logger.info(`Skipped ${description}`)
       return false
@@ -63,8 +63,8 @@ export async function updateGitignore() {
     return
   }
 
-  const shouldUpdate = await promptUser(
-    `.gitignore ${fs.existsSync(gitignorePath) ? 'exists' : 'does not exist'}. Add loopwork patterns? (Y/n): `,
+  const shouldUpdate = await ask(
+    `.gitignore ${fs.existsSync(gitignorePath) ? 'exists' : 'does not exist'}. Add loopwork patterns? (Y/n)`,
     'y'
   )
 
@@ -127,7 +127,7 @@ Tasks are managed through the configured backend. Check \`.specs/tasks/\` for PR
 }
 
 export async function createPrdTemplates(templatesDir: string) {
-  const shouldCreate = await promptUser('Create PRD template files? (Y/n): ', 'y')
+  const shouldCreate = await ask('Create PRD template files? (Y/n)', 'y')
 
   if (shouldCreate.toLowerCase() !== 'y' && shouldCreate.toLowerCase() !== '') {
     logger.info('Skipped PRD templates')
@@ -197,21 +197,21 @@ export async function setupPlugins(): Promise<string[]> {
   logger.info('\nOptional plugin configuration:')
 
   // Cost tracking (make it optional)
-  const wantCostTracking = await promptUser('Enable cost tracking? (Y/n): ', 'y')
+  const wantCostTracking = await ask('Enable cost tracking? (Y/n)', 'y')
   if (wantCostTracking.toLowerCase() === 'y' || wantCostTracking === '') {
     const budget = await ask('Daily budget in USD', '10.00')
     plugins.push(`withCostTracking({ dailyBudget: ${budget} })`)
   }
 
   // Telegram
-  const wantTelegram = await promptUser('Configure Telegram notifications? (y/N): ', 'n')
+  const wantTelegram = await ask('Configure Telegram notifications? (y/N)', 'n')
   if (wantTelegram.toLowerCase() === 'y') {
     logger.info('You will need TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables')
     plugins.push(`withTelegram({ botToken: process.env.TELEGRAM_BOT_TOKEN, chatId: process.env.TELEGRAM_CHAT_ID })`)
   }
 
   // Discord
-  const wantDiscord = await promptUser('Configure Discord webhooks? (y/N): ', 'n')
+  const wantDiscord = await ask('Configure Discord webhooks? (y/N)', 'n')
   if (wantDiscord.toLowerCase() === 'y') {
     logger.info('You will need DISCORD_WEBHOOK_URL environment variable')
     plugins.push(`withDiscord({ webhookUrl: process.env.DISCORD_WEBHOOK_URL })`)
@@ -223,10 +223,10 @@ export async function setupPlugins(): Promise<string[]> {
 export async function init() {
   logger.info('Welcome to Loopwork initialization!\n')
 
-  const backendChoice = await promptUser('Backend type (github/json) [json]: ', 'json')
+  const backendChoice = await ask('Backend type (github/json)', 'json')
   const backendType = backendChoice.toLowerCase().startsWith('g') ? 'github' : 'json'
 
-  const aiChoice = await promptUser('AI CLI tool (opencode/claude) [opencode]: ', 'opencode')
+  const aiChoice = await ask('AI CLI tool (opencode/claude)', 'opencode')
   const aiTool = aiChoice.toLowerCase().startsWith('c') ? 'claude' : 'opencode'
 
   let backendConfig = ''
@@ -301,7 +301,7 @@ ${pluginConfigs.map(p => `  ${p},`).join('\n')}
 `
 
   if (fs.existsSync('loopwork.config.ts')) {
-    const overwrite = await promptUser('loopwork.config.ts already exists. Overwrite? (y/N): ', 'n')
+    const overwrite = await ask('loopwork.config.ts already exists. Overwrite? (y/N)', 'n')
     if (overwrite.toLowerCase() !== 'y') {
       logger.info('Initialization aborted.')
       return
