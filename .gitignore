@@ -69,3 +69,4 @@ packages/*/node_modules
 
 # Internal notes
 .sisyphus/
+.npmrc
