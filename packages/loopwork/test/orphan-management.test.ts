@@ -81,7 +81,7 @@ describe('orphan-detector', () => {
       trackSpawnedPid(12345, 'bun test', testRoot)
       trackSpawnedPid(67890, 'tail -f', testRoot)
 
-      untrackPid(12345)
+      untrackPid(12345, testRoot)
 
       const data = JSON.parse(fs.readFileSync(trackingFile, 'utf-8'))
       expect(data.pids).toHaveLength(1)
@@ -91,14 +91,14 @@ describe('orphan-detector', () => {
     test('handles untracking non-existent PID gracefully', () => {
       trackSpawnedPid(12345, 'bun test', testRoot)
 
-      expect(() => untrackPid(99999)).not.toThrow()
+      expect(() => untrackPid(99999, testRoot)).not.toThrow()
 
       const data = JSON.parse(fs.readFileSync(trackingFile, 'utf-8'))
       expect(data.pids).toHaveLength(1)
     })
 
     test('handles missing tracking file gracefully', () => {
-      expect(() => untrackPid(12345)).not.toThrow()
+      expect(() => untrackPid(12345, testRoot)).not.toThrow()
     })
   })
 
