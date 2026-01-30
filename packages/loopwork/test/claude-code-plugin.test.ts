@@ -9,6 +9,7 @@ const TEST_DIR = '/tmp/loopwork-claude-code-test'
 const SKILLS_DIR = path.join(TEST_DIR, '.claude/skills')
 const CLAUDE_MD = path.join(TEST_DIR, 'CLAUDE.md')
 const CLAUDE_DIR_MD = path.join(TEST_DIR, '.claude/CLAUDE.md')
+const resolveTestPath = (...segments: string[]) => path.join(TEST_DIR, ...segments)
 
 describe('Claude Code Plugin', () => {
   let originalDir: string
@@ -33,11 +34,14 @@ describe('Claude Code Plugin', () => {
   })
 
   afterEach(() => {
-    // Go back to original directory
-    process.chdir(originalDir)
-    // Clean up test directory
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true })
+    try {
+      // Go back to original directory
+      process.chdir(originalDir)
+    } finally {
+      // Clean up test directory
+      if (fs.existsSync(TEST_DIR)) {
+        fs.rmSync(TEST_DIR, { recursive: true, force: true })
+      }
     }
   })
 
@@ -75,7 +79,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('runs setup when .claude directory exists', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({})
@@ -99,7 +103,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('runs setup when .claude/CLAUDE.md exists', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
       fs.writeFileSync(CLAUDE_DIR_MD, '# Test')
 
       const plugin = createClaudeCodePlugin()
@@ -111,7 +115,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('skips when disabled', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin({ enabled: false })
       const config = defineConfig({})
@@ -124,7 +128,7 @@ describe('Claude Code Plugin', () => {
 
   describe('Skill file generation', () => {
     test('creates skill file with correct content', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({ cli: 'claude', backend: { type: 'json' } })
@@ -144,7 +148,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('is idempotent - does not overwrite existing skill file', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({})
@@ -165,7 +169,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('creates skills in custom directory', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const customDir = 'custom/skills'
       const plugin = createClaudeCodePlugin({ skillsDir: customDir })
@@ -179,7 +183,7 @@ describe('Claude Code Plugin', () => {
 
   describe('CLAUDE.md updates', () => {
     test('creates CLAUDE.md if it does not exist', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({})
@@ -193,7 +197,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('appends to existing CLAUDE.md', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
       fs.writeFileSync(CLAUDE_MD, '# Existing Content\n\nSome text.')
 
       const plugin = createClaudeCodePlugin()
@@ -208,7 +212,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('prefers .claude/CLAUDE.md if both exist', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
       fs.writeFileSync(CLAUDE_MD, '# Root CLAUDE.md')
       fs.writeFileSync(CLAUDE_DIR_MD, '# Dir CLAUDE.md')
 
@@ -225,7 +229,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('is idempotent - does not duplicate Loopwork section', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({})
@@ -244,7 +248,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('includes backend type in CLAUDE.md', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({ backend: { type: 'github', repo: 'test/repo' } })
@@ -256,7 +260,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('includes CLI tool in CLAUDE.md', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const plugin = createClaudeCodePlugin()
       const config = defineConfig({ cli: 'gemini' })
@@ -269,10 +273,10 @@ describe('Claude Code Plugin', () => {
     })
 
     test('uses custom CLAUDE.md path', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const customPath = 'docs/CLAUDE.md'
-      fs.mkdirSync('docs', { recursive: true })
+      fs.mkdirSync(resolveTestPath('docs'), { recursive: true })
 
       const plugin = createClaudeCodePlugin({ claudeMdPath: customPath })
       const config = defineConfig({})
@@ -285,7 +289,7 @@ describe('Claude Code Plugin', () => {
 
   describe('Logging', () => {
     test('logs success when skill file created', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       // Re-mock to track calls (global mock is already active)
       const successSpy = spyOn(logger, 'success').mockImplementation(() => {})
@@ -299,7 +303,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('logs success when CLAUDE.md updated', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       // Re-mock to track calls (global mock is already active)
       const successSpy = spyOn(logger, 'success').mockImplementation(() => {})
@@ -313,7 +317,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('logs info when CLAUDE.md already has Loopwork section', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
       fs.writeFileSync(CLAUDE_MD, '## Loopwork Integration\n\nExisting')
 
       // Re-mock to track calls (global mock is already active)
@@ -330,7 +334,7 @@ describe('Claude Code Plugin', () => {
 
   describe('Config composition', () => {
     test('works with defineConfig', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const config = defineConfig({
         cli: 'claude',
@@ -345,7 +349,7 @@ describe('Claude Code Plugin', () => {
     })
 
     test('preserves existing config properties', async () => {
-      fs.mkdirSync('.claude', { recursive: true })
+      fs.mkdirSync(resolveTestPath('.claude'), { recursive: true })
 
       const config = defineConfig({
         cli: 'claude',

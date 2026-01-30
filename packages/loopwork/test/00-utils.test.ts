@@ -10,61 +10,67 @@ describe('utils', () => {
   })
 
   describe('logger', () => {
-    let consoleSpy: ReturnType<typeof spyOn>
     let stdoutSpy: ReturnType<typeof spyOn>
+    let stderrSpy: ReturnType<typeof spyOn>
 
     beforeEach(() => {
-      consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
       stdoutSpy = spyOn(process.stdout, 'write').mockImplementation(() => true)
+      stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true)
+      logger.setLogLevel('debug') // Ensure all logs are visible
     })
 
     afterEach(() => {
-      consoleSpy.mockRestore()
       stdoutSpy.mockRestore()
+      stderrSpy.mockRestore()
+      logger.setLogLevel('info') // Reset to default
     })
 
     test('info logs message', () => {
       logger.info('test message')
-      expect(consoleSpy).toHaveBeenCalled()
-      const args = consoleSpy.mock.calls[0]
-      expect(args.some((a: string) => a.includes('[INFO]') || a.includes('INFO'))).toBe(true)
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
+      expect(output).toContain('INFO')
+      expect(output).toContain('test message')
     })
 
     test('success logs message', () => {
       logger.success('test message')
-      expect(consoleSpy).toHaveBeenCalled()
-      const args = consoleSpy.mock.calls[0]
-      expect(args.some((a: string) => a.includes('[SUCCESS]') || a.includes('SUCCESS'))).toBe(true)
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
+      expect(output).toContain('SUCCESS')
+      expect(output).toContain('test message')
     })
 
     test('warn logs message', () => {
       logger.warn('test message')
-      expect(consoleSpy).toHaveBeenCalled()
-      const args = consoleSpy.mock.calls[0]
-      expect(args.some((a: string) => a.includes('[WARN]') || a.includes('WARN'))).toBe(true)
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
+      expect(output).toContain('WARN')
+      expect(output).toContain('test message')
     })
 
     test('error logs message', () => {
       logger.error('test message')
-      expect(consoleSpy).toHaveBeenCalled()
-      const args = consoleSpy.mock.calls[0]
-      expect(args.some((a: string) => a.includes('[ERROR]') || a.includes('ERROR'))).toBe(true)
+      expect(stderrSpy).toHaveBeenCalled()
+      const output = stderrSpy.mock.calls.map(c => c[0]).join('')
+      expect(output).toContain('ERROR')
+      expect(output).toContain('test message')
     })
 
-    test('debug logs only when LOOPWORK_DEBUG is true', () => {
-      const originalDebug = process.env.LOOPWORK_DEBUG
-
-      // Should not log when LOOPWORK_DEBUG is not set
-      process.env.LOOPWORK_DEBUG = ''
+    test('debug logs only when log level is debug', () => {
+      // Should not log when log level is info
+      logger.setLogLevel('info')
+      stdoutSpy.mockClear()
       logger.debug('test message')
-      expect(consoleSpy).not.toHaveBeenCalled()
+      expect(stdoutSpy).not.toHaveBeenCalled()
 
-      // Should log when LOOPWORK_DEBUG is true
-      process.env.LOOPWORK_DEBUG = 'true'
+      // Should log when log level is debug
+      logger.setLogLevel('debug')
+      stdoutSpy.mockClear()
       logger.debug('test message')
-      expect(consoleSpy).toHaveBeenCalled()
-
-      process.env.LOOPWORK_DEBUG = originalDebug
+      expect(stdoutSpy).toHaveBeenCalled()
+      const output = stdoutSpy.mock.calls.map(c => c[0]).join('')
+      expect(output).toContain('DEBUG')
     })
 
     test('update writes to stdout without newline', () => {

@@ -64,7 +64,7 @@ describe('CliExecutor', () => {
     spyOn(child_process, 'spawnSync').mockReturnValue({ status: 1 } as any)
     spyOn(fs, 'existsSync').mockReturnValue(false)
 
-    expect(() => new CliExecutor(config)).toThrow(/No AI CLI found/)
+    expect(() => new CliExecutor(config)).toThrow(/No AI CLI tools found/)
   })
 
   test('execute calls spawn with correct arguments for opencode', async () => {

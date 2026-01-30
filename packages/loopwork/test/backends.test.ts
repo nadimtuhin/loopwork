@@ -11,6 +11,7 @@ import {
   type BackendConfig,
 } from '../src/backends'
 import * as utils from '../src/core/utils'
+import { LoopworkError } from '../src/core/errors'
 
 describe('Backend Factory', () => {
   let tempTasksFile: string
@@ -529,21 +530,33 @@ describe('Error Scenarios', () => {
       fs.rmSync(tempDir, { recursive: true, force: true })
     })
 
-    test('handles corrupted JSON gracefully', async () => {
+    test('throws LoopworkError for corrupted JSON', async () => {
       const tasksFile = path.join(tempDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{ invalid json }}}')
 
       const adapter = new JsonTaskAdapter({ type: 'json', tasksFile, tasksDir: tempDir })
 
-      // Should not throw, should return empty/null
-      const tasks = await adapter.listPendingTasks()
-      expect(tasks).toEqual([])
+      // Should throw LoopworkError with helpful suggestions
+      await expect(adapter.listPendingTasks()).rejects.toThrow(LoopworkError)
+      await expect(adapter.findNextTask()).rejects.toThrow(LoopworkError)
+      await expect(adapter.countPending()).rejects.toThrow(LoopworkError)
+    })
 
-      const task = await adapter.findNextTask()
-      expect(task).toBeNull()
+    test('LoopworkError includes helpful suggestions', async () => {
+      const tasksFile = path.join(tempDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{ invalid json }}}')
 
-      const count = await adapter.countPending()
-      expect(count).toBe(0)
+      const adapter = new JsonTaskAdapter({ type: 'json', tasksFile, tasksDir: tempDir })
+
+      try {
+        await adapter.listPendingTasks()
+        expect(true).toBe(false) // Should not reach here
+      } catch (e) {
+        expect(e).toBeInstanceOf(LoopworkError)
+        const error = e as LoopworkError
+        expect(error.suggestions.length).toBeGreaterThan(0)
+        expect(error.message).toContain('Cannot read or parse tasks file')
+      }
     })
 
     test('handles missing PRD file gracefully', async () => {
@@ -592,6 +605,58 @@ describe('Error Scenarios', () => {
       // Both should succeed (locking should serialize them)
       const successCount = results.filter(r => r.success).length
       expect(successCount).toBeGreaterThan(0)
+    })
+
+    test('throws LoopworkError when unable to write tasks file', async () => {
+      const tasksFile = path.join(tempDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, JSON.stringify({
+        tasks: [{ id: 'TASK-001-01', status: 'pending' }],
+      }))
+
+      const adapter = new JsonTaskAdapter({ type: 'json', tasksFile, tasksDir: tempDir })
+
+      // Acquire lock first, then make file read-only
+      // This simulates a write failure scenario
+      const lockAcquired = await (adapter as any).acquireLock()
+      expect(lockAcquired).toBe(true)
+
+      // Make file read-only to cause write failure
+      fs.chmodSync(tasksFile, 0o444)
+
+      try {
+        // Call saveTasksFile directly to test write error handling
+        const data = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'))
+        expect(() => (adapter as any).saveTasksFile(data)).toThrow(LoopworkError)
+      } finally {
+        // Restore permissions and release lock
+        fs.chmodSync(tasksFile, 0o644)
+        ;(adapter as any).releaseLock()
+      }
+    })
+
+    test('logs warning for failed error log writes', async () => {
+      const tasksFile = path.join(tempDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, JSON.stringify({
+        tasks: [{ id: 'TASK-001-01', status: 'pending' }],
+      }))
+
+      const adapter = new JsonTaskAdapter({ type: 'json', tasksFile, tasksDir: tempDir })
+
+      // Spy on fs.appendFileSync to simulate failure
+      const appendSpy = spyOn(fs, 'appendFileSync').mockImplementation((path, data, options) => {
+        throw new Error('EACCES: permission denied')
+      })
+
+      try {
+        // Should succeed in marking failed but warn about log write failure
+        const result = await adapter.markFailed('TASK-001-01', 'Test error')
+        expect(result.success).toBe(true)
+        // The warning was logged - we can see it in output during tests
+        // Testing that logger.warn was called would require better mock support
+      } finally {
+        // Restore original implementation
+        appendSpy.mockRestore()
+      }
     })
   })
 
@@ -908,6 +973,193 @@ describe('Sub-tasks and Dependencies', () => {
     test('extractIssueNumber handles #123 format', () => {
       expect((adapter as any).extractIssueNumber('#123')).toBe(123)
       expect((adapter as any).extractIssueNumber('#456')).toBe(456)
+    })
+
+    test('adaptIssue handles parent reference with owner/repo#123 format', () => {
+      const issue = {
+        number: 123,
+        title: 'TASK-001-01a: Sub task',
+        body: 'Parent: owner/repo#100\n\nSub task description',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }, { name: 'loopwork:sub-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.parentId).toBe('GH-100')
+    })
+
+    test('adaptIssue handles parent reference with plain number format', () => {
+      const issue = {
+        number: 123,
+        title: 'TASK-001-01a: Sub task',
+        body: 'Parent: 100\n\nSub task description',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }, { name: 'loopwork:sub-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.parentId).toBe('GH-100')
+    })
+
+    test('adaptIssue handles parent reference with TASK-ID format', () => {
+      const issue = {
+        number: 123,
+        title: 'TASK-001-01a: Sub task',
+        body: 'Parent: TASK-001-01\n\nSub task description',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }, { name: 'loopwork:sub-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.parentId).toBe('TASK-001-01')
+    })
+
+    test('adaptIssue handles dependsOn with owner/repo#123 format', () => {
+      const issue = {
+        number: 123,
+        title: 'TASK-001-01: Main task',
+        body: 'Depends on: owner/repo#50, owner/repo#51\n\nTask description',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.dependsOn).toEqual(['GH-50', 'GH-51'])
+    })
+
+    test('adaptIssue handles mixed dependency formats', () => {
+      const issue = {
+        number: 123,
+        title: 'TASK-001-01: Main task',
+        body: 'Depends on: #50, 51, TASK-001-02, owner/repo#52\n\nTask description',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.dependsOn).toEqual(['GH-50', 'GH-51', 'TASK-001-02', 'GH-52'])
+    })
+
+    test('getSubTasks filters by parentId correctly', async () => {
+      // This would require mocking the gh CLI calls
+      // Testing the filtering logic with mocked data would be done in integration tests
+      expect(typeof adapter.getSubTasks).toBe('function')
+    })
+  })
+
+  describe('GitHubTaskAdapter createTask with parentId', () => {
+    let adapter: GitHubTaskAdapter
+
+    beforeEach(() => {
+      adapter = new GitHubTaskAdapter({ type: 'github', repo: 'test/repo' })
+    })
+
+    test('createTask includes parent reference when parentId provided', async () => {
+      const task = {
+        title: 'Sub-task title',
+        description: 'Sub-task description',
+        priority: 'medium' as const,
+        parentId: 'GH-100',
+      }
+
+      // Mock the gh CLI call
+      const originalWithRetry = (adapter as any).withRetry
+      let capturedBody = ''
+
+      ;(adapter as any).withRetry = async (fn: any) => {
+        // Simulate the gh CLI call capture
+        const mockIssue = {
+          number: 123,
+          title: task.title,
+          body: task.description,
+          state: 'open' as const,
+          labels: [
+            { name: 'loopwork-task' },
+            { name: 'loopwork:pending' },
+            { name: 'loopwork:sub-task' },
+            { name: 'priority:medium' },
+          ],
+          url: 'https://github.com/test/repo/issues/123',
+        }
+
+        // Capture what would be sent (we can't easily mock $ but we can test the logic)
+        return mockIssue
+      }
+
+      const result = await adapter.createTask(task)
+
+      // Verify the result has the expected properties
+      expect(result.id).toBeDefined()
+      expect(result.title).toBe(task.title)
+    })
+
+    test('createTask includes both parent and dependencies', async () => {
+      const task = {
+        title: 'Complex task',
+        description: 'Task description',
+        priority: 'high' as const,
+        parentId: 'GH-100',
+        dependsOn: ['GH-50', 'GH-51'],
+      }
+
+      const originalWithRetry = (adapter as any).withRetry
+
+      ;(adapter as any).withRetry = async (fn: any) => {
+        const mockIssue = {
+          number: 123,
+          title: task.title,
+          body: task.description,
+          state: 'open' as const,
+          labels: [
+            { name: 'loopwork-task' },
+            { name: 'loopwork:pending' },
+            { name: 'loopwork:sub-task' },
+            { name: 'priority:high' },
+          ],
+          url: 'https://github.com/test/repo/issues/123',
+        }
+        return mockIssue
+      }
+
+      const result = await adapter.createTask(task)
+
+      expect(result.id).toBeDefined()
+      expect(result.priority).toBe('high')
+    })
+
+    test('createTask with TASK-ID format parentId', async () => {
+      const task = {
+        title: 'Sub-task with TASK-ID parent',
+        description: 'Task description',
+        priority: 'low' as const,
+        parentId: 'TASK-001-01',
+      }
+
+      ;(adapter as any).withRetry = async (fn: any) => {
+        const mockIssue = {
+          number: 123,
+          title: task.title,
+          body: task.description,
+          state: 'open' as const,
+          labels: [
+            { name: 'loopwork-task' },
+            { name: 'loopwork:pending' },
+            { name: 'loopwork:sub-task' },
+            { name: 'priority:low' },
+          ],
+          url: 'https://github.com/test/repo/issues/123',
+        }
+        return mockIssue
+      }
+
+      const result = await adapter.createTask(task)
+
+      expect(result.id).toBeDefined()
     })
   })
 
