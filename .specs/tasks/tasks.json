@@ -121,14 +121,14 @@
     },
     {
       "id": "IMPROVE-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Update root loopwork.config.ts to use correct imports",
       "description": "Replace legacy import paths with proper package imports"
     },
     {
       "id": "IMPROVE-002",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Update README examples to use @loopwork-ai scope",
       "description": "Update all documentation examples to use @loopwork-ai package names"
@@ -363,7 +363,7 @@
     },
     {
       "id": "AI-MONITOR-001h",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: LLM Fallback Analyzer",
       "feature": "ai-monitor",
