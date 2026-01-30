@@ -41,7 +41,6 @@ describe('error-handling', () => {
 
   describe('handleError', () => {
     test('handles LoopworkError correctly', () => {
-      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
       const error = new LoopworkError(
         'ERR_UNKNOWN',
         'Special error',
@@ -50,18 +49,16 @@ describe('error-handling', () => {
       )
       handleError(error)
 
-      // Error is logged via console.error with formatted box
-      expect(consoleSpy).toHaveBeenCalled()
-      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(consoleOutput).toContain('Special error')
-      expect(consoleOutput).toContain('Try this')
-      expect(consoleOutput).toContain('Try that')
-      expect(consoleOutput).toContain('https://example.com')
-      consoleSpy.mockRestore()
+      // Error is logged via stdout with formatted box (logger.raw uses stdout)
+      expect(stdoutSpy).toHaveBeenCalled()
+      const stdoutOutput = stdoutSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(stdoutOutput).toContain('Special error')
+      expect(stdoutOutput).toContain('Try this')
+      expect(stdoutOutput).toContain('Try that')
+      expect(stdoutOutput).toContain('https://example.com')
     })
 
     test('formats error box with error code', () => {
-      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
       const error = new LoopworkError(
         'ERR_LOCK_CONFLICT',
         'Failed to acquire state lock',
@@ -70,17 +67,15 @@ describe('error-handling', () => {
       )
       handleError(error)
 
-      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(consoleOutput).toContain('ERR_LOCK_CONFLICT')
-      expect(consoleOutput).toContain('Failed to acquire state lock')
-      expect(consoleOutput).toContain('ERROR')
-      expect(consoleOutput).toContain('╭')
-      expect(consoleOutput).toContain('╰')
-      consoleSpy.mockRestore()
+      const stdoutOutput = stdoutSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(stdoutOutput).toContain('ERR_LOCK_CONFLICT')
+      expect(stdoutOutput).toContain('Failed to acquire state lock')
+      expect(stdoutOutput).toContain('ERROR')
+      expect(stdoutOutput).toContain('╭')
+      expect(stdoutOutput).toContain('╰')
     })
 
     test('formats error box with multiple suggestions', () => {
-      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
       const error = new LoopworkError(
         'ERR_CONFIG_INVALID',
         'Configuration is invalid',
@@ -89,18 +84,16 @@ describe('error-handling', () => {
       )
       handleError(error)
 
-      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(consoleOutput).toContain('ERR_CONFIG_INVALID')
-      expect(consoleOutput).toContain('Configuration is invalid')
-      expect(consoleOutput).toContain('Check your config file')
-      expect(consoleOutput).toContain('Verify all required fields are present')
-      expect(consoleOutput).toContain('💡')
-      expect(consoleOutput).toContain('📚')
-      consoleSpy.mockRestore()
+      const stdoutOutput = stdoutSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(stdoutOutput).toContain('ERR_CONFIG_INVALID')
+      expect(stdoutOutput).toContain('Configuration is invalid')
+      expect(stdoutOutput).toContain('Check your config file')
+      expect(stdoutOutput).toContain('Verify all required fields are present')
+      expect(stdoutOutput).toContain('💡')
+      expect(stdoutOutput).toContain('📚')
     })
 
     test('formats error box without suggestions', () => {
-      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
       const error = new LoopworkError(
         'ERR_FILE_NOT_FOUND',
         'File not found',
@@ -109,12 +102,11 @@ describe('error-handling', () => {
       )
       handleError(error)
 
-      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(consoleOutput).toContain('ERR_FILE_NOT_FOUND')
-      expect(consoleOutput).toContain('File not found')
-      expect(!consoleOutput.includes('💡')).toBe(true)
-      expect(consoleOutput).toContain('📚')
-      consoleSpy.mockRestore()
+      const stdoutOutput = stdoutSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(stdoutOutput).toContain('ERR_FILE_NOT_FOUND')
+      expect(stdoutOutput).toContain('File not found')
+      expect(!stdoutOutput.includes('💡')).toBe(true)
+      expect(stdoutOutput).toContain('📚')
     })
 
     test('handles generic Error correctly', () => {

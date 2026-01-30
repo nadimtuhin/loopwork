@@ -274,6 +274,60 @@ describe('JsonTaskAdapter', () => {
       expect(result.error).toContain('not found')
     })
   })
+
+  describe('resetAllInProgress', () => {
+    beforeEach(() => {
+      const tasksData = {
+        tasks: [
+          { id: 'TASK-001', status: 'pending', title: 'Pending task' },
+          { id: 'TASK-002', status: 'in-progress', title: 'In progress task 1' },
+          { id: 'TASK-003', status: 'in-progress', title: 'In progress task 2' },
+          { id: 'TASK-004', status: 'completed', title: 'Completed task' },
+        ],
+      }
+      fs.writeFileSync(tasksFile, JSON.stringify(tasksData, null, 2))
+    })
+
+    test('should reset all in-progress tasks to pending', async () => {
+      const result = await adapter.resetAllInProgress()
+
+      expect(result.success).toBe(true)
+
+      // Verify tasks were reset
+      const data = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'))
+      expect(data.tasks.find((t: any) => t.id === 'TASK-001').status).toBe('pending')
+      expect(data.tasks.find((t: any) => t.id === 'TASK-002').status).toBe('pending')
+      expect(data.tasks.find((t: any) => t.id === 'TASK-003').status).toBe('pending')
+      expect(data.tasks.find((t: any) => t.id === 'TASK-004').status).toBe('completed')
+    })
+
+    test('should succeed when no in-progress tasks exist', async () => {
+      const tasksData = {
+        tasks: [
+          { id: 'TASK-001', status: 'pending', title: 'Pending task' },
+          { id: 'TASK-002', status: 'completed', title: 'Completed task' },
+        ],
+      }
+      fs.writeFileSync(tasksFile, JSON.stringify(tasksData, null, 2))
+
+      const result = await adapter.resetAllInProgress()
+
+      expect(result.success).toBe(true)
+    })
+
+    test('should return error when tasks file not found', async () => {
+      const nonExistentAdapter = new JsonTaskAdapter({
+        type: 'json',
+        tasksFile: path.join(tempDir, 'nonexistent.json'),
+        tasksDir: tempDir,
+      })
+
+      const result = await nonExistentAdapter.resetAllInProgress()
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('not found')
+    })
+  })
 })
 
 describe('GitHubTaskAdapter', () => {
