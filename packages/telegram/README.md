@@ -6,6 +6,8 @@ An intelligent, interactive Telegram bot for Loopwork that transforms your task 
 
 - 💬 **Conversational Interface**: Create and refine tasks using natural language.
 - 🎤 **Voice-to-Task**: Create tasks hands-free by sending voice notes (powered by OpenAI Whisper).
+- 📸 **Vision Bug Reporting**: Send screenshots/photos to create bug reports with image attachments.
+- 📊 **Daily Briefings**: AI-generated summaries of completed tasks and activity.
 - 🎮 **Loop Control**: Start, stop, and monitor the automation loop directly from Telegram.
 - 📡 **Live Logs**: Stream real-time execution logs to your chat.
 - 🔄 **Human-in-the-Loop**: Interactive feedback mechanism (send input to running loops).
@@ -84,6 +86,87 @@ Priority keywords detected:
 - **High priority**: "urgent", "asap", "critical", "high priority", "important"
 - **Low priority**: "low priority", "minor", "whenever", "someday"
 
+## Vision Bug Reporting
+
+Send a photo or screenshot to automatically create a bug report task with the image attached.
+
+### How It Works
+
+1. **Send a photo** to the bot with an optional caption describing the bug
+2. The bot downloads the image to `.specs/attachments/` with a timestamped filename
+3. A new task is created referencing the image path for multimodal AI analysis
+
+### Examples
+
+- Send a screenshot with caption "Login button not working" → Creates bug task with image reference
+- Send a photo without caption → Creates task titled "Bug report from photo"
+
+### Task Format
+
+Created tasks include:
+- **Title**: From caption or default "Bug report from photo"
+- **Description**: References the attachment path for AI analysis
+- **Metadata**: Telegram user info, file ID, timestamp
+
+The AI agent can then analyze the screenshot when working on the task, enabling visual bug detection and UI issue identification.
+
+## Daily Briefings
+
+Get AI-generated summaries of your automation activity delivered to Telegram.
+
+### Features
+
+- **Activity Tracking**: Monitors completed tasks, failures, and files modified
+- **AI Summaries**: Uses OpenAI or Claude to generate human-readable briefings
+- **Scheduled Delivery**: Configure daily briefing time (default: 9:00 AM)
+- **On-Demand**: Use `/briefing` command to get an instant summary
+
+### Setup
+
+```typescript
+import { TelegramTaskBot } from '@loopwork-ai/telegram'
+
+const bot = new TelegramTaskBot({
+  botToken: '...',
+  chatId: '...',
+  // Daily briefing configuration
+  dailyBriefing: {
+    enabled: true,
+    time: '09:00',              // 24-hour format, local timezone
+    timezone: 'America/New_York', // Optional: specify timezone
+    llmProvider: 'openai',      // 'openai' or 'anthropic'
+  }
+})
+```
+
+### Commands
+
+- `/briefing` - Get an immediate summary of recent activity
+- `/briefing today` - Summary of today's activity only
+- `/briefing week` - Summary of the past week
+
+### Example Briefing
+
+```
+📊 Daily Briefing - Jan 31, 2026
+
+✅ Completed: 5 tasks
+❌ Failed: 1 task
+📝 Files Modified: 23
+
+Highlights:
+• Implemented user authentication (AUTH-001)
+• Fixed critical bug in payment flow (BUG-042)
+• Added unit tests for API endpoints
+
+Issues:
+• TASK-015 failed due to missing test fixtures
+
+Recommendations:
+• Review failed task TASK-015 for missing dependencies
+• Consider breaking down large tasks for better tracking
+```
+
 ## Configuration
 
 You can customize the bot behavior by instantiating it with options:
@@ -117,6 +200,11 @@ bot.start()
 | `enableVoiceNotes` | boolean | `true` (if key set) | Enable voice-to-task feature |
 | `whisperModel` | string | `'whisper-1'` | Whisper model to use |
 | `whisperLanguage` | string | `undefined` | Force language code (e.g., 'en', 'es') |
+| `attachmentsDir` | string | `'.specs/attachments'` | Directory for photo/file attachments |
+| `dailyBriefing.enabled` | boolean | `false` | Enable daily briefing summaries |
+| `dailyBriefing.time` | string | `'09:00'` | Time to send daily briefing (24h format) |
+| `dailyBriefing.timezone` | string | `undefined` | Timezone for scheduling (e.g., 'America/New_York') |
+| `dailyBriefing.llmProvider` | string | `'openai'` | LLM provider for summaries ('openai' or 'anthropic') |
 
 ## IPC Communication
 
