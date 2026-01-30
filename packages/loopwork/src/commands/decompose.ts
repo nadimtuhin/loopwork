@@ -385,7 +385,7 @@ function assignTaskIds(
   return result
 }
 
-async function saveTasks(
+async function _saveTasks(
   tasks: GeneratedTask[],
   feature: string,
   tasksFile: string,
@@ -393,7 +393,7 @@ async function saveTasks(
   parentId?: string
 ): Promise<void> {
   // Load existing tasks.json or create new
-  let data: { tasks: any[], features?: Record<string, any> } = { tasks: [], features: {} }
+  let data: { tasks: unknown[], features?: Record<string, unknown> } = { tasks: [], features: {} }
 
   if (fs.existsSync(tasksFile)) {
     try {

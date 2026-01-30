@@ -46,7 +46,7 @@ export class LLMAnalyzer {
     // Ensure cache directory exists
     try {
       fs.mkdirSync(this.cacheDir, { recursive: true })
-    } catch (e) {
+    } catch {
       // Directory may already exist
     }
   }
@@ -122,7 +122,7 @@ export class LLMAnalyzer {
     try {
       const response = await this.invokeHaiku(prompt)
       return this.parseAnalysis(response)
-    } catch (error) {
+    } catch {
       // Graceful fallback
       return {
         rootCause: 'Unable to analyze error',

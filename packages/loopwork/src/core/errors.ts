@@ -205,7 +205,7 @@ export function handleError(error: unknown): void {
       error.suggestions,
       error.docsUrl
     )
-    console.error(formattedError)
+    logger.raw(formattedError)
 
     logger.debug(`LoopworkError [${error.code}]: ${error.message}\n${error.stack}`)
   } else if (error instanceof Error) {

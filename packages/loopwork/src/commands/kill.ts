@@ -147,7 +147,6 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
     activeLogger.raw(table.render())
 
     // Summary using CompletionSummary
-    const confirmedCount = orphans.filter(o => o.classification === 'confirmed').length
     const suspectedCount = orphans.filter(o => o.classification === 'suspected').length
 
     const completionSummary = new CompletionSummary('Orphan Cleanup Summary')

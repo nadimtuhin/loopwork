@@ -101,7 +101,7 @@ export interface RestartOptions {
 async function defaultWaitForProcessExit(
   pid: number,
   timeoutMs: number = 10000,
-  proc: IProcess = process as unknown as IProcess
+  proc: IProcess = process as IProcess
 ): Promise<boolean> {
   const startTime = Date.now()
   const pollIntervalMs = 100 // Poll every 100ms

@@ -20,7 +20,7 @@ const TEST_RUNNER_PATTERNS = [
 
 export interface StaleTestKillerOptions {
   projectRoot: string
-  maxAge?: number // default 600000 (10 minutes)
+  maxAge?: number
   dryRun?: boolean
   silent?: boolean
 }

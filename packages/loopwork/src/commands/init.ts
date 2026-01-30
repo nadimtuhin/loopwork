@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { logger, Banner, separator, CompletionSummary } from '../core/utils'
+import { logger, CompletionSummary } from '../core/utils'
 import readline from 'readline'
 import packageJson from '../../package.json'
 

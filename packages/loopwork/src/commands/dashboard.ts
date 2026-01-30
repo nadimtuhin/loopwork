@@ -51,11 +51,11 @@ export async function dashboard(
     // TUI mode (default): Terminal-based dashboard
     try {
       // Try to import the TUI module
-      let startTui: any
+      let startTui: ((options: { port: number; watch: boolean }) => Promise<void>) | undefined
       try {
         const tuiModule = await import('@loopwork-ai/dashboard/tui')
         startTui = tuiModule.startTui
-      } catch (importError) {
+      } catch {
         // TUI module not available, fallback to legacy Dashboard
         console.log('TUI module not available, using legacy dashboard...')
         const DashboardClass = deps.DashboardClass ?? Dashboard

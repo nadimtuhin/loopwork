@@ -142,7 +142,6 @@ export class Table {
    */
   render(): string {
     const lines: string[] = []
-    const { light } = BOX_CHARS
 
     // Apply configured widths if specified
     this.columnWidths = this.columnWidths.map((width, i) => {
@@ -687,5 +686,5 @@ export function emitJsonEvent(
     command,
     data,
   }
-  console.log(JSON.stringify(event))
+  process.stdout.write(JSON.stringify(event) + '\n')
 }
