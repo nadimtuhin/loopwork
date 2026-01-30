@@ -43,6 +43,8 @@ test-results/
 
 # Loopwork state (everything lives inside .loopwork/)
 .loopwork/
+.loopwork-state
+loopwork-runs/
 
 # Temporary files
 tmp/
@@ -59,6 +61,18 @@ packages/*/node_modules
 
 # Build caches
 .turbo/
+
+# oh-my-claudecode state
+.omc/
+
+# VS Code workspace
+*.code-workspace
+
+# Generated documentation
+E2E_TEST_COVERAGE_SUMMARY.md
+
+# Internal planning docs
+plans/
 
 # Internal notes
 .sisyphus/
