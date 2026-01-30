@@ -1,0 +1,6 @@
+.loopwork/
+node_modules/
+.turbo/
+*.log
+.env
+.env.local

@@ -2,6 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
 import { LoopworkMonitor } from '../monitor'
+import { StateManager } from '../core/state'
+import type { Config } from '../core/config'
+import { logger } from '../core/utils'
 
 /**
  * Loopwork Dashboard
@@ -30,9 +33,10 @@ class Dashboard {
   private monitor: LoopworkMonitor
   private projectRoot: string
 
-  constructor(projectRoot?: string) {
+  constructor(projectRoot?: string, deps: { MonitorClass?: typeof LoopworkMonitor } = {}) {
     this.projectRoot = projectRoot || process.cwd()
-    this.monitor = new LoopworkMonitor(this.projectRoot)
+    const MonitorClass = deps.MonitorClass ?? LoopworkMonitor
+    this.monitor = new MonitorClass(this.projectRoot)
   }
 
   /**
@@ -47,59 +51,59 @@ class Dashboard {
   }
 
   private printHeader(): void {
-    console.log(chalk.bold.cyan('\n╔══════════════════════════════════════════════════════════════╗'))
-    console.log(chalk.bold.cyan('║                    RALPH LOOP DASHBOARD                       ║'))
-    console.log(chalk.bold.cyan('╚══════════════════════════════════════════════════════════════╝'))
-    console.log(chalk.gray(`  ${new Date().toLocaleString()}`))
-    console.log()
+    process.stdout.write(chalk.bold.cyan('\n╔══════════════════════════════════════════════════════════════╗') + '\n')
+    process.stdout.write(chalk.bold.cyan('║                    RALPH LOOP DASHBOARD                       ║') + '\n')
+    process.stdout.write(chalk.bold.cyan('╚══════════════════════════════════════════════════════════════╝') + '\n')
+    process.stdout.write(chalk.gray(`  ${new Date().toLocaleString()}`) + '\n')
+    process.stdout.write('\n')
   }
 
   private printRunningLoops(): void {
     const { running, namespaces } = this.monitor.getStatus()
 
-    console.log(chalk.bold.white('┌─ Running Loops ─────────────────────────────────────────────┐'))
+    process.stdout.write(chalk.bold.white('┌─ Running Loops ─────────────────────────────────────────────┐') + '\n')
 
     if (running.length === 0) {
-      console.log(chalk.gray('│  No loops currently running                                 │'))
+      process.stdout.write(chalk.gray('│  No loops currently running                                 │') + '\n')
     } else {
       for (const proc of running) {
         const stats = this.getNamespaceStats(proc.namespace)
         const uptime = this.getUptime(proc.startedAt)
 
-        console.log(chalk.green(`│  ● ${chalk.bold(proc.namespace.padEnd(15))} PID: ${String(proc.pid).padEnd(8)} Uptime: ${uptime.padEnd(10)} │`))
+        process.stdout.write(chalk.green(`│  ● ${chalk.bold(proc.namespace.padEnd(15))} PID: ${String(proc.pid).padEnd(8)} Uptime: ${uptime.padEnd(10)} │`) + '\n')
 
         if (stats.currentTask) {
-          console.log(chalk.gray(`│    └─ Current: ${stats.currentTask.padEnd(43)} │`))
+          process.stdout.write(chalk.gray(`│    └─ Current: ${stats.currentTask.padEnd(43)} │`) + '\n')
         }
 
         const taskLine = `Completed: ${chalk.green(stats.tasks.completed)} | Failed: ${chalk.red(stats.tasks.failed)} | Pending: ${chalk.yellow(stats.tasks.pending)}`
-        console.log(chalk.gray(`│    └─ ${taskLine.padEnd(51)} │`))
+        process.stdout.write(chalk.gray(`│    └─ ${taskLine.padEnd(51)} │`) + '\n')
       }
     }
 
-    console.log(chalk.white('└─────────────────────────────────────────────────────────────┘'))
-    console.log()
+    process.stdout.write(chalk.white('└─────────────────────────────────────────────────────────────┘') + '\n')
+    process.stdout.write('\n')
 
     // Show stopped namespaces
     const stopped = namespaces.filter(n => n.status === 'stopped')
     if (stopped.length > 0) {
-      console.log(chalk.bold.white('┌─ Available Namespaces ───────────────────────────────────────┐'))
+      process.stdout.write(chalk.bold.white('┌─ Available Namespaces ───────────────────────────────────────┐') + '\n')
       for (const ns of stopped) {
         const lastRunStr = ns.lastRun || 'never'
-        console.log(chalk.gray(`│  ○ ${ns.name.padEnd(20)} Last run: ${lastRunStr.padEnd(25)} │`))
+        process.stdout.write(chalk.gray(`│  ○ ${ns.name.padEnd(20)} Last run: ${lastRunStr.padEnd(25)} │`) + '\n')
       }
-      console.log(chalk.white('└─────────────────────────────────────────────────────────────┘'))
-      console.log()
+      process.stdout.write(chalk.white('└─────────────────────────────────────────────────────────────┘') + '\n')
+      process.stdout.write('\n')
     }
   }
 
   private printRecentActivity(): void {
-    console.log(chalk.bold.white('┌─ Recent Activity ───────────────────────────────────────────┐'))
+    process.stdout.write(chalk.bold.white('┌─ Recent Activity ───────────────────────────────────────────┐') + '\n')
 
     const activity = this.getRecentActivity()
 
     if (activity.length === 0) {
-      console.log(chalk.gray('│  No recent activity                                         │'))
+      process.stdout.write(chalk.gray('│  No recent activity                                         │') + '\n')
     } else {
       for (const item of activity.slice(0, 10)) {
         const icon = item.type === 'completed' ? chalk.green('✓')
@@ -107,18 +111,18 @@ class Dashboard {
           : chalk.blue('→')
 
         const line = `${icon} ${chalk.gray(item.time)} ${item.namespace}: ${item.message}`
-        console.log(`│  ${line.padEnd(65)}│`)
+        process.stdout.write(`│  ${line.padEnd(65)}│` + '\n')
       }
     }
 
-    console.log(chalk.white('└─────────────────────────────────────────────────────────────┘'))
-    console.log()
+    process.stdout.write(chalk.white('└─────────────────────────────────────────────────────────────┘') + '\n')
+    process.stdout.write('\n')
   }
 
   private printHelp(): void {
-    console.log(chalk.gray('Commands:'))
-    console.log(chalk.gray('  q - Quit | r - Refresh | s - Start loop | k - Kill loop | l - View logs'))
-    console.log()
+    process.stdout.write(chalk.gray('Commands:') + '\n')
+    process.stdout.write(chalk.gray('  q - Quit | r - Refresh | s - Start loop | k - Kill loop | l - View logs') + '\n')
+    process.stdout.write('\n')
   }
 
   /**
@@ -142,26 +146,11 @@ class Dashboard {
       stats.uptime = this.getUptime(proc.startedAt)
     }
 
-    // Parse state file for current task
-    const stateFile = path.join(
-      this.projectRoot,
-      namespace === 'default' ? '.loopwork-state' : `.loopwork-state-${namespace}`
-    )
-
-    if (fs.existsSync(stateFile)) {
-      try {
-        const content = fs.readFileSync(stateFile, 'utf-8')
-        const lines = content.split('\n')
-        for (const line of lines) {
-          const [key, value] = line.split('=')
-          if (key === 'LAST_ISSUE' && value) {
-            stats.currentTask = `Task #${value}`
-          }
-          if (key === 'LAST_ITERATION' && value) {
-            stats.iterations = parseInt(value, 10)
-          }
-        }
-      } catch {}
+    // Load state using StateManager
+    const state = this.loadStateForNamespace(namespace)
+    if (state) {
+      stats.currentTask = `Task #${state.lastIssue}`
+      stats.iterations = state.lastIteration
     }
 
     // Count tasks from logs
@@ -183,6 +172,81 @@ class Dashboard {
     }
 
     return stats
+  }
+
+  /**
+   * Load state for a specific namespace using StateManager
+   * Falls back to manual parsing for legacy formats
+   */
+  private loadStateForNamespace(namespace: string): { lastIssue: number; lastIteration: number } | null {
+    try {
+      // Create a minimal config for StateManager
+      const config: Config = {
+        namespace,
+        projectRoot: this.projectRoot,
+        cli: 'claude',
+        maxIterations: 0,
+        outputDir: '',
+        sessionId: '',
+        debug: false,
+      }
+
+      const stateManager = new StateManager(config)
+      const state = stateManager.loadState()
+
+      if (state) {
+        return {
+          lastIssue: state.lastIssue,
+          lastIteration: state.lastIteration,
+        }
+      }
+    } catch {
+      // Fallback to manual parsing for legacy formats
+      return this.loadStateLegacy(namespace)
+    }
+
+    return null
+  }
+
+  /**
+   * Legacy state file parser for backward compatibility
+   */
+  private loadStateLegacy(namespace: string): { lastIssue: number; lastIteration: number } | null {
+    const stateFile = path.join(
+      this.projectRoot,
+      '.loopwork',
+      namespace === 'default' ? 'state.json' : `state-${namespace}.json`
+    )
+
+    if (!fs.existsSync(stateFile)) {
+      return null
+    }
+
+    try {
+      const content = fs.readFileSync(stateFile, 'utf-8')
+      const state: Record<string, string> = {}
+
+      content.split('\n').forEach((line) => {
+        const trimmedLine = line.trim()
+        const idx = trimmedLine.indexOf('=')
+        if (idx !== -1) {
+          const key = trimmedLine.substring(0, idx).trim()
+          const value = trimmedLine.substring(idx + 1).trim()
+          if (key && value) state[key] = value
+        }
+      })
+
+      if (!state.LAST_ISSUE) {
+        return null
+      }
+
+      return {
+        lastIssue: parseInt(state.LAST_ISSUE, 10),
+        lastIteration: parseInt(state.LAST_ITERATION || '0', 10),
+      }
+    } catch {
+      return null
+    }
   }
 
   /**
@@ -302,7 +366,7 @@ class Dashboard {
           process.stdin.setRawMode(false)
         }
         process.stdin.pause()
-        console.log(chalk.gray('\nExiting dashboard...'))
+        process.stdout.write(chalk.gray('\nExiting dashboard...') + '\n')
         process.exit(0)
       } else if (key === 'r') {
         refresh()
@@ -323,9 +387,9 @@ class Dashboard {
           if (namespace) {
             const result = await this.monitor.start(namespace.trim())
             if (result.success) {
-              console.log(chalk.green(`✓ Started ${namespace} (PID: ${result.pid})`))
+              process.stdout.write(chalk.green(`✓ Started ${namespace} (PID: ${result.pid})`) + '\n')
             } else {
-              console.log(chalk.red(`✗ ${result.error}`))
+              process.stdout.write(chalk.red(`✗ ${result.error}`) + '\n')
             }
           }
           setTimeout(() => {
@@ -352,14 +416,14 @@ class Dashboard {
           if (namespace === 'all') {
             const result = this.monitor.stopAll()
             if (result.stopped.length > 0) {
-              console.log(chalk.green(`✓ Stopped: ${result.stopped.join(', ')}`))
+              process.stdout.write(chalk.green(`✓ Stopped: ${result.stopped.join(', ')}`) + '\n')
             }
           } else if (namespace) {
             const result = this.monitor.stop(namespace.trim())
             if (result.success) {
-              console.log(chalk.green(`✓ Stopped ${namespace}`))
+              process.stdout.write(chalk.green(`✓ Stopped ${namespace}`) + '\n')
             } else {
-              console.log(chalk.red(`✗ ${result.error}`))
+              process.stdout.write(chalk.red(`✗ ${result.error}`) + '\n')
             }
           }
           setTimeout(() => {
@@ -385,10 +449,10 @@ class Dashboard {
           rl.close()
           if (namespace) {
             const logs = this.monitor.getLogs(namespace.trim(), 30)
-            console.log(chalk.gray('\n─'.repeat(60)))
-            console.log(logs.join('\n'))
-            console.log(chalk.gray('─'.repeat(60)))
-            console.log(chalk.gray('Press any key to return...'))
+            process.stdout.write(chalk.gray('\n─'.repeat(60)) + '\n')
+            process.stdout.write(logs.join('\n') + '\n')
+            process.stdout.write(chalk.gray('─'.repeat(60)) + '\n')
+            process.stdout.write(chalk.gray('Press any key to return...') + '\n')
 
             process.stdin.once('data', () => {
               if (process.stdin.isTTY) {
@@ -443,7 +507,7 @@ export { Dashboard }
 // Only run main when executed directly, not when imported
 if (import.meta.main) {
   main().catch((err) => {
-    console.error(chalk.red(`Error: ${err.message}`))
+    logger.error(`Error: ${err.message}`)
     process.exit(1)
   })
 }

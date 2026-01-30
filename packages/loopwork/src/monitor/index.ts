@@ -2,6 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import { spawn, ChildProcess } from 'child_process'
 import chalk from 'chalk'
+import { logger } from '../core/utils'
+import { detectOrphans, OrphanProcess } from '../core/orphan-detector'
+import { OrphanKiller } from '../core/orphan-killer'
 
 /**
  * Monitor for running Loopwork instances in the background
@@ -24,15 +27,47 @@ interface MonitorState {
   processes: LoopProcess[]
 }
 
-const MONITOR_STATE_FILE = '.loopwork-monitor-state.json'
+export interface OrphanWatchOptions {
+  interval?: number      // Check interval in ms (default: 60000 = 1 min)
+  maxAge?: number        // Kill orphans older than X ms (default: 1800000 = 30min)
+  autoKill?: boolean     // Auto-kill confirmed orphans (default: false)
+  patterns?: string[]    // Additional patterns to watch
+}
+
+interface OrphanWatchState {
+  watching: boolean
+  intervalId: NodeJS.Timeout | null
+  lastCheck: string | null
+  orphansDetected: number
+  orphansKilled: number
+  options: OrphanWatchOptions
+}
+
+const MONITOR_STATE_FILE = '.loopwork/monitor-state.json'
 
 export class LoopworkMonitor {
   private stateFile: string
   private projectRoot: string
+  private orphanWatch: OrphanWatchState
 
   constructor(projectRoot?: string) {
     this.projectRoot = projectRoot || process.cwd()
     this.stateFile = path.join(this.projectRoot, MONITOR_STATE_FILE)
+    this.orphanWatch = {
+      watching: false,
+      intervalId: null,
+      lastCheck: null,
+      orphansDetected: 0,
+      orphansKilled: 0,
+      options: {},
+    }
+
+    // Clean up interval on exit
+    process.on('exit', () => {
+      if (this.orphanWatch.intervalId) {
+        clearInterval(this.orphanWatch.intervalId)
+      }
+    })
   }
 
   /**
@@ -110,14 +145,15 @@ export class LoopworkMonitor {
       this.saveState(state)
 
       return { success: true }
-    } catch (e: any) {
-      if (e.code === 'ESRCH') {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string }
+      if (err.code === 'ESRCH') {
         // Process already dead, clean up state
         state.processes = state.processes.filter(p => p.namespace !== namespace)
         this.saveState(state)
         return { success: true }
       }
-      return { success: false, error: e.message }
+      return { success: false, error: err.message || String(e) }
     }
   }
 
@@ -137,6 +173,9 @@ export class LoopworkMonitor {
         errors.push(`${proc.namespace}: ${result.error}`)
       }
     }
+
+    // Stop orphan watch if active
+    this.stopOrphanWatch()
 
     return { stopped, errors }
   }
@@ -201,7 +240,7 @@ export class LoopworkMonitor {
             if (runDirs.length > 0) {
               lastRun = runDirs[0]
             }
-          } catch (e) {}
+          } catch {}
 
           namespaces.push({
             name,
@@ -209,7 +248,7 @@ export class LoopworkMonitor {
             lastRun,
           })
         }
-      } catch (e) {}
+      } catch {}
     }
 
     return { running, namespaces }
@@ -238,7 +277,7 @@ export class LoopworkMonitor {
           if (files.length > 0) {
             logFile = path.join(logsDir, files[0])
           }
-        } catch (e) {}
+        } catch {}
       }
     }
 
@@ -249,6 +288,171 @@ export class LoopworkMonitor {
     const content = fs.readFileSync(logFile, 'utf-8')
     const allLines = content.split('\n')
     return allLines.slice(-lines)
+  }
+
+  /**
+   * Start orphan process monitoring
+   */
+  startOrphanWatch(options: OrphanWatchOptions = {}): void {
+    if (this.orphanWatch.watching) {
+      logger.warn('Orphan watch already running')
+      return
+    }
+
+    const {
+      interval = 60000,      // 1 minute
+      maxAge = 1800000,      // 30 minutes
+      autoKill = false,
+      patterns = [],
+    } = options
+
+    this.orphanWatch.options = { interval, maxAge, autoKill, patterns }
+    this.orphanWatch.watching = true
+
+    const check = async () => {
+      try {
+        this.orphanWatch.lastCheck = new Date().toISOString()
+
+        // Detect orphans
+        const orphans = await detectOrphans({
+          projectRoot: this.projectRoot,
+          patterns,
+          maxAge: 0, // Get all orphans, we'll filter by age below
+        })
+
+        this.orphanWatch.orphansDetected += orphans.length
+
+        if (orphans.length === 0) {
+          logger.debug('No orphans detected')
+          return
+        }
+
+        // Filter orphans by age
+        const oldOrphans = orphans.filter(o => o.age >= maxAge)
+
+        if (oldOrphans.length === 0) {
+          logger.debug(`Found ${orphans.length} orphans but none exceed maxAge (${maxAge}ms)`)
+          this.logOrphanEvents(orphans, 'DETECTED')
+          return
+        }
+
+        // Log detected orphans
+        this.logOrphanEvents(oldOrphans, 'DETECTED')
+
+        // Auto-kill if enabled
+        if (autoKill) {
+          const killer = new OrphanKiller()
+          const result = await killer.kill(oldOrphans, {
+            force: false, // Only kill confirmed orphans
+            dryRun: false,
+          })
+
+          this.orphanWatch.orphansKilled += result.killed.length
+
+          // Log killed orphans
+          for (const pid of result.killed) {
+            const orphan = oldOrphans.find(o => o.pid === pid)
+            if (orphan) {
+              this.logOrphanEvent(orphan, 'KILLED', 'exceeded maxAge')
+            }
+          }
+
+          // Log skipped orphans
+          for (const pid of result.skipped) {
+            const orphan = oldOrphans.find(o => o.pid === pid)
+            if (orphan) {
+              this.logOrphanEvent(orphan, 'SKIPPED', 'suspected, autoKill disabled')
+            }
+          }
+
+          logger.info(`Orphan watch: killed ${result.killed.length}, skipped ${result.skipped.length}`)
+        } else {
+          logger.info(`Orphan watch: detected ${oldOrphans.length} orphans (autoKill disabled)`)
+
+          // Log skipped orphans
+          for (const orphan of oldOrphans) {
+            this.logOrphanEvent(orphan, 'SKIPPED', 'autoKill disabled')
+          }
+        }
+      } catch (error) {
+        logger.error(`Orphan watch error: ${error}`)
+      }
+    }
+
+    // Run initial check
+    check()
+
+    // Set up interval
+    this.orphanWatch.intervalId = setInterval(check, interval)
+
+    logger.info(`Orphan watch started (interval: ${interval}ms, maxAge: ${maxAge}ms, autoKill: ${autoKill})`)
+  }
+
+  /**
+   * Stop orphan process monitoring
+   */
+  stopOrphanWatch(): void {
+    if (!this.orphanWatch.watching) {
+      return
+    }
+
+    if (this.orphanWatch.intervalId) {
+      clearInterval(this.orphanWatch.intervalId)
+      this.orphanWatch.intervalId = null
+    }
+
+    this.orphanWatch.watching = false
+    logger.info('Orphan watch stopped')
+  }
+
+  /**
+   * Get orphan watch statistics
+   */
+  getOrphanStats(): {
+    watching: boolean
+    lastCheck: string | null
+    orphansDetected: number
+    orphansKilled: number
+  } {
+    return {
+      watching: this.orphanWatch.watching,
+      lastCheck: this.orphanWatch.lastCheck,
+      orphansDetected: this.orphanWatch.orphansDetected,
+      orphansKilled: this.orphanWatch.orphansKilled,
+    }
+  }
+
+  /**
+   * Log orphan events to file
+   */
+  private logOrphanEvents(orphans: OrphanProcess[], event: string): void {
+    for (const orphan of orphans) {
+      this.logOrphanEvent(orphan, event)
+    }
+  }
+
+  /**
+   * Log a single orphan event
+   */
+  private logOrphanEvent(orphan: OrphanProcess, event: string, reason?: string): void {
+    const stateDir = path.join(this.projectRoot, '.loopwork')
+    if (!fs.existsSync(stateDir)) {
+      fs.mkdirSync(stateDir, { recursive: true })
+    }
+
+    const logFile = path.join(stateDir, 'orphan-events.log')
+    const timestamp = new Date().toISOString()
+    const ageMin = Math.floor(orphan.age / 60000)
+    const statusStr = `status=${orphan.classification}`
+    const reasonStr = reason ? ` reason="${reason}"` : ''
+
+    const logLine = `[${timestamp}] ${event} pid=${orphan.pid} cmd="${orphan.command}" age=${ageMin}min ${statusStr}${reasonStr}\n`
+
+    try {
+      fs.appendFileSync(logFile, logLine, 'utf-8')
+    } catch (error) {
+      logger.debug(`Failed to write orphan event log: ${error}`)
+    }
   }
 
   /**
@@ -273,7 +477,7 @@ export class LoopworkMonitor {
         return JSON.parse(content)
       }
     } catch (e) {
-      console.error(`Failed to load monitor state: ${e}`)
+      logger.error(`Failed to load monitor state: ${e}`)
     }
     return { processes: [] }
   }
@@ -283,7 +487,7 @@ export class LoopworkMonitor {
       if (!state) state = { processes: [] }
       fs.writeFileSync(this.stateFile, JSON.stringify(state, null, 2))
     } catch (e) {
-      console.error(`Failed to save monitor state: ${e}`)
+      logger.error(`Failed to save monitor state: ${e}`)
     }
   }
 }
@@ -300,13 +504,13 @@ async function main() {
     case 'start': {
       const namespace = args[1] || 'default'
       const extraArgs = args.slice(2)
-      console.log(chalk.blue(`Starting loop in namespace '${namespace}'...`))
+      logger.info(chalk.blue(`Starting loop in namespace '${namespace}'...`))
       const result = await monitor.start(namespace, extraArgs)
       if (result.success) {
-        console.log(chalk.green(`✓ Started (PID: ${result.pid})`))
-        console.log(chalk.gray(`View logs: bun run src/monitor.ts logs ${namespace}`))
+        logger.info(chalk.green(`✓ Started (PID: ${result.pid})`))
+        logger.info(chalk.gray(`View logs: bun run src/monitor.ts logs ${namespace}`))
       } else {
-        console.log(chalk.red(`✗ ${result.error}`))
+        logger.info(chalk.red(`✗ ${result.error}`))
         process.exit(1)
       }
       break
@@ -315,26 +519,26 @@ async function main() {
     case 'stop': {
       const namespace = args[1]
       if (!namespace) {
-        console.log(chalk.yellow('Usage: monitor stop <namespace> | monitor stop --all'))
+        logger.info(chalk.yellow('Usage: monitor stop <namespace> | monitor stop --all'))
         process.exit(1)
       }
       if (namespace === '--all') {
         const result = monitor.stopAll()
         if (result.stopped.length > 0) {
-          console.log(chalk.green(`✓ Stopped: ${result.stopped.join(', ')}`))
+          logger.info(chalk.green(`✓ Stopped: ${result.stopped.join(', ')}`))
         }
         if (result.errors.length > 0) {
-          console.log(chalk.red(`✗ Errors:\n  ${result.errors.join('\n  ')}`))
+          logger.info(chalk.red(`✗ Errors:\n  ${result.errors.join('\n  ')}`))
         }
         if (result.stopped.length === 0 && result.errors.length === 0) {
-          console.log(chalk.gray('No running loops'))
+          logger.info(chalk.gray('No running loops'))
         }
       } else {
         const result = monitor.stop(namespace)
         if (result.success) {
-          console.log(chalk.green(`✓ Stopped namespace '${namespace}'`))
+          logger.info(chalk.green(`✓ Stopped namespace '${namespace}'`))
         } else {
-          console.log(chalk.red(`✗ ${result.error}`))
+          logger.info(chalk.red(`✗ ${result.error}`))
           process.exit(1)
         }
       }
@@ -344,31 +548,31 @@ async function main() {
     case 'status': {
       const { running, namespaces } = monitor.getStatus()
 
-      console.log(chalk.bold('\nLoopwork Monitor Status'))
-      console.log(chalk.gray('─'.repeat(50)))
+      logger.info(chalk.bold('\nLoopwork Monitor Status'))
+      logger.info(chalk.gray('─'.repeat(50)))
 
       if (running.length === 0) {
-        console.log(chalk.gray('No loops currently running\n'))
+        logger.info(chalk.gray('No loops currently running\n'))
       } else {
-        console.log(chalk.bold(`\nRunning (${running.length}):`))
+        logger.info(chalk.bold(`\nRunning (${running.length}):`))
         for (const proc of running) {
           const uptime = getUptime(proc.startedAt)
-          console.log(`  ${chalk.green('●')} ${chalk.bold(proc.namespace)}`)
-          console.log(`    PID: ${proc.pid} | Uptime: ${uptime}`)
-          console.log(`    Log: ${proc.logFile}`)
+          logger.info(`  ${chalk.green('●')} ${chalk.bold(proc.namespace)}`)
+          logger.info(`    PID: ${proc.pid} | Uptime: ${uptime}`)
+          logger.info(`    Log: ${proc.logFile}`)
         }
       }
 
       if (namespaces.length > 0) {
-        console.log(chalk.bold('\nAll namespaces:'))
+        logger.info(chalk.bold('\nAll namespaces:'))
         for (const ns of namespaces) {
           const icon = ns.status === 'running' ? chalk.green('●') : chalk.gray('○')
           const lastRunStr = ns.lastRun ? chalk.gray(`(last: ${ns.lastRun})`) : ''
-          console.log(`  ${icon} ${ns.name} ${lastRunStr}`)
+          logger.info(`  ${icon} ${ns.name} ${lastRunStr}`)
         }
       }
 
-      console.log()
+      logger.info()
       break
     }
 
@@ -376,7 +580,7 @@ async function main() {
       const namespace = args[1] || 'default'
       const lines = parseInt(args[2], 10) || 50
       const logLines = monitor.getLogs(namespace, lines)
-      console.log(logLines.join('\n'))
+      logger.info(logLines.join('\n'))
       break
     }
 
@@ -386,20 +590,20 @@ async function main() {
       const proc = running.find(p => p.namespace === namespace)
 
       if (!proc) {
-        console.log(chalk.red(`Namespace '${namespace}' is not running`))
+        logger.info(chalk.red(`Namespace '${namespace}' is not running`))
         process.exit(1)
       }
 
-      console.log(chalk.gray(`Tailing ${proc.logFile} (Ctrl+C to stop)\n`))
+      logger.info(chalk.gray(`Tailing ${proc.logFile} (Ctrl+C to stop)\n`))
       const tail = spawn('tail', ['-f', proc.logFile], { stdio: 'inherit' })
       tail.on('close', () => process.exit(0))
       break
     }
 
     default:
-      console.log(chalk.bold('\nLoopwork Monitor'))
-      console.log(chalk.gray('─'.repeat(30)))
-      console.log(`
+      logger.info(chalk.bold('\nLoopwork Monitor'))
+      logger.info(chalk.gray('─'.repeat(30)))
+      logger.info(`
 Commands:
   ${chalk.cyan('start <namespace> [args...]')}  Start a loop in background
   ${chalk.cyan('stop <namespace>')}             Stop a running loop
@@ -436,7 +640,7 @@ function getUptime(startedAt: string): string {
 // Only run main when executed directly, not when imported
 if (import.meta.main) {
   main().catch((err) => {
-    console.error(chalk.red(`Error: ${err.message}`))
+    logger.error(`Error: ${err.message}`)
     process.exit(1)
   })
 }

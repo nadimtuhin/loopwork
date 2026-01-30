@@ -4,6 +4,17 @@ import type { Config } from './config'
 import { logger } from './utils'
 
 /**
+ * Type guard for Node.js file system errors
+ */
+interface NodeJSError extends Error {
+  code?: string
+}
+
+function isNodeJSError(error: unknown): error is NodeJSError {
+  return error instanceof Error && 'code' in error
+}
+
+/**
  * State Manager for loopwork
  *
  * Note: Primary state (task status) lives in GitHub Issues.
@@ -18,8 +29,9 @@ export class StateManager {
     this.namespace = config.namespace || 'default'
     // Use namespace in file paths to allow concurrent loops
     const suffix = this.namespace === 'default' ? '' : `-${this.namespace}`
-    this.stateFile = path.join(config.projectRoot, `.loopwork-state${suffix}`)
-    this.lockFile = path.join(config.projectRoot, `.loopwork${suffix}.lock`)
+    const loopworkDir = path.join(config.projectRoot, '.loopwork')
+    this.stateFile = path.join(loopworkDir, `state${suffix}.json`)
+    this.lockFile = path.join(loopworkDir, `state${suffix}.lock`)
   }
 
   getNamespace(): string {
@@ -35,9 +47,20 @@ export class StateManager {
   }
 
   /**
+   * Ensure the .loopwork directory exists
+   */
+  private ensureLoopworkDir(): void {
+    const loopworkDir = path.dirname(this.stateFile)
+    if (!fs.existsSync(loopworkDir)) {
+      fs.mkdirSync(loopworkDir, { recursive: true })
+    }
+  }
+
+  /**
    * Acquire exclusive lock to prevent multiple instances
    */
   acquireLock(retryCount = 0): boolean {
+    this.ensureLoopworkDir()
     if (retryCount > 3) {
       logger.error('Failed to acquire lock after multiple attempts')
       return false
@@ -47,7 +70,7 @@ export class StateManager {
       fs.mkdirSync(this.lockFile)
       fs.writeFileSync(path.join(this.lockFile, 'pid'), process.pid.toString())
       return true
-    } catch (error) {
+    } catch {
       // Check if lock is stale
       try {
         const pidFile = path.join(this.lockFile, 'pid')
@@ -57,13 +80,13 @@ export class StateManager {
             process.kill(parseInt(pid, 10), 0)
             logger.error(`Another loopwork is running (PID: ${pid})`)
             return false
-          } catch (e) {
+          } catch {
             logger.warn(`Stale lock found (process ${pid} not running), removing...`)
             fs.rmSync(this.lockFile, { recursive: true, force: true })
             return this.acquireLock(retryCount + 1)
           }
         }
-      } catch (e) {
+      } catch {
         logger.error('Failed to acquire lock (unknown reason)')
         return false
       }
@@ -79,7 +102,7 @@ export class StateManager {
       if (fs.existsSync(this.lockFile)) {
         fs.rmSync(this.lockFile, { recursive: true, force: true })
       }
-    } catch (e) {
+    } catch {
       logger.error('Failed to release lock')
     }
   }
@@ -88,6 +111,8 @@ export class StateManager {
    * Save current session state
    */
   saveState(currentIssue: number, iteration: number): void {
+    this.ensureLoopworkDir()
+
     const content = [
       `NAMESPACE=${this.namespace}`,
       `LAST_ISSUE=${currentIssue}`,
@@ -102,7 +127,7 @@ export class StateManager {
       if (this.config.debug) {
         logger.info(`State saved: issue=#${currentIssue}, iteration=${iteration} → ${this.stateFile}`)
       }
-    } catch (e) {
+    } catch {
       logger.error('Failed to save state')
     }
   }
@@ -110,7 +135,7 @@ export class StateManager {
   /**
    * Load previous session state
    */
-  loadState(): { lastIssue: number; lastIteration: number; lastOutputDir: string } | null {
+  loadState(): { lastIssue: number; lastIteration: number; lastOutputDir: string; startedAt?: number } | null {
     if (!fs.existsSync(this.stateFile)) {
       return null
     }
@@ -120,10 +145,11 @@ export class StateManager {
       const state: Record<string, string> = {}
 
       content.split('\n').forEach((line) => {
-        const idx = line.indexOf('=')
+        const trimmedLine = line.trim()
+        const idx = trimmedLine.indexOf('=')
         if (idx !== -1) {
-          const key = line.substring(0, idx)
-          const value = line.substring(idx + 1)
+          const key = trimmedLine.substring(0, idx).trim()
+          const value = trimmedLine.substring(idx + 1).trim()
           if (key && value) state[key] = value
         }
       })
@@ -134,8 +160,9 @@ export class StateManager {
         lastIssue: parseInt(state.LAST_ISSUE, 10),
         lastIteration: parseInt(state.LAST_ITERATION || '0', 10),
         lastOutputDir: state.LAST_OUTPUT_DIR || '',
+        startedAt: state.SAVED_AT ? new Date(state.SAVED_AT).getTime() : undefined,
       }
-    } catch (e) {
+    } catch {
       logger.error('Failed to load state')
       return null
     }
@@ -152,8 +179,8 @@ export class StateManager {
           logger.info('State cleared')
         }
       }
-    } catch (e: any) {
-      if (e.code !== 'ENOENT') {
+    } catch (e: unknown) {
+      if (!isNodeJSError(e) || e.code !== 'ENOENT') {
         logger.error('Failed to clear state')
       }
     }

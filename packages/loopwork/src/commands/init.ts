@@ -2,25 +2,58 @@ import fs from 'fs'
 import path from 'path'
 import { logger } from '../core/utils'
 import readline from 'readline'
+import packageJson from '../../package.json'
 
-async function ask(question: string, defaultValue: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
+type InitDeps = {
+  ask?: (question: string, defaultValue: string) => Promise<string>
+  logger?: typeof logger
+  process?: NodeJS.Process
+  readline?: typeof readline
+}
+
+async function ask(question: string, defaultValue: string, deps: InitDeps = {}): Promise<string> {
+  const runtimeProcess = deps.process ?? process
+  const activeLogger = deps.logger ?? logger
+  const readlineLib = deps.readline ?? readline
+  // Check if running in non-interactive mode
+  if (runtimeProcess.env.LOOPWORK_NON_INTERACTIVE === 'true' || !runtimeProcess.stdin.isTTY) {
+    activeLogger.debug(`Non-interactive mode, using default: ${defaultValue}`)
+    return defaultValue
+  }
+
+  const rl = readlineLib.createInterface({
+    input: runtimeProcess.stdin,
+    output: runtimeProcess.stdout,
+    terminal: true
   })
-  return new Promise(resolve => {
+
+  // Ensure stdin is in the right mode
+  runtimeProcess.stdin.setEncoding('utf8')
+
+  return new Promise((resolve) => {
     rl.question(`${question} [${defaultValue}]: `, (answer) => {
       rl.close()
-      resolve(answer || defaultValue)
+      resolve(answer.trim() || defaultValue)
     })
   })
 }
 
-export async function safeWriteFile(filePath: string, content: string, description: string): Promise<boolean> {
+function resolveAsk(deps: InitDeps) {
+  return deps.ask ?? ((question: string, defaultValue: string) => ask(question, defaultValue, deps))
+}
+
+export async function safeWriteFile(
+  filePath: string,
+  content: string,
+  description: string,
+  deps: InitDeps = {}
+): Promise<boolean> {
+  const activeLogger = deps.logger ?? logger
+  const askFn = resolveAsk(deps)
   if (fs.existsSync(filePath)) {
-    const overwrite = await ask(`${filePath} already exists. Overwrite? (y/N)`, 'n')
+    const overwrite = await askFn(`${filePath} already exists. Overwrite? (y/N)`, 'n')
     if (overwrite.toLowerCase() !== 'y') {
-      logger.info(`Skipped ${description}`)
+      activeLogger.info(`Skipped ${description}`)
       return false
     }
   }
@@ -31,14 +64,16 @@ export async function safeWriteFile(filePath: string, content: string, descripti
   }
 
   fs.writeFileSync(filePath, content)
-  logger.success(`Created ${description}`)
+  activeLogger.success(`Created ${description}`)
   return true
 }
 
-export async function updateGitignore() {
+export async function updateGitignore(deps: InitDeps = {}) {
+  const activeLogger = deps.logger ?? logger
+  const askFn = resolveAsk(deps)
   const gitignorePath = '.gitignore'
   const requiredPatterns = [
-    '.loopwork-state/',
+    '.loopwork/',
     'node_modules/',
     '.turbo/',
     '*.log',
@@ -59,17 +94,17 @@ export async function updateGitignore() {
   const missingPatterns = requiredPatterns.filter(pattern => !existingPatterns.has(pattern))
 
   if (missingPatterns.length === 0) {
-    logger.info('.gitignore already contains all recommended patterns')
+    activeLogger.info('.gitignore already contains all recommended patterns')
     return
   }
 
-  const shouldUpdate = await ask(
+  const shouldUpdate = await askFn(
     `.gitignore ${fs.existsSync(gitignorePath) ? 'exists' : 'does not exist'}. Add loopwork patterns? (Y/n)`,
     'y'
   )
 
   if (shouldUpdate.toLowerCase() !== 'y' && shouldUpdate.toLowerCase() !== '') {
-    logger.info('Skipped .gitignore update')
+    activeLogger.info('Skipped .gitignore update')
     return
   }
 
@@ -85,10 +120,10 @@ export async function updateGitignore() {
   newContent += missingPatterns.join('\n') + '\n'
 
   fs.writeFileSync(gitignorePath, newContent)
-  logger.success(`Updated .gitignore with ${missingPatterns.length} new pattern(s)`)
+  activeLogger.success(`Updated .gitignore with ${missingPatterns.length} new pattern(s)`)
 }
 
-export async function createReadme(projectName: string, aiTool: string) {
+export async function createReadme(projectName: string, aiTool: string, deps: InitDeps = {}) {
   const readmeContent = `# ${projectName}
 
 AI-powered task automation project using Loopwork.
@@ -123,14 +158,16 @@ For more information, see the [Loopwork documentation](https://github.com/your-o
 Tasks are managed through the configured backend. Check \`.specs/tasks/\` for PRD files (if using JSON backend).
 `
 
-  await safeWriteFile('README.md', readmeContent, 'README.md')
+  await safeWriteFile('README.md', readmeContent, 'README.md', deps)
 }
 
-export async function createPrdTemplates(templatesDir: string) {
-  const shouldCreate = await ask('Create PRD template files? (Y/n)', 'y')
+export async function createPrdTemplates(templatesDir: string, deps: InitDeps = {}) {
+  const activeLogger = deps.logger ?? logger
+  const askFn = resolveAsk(deps)
+  const shouldCreate = await askFn('Create PRD template files? (Y/n)', 'y')
 
   if (shouldCreate.toLowerCase() !== 'y' && shouldCreate.toLowerCase() !== '') {
-    logger.info('Skipped PRD templates')
+    activeLogger.info('Skipped PRD templates')
     return
   }
 
@@ -181,52 +218,79 @@ What should happen instead
   await safeWriteFile(
     path.join(templatesDir, 'feature-template.md'),
     featureTemplate,
-    'feature template'
+    'feature template',
+    deps
   )
 
   await safeWriteFile(
     path.join(templatesDir, 'bugfix-template.md'),
     bugfixTemplate,
-    'bugfix template'
+    'bugfix template',
+    deps
   )
 }
 
-export async function setupPlugins(): Promise<string[]> {
+export async function setupPlugins(deps: InitDeps = {}): Promise<string[]> {
+  const activeLogger = deps.logger ?? logger
+  const askFn = resolveAsk(deps)
   const plugins: string[] = []
 
-  logger.info('\nOptional plugin configuration:')
+  activeLogger.info('\nOptional plugin configuration:')
 
   // Cost tracking (make it optional)
-  const wantCostTracking = await ask('Enable cost tracking? (Y/n)', 'y')
+  const wantCostTracking = await askFn('Enable cost tracking? (Y/n)', 'y')
   if (wantCostTracking.toLowerCase() === 'y' || wantCostTracking === '') {
-    const budget = await ask('Daily budget in USD', '10.00')
+    const budget = await askFn('Daily budget in USD', '10.00')
     plugins.push(`withCostTracking({ dailyBudget: ${budget} })`)
   }
 
   // Telegram
-  const wantTelegram = await ask('Configure Telegram notifications? (y/N)', 'n')
+  const wantTelegram = await askFn('Configure Telegram notifications? (y/N)', 'n')
   if (wantTelegram.toLowerCase() === 'y') {
-    logger.info('You will need TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables')
+    activeLogger.info('You will need TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables')
     plugins.push(`withTelegram({ botToken: process.env.TELEGRAM_BOT_TOKEN, chatId: process.env.TELEGRAM_CHAT_ID })`)
   }
 
   // Discord
-  const wantDiscord = await ask('Configure Discord webhooks? (y/N)', 'n')
+  const wantDiscord = await askFn('Configure Discord webhooks? (y/N)', 'n')
   if (wantDiscord.toLowerCase() === 'y') {
-    logger.info('You will need DISCORD_WEBHOOK_URL environment variable')
+    activeLogger.info('You will need DISCORD_WEBHOOK_URL environment variable')
     plugins.push(`withDiscord({ webhookUrl: process.env.DISCORD_WEBHOOK_URL })`)
   }
 
   return plugins
 }
 
-export async function init() {
-  logger.info('Welcome to Loopwork initialization!\n')
+/**
+ * Initialize a new Loopwork project
+ *
+ * Interactive setup wizard that creates:
+ * - loopwork.config.ts (main configuration)
+ * - .specs/tasks/ (task directory with templates)
+ * - .loopwork/ (state directory for resume)
+ * - .gitignore (with loopwork patterns)
+ * - README.md (project documentation)
+ *
+ * Safe to run multiple times - prompts before overwriting.
+ */
+export async function init(deps: InitDeps = {}) {
+  const runtimeProcess = deps.process ?? process
+  const activeLogger = deps.logger ?? logger
+  const askFn = resolveAsk(deps)
+  activeLogger.info(`Welcome to Loopwork v${packageJson.version} initialization!\n`)
 
-  const backendChoice = await ask('Backend type (github/json)', 'json')
+  // Support non-interactive mode via environment variables
+  const nonInteractive = runtimeProcess.env.LOOPWORK_NON_INTERACTIVE === 'true' || !runtimeProcess.stdin.isTTY
+
+  if (nonInteractive) {
+    activeLogger.info('Running in non-interactive mode, using defaults')
+    activeLogger.info('Set LOOPWORK_NON_INTERACTIVE=false to enable interactive prompts\n')
+  }
+
+  const backendChoice = await askFn('Backend type (github/json)', 'json')
   const backendType = backendChoice.toLowerCase().startsWith('g') ? 'github' : 'json'
 
-  const aiChoice = await ask('AI CLI tool (opencode/claude)', 'opencode')
+  const aiChoice = await askFn('AI CLI tool (opencode/claude)', 'opencode')
   const aiTool = aiChoice.toLowerCase().startsWith('c') ? 'claude' : 'opencode'
 
   let backendConfig = ''
@@ -234,17 +298,17 @@ export async function init() {
   let prdDir = '.specs/tasks'
 
   if (backendType === 'github') {
-    const repoName = await ask('Repo name', 'current repo')
+    const repoName = await askFn('Repo name', 'current repo')
     backendConfig = `withGitHubBackend({ repo: ${repoName === 'current repo' ? 'undefined' : `'${repoName}'`} })`
   } else {
-    prdDir = await ask('Task directory', '.specs/tasks')
+    prdDir = await askFn('Task directory', '.specs/tasks')
     if (prdDir.endsWith('/')) prdDir = prdDir.slice(0, -1)
     tasksFile = path.join(prdDir, 'tasks.json')
     backendConfig = `withJSONBackend({ tasksFile: '${tasksFile}' })`
   }
 
   // Setup plugins
-  const pluginConfigs = await setupPlugins()
+  const pluginConfigs = await setupPlugins(deps)
 
   // Build imports based on selected plugins
   const coreImports: string[] = ['defineConfig', 'compose']
@@ -301,24 +365,65 @@ ${pluginConfigs.map(p => `  ${p},`).join('\n')}
 `
 
   if (fs.existsSync('loopwork.config.ts')) {
-    const overwrite = await ask('loopwork.config.ts already exists. Overwrite? (y/N)', 'n')
+    const overwrite = await askFn('loopwork.config.ts already exists. Overwrite? (y/N)', 'n')
     if (overwrite.toLowerCase() !== 'y') {
-      logger.info('Initialization aborted.')
+      activeLogger.info('Initialization aborted.')
       return
     }
   }
 
+  activeLogger.startSpinner('Generating configuration...')
   fs.writeFileSync('loopwork.config.ts', configContent)
-  logger.success('Created loopwork.config.ts')
+  activeLogger.stopSpinner('Created loopwork.config.ts')
 
-  // Create .loopwork-state directory upfront
-  const stateDir = '.loopwork-state'
+  // Create .loopwork directory upfront
+  const stateDir = '.loopwork'
   if (!fs.existsSync(stateDir)) {
+    activeLogger.startSpinner('Creating state directory...')
     fs.mkdirSync(stateDir, { recursive: true })
-    logger.success('Created .loopwork-state directory')
+    activeLogger.stopSpinner('Created .loopwork directory')
   } else {
-    logger.info('.loopwork-state directory already exists')
+    activeLogger.info('.loopwork directory already exists')
   }
+
+  if (backendType === 'json') {
+    if (!fs.existsSync(prdDir)) {
+      fs.mkdirSync(prdDir, { recursive: true })
+    }
+
+    activeLogger.startSpinner('Creating initial tasks...')
+    const tasksJson = {
+      "tasks": [
+        {
+          "id": "TASK-001",
+          "status": "pending",
+          "priority": "high",
+          "title": "My First Task",
+          "description": "Implement the first feature"
+        }
+      ]
+    }
+
+    fs.writeFileSync(tasksFile, JSON.stringify(tasksJson, null, 2))
+    
+    const samplePrd = `# TASK-001: My First Task
+
+## Goal
+Implement the first feature
+
+## Requirements
+- [ ] Requirement 1
+- [ ] Requirement 2
+`
+    const prdFile = path.join(prdDir, 'TASK-001.md')
+    fs.writeFileSync(prdFile, samplePrd)
+    activeLogger.stopSpinner('Initial tasks created')
+
+    // Create PRD templates
+    const templatesDir = path.join(prdDir, 'templates')
+    await createPrdTemplates(templatesDir, deps)
+  }
+
 
   if (backendType === 'json') {
     if (!fs.existsSync(prdDir)) {
@@ -338,7 +443,7 @@ ${pluginConfigs.map(p => `  ${p},`).join('\n')}
     }
 
     fs.writeFileSync(tasksFile, JSON.stringify(tasksJson, null, 2))
-    logger.success(`Created ${tasksFile}`)
+    activeLogger.success(`Created ${tasksFile}`)
 
     const samplePrd = `# TASK-001: My First Task
 
@@ -351,52 +456,72 @@ Implement the first feature
 `
     const prdFile = path.join(prdDir, 'TASK-001.md')
     fs.writeFileSync(prdFile, samplePrd)
-    logger.success(`Created ${prdFile}`)
+    activeLogger.success(`Created ${prdFile}`)
 
     // Create PRD templates
     const templatesDir = path.join(prdDir, 'templates')
-    await createPrdTemplates(templatesDir)
+    await createPrdTemplates(templatesDir, deps)
   }
 
   // Update .gitignore
-  await updateGitignore()
+  await updateGitignore(deps)
 
   // Create README
-  const projectName = path.basename(process.cwd())
-  await createReadme(projectName, aiTool)
+  const projectName = path.basename(runtimeProcess.cwd())
+  await createReadme(projectName, aiTool, deps)
 
-  logger.info('\n' + '='.repeat(60))
-  logger.success('Loopwork initialization complete!')
-  logger.info('='.repeat(60))
+  activeLogger.info('\n' + '='.repeat(60))
+  activeLogger.success('Loopwork initialization complete!')
+  activeLogger.info('='.repeat(60))
 
-  logger.info('\nNext steps:')
-  logger.info('1. Install loopwork: bun add loopwork')
+  activeLogger.info('\nNext steps:')
+  activeLogger.info('1. Install loopwork: bun add loopwork')
 
   // Generate plugin installation commands
   if (pluginPackages.length > 0) {
-    logger.info('2. Install plugin packages:')
+    activeLogger.info('2. Install plugin packages:')
     const packageNames = pluginPackages.map(pkg => pkg.package).join(' ')
-    logger.info(`   bun add ${packageNames}`)
+    activeLogger.info(`   bun add ${packageNames}`)
   }
 
   // Environment variables notice
   if (pluginConfigs.some(p => p.includes('withTelegram') || p.includes('withDiscord'))) {
     const stepNum = pluginPackages.length > 0 ? '3' : '2'
-    logger.info(`${stepNum}. Set environment variables for plugins:`)
+    activeLogger.info(`${stepNum}. Set environment variables for plugins:`)
     if (pluginConfigs.some(p => p.includes('withTelegram'))) {
-      logger.info('   - TELEGRAM_BOT_TOKEN')
-      logger.info('   - TELEGRAM_CHAT_ID')
+      activeLogger.info('   - TELEGRAM_BOT_TOKEN')
+      activeLogger.info('   - TELEGRAM_CHAT_ID')
     }
     if (pluginConfigs.some(p => p.includes('withDiscord'))) {
-      logger.info('   - DISCORD_WEBHOOK_URL')
+      activeLogger.info('   - DISCORD_WEBHOOK_URL')
     }
-    logger.info(`${parseInt(stepNum) + 1}. Run loopwork: npx loopwork`)
+    activeLogger.info(`${parseInt(stepNum) + 1}. Run loopwork: npx loopwork`)
   } else {
     const stepNum = pluginPackages.length > 0 ? '3' : '2'
-    logger.info(`${stepNum}. Run loopwork: npx loopwork`)
+    activeLogger.info(`${stepNum}. Run loopwork: npx loopwork`)
   }
 
   if (backendType === 'json') {
-    logger.info(`\nPRD templates available at: ${path.join(prdDir, 'templates')}`)
+    activeLogger.info(`\nPRD templates available at: ${path.join(prdDir, 'templates')}`)
+  }
+}
+
+/**
+ * Create the init command configuration for CLI registration
+ */
+export function createInitCommand() {
+  return {
+    name: 'init',
+    description: 'Initialize a new Loopwork project with interactive setup',
+    usage: '[options]',
+    examples: [
+      { command: 'loopwork init', description: 'Interactive project setup wizard' },
+      { command: 'LOOPWORK_NON_INTERACTIVE=true loopwork init', description: 'Non-interactive with defaults' },
+    ],
+    seeAlso: [
+      'loopwork run      Execute the task loop',
+      'loopwork start    Start with daemon mode',
+    ],
+    handler: init,
   }
 }

@@ -45,7 +45,7 @@ export function createClaudeCodePlugin(options: ClaudeCodePluginOptions = {}): L
   }
 }
 
-function setupClaudeCodeIntegration(config: any, skillsDir: string, claudeMdPath: string) {
+function setupClaudeCodeIntegration(config: Record<string, unknown>, skillsDir: string, claudeMdPath: string) {
   // Create skills directory
   if (!fs.existsSync(skillsDir)) {
     fs.mkdirSync(skillsDir, { recursive: true })
@@ -64,7 +64,7 @@ function setupClaudeCodeIntegration(config: any, skillsDir: string, claudeMdPath
   updateClaudeMd(config, claudeMdPath)
 }
 
-function generateSkillContent(config: any): string {
+function generateSkillContent(_config: Record<string, unknown>): string {
   return `# Loopwork Skills
 
 Use these skills when working with Loopwork AI task automation.
@@ -84,7 +84,7 @@ Run the loopwork task automation loop.
 Resume a previous loopwork session from saved state.
 
 **When invoked:**
-1. Check if \`.loopwork-state/state.json\` exists
+1. Check if \`.loopwork/state.json\` exists
 2. Execute: \`npx loopwork --resume\`
 3. Show resumed state (current task, iteration count)
 4. Continue monitoring
@@ -94,7 +94,7 @@ Resume a previous loopwork session from saved state.
 Check current loopwork state and progress.
 
 **When invoked:**
-1. Read \`.loopwork-state/state.json\` if exists
+1. Read \`.loopwork/state.json\` if exists
 2. Display:
    - Current task ID and title
    - Iteration count / max iterations
@@ -137,7 +137,7 @@ Show current loopwork configuration.
 `
 }
 
-function updateClaudeMd(config: any, claudeMdPath: string) {
+function updateClaudeMd(config: Record<string, unknown>, claudeMdPath: string) {
   // Determine actual CLAUDE.md location
   let actualPath = claudeMdPath
   if (fs.existsSync('.claude/CLAUDE.md')) {
@@ -168,7 +168,7 @@ This project uses [Loopwork](https://github.com/nadimtuhin/loopwork) for AI-powe
 - **Backend**: ${backendType}
 - **AI CLI**: ${cliTool}
 - **Tasks**: \`.specs/tasks/\` (JSON) or GitHub Issues
-- **State**: \`.loopwork-state/\`
+- **State**: \`.loopwork/\`
 
 ### Quick Start
 
@@ -197,7 +197,7 @@ cat .specs/tasks/tasks.json
 1. Create tasks in backlog (JSON file or GitHub Issues)
 2. Run \`npx loopwork\` to start automation
 3. AI CLI (${cliTool}) processes tasks one by one
-4. Monitor progress in \`.loopwork-state/\`
+4. Monitor progress in \`.loopwork/\`
 5. Resume with \`--resume\` flag if interrupted
 `
 

@@ -41,11 +41,8 @@ coverage/
 playwright-report/
 test-results/
 
-# State files
+# Loopwork state (everything lives inside .loopwork/)
 .loopwork/
-*.state.json
-loopwork-runs/
-**/loopwork-runs/
 
 # Temporary files
 tmp/
@@ -59,10 +56,6 @@ trivy-results.sarif
 # Workspace artifacts
 packages/*/dist
 packages/*/node_modules
-
-# Loopwork state and cost tracking
-.loopwork-state*
-.loopwork-cost-tracking*
 
 # Build caches
 .turbo/

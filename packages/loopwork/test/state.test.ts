@@ -44,7 +44,7 @@ describe('StateManager', () => {
       const result = stateManager.acquireLock()
       expect(result).toBe(true)
 
-      const lockDir = path.join(tempDir, '.loopwork.lock')
+      const lockDir = path.join(tempDir, '.loopwork/state.lock')
       expect(fs.existsSync(lockDir)).toBe(true)
 
       const pidFile = path.join(lockDir, 'pid')
@@ -54,7 +54,9 @@ describe('StateManager', () => {
 
     test('fails to acquire lock when another process holds it', () => {
       // Create a lock with current process PID (simulating another instance)
-      const lockDir = path.join(tempDir, '.loopwork.lock')
+      const stateDir = path.join(tempDir, '.loopwork')
+      fs.mkdirSync(stateDir, { recursive: true })
+      const lockDir = path.join(stateDir, 'state.lock')
       fs.mkdirSync(lockDir)
       fs.writeFileSync(path.join(lockDir, 'pid'), process.pid.toString())
 
@@ -64,7 +66,9 @@ describe('StateManager', () => {
 
     test('removes stale lock and acquires new one', () => {
       // Create a lock with a non-existent PID
-      const lockDir = path.join(tempDir, '.loopwork.lock')
+      const stateDir = path.join(tempDir, '.loopwork')
+      fs.mkdirSync(stateDir, { recursive: true })
+      const lockDir = path.join(stateDir, 'state.lock')
       fs.mkdirSync(lockDir)
       fs.writeFileSync(path.join(lockDir, 'pid'), '999999999') // Non-existent PID
 
@@ -85,7 +89,7 @@ describe('StateManager', () => {
   describe('releaseLock', () => {
     test('releases existing lock', () => {
       stateManager.acquireLock()
-      const lockDir = path.join(tempDir, '.loopwork.lock')
+      const lockDir = path.join(tempDir, '.loopwork/state.lock')
       expect(fs.existsSync(lockDir)).toBe(true)
 
       stateManager.releaseLock()
@@ -102,7 +106,7 @@ describe('StateManager', () => {
     test('saves state to file', () => {
       stateManager.saveState(123, 5)
 
-      const stateFile = path.join(tempDir, '.loopwork-state')
+      const stateFile = path.join(tempDir, '.loopwork/state.json')
       expect(fs.existsSync(stateFile)).toBe(true)
 
       const content = fs.readFileSync(stateFile, 'utf-8')
@@ -116,7 +120,7 @@ describe('StateManager', () => {
       stateManager.saveState(100, 1)
       stateManager.saveState(200, 10)
 
-      const stateFile = path.join(tempDir, '.loopwork-state')
+      const stateFile = path.join(tempDir, '.loopwork/state.json')
       const content = fs.readFileSync(stateFile, 'utf-8')
       expect(content.toString()).toContain('LAST_ISSUE=200')
       expect(content.toString()).toContain('LAST_ITERATION=10')
@@ -140,7 +144,9 @@ describe('StateManager', () => {
     })
 
     test('returns null when state file is malformed', () => {
-      const stateFile = path.join(tempDir, '.loopwork-state')
+      const stateDir = path.join(tempDir, '.loopwork')
+      fs.mkdirSync(stateDir, { recursive: true })
+      const stateFile = path.join(stateDir, 'state.json')
       fs.writeFileSync(stateFile, 'invalid content without equals sign')
 
       const result = stateManager.loadState()
@@ -148,7 +154,9 @@ describe('StateManager', () => {
     })
 
     test('handles missing optional fields', () => {
-      const stateFile = path.join(tempDir, '.loopwork-state')
+      const stateDir = path.join(tempDir, '.loopwork')
+      fs.mkdirSync(stateDir, { recursive: true })
+      const stateFile = path.join(stateDir, 'state.json')
       fs.writeFileSync(stateFile, 'LAST_ISSUE=789')
 
       const result = stateManager.loadState()
@@ -162,7 +170,7 @@ describe('StateManager', () => {
   describe('clearState', () => {
     test('removes state file', () => {
       stateManager.saveState(123, 5)
-      const stateFile = path.join(tempDir, '.loopwork-state')
+      const stateFile = path.join(tempDir, '.loopwork/state.json')
       expect(fs.existsSync(stateFile)).toBe(true)
 
       stateManager.clearState()
@@ -204,8 +212,8 @@ describe('StateManager with namespace', () => {
 
     const stateManager = new StateManager(config)
     expect(stateManager.getNamespace()).toBe('default')
-    expect(stateManager.getStateFile()).toBe(path.join(tempDir, '.loopwork-state'))
-    expect(stateManager.getLockFile()).toBe(path.join(tempDir, '.loopwork.lock'))
+    expect(stateManager.getStateFile()).toBe(path.join(tempDir, '.loopwork/state.json'))
+    expect(stateManager.getLockFile()).toBe(path.join(tempDir, '.loopwork/state.lock'))
   })
 
   test('uses custom namespace in file paths', () => {
@@ -218,8 +226,8 @@ describe('StateManager with namespace', () => {
 
     const stateManager = new StateManager(config)
     expect(stateManager.getNamespace()).toBe('feature-a')
-    expect(stateManager.getStateFile()).toBe(path.join(tempDir, '.loopwork-state-feature-a'))
-    expect(stateManager.getLockFile()).toBe(path.join(tempDir, '.loopwork-feature-a.lock'))
+    expect(stateManager.getStateFile()).toBe(path.join(tempDir, '.loopwork/state-feature-a.json'))
+    expect(stateManager.getLockFile()).toBe(path.join(tempDir, '.loopwork/state-feature-a.lock'))
   })
 
   test('multiple namespaces can coexist', () => {
