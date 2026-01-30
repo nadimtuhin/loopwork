@@ -2,7 +2,21 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@loopwork-ai/loopwork": ["../loopwork/dist/index.d.ts"],
+      "@loopwork-ai/loopwork/*": ["../loopwork/dist/*"]
+    }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../ai-monitor/**/*",
+    "../telegram/**/*",
+    "../loopwork/src/**/*"
+  ]
 }

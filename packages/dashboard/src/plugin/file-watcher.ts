@@ -2,7 +2,16 @@ import chokidar from 'chokidar'
 import path from 'path'
 import fs from 'fs'
 import type { DashboardBroadcaster } from './broadcaster'
-import { STATE_WATCH_PATTERNS } from '@loopwork-ai/loopwork'
+
+// Local definition to avoid cross-package import issues
+const LOOPWORK_DIR = '.loopwork'
+const STATE_WATCH_PATTERNS = [
+  `${LOOPWORK_DIR}/state*.json`,
+  `${LOOPWORK_DIR}/monitor-state.json`,
+  `${LOOPWORK_DIR}/ai-monitor`,
+  `${LOOPWORK_DIR}/spawned-pids.json`,
+  `${LOOPWORK_DIR}/parallel*.json`,
+]
 
 let watcher: chokidar.FSWatcher | null = null
 

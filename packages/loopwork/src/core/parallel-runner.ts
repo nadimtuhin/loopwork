@@ -347,7 +347,8 @@ export class ParallelRunner {
         prompt,
         outputFile,
         this.config.timeout || 600,
-        task.id
+        task.id,
+        workerId
       )
 
       const duration = (Date.now() - taskStartTime) / 1000

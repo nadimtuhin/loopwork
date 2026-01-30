@@ -1,16 +1,24 @@
-import type { Server } from 'bun'
 import type { DashboardConfig, DashboardEvent } from './types'
 import { DashboardBroadcaster } from './broadcaster'
 import { createRoutes } from './routes'
 import { startFileWatcher, stopFileWatcher } from './file-watcher'
 
-import type { TaskBackend } from '@loopwork-ai/loopwork/contracts'
+// Minimal TaskBackend interface for dashboard needs
+interface TaskBackend {
+  listPendingTasks(): Promise<any[]>
+  findNextTask(): Promise<any | null>
+  getTask(id: string): Promise<any | null>
+  createTask?(input: any): Promise<any>
+  listCompletedTasks?(): Promise<any[]>
+  listFailedTasks?(): Promise<any[]>
+}
 
 export class DashboardServer {
   private config: DashboardConfig
   private broadcaster: DashboardBroadcaster
-  private server?: Server
+  private server?: ReturnType<typeof Bun.serve>
   private _backend?: TaskBackend
+  private _currentTaskId?: string
 
   constructor(config: DashboardConfig = {}) {
     this.config = config

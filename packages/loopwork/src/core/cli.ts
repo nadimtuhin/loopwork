@@ -371,7 +371,8 @@ export class CliExecutor {
     prompt: string,
     outputFile: string,
     timeoutSecs: number,
-    taskId?: string
+    taskId?: string,
+    workerId?: number
   ): Promise<number> {
     const promptFile = path.join(path.dirname(outputFile), 'current-prompt.md')
     fs.writeFileSync(promptFile, prompt)
@@ -441,6 +442,7 @@ export class CliExecutor {
           input: modelConfig.cli === 'claude' ? prompt : undefined,
           prefix: displayName,
           taskId,
+          workerId,
         },
         outputFile,
         effectiveTimeout
@@ -533,7 +535,7 @@ export class CliExecutor {
   private spawnWithTimeout(
     command: string,
     args: string[],
-    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string; taskId?: string },
+    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string; taskId?: string; workerId?: number },
     outputFile: string,
     timeoutSecs: number
   ): Promise<{ exitCode: number; timedOut: boolean }> {
@@ -589,7 +591,8 @@ export class CliExecutor {
         const filledWidth = Math.max(0, Math.floor((percent / 100) * barWidth) - 1)
         const bar = '[' + '='.repeat(filledWidth) + '>' + ' '.repeat(Math.max(0, barWidth - filledWidth - 1)) + ']'
 
-        logger.update(`${bar} ${percent}% | ${options.prefix || 'CLI'} | ${elapsed}s elapsed (timeout ${timeoutSecs}s)`)
+        const workerInfo = options.workerId !== undefined ? ` | worker ${options.workerId}` : ''
+        logger.update(`${bar} ${percent}% | ${options.prefix || 'CLI'} | ${elapsed}s elapsed (timeout ${timeoutSecs}s)${workerInfo}`)
       }, this.progressIntervalMs)
 
       // Handle stdout (always available)
