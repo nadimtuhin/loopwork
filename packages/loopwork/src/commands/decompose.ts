@@ -13,7 +13,7 @@
 import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
-import { logger, separator, Table, ProgressBar, CompletionSummary } from '../core/utils'
+import { logger, separator, Table, CompletionSummary } from '../core/utils'
 import { getConfig } from '../core/config'
 import type { DecomposeJsonOutput } from '../contracts/output'
 import { LoopworkError } from '../core/errors'
@@ -218,17 +218,7 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
     }
   }
 
-  // Save tasks with progress
-  const progress = new ProgressBar(tasks.length)
-  logger.raw('')
-
-  for (let i = 0; i < tasks.length; i++) {
-    progress.tick(`Saving task ${tasks[i].id}`)
-    // Simulate the save happening
-    await new Promise(r => setTimeout(r, 50))
-    progress.increment()
-  }
-  progress.complete('Tasks saved')
+  await _saveTasks(tasks, feature, tasksFile, tasksDir, options.parent)
 
   logger.raw('')
 

@@ -1,6 +1,6 @@
 {
   "name": "@loopwork-ai/loopwork",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Loopwork - AI task runner with pluggable backends",
   "main": "src/index.ts",
   "exports": {
