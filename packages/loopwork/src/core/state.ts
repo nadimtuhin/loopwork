@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { Config } from './config'
 import { logger } from './utils'
+import { LoopworkState } from './loopwork-state'
 
 /**
  * Type guard for Node.js file system errors
@@ -24,14 +25,16 @@ export class StateManager {
   private stateFile: string
   private lockFile: string
   private namespace: string
+  private loopworkState: LoopworkState
 
   constructor(private config: Config) {
     this.namespace = config.namespace || 'default'
-    // Use namespace in file paths to allow concurrent loops
-    const suffix = this.namespace === 'default' ? '' : `-${this.namespace}`
-    const loopworkDir = path.join(config.projectRoot, '.loopwork')
-    this.stateFile = path.join(loopworkDir, `state${suffix}.json`)
-    this.lockFile = path.join(loopworkDir, `state${suffix}.lock`)
+    this.loopworkState = new LoopworkState({
+      projectRoot: config.projectRoot,
+      namespace: this.namespace,
+    })
+    this.stateFile = this.loopworkState.paths.session()
+    this.lockFile = this.loopworkState.paths.sessionLock()
   }
 
   getNamespace(): string {
@@ -50,10 +53,7 @@ export class StateManager {
    * Ensure the .loopwork directory exists
    */
   private ensureLoopworkDir(): void {
-    const loopworkDir = path.dirname(this.stateFile)
-    if (!fs.existsSync(loopworkDir)) {
-      fs.mkdirSync(loopworkDir, { recursive: true })
-    }
+    this.loopworkState.ensureDir()
   }
 
   /**

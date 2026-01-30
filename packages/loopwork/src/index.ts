@@ -11,6 +11,9 @@ export {
   withJSONBackend,
   withGitHubBackend,
   withClaudeCode,
+  withIPC,
+  withAIMonitor,
+  withDynamicTasks,
   // CLI configuration
   withCli,
   withModels,
@@ -30,6 +33,35 @@ export type {
   ModelSelectionStrategy,
   CliType,
 } from './contracts'
+export type { IPCMessage, IPCEventType, IPCPluginOptions, DynamicTasksOptions } from './plugins'
+export type {
+  AIMonitorConfig,
+  MonitorState,
+  RecoveryHistoryEntry,
+} from './ai-monitor'
+
+// Export analyzers for task analysis
+export { PatternAnalyzer } from './analyzers'
+export type { PatternAnalyzerConfig } from './analyzers'
+export type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from './contracts/analysis'
+
+// Export centralized state management
+export {
+  LoopworkState,
+  loopworkState,
+  LOOPWORK_DIR,
+  STATE_FILES,
+  STATE_DIRS,
+  STATE_WATCH_PATTERNS,
+} from './core/loopwork-state'
+
+// Legacy exports for backward compatibility (deprecated)
+export {
+  LOOPWORK_STATE_DIR,
+  STATE_FILE_BASE,
+  MONITOR_STATE_FILE,
+  STATE_FILE_WATCH_PATTERNS,
+} from './core/constants'
 
 // Legacy args that should trigger auto-insertion of 'run' subcommand
 const RUN_ARGS = [
@@ -58,7 +90,7 @@ const RUN_ARGS = [
  */
 function shouldAutoInsertRun(args: string[]): boolean {
   // If first arg is a known subcommand, don't auto-insert
-  const subcommands = ['run', 'init', 'start', 'stop', 'kill', 'status', 'logs', 'monitor', 'restart', 'dashboard', 'help', '--help', '-h', '--version', '-V']
+  const subcommands = ['run', 'init', 'start', 'stop', 'kill', 'status', 'logs', 'monitor', 'restart', 'dashboard', 'help', '--help', '-h', '--version', '-V', 'd', 'decompose', 'task-new']
   if (args.length > 0 && subcommands.includes(args[0])) {
     return false
   }
@@ -86,14 +118,22 @@ if (import.meta.main) {
     // Kill command (alias for stop, more intuitive name)
     program
       .command('kill [namespace]')
-      .description('Kill a running loopwork process')
+      .description('Kill a running loopwork process or clean up orphan processes')
       .option('--all', 'Kill all running processes')
+      .option('--orphans', 'Scan for and kill orphan processes')
+      .option('--dry-run', 'Preview orphans without killing them')
+      .option('--force', 'Also kill suspected orphans (use with caution)')
+      .option('--json', 'Output results as JSON')
       .action(async (namespace, options) => {
         try {
           const { kill } = await import('./commands/kill')
           await kill({
             namespace,
             all: options.all,
+            orphans: options.orphans,
+            dryRun: options.dryRun,
+            force: options.force,
+            json: options.json,
           })
         } catch (err) {
           handleError(err)
@@ -123,6 +163,7 @@ if (import.meta.main) {
       .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
       .option('--sequential', 'Force sequential execution (parallel=1)')
       .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
+      .option('--json', 'Output as newline-delimited JSON events')
       .action(async (options) => {
         try {
           const { run } = await import('./commands/run')
@@ -145,6 +186,29 @@ if (import.meta.main) {
         try {
           const { taskNew } = await import('./commands/task-new')
           await taskNew(options)
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Decompose command (shorthand: d)
+    program
+      .command('d <prompt>')
+      .alias('decompose')
+      .description('Decompose a prompt into tasks using AI')
+      .option('--feature <name>', 'Feature label for the tasks')
+      .option('--parent <id>', 'Parent task ID (creates sub-tasks)')
+      .option('--priority <level>', 'Default priority: high, medium, low', 'medium')
+      .option('--cli <name>', 'CLI to use: claude, opencode, gemini', 'claude')
+      .option('--model <id>', 'Specific model to use')
+      .option('--dry-run', 'Show what would be created without saving')
+      .option('-y, --yes', 'Skip confirmation prompt')
+      .option('--json', 'Output as JSON')
+      .action(async (prompt, options) => {
+        try {
+          const { decompose } = await import('./commands/decompose')
+          await decompose(prompt, options)
         } catch (err) {
           handleError(err)
           process.exit(1)
@@ -260,8 +324,11 @@ if (import.meta.main) {
       .description('Intelligent log watcher and auto-healer')
       .option('--watch', 'Watch log file in real-time')
       .option('--log-file <path>', 'Log file to monitor')
+      .option('--log-dir <path>', 'Override log directory (default: .loopwork/runs)')
       .option('--namespace <name>', 'Namespace to monitor (default: default)')
       .option('--model <id>', 'LLM model for analysis')
+      .option('--dry-run', 'Watch and detect errors but do not execute healing actions')
+      .option('--status', 'Show circuit breaker status and exit')
       .action(async (options) => {
         try {
           const { aiMonitor } = await import('./ai-monitor/cli')
@@ -369,40 +436,34 @@ if (import.meta.main) {
     program
       .command('status')
       .description('Show status of all loopwork processes')
-      .action(async () => {
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
         try {
           const { LoopworkMonitor } = await import('./monitor')
+          const { status } = await import('./commands/status')
           const chalk = (await import('chalk')).default
-          const { formatUptime } = await import('./commands/shared/process-utils')
+          const fs = await import('fs')
+          const path = await import('path')
+          const { formatUptime, formatDuration, isProcessAlive } = await import('./commands/shared/process-utils')
 
-          const monitor = new LoopworkMonitor()
-          const { running, namespaces } = monitor.getStatus()
-
-          process.stdout.write(chalk.bold('\nLoopwork Status') + '\n')
-          process.stdout.write(chalk.gray('-'.repeat(50)) + '\n')
-
-          if (running.length === 0) {
-            process.stdout.write(chalk.gray('No loops currently running\n') + '\n')
-          } else {
-            process.stdout.write(chalk.bold(`\nRunning (${running.length}):`) + '\n')
-            for (const proc of running) {
-              const uptime = formatUptime(proc.startedAt)
-              process.stdout.write(`  ${chalk.green('\u25cf')} ${chalk.bold(proc.namespace)}\n`)
-              process.stdout.write(`    PID: ${proc.pid} | Uptime: ${uptime}\n`)
-              process.stdout.write(`    Log: ${proc.logFile}\n`)
-            }
-          }
-
-          if (namespaces.length > 0) {
-            process.stdout.write(chalk.bold('\nAll namespaces:') + '\n')
-            for (const ns of namespaces) {
-              const icon = ns.status === 'running' ? chalk.green('\u25cf') : chalk.gray('\u25cb')
-              const lastRunStr = ns.lastRun ? chalk.gray(`(last: ${ns.lastRun})`) : ''
-              process.stdout.write(`  ${icon} ${ns.name} ${lastRunStr}\n`)
-            }
-          }
-
-          process.stdout.write('\n')
+          await status({
+            MonitorClass: LoopworkMonitor,
+            process,
+            fs: {
+              existsSync: fs.default.existsSync,
+              readFileSync: fs.default.readFileSync,
+            },
+            path: {
+              join: path.default.join,
+              basename: path.default.basename,
+            },
+            isProcessAlive,
+            formatUptime,
+            formatDuration,
+            cwd: () => process.cwd(),
+            chalk,
+            json: options.json,
+          })
         } catch (err) {
           handleError(err)
           process.exit(1)
@@ -417,6 +478,7 @@ if (import.meta.main) {
       .option('-n, --lines <number>', 'Number of lines to show', '50')
       .option('--session <id>', 'View specific session by timestamp')
       .option('--task <id>', 'Filter logs by task iteration')
+      .option('--json', 'Output as newline-delimited JSON')
       .action(async (namespace, options) => {
         try {
           const { logs } = await import('./commands/logs')
@@ -426,6 +488,7 @@ if (import.meta.main) {
             lines: parseInt(options.lines, 10) || 50,
             session: options.session,
             task: options.task,
+            json: options.json,
           })
         } catch (err) {
           handleError(err)

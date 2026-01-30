@@ -69,3 +69,27 @@ export const GITHUB_RETRY_BASE_DELAY_MS = 1000
  * Used by GitHubTaskAdapter for retryable network/API errors
  */
 export const GITHUB_MAX_RETRIES = 3
+
+/**
+ * State file paths
+ *
+ * @deprecated Use LoopworkState class from './loopwork-state' instead
+ * These exports are kept for backward compatibility
+ */
+import {
+  LOOPWORK_DIR,
+  STATE_FILES,
+  STATE_WATCH_PATTERNS,
+} from './loopwork-state'
+
+/** @deprecated Use LOOPWORK_DIR from loopwork-state */
+export const LOOPWORK_STATE_DIR = LOOPWORK_DIR
+
+/** @deprecated Use STATE_FILES.SESSION from loopwork-state */
+export const STATE_FILE_BASE = STATE_FILES.SESSION
+
+/** @deprecated Use STATE_FILES.MONITOR from loopwork-state */
+export const MONITOR_STATE_FILE = STATE_FILES.MONITOR
+
+/** @deprecated Use STATE_WATCH_PATTERNS from loopwork-state */
+export const STATE_FILE_WATCH_PATTERNS = STATE_WATCH_PATTERNS
