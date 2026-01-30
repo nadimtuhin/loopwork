@@ -34,5 +34,21 @@ export type {
 // Config types
 export type {
   LoopworkConfig,
+  LogLevel,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
+
+// CLI types
+export type {
+  CliType,
+  ModelSelectionStrategy,
+  ModelConfig,
+  RetryConfig,
+  CliPathConfig,
+  CliExecutorConfig,
+} from './cli'
+export { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG } from './cli'
+
+// Executor/state interfaces
+export type { ICliExecutor } from './executor'
+export type { IStateManager, StateSnapshot, IStateManagerConstructor } from './state'

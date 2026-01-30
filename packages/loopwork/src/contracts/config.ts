@@ -4,6 +4,12 @@
 
 import type { LoopworkPlugin } from './plugin'
 import type { BackendConfig } from './backend'
+import type { CliExecutorConfig } from './cli'
+
+/**
+ * Log levels for controlling output verbosity
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent'
 
 /**
  * Main Loopwork configuration
@@ -12,9 +18,12 @@ export interface LoopworkConfig {
   // Backend
   backend: BackendConfig
 
-  // CLI settings
+  // CLI settings (legacy - prefer cliConfig for new configs)
   cli?: 'claude' | 'opencode' | 'gemini'
   model?: string
+
+  // Advanced CLI configuration
+  cliConfig?: CliExecutorConfig
 
   // Execution settings
   maxIterations?: number
@@ -23,9 +32,11 @@ export interface LoopworkConfig {
   autoConfirm?: boolean
   dryRun?: boolean
   debug?: boolean
+  logLevel?: LogLevel
 
   // Task filtering
   feature?: string
+  defaultPriority?: number
 
   // Retry/resilience
   maxRetries?: number
@@ -36,7 +47,7 @@ export interface LoopworkConfig {
   // Registered plugins
   plugins?: LoopworkPlugin[]
 
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
@@ -50,6 +61,7 @@ export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
   autoConfirm: false,
   dryRun: false,
   debug: false,
+  logLevel: 'info',
   maxRetries: 3,
   circuitBreakerThreshold: 5,
   taskDelay: 2000,

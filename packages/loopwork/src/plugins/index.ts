@@ -24,6 +24,22 @@ export { withJSONBackend, withGitHubBackend }
 // ============================================================================
 
 export { createClaudeCodePlugin, withClaudeCode } from './claude-code'
+export { createIPCPlugin, withIPC } from './ipc'
+export { createAIMonitor, withAIMonitor } from '../ai-monitor'
+export type { IPCMessage, IPCEventType, IPCPluginOptions } from './ipc'
+
+// CLI configuration plugins
+export {
+  withCli,
+  withModels,
+  withRetry,
+  withCliPaths,
+  withSelectionStrategy,
+  createModel,
+  ModelPresets,
+  RetryPresets,
+} from './cli'
+export type { WithCliOptions, WithModelsOptions } from './cli'
 
 // ============================================================================
 // Config Helpers
@@ -114,7 +130,7 @@ class PluginRegistry {
   /**
    * Run a lifecycle hook on all registered plugins
    */
-  async runHook(hookName: keyof LoopworkPlugin, ...args: any[]): Promise<void> {
+  async runHook(hookName: keyof LoopworkPlugin, ...args: unknown[]): Promise<void> {
     for (const plugin of this.plugins) {
       const hook = plugin[hookName]
       if (typeof hook === 'function') {
