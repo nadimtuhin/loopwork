@@ -44,7 +44,6 @@ test-results/
 # Loopwork state (everything lives inside .loopwork/)
 .loopwork/
 .loopwork-state
-loopwork-runs/
 
 # Temporary files
 tmp/

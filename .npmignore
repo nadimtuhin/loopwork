@@ -39,8 +39,6 @@ tmp/
 temp/
 *.tmp
 logs/
-loopwork-runs/
-**/loopwork-runs/
 
 # Build artifacts in examples
 examples/**/node_modules/
