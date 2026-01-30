@@ -126,8 +126,9 @@ function KanbanBoard({ projectRoot, refreshInterval = 5000 }: KanbanProps) {
       ])
       setLastRefresh(new Date())
       setError(null)
-    } catch (e: any) {
-      setError(e.message)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      setError(message)
     }
   }
 

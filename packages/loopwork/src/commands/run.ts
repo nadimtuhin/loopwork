@@ -1,14 +1,18 @@
 import fs from 'fs'
 import path from 'path'
-import { getConfig } from '../core/config'
+import chalk from 'chalk'
+import { getConfig, type Config } from '../core/config'
 import { StateManager } from '../core/state'
 import { createBackend, type TaskBackend, type Task } from '../backends'
 import { CliExecutor } from '../core/cli'
 import { logger } from '../core/utils'
-import { plugins } from '../plugins'
+import { plugins, createAIMonitor } from '../plugins'
 import { createCostTrackingPlugin } from '../../../cost-tracking/src/index'
 import { createTelegramHookPlugin } from '../../../telegram/src/notifications'
 import type { TaskContext } from '../contracts/plugin'
+import type { ICliExecutor } from '../contracts/executor'
+import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
+import { LoopworkError, handleError } from '../core/errors'
 
 function generateSuccessCriteria(task: Task): string[] {
   const criteria: string[] = []
@@ -111,97 +115,211 @@ ${urlLine}
 `
 }
 
-export async function run(options: any = {}) {
-  const config = await getConfig(options)
-  const stateManager = new StateManager(config)
-  const backend: TaskBackend = createBackend(config.backend)
-  const cliExecutor = new CliExecutor(config)
+/**
+ * Run command - core task execution loop
+ *
+ * This is the main entry point for programmatic usage.
+ * For CLI registration, use createRunCommand() instead.
+ *
+ * @param options - Runtime options (can override config file)
+ */
+export interface RunLogger {
+  startSpinner(message: string): void
+  stopSpinner(message?: string, symbol?: string): void
+  info(message: string): void
+  success(message: string): void
+  warn(message: string): void
+  error(message: string): void
+  debug(message: string): void
+  setLogFile(filePath: string): void
+}
 
-  await plugins.runHook('onBackendReady', backend)
+export interface RunDeps {
+  getConfig?: typeof getConfig
+  StateManagerClass?: IStateManagerConstructor
+  createBackend?: typeof createBackend
+  CliExecutorClass?: new (config: Config) => ICliExecutor
+  logger?: RunLogger
+  handleError?: typeof handleError
+  process?: NodeJS.Process
+  plugins?: typeof plugins
+  createCostTrackingPlugin?: typeof createCostTrackingPlugin
+  createTelegramHookPlugin?: typeof createTelegramHookPlugin
+}
+
+function resolveDeps(deps: RunDeps = {}) {
+  return {
+    getConfig: deps.getConfig ?? getConfig,
+    StateManagerClass: deps.StateManagerClass ?? (StateManager as unknown as IStateManagerConstructor),
+    createBackend: deps.createBackend ?? createBackend,
+    CliExecutorClass: deps.CliExecutorClass ?? (CliExecutor as unknown as new (config: Config) => ICliExecutor),
+    logger: deps.logger ?? logger,
+    handleError: deps.handleError ?? handleError,
+    process: deps.process ?? process,
+    plugins: deps.plugins ?? plugins,
+    createCostTrackingPlugin: deps.createCostTrackingPlugin ?? createCostTrackingPlugin,
+    createTelegramHookPlugin: deps.createTelegramHookPlugin ?? createTelegramHookPlugin,
+  }
+}
+
+export async function run(options: Record<string, unknown> = {}, deps: RunDeps = {}): Promise<void> {
+  const {
+    getConfig: loadConfig,
+    StateManagerClass,
+    createBackend: makeBackend,
+    CliExecutorClass,
+    logger: activeLogger,
+    handleError: handleLoopworkError,
+    process: runtimeProcess,
+    plugins: activePlugins,
+    createCostTrackingPlugin: makeCostTrackingPlugin,
+    createTelegramHookPlugin: makeTelegramHookPlugin,
+  } = resolveDeps(deps)
+
+  activeLogger.startSpinner('Initializing Loopwork...')
+  const config = await loadConfig(options)
+  const stateManager: IStateManager = new StateManagerClass(config)
+  const backend: TaskBackend = makeBackend(config.backend)
+  const cliExecutor = new CliExecutorClass(config)
+
+  await activePlugins.runHook('onBackendReady', backend)
+  activeLogger.stopSpinner('Loopwork initialized')
 
   if (config.resume) {
     const state = stateManager.loadState()
     if (!state) {
-      logger.error('Cannot resume: no saved state')
-      process.exit(1)
+      const stateDir = path.resolve(config.projectRoot, '.loopwork')
+      handleLoopworkError(new LoopworkError(
+        'Cannot resume: no saved state found',
+        [
+          'State is created after your first task execution starts',
+          `Check if ${stateDir} directory exists`,
+          'Run without --resume to start a new session',
+          'State is cleared when all tasks complete successfully'
+        ]
+      ))
+      runtimeProcess.exit(1)
     }
     config.startTask = String(state.lastIssue)
     config.outputDir = state.lastOutputDir
-    logger.info(`Resuming from task ${state.lastIssue}, iteration ${state.lastIteration}`)
+    activeLogger.info(`Resuming from task ${state.lastIssue}, iteration ${state.lastIteration}`)
   }
 
   if (!stateManager.acquireLock()) {
-    process.exit(1)
+    const lockFile = path.resolve(config.projectRoot, '.loopwork', 'loopwork.lock')
+    handleLoopworkError(new LoopworkError(
+      'Failed to acquire lock: another Loopwork instance is running',
+      [
+        'Wait for the other instance to finish',
+        'Or manually remove the lock file if the process is no longer running:',
+        `  rm ${lockFile}`,
+        'Check for running Loopwork processes: ps aux | grep loopwork'
+      ]
+    ))
+    runtimeProcess.exit(1)
   }
 
   let currentTaskId: string | null = null
   let currentIteration = 0
 
   const cleanup = () => {
-    logger.warn('\nReceived interrupt signal. Saving state...')
+    activeLogger.warn('\nReceived interrupt signal. Saving state...')
     cliExecutor.killCurrent()
     if (currentTaskId) {
       const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
       stateManager.saveState(stateRef, currentIteration)
-      logger.info('State saved. Resume with: --resume')
+      activeLogger.info('State saved. Resume with: --resume')
     }
     stateManager.releaseLock()
-    process.exit(130)
+    runtimeProcess.exit(130)
   }
 
-  process.on('SIGINT', cleanup)
-  process.on('SIGTERM', cleanup)
+  runtimeProcess.on('SIGINT', cleanup)
+  runtimeProcess.on('SIGTERM', cleanup)
 
   fs.mkdirSync(config.outputDir, { recursive: true })
   fs.mkdirSync(path.join(config.outputDir, 'logs'), { recursive: true })
+  activeLogger.setLogFile(path.join(config.outputDir, 'loopwork.log'))
 
-  const namespace = stateManager.getNamespace()
+  const namespace = config.namespace || stateManager.getNamespace?.() || 'default'
 
   try {
-    await plugins.register(createCostTrackingPlugin(config.projectRoot, namespace))
-    logger.debug('Cost tracking plugin registered')
-  } catch (e: any) {
-    logger.debug(`Cost tracking plugin not registered: ${e.message}`)
+    await activePlugins.register(makeCostTrackingPlugin(config.projectRoot, namespace))
+    activeLogger.debug('Cost tracking plugin registered')
+  } catch (e: unknown) {
+    activeLogger.debug(`Cost tracking plugin not registered: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  const telegramToken = process.env.TELEGRAM_BOT_TOKEN || (config as any).telegram?.botToken
-  const telegramChatId = process.env.TELEGRAM_CHAT_ID || (config as any).telegram?.chatId
+  const telegramToken = runtimeProcess.env.TELEGRAM_BOT_TOKEN || (config as { telegram?: { botToken?: string } }).telegram?.botToken
+  const telegramChatId = runtimeProcess.env.TELEGRAM_CHAT_ID || (config as { telegram?: { chatId?: string } }).telegram?.chatId
   if (telegramToken && telegramChatId) {
     try {
-      await plugins.register(createTelegramHookPlugin({
+      await activePlugins.register(makeTelegramHookPlugin({
         botToken: telegramToken,
         chatId: telegramChatId,
       }))
-      logger.info('Telegram notifications enabled')
-    } catch (e: any) {
-      logger.debug(`Telegram plugin not registered: ${e.message}`)
+      activeLogger.info('Telegram notifications enabled')
+    } catch (e: unknown) {
+      activeLogger.debug(`Telegram plugin not registered: ${(e as Error).message}`)
     }
   }
 
-  await plugins.runHook('onLoopStart', namespace)
-
-  logger.info('Loopwork Starting')
-  logger.info('─────────────────────────────────────')
-  logger.info(`Backend:        ${backend.name}`)
-  if (config.backend.type === 'github') {
-    logger.info(`Repo:           ${config.backend.repo || '(current)'}`)
-  } else {
-    logger.info(`Tasks File:     ${config.backend.tasksFile}`)
+  if (options.withAiMonitor) {
+    try {
+      await activePlugins.register(createAIMonitor())
+      activeLogger.info('AI Monitor enabled')
+    } catch (e: unknown) {
+      activeLogger.debug(`AI Monitor not registered: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
-  logger.info(`Feature:        ${config.feature || 'all'}`)
-  logger.info(`Max Iterations: ${config.maxIterations}`)
-  logger.info(`Timeout:        ${config.timeout}s per task`)
-  logger.info(`CLI:            ${config.cli}`)
-  logger.info(`Session ID:     ${config.sessionId}`)
-  logger.info(`Output Dir:     ${config.outputDir}`)
-  logger.info(`Dry Run:        ${config.dryRun}`)
-  logger.info('─────────────────────────────────────')
 
-  const pendingCount = await backend.countPending({ feature: config.feature })
-  logger.info(`Pending tasks: ${pendingCount}`)
+  await activePlugins.runHook('onLoopStart', namespace)
+
+  activeLogger.info('Loopwork Starting')
+  activeLogger.info('─────────────────────────────────────')
+  activeLogger.info(`Backend:        ${backend.name}`)
+  if (config.backend.type === 'github') {
+    activeLogger.info(`Repo:           ${config.backend.repo || '(current)'}`)
+  } else {
+    activeLogger.info(`Tasks File:     ${config.backend.tasksFile}`)
+  }
+  activeLogger.info(`Feature:        ${config.feature || 'all'}`)
+  activeLogger.info(`Max Iterations: ${config.maxIterations}`)
+  activeLogger.info(`Timeout:        ${config.timeout}s per task`)
+  activeLogger.info(`CLI:            ${config.cli}`)
+  activeLogger.info(`Session ID:     ${config.sessionId}`)
+  activeLogger.info(`Output Dir:     ${config.outputDir}`)
+  activeLogger.info(`Dry Run:        ${config.dryRun}`)
+  activeLogger.info('─────────────────────────────────────')
+
+  let pendingCount = 0
+  try {
+    activeLogger.startSpinner('Fetching pending tasks...')
+    pendingCount = await backend.countPending({ feature: config.feature })
+    activeLogger.stopSpinner(`Found ${pendingCount} pending tasks`)
+  } catch (error: unknown) {
+    const suggestions: string[] = ['Check backend connectivity and permissions']
+    if (config.backend.type === 'json') {
+      suggestions.push(`Verify tasks file exists: ${config.backend.tasksFile}`)
+      suggestions.push('Ensure the file is valid JSON')
+    } else if (config.backend.type === 'github') {
+      suggestions.push('Check GitHub token (GITHUB_TOKEN env var)')
+      suggestions.push('Verify network connectivity')
+    }
+    handleLoopworkError(new LoopworkError(
+      `Failed to count pending tasks: ${error.message}`,
+      suggestions
+    ))
+    stateManager.releaseLock()
+    runtimeProcess.exit(1)
+  }
 
   if (pendingCount === 0) {
-    logger.success('No pending tasks found!')
+    activeLogger.info('No pending tasks found')
+    runtimeProcess.stdout.write('\n')
+    activeLogger.info('💡 Create tasks in .specs/tasks/tasks.json')
+    activeLogger.info('💡 Or run: npx loopwork task-new')
+    runtimeProcess.stdout.write('\n')
     stateManager.releaseLock()
     return
   }
@@ -214,40 +332,75 @@ export async function run(options: any = {}) {
   const maxRetries = config.maxRetries ?? 3
   const retryCount: Map<string, number> = new Map()
 
-  while (iteration < config.maxIterations) {
+  while (iteration < (config.maxIterations || 50)) {
     iteration++
     cliExecutor.resetFallback()
 
     if (consecutiveFailures >= (config.circuitBreakerThreshold ?? 5)) {
-      logger.error(`Circuit breaker: ${consecutiveFailures} consecutive failures`)
+      handleLoopworkError(new LoopworkError(
+        `Circuit breaker activated: ${consecutiveFailures} consecutive task failures`,
+        [
+          'The circuit breaker stops execution after too many failures to prevent wasting resources',
+          'Resume from the last successful state: npx loopwork --resume',
+          `Adjust threshold in config: circuitBreakerThreshold (current: ${config.circuitBreakerThreshold ?? 5})`,
+          'Review failed task logs in the output directory for patterns',
+          'Check if there are systemic issues (missing dependencies, config errors, etc.)'
+        ]
+      ))
       break
     }
 
     let task: Task | null = null
 
-    if (config.startTask && iteration === 1) {
-      task = await backend.getTask(config.startTask)
-    } else {
-      task = await backend.findNextTask({ feature: config.feature })
+    try {
+      activeLogger.startSpinner('Searching for next task...')
+      if (config.startTask && iteration === 1) {
+        task = await backend.getTask(config.startTask)
+      } else {
+        task = await backend.findNextTask({ feature: config.feature })
+      }
+      
+      if (task) {
+        activeLogger.stopSpinner(`Found task ${task.id}: ${task.title}`)
+      } else {
+        activeLogger.stopSpinner('No more pending tasks')
+      }
+    } catch (error: unknown) {
+      const suggestions: string[] = []
+      if (config.backend.type === 'json') {
+        suggestions.push('Check if tasks file exists and has correct format')
+        suggestions.push(`Verify file path: ${config.backend.tasksFile}`)
+        suggestions.push('Ensure you have read permissions for the tasks file')
+      } else if (config.backend.type === 'github') {
+        suggestions.push('Check your GitHub token permissions (GITHUB_TOKEN env var)')
+        suggestions.push('Verify repository access and network connectivity')
+        suggestions.push(`Check repo format: ${config.backend.repo || '(current repo)'}`)
+      }
+      handleLoopworkError(new LoopworkError(
+        `Failed to fetch task from backend: ${error.message}`,
+        suggestions
+      ))
+      stateManager.releaseLock()
+      runtimeProcess.exit(1)
     }
 
     if (!task) {
-      logger.success('No more pending tasks!')
+      activeLogger.success('No more pending tasks!')
       break
     }
 
-    console.log('')
-    logger.info('═══════════════════════════════════════════════════════════════')
-    logger.info(`Iteration ${iteration} / ${config.maxIterations}`)
-    logger.info(`Task:     ${task.id}`)
-    logger.info(`Title:    ${task.title}`)
-    logger.info(`Priority: ${task.priority}`)
-    logger.info(`Feature:  ${task.feature || 'none'}`)
+    runtimeProcess.stdout.write('\n')
+    activeLogger.info('═══════════════════════════════════════════════════════════════')
+    activeLogger.info(`Iteration ${iteration} / ${config.maxIterations}`)
+    activeLogger.info(`Task:     ${task.id}`)
+    activeLogger.info(`Title:    ${task.title}`)
+    activeLogger.info(`Priority: ${task.priority}`)
+    activeLogger.info(`Feature:  ${task.feature || 'none'}`)
     if (task.metadata?.url) {
-      logger.info(`URL:      ${task.metadata.url}`)
+      activeLogger.info(`URL:      ${task.metadata.url}`)
     }
-    logger.info('═══════════════════════════════════════════════════════════════')
-    console.log('')
+    activeLogger.info('═══════════════════════════════════════════════════════════════')
+    runtimeProcess.stdout.write('\n')
 
     currentTaskId = task.id
     currentIteration = iteration
@@ -255,12 +408,24 @@ export async function run(options: any = {}) {
     stateManager.saveState(stateRef, iteration)
 
     if (config.dryRun) {
-      logger.warn(`[DRY RUN] Would execute: ${task.id}`)
-      logger.debug(`PRD preview:\n${task.description?.substring(0, 300)}...`)
+      activeLogger.warn(`[DRY RUN] Would execute: ${task.id}`)
+      activeLogger.debug(`PRD preview:\n${task.description?.substring(0, 300)}...`)
       continue
     }
 
-    await backend.markInProgress(task.id)
+    try {
+      await backend.markInProgress(task.id)
+    } catch (error: unknown) {
+      handleLoopworkError(new LoopworkError(
+        `Failed to mark task ${task.id} as in-progress: ${error.message}`,
+        [
+          'Check file/database permissions for the backend',
+          'Ensure the task ID is valid and exists',
+          'If using JSON backend, check for file lock conflicts'
+        ]
+      ))
+      continue
+    }
 
     const taskContext: TaskContext = {
       task,
@@ -269,7 +434,7 @@ export async function run(options: any = {}) {
       namespace,
     }
 
-    await plugins.runHook('onTaskStart', taskContext)
+    await activePlugins.runHook('onTaskStart', taskContext)
 
     const prompt = buildPrompt(task, retryContext)
     retryContext = ''
@@ -279,11 +444,41 @@ export async function run(options: any = {}) {
 
     const outputFile = path.join(config.outputDir, 'logs', `iteration-${iteration}-output.txt`)
 
-    const exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout)
+    let exitCode: number
+    try {
+      activeLogger.startSpinner(`Executing task ${task.id}...`)
+      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600)
+      activeLogger.stopSpinner()
+    } catch (error: unknown) {
+      if (error instanceof LoopworkError) {
+        handleLoopworkError(error)
+        
+        try {
+          await backend.resetToPending(task.id)
+        } catch {}
+        
+        activeLogger.info('\\n💡 Resolve the issue above and restart with: npx loopwork --resume')
+        stateManager.releaseLock()
+        runtimeProcess.exit(1)
+      }
+      throw error
+    }
 
     if (exitCode === 0) {
       const comment = `Completed by Loopwork\n\nBackend: ${backend.name}\nSession: ${config.sessionId}\nIteration: ${iteration}`
-      await backend.markCompleted(task.id, comment)
+      try {
+        await backend.markCompleted(task.id, comment)
+      } catch (error: unknown) {
+        handleLoopworkError(new LoopworkError(
+          `Task succeeded but failed to mark as completed in backend: ${error.message}`,
+          [
+            'The task execution was successful but could not be saved',
+            'Check backend connectivity and permissions',
+            'You may need to manually mark the task as completed'
+          ]
+        ))
+        continue
+      }
 
       let output = ''
       try {
@@ -293,20 +488,31 @@ export async function run(options: any = {}) {
       } catch {}
 
       const duration = (Date.now() - taskContext.startTime.getTime()) / 1000
-      await plugins.runHook('onTaskComplete', taskContext, { output, duration, success: true })
+      await activePlugins.runHook('onTaskComplete', taskContext, { output, duration, success: true })
 
       tasksCompleted++
       consecutiveFailures = 0
       retryCount.delete(task.id)
-      logger.success(`Task ${task.id} completed!`)
+      activeLogger.success(`Task ${task.id} completed!`)
     } else {
       const currentRetries = retryCount.get(task.id) || 0
 
       if (currentRetries < maxRetries - 1) {
         retryCount.set(task.id, currentRetries + 1)
-        logger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
+        activeLogger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
 
-        await backend.resetToPending(task.id)
+        try {
+          await backend.resetToPending(task.id)
+        } catch (error: unknown) {
+          handleLoopworkError(new LoopworkError(
+            `Failed to reset task ${task.id} to pending: ${error.message}`,
+            [
+              'Check backend connectivity and permissions',
+              'The task may need manual intervention'
+            ]
+          ))
+          continue
+        }
 
         let logExcerpt = ''
         try {
@@ -322,46 +528,117 @@ export async function run(options: any = {}) {
         continue
       } else {
         const errorMsg = `Max retries (${maxRetries}) reached\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
-        await backend.markFailed(task.id, errorMsg)
 
-        await plugins.runHook('onTaskFailed', taskContext, errorMsg)
+        try {
+          await backend.markFailed(task.id, errorMsg)
+        } catch (error: unknown) {
+          handleLoopworkError(new LoopworkError(
+            `Task failed and could not be marked as failed in backend: ${error.message}`,
+            [
+              'The task execution failed multiple times',
+              'Backend operation also failed - check connectivity',
+              'Manual intervention may be required'
+            ]
+          ))
+        }
+
+        await activePlugins.runHook('onTaskFailed', taskContext, errorMsg)
 
         tasksFailed++
         consecutiveFailures++
         retryCount.delete(task.id)
-        logger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
+
+        runtimeProcess.stdout.write('\n')
+        activeLogger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
+        
+        let lastOutput = ''
+        try {
+          if (fs.existsSync(outputFile)) {
+            const content = fs.readFileSync(outputFile, 'utf-8')
+            const lines = content.split('\n').filter(l => l.trim())
+            lastOutput = lines.slice(-10).join('\n')
+          }
+        } catch {}
+
+        if (lastOutput) {
+          runtimeProcess.stdout.write('\n')
+          runtimeProcess.stdout.write(chalk.gray('Last 10 lines of output:') + '\n')
+          runtimeProcess.stdout.write(chalk.gray('─────────────────────────────────────') + '\n')
+          runtimeProcess.stdout.write(chalk.dim(lastOutput) + '\n')
+          runtimeProcess.stdout.write(chalk.gray('─────────────────────────────────────') + '\n')
+          runtimeProcess.stdout.write('\n')
+        }
+
+        const prdPath = task.metadata?.prdFile || `.specs/tasks/${task.id}.md`
+        activeLogger.info(`💡 Check task requirements in ${prdPath}`)
+        activeLogger.info(`💡 Check full output: ${outputFile}`)
+        activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
+        activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
+        runtimeProcess.stdout.write('\n')
       }
     }
 
     await new Promise(r => setTimeout(r, config.taskDelay ?? 2000))
   }
 
-  console.log('')
-  logger.info('═══════════════════════════════════════════════════════════════')
-  logger.info('Loopwork Complete')
-  logger.info('═══════════════════════════════════════════════════════════════')
-  logger.info(`Backend:         ${backend.name}`)
-  logger.info(`Iterations:      ${iteration}`)
-  logger.info(`Tasks Completed: ${tasksCompleted}`)
-  logger.info(`Tasks Failed:    ${tasksFailed}`)
-  logger.info(`Session ID:      ${config.sessionId}`)
-  logger.info(`Output Dir:      ${config.outputDir}`)
-  console.log('')
+  runtimeProcess.stdout.write('\n')
+  activeLogger.info('═══════════════════════════════════════════════════════════════')
+  activeLogger.info('Loopwork Complete')
+  activeLogger.info('═══════════════════════════════════════════════════════════════')
+  activeLogger.info(`Backend:         ${backend.name}`)
+  activeLogger.info(`Iterations:      ${iteration}`)
+  activeLogger.info(`Tasks Completed: ${tasksCompleted}`)
+  activeLogger.info(`Tasks Failed:    ${tasksFailed}`)
+  activeLogger.info(`Session ID:      ${config.sessionId}`)
+  activeLogger.info(`Output Dir:      ${config.outputDir}`)
+  runtimeProcess.stdout.write('\n')
 
-  const finalPending = await backend.countPending({ feature: config.feature })
-  logger.info(`Final Status: ${finalPending} pending`)
+  let finalPending = 0
+  try {
+    finalPending = await backend.countPending({ feature: config.feature })
+    activeLogger.info(`Final Status: ${finalPending} pending`)
+  } catch (error: unknown) {
+    activeLogger.warn(`Could not get final task count: ${error.message}`)
+  }
 
   if (finalPending === 0) {
-    logger.success('All tasks completed!')
+    activeLogger.success('All tasks completed!')
     stateManager.clearState()
   }
 
   const loopDuration = Date.now() - (stateManager.loadState()?.startedAt || Date.now())
-  await plugins.runHook('onLoopEnd', namespace, {
+  await activePlugins.runHook('onLoopEnd', namespace, {
     completed: tasksCompleted,
     failed: tasksFailed,
     duration: loopDuration / 1000,
   })
 
   stateManager.releaseLock()
+}
+
+/**
+ * Create the run command configuration for CLI registration
+ *
+ * This returns a command object suitable for use with commander or similar CLI frameworks.
+ * The run() function is exposed separately for programmatic usage.
+ */
+export function createRunCommand() {
+  return {
+    name: 'run',
+    description: 'Execute the main task automation loop',
+    usage: '[options]',
+    examples: [
+      { command: 'loopwork run', description: 'Run with config file settings' },
+      { command: 'loopwork run --resume', description: 'Resume from saved state' },
+      { command: 'loopwork run --feature auth', description: 'Process only auth-tagged tasks' },
+      { command: 'loopwork run --dry-run', description: 'Preview tasks without executing' },
+      { command: 'loopwork run --max-iterations 10 --timeout 300', description: 'Custom limits' },
+    ],
+    seeAlso: [
+      'loopwork start    Start with optional daemon mode',
+      'loopwork init     Initialize a new project',
+      'loopwork status   Check running processes',
+    ],
+    handler: run,
+  }
 }

@@ -1,4 +1,8 @@
 import chalk from 'chalk'
+import fs from 'fs'
+import path from 'path'
+import ora, { type Ora } from 'ora'
+import type { LogLevel } from '../contracts/config'
 
 export function getTimestamp(): string {
   return new Date().toLocaleTimeString('en-US', {
@@ -9,33 +13,134 @@ export function getTimestamp(): string {
   })
 }
 
+let activeSpinner: Ora | null = null
+
+function stopActiveSpinner() {
+  if (activeSpinner) {
+    activeSpinner.stop()
+    activeSpinner = null
+  }
+}
+
+const LOG_LEVELS: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  silent: 4,
+}
+
 export const logger = {
-  info: (msg: string) => {
-    process.stdout.write('\r\x1b[K')
-    console.log(chalk.gray(getTimestamp()), chalk.blue('[INFO]'), msg)
-  },
-  success: (msg: string) => {
-    process.stdout.write('\r\x1b[K')
-    console.log(chalk.gray(getTimestamp()), chalk.green('[SUCCESS]'), msg)
-  },
-  warn: (msg: string) => {
-    process.stdout.write('\r\x1b[K')
-    console.log(chalk.gray(getTimestamp()), chalk.yellow('[WARN]'), msg)
-  },
-  error: (msg: string) => {
-    process.stdout.write('\r\x1b[K')
-    console.log(chalk.gray(getTimestamp()), chalk.red('[ERROR]'), msg)
-  },
-  debug: (msg: string) => {
-    if (process.env.LOOPWORK_DEBUG === 'true') {
-      process.stdout.write('\r\x1b[K')
-      console.log(chalk.gray(getTimestamp()), chalk.cyan('[DEBUG]'), msg)
+  logFile: null as string | null,
+  logLevel: 'info' as LogLevel,
+
+  setLogFile: (filePath: string) => {
+    logger.logFile = filePath
+    const dir = path.dirname(filePath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
     }
   },
+
+  setLogLevel: (level: LogLevel) => {
+    logger.logLevel = level
+  },
+
+  _shouldLog: (level: LogLevel): boolean => {
+    return LOG_LEVELS[level] >= LOG_LEVELS[logger.logLevel]
+  },
+
+  _logToFile: (level: string, msg: string) => {
+    if (logger.logFile) {
+      const timestamp = getTimestamp()
+      fs.appendFileSync(logger.logFile, `[${timestamp}] [${level}] ${msg}\n`)
+    }
+  },
+
+  info: (msg: string) => {
+    if (!logger._shouldLog('info')) return
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.blue('ℹ️ INFO:')} ${msg}\n`)
+    logger._logToFile('INFO', msg)
+  },
+  success: (msg: string) => {
+    if (!logger._shouldLog('info')) return
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.green('✅ SUCCESS:')} ${msg}\n`)
+    logger._logToFile('SUCCESS', msg)
+  },
+  warn: (msg: string) => {
+    if (!logger._shouldLog('warn')) return
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.yellow('⚠️ WARN:')} ${msg}\n`)
+    logger._logToFile('WARN', msg)
+  },
+  error: (msg: string) => {
+    if (!logger._shouldLog('error')) return
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stderr.write(`${chalk.gray(getTimestamp())} ${chalk.red('❌ ERROR:')} ${msg}\n`)
+    logger._logToFile('ERROR', msg)
+  },
+  debug: (msg: string) => {
+    if (!logger._shouldLog('debug')) return
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.cyan('[DEBUG]')} ${msg}\n`)
+    logger._logToFile('DEBUG', msg)
+  },
   update: (msg: string) => {
-    process.stdout.write(
-      `\r\x1b[K${chalk.gray(getTimestamp())} ${chalk.blue('[INFO]')} ${msg}`
-    )
+    if (activeSpinner) {
+      activeSpinner.text = msg
+    } else {
+      const terminalWidth = process.stdout.columns || 120
+      const timestamp = getTimestamp()
+      const prefix = `${chalk.gray(timestamp)} ${chalk.blue('[INFO]')} `
+      const prefixLength = timestamp.length + 1 + '[INFO] '.length 
+      const availableWidth = Math.max(10, terminalWidth - prefixLength - 5)
+      
+      let displayMsg = msg
+      if (msg.length > availableWidth) {
+        displayMsg = msg.substring(0, availableWidth - 3) + '...'
+      }
+      
+      process.stdout.write(`\r\x1b[K${prefix}${displayMsg}`)
+    }
+  },
+
+  startSpinner: (msg: string) => {
+    if (process.env.LOOPWORK_DEBUG === 'true' || !process.stdout.isTTY) {
+      logger.info(msg)
+      return
+    }
+    if (activeSpinner) {
+      activeSpinner.text = msg
+      return
+    }
+    activeSpinner = ora({
+      text: msg,
+      color: 'blue',
+      spinner: 'dots',
+    }).start()
+  },
+
+  stopSpinner: (msg?: string, symbol?: string) => {
+    if (!activeSpinner) {
+      if (msg) logger.info(msg)
+      return
+    }
+    if (msg) {
+      activeSpinner.stopAndPersist({
+        symbol: symbol || chalk.green('✓'),
+        text: msg
+      })
+    } else {
+      activeSpinner.stop()
+    }
+    activeSpinner = null
   },
 }
 
@@ -44,6 +149,7 @@ export async function promptUser(
   defaultValue: string = 'n',
   nonInteractive: boolean = false
 ): Promise<string> {
+  stopActiveSpinner()
   if (nonInteractive || !process.stdin.isTTY) {
     logger.debug(`Non-interactive mode, using default: ${defaultValue}`)
     return defaultValue
@@ -115,6 +221,7 @@ export class StreamLogger {
   }
 
   private printLine(line: string) {
+    stopActiveSpinner()
     process.stdout.write('\r\x1b[K')
     const timestamp = chalk.gray(getTimestamp())
     const separator = chalk.gray(' │')

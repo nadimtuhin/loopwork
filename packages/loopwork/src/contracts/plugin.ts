@@ -68,7 +68,7 @@ export interface LoopStats {
  */
 export interface LoopworkPlugin {
   /** Unique plugin name */
-  name: string
+  readonly name: string
 
   /** Called when config is loaded */
   onConfigLoad?: (config: LoopworkConfig) => LoopworkConfig | Promise<LoopworkConfig>

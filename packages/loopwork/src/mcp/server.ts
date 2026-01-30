@@ -21,8 +21,9 @@
  * }
  */
 
-import { createBackend, type TaskBackend, type Task } from './backends'
-import type { BackendConfig, FindTaskOptions } from './backends/types'
+import { createBackend, type TaskBackend, type Task } from '../backends'
+import type { BackendConfig, FindTaskOptions } from '../backends/types'
+import { logger } from '../core/utils'
 
 // MCP Protocol Types
 interface McpRequest {
@@ -39,12 +40,6 @@ interface McpResponse {
   error?: { code: number; message: string; data?: unknown }
 }
 
-interface McpNotification {
-  jsonrpc: '2.0'
-  method: string
-  params?: Record<string, unknown>
-}
-
 interface ToolDefinition {
   name: string
   description: string
@@ -59,14 +54,18 @@ interface ToolDefinition {
 class LoopworkMcpServer {
   private backend: TaskBackend
 
-  constructor() {
-    const backendType = (process.env.LOOPWORK_BACKEND || 'json') as 'github' | 'json'
-    const config: BackendConfig = {
-      type: backendType,
-      tasksFile: process.env.LOOPWORK_TASKS_FILE || '.specs/tasks/tasks.json',
-      repo: process.env.LOOPWORK_REPO,
+  constructor(backend?: TaskBackend) {
+    if (backend) {
+      this.backend = backend
+    } else {
+      const backendType = (process.env.LOOPWORK_BACKEND || 'json') as 'github' | 'json'
+      const config: BackendConfig = {
+        type: backendType,
+        tasksFile: process.env.LOOPWORK_TASKS_FILE || '.specs/tasks/tasks.json',
+        repo: process.env.LOOPWORK_REPO,
+      }
+      this.backend = createBackend(config)
     }
-    this.backend = createBackend(config)
   }
 
   private getToolDefinitions(): ToolDefinition[] {
@@ -386,13 +385,14 @@ class LoopworkMcpServer {
             },
           }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e)
       return {
         jsonrpc: '2.0',
         id,
         error: {
           code: -32000,
-          message: e.message,
+          message: error,
         },
       }
     }
@@ -426,13 +426,14 @@ class LoopworkMcpServer {
           // Write response to stdout
           const output = JSON.stringify(response) + '\n'
           await Bun.write(Bun.stdout, encoder.encode(output))
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e.message : String(e)
           const errorResponse: McpResponse = {
             jsonrpc: '2.0',
             id: 0,
             error: {
               code: -32700,
-              message: `Parse error: ${e.message}`,
+              message: `Parse error: ${error}`,
             },
           }
           await Bun.write(Bun.stdout, encoder.encode(JSON.stringify(errorResponse) + '\n'))
@@ -445,7 +446,9 @@ class LoopworkMcpServer {
 // Run server
 if (import.meta.main) {
   const server = new LoopworkMcpServer()
-  server.run().catch(console.error)
+  server.run().catch(err => {
+    logger.error(err instanceof Error ? err.message : String(err))
+  })
 }
 
 export { LoopworkMcpServer }
