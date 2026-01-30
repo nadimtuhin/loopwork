@@ -1,18 +1,21 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import { promises as fs } from 'fs'
 import path from 'path'
+import os from 'os'
 import { ProcessRegistry } from '../src/core/process-management/registry'
 import type { ProcessMetadata } from '../src/contracts/process-manager'
 
 describe('ProcessRegistry', () => {
-  const testDir = '.test-loopwork-registry'
-  const storagePath = path.join(testDir, 'processes.json')
-  const lockPath = `${storagePath}.lock`
+  let testDir: string
+  let storagePath: string
+  let lockPath: string
   let registry: ProcessRegistry
 
   beforeEach(async () => {
-    // Clean up test directory
-    await fs.rm(testDir, { recursive: true, force: true })
+    // Use absolute temp directory to avoid cwd issues in parallel tests
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'loopwork-registry-test-'))
+    storagePath = path.join(testDir, 'processes.json')
+    lockPath = `${storagePath}.lock`
     registry = new ProcessRegistry(testDir)
   })
 
