@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.4] - 2026-01-30
+
+### Fixed
+- **macOS Memory Calculation** - Fixed memory check that was preventing CLI spawning on macOS
+  - `os.freemem()` on macOS returns only truly "free" pages (~90MB) due to aggressive caching
+  - Now calculates available memory as: free + inactive + purgeable + speculative pages
+  - Uses `vm_stat` command on macOS for accurate memory reporting
+
+- **Orphan Process Safety** - Removed dangerous "untracked process" detection from OrphanDetector
+  - Previously killed ANY process matching patterns like 'claude' or 'opencode'
+  - This was killing users' independently-running CLI sessions not spawned by loopwork
+  - Now only kills processes that were actually tracked by loopwork (from registry)
+  - Orphan detection now limited to: dead-parent orphans and stale tracked processes
+
+- **Parallel Runner Dry-Run** - Fixed dry-run mode marking tasks as in-progress
+  - Dry-run now uses `findNextTask()` instead of `claimTask()`
+  - Tasks no longer change status during dry-run preview
+
+- **LoopworkError Constructor** - Fixed parameter order (message, suggestions[])
+
+### Changed
+- Updated orphan detector tests to reflect removed untracked detection
+- Skipped flaky stale detection tests pending registry timing investigation
+
 ## [Unreleased]
 
 ### Added

@@ -17,12 +17,15 @@ Loopwork spawns long-running AI CLI processes (`claude`, `opencode`) to execute 
 
 All orphan management includes multiple safeguards:
 
-1. **PID tracking**: Only processes explicitly spawned by loopwork are "confirmed"
-2. **PPID verification**: Parent-child process ancestry is validated
-3. **Pattern matching**: Untracked processes must match known CLI patterns
-4. **Working directory check**: Process must run in project directory
-5. **Graceful termination**: SIGTERM before SIGKILL
-6. **Force flag requirement**: Suspected orphans need `--force` to kill
+1. **PID tracking**: Only processes explicitly spawned by loopwork can be killed
+2. **Registry-only cleanup**: Only processes in the tracking registry are targeted
+3. **Graceful termination**: SIGTERM before SIGKILL
+4. **No untracked killing**: We DO NOT kill processes just because they match patterns
+
+> **IMPORTANT (v0.3.4+)**: The "untracked process" detection was **removed** for safety.
+> Previously, loopwork would scan for ANY process matching patterns like 'claude' or 'opencode'
+> and kill them if not in the registry. This was dangerous because it killed users'
+> independently-running CLI sessions. Now we only kill processes loopwork actually spawned.
 
 ## Architecture
 
@@ -76,100 +79,70 @@ All orphan management includes multiple safeguards:
 
 ## Process Classification
 
-### Confirmed Orphans
+### Tracked Orphans (Safe to Kill)
 
 These are guaranteed spawned by loopwork and safe to kill:
 
 **Criteria:**
-- PID exists in `spawned-pids.json` tracking file
+- PID exists in registry/tracking file
 - Process still exists (verified via `kill(pid, 0)`)
-- Age filtering applied (optional)
+- Either: parent PID is dead, OR process exceeded stale timeout
 
-**Marking:** `classification: 'confirmed'`
-**Default action:** Kill with SIGTERM → SIGKILL
-**Force required:** No
+**Action:** Kill with SIGTERM → SIGKILL
 
 **Example:**
 ```json
 {
   "pid": 1234,
   "command": "claude -p --model sonnet",
-  "classification": "confirmed",
-  "reason": "Tracked by loopwork",
-  "age": 3600000,
-  "memory": 524288000
+  "reason": "parent-dead",
+  "age": 3600000
 }
 ```
 
-### Suspected Orphans
+### Orphan Detection Methods (v0.3.4+)
 
-These match patterns but lack confirmation:
+Only TWO detection methods are active:
 
-**Criteria:**
-- NOT in `spawned-pids.json`
-- BUT matches one of these:
-  - Command matches pattern (e.g., `claude`, `bun test`, `tail -f`)
-  - Running in project directory
-  - Is loopwork descendant (PPID chain includes loopwork)
+1. **Dead Parent Detection**: Process is in registry AND its parent PID no longer exists
+2. **Stale Detection**: Process is in registry AND running longer than 2x configured timeout
 
-**Marking:** `classification: 'suspected'`
-**Default action:** Skip (report only)
-**Force required:** Yes (via `--force` flag)
-
-**Example:**
-```json
-{
-  "pid": 5678,
-  "command": "bun test suite",
-  "classification": "suspected",
-  "reason": "Matches pattern and in project directory but not tracked",
-  "cwd": "/path/to/project",
-  "age": 5400000
-}
-```
+> **REMOVED**: "Untracked process" detection was removed in v0.3.4 because it was
+> killing processes that matched patterns like 'claude' but were never spawned by
+> loopwork. This caused users' independent CLI sessions to be terminated.
 
 ## Orphan Detection
 
-### Pattern-Based Detection
+### Registry-Based Detection (v0.3.4+)
 
-Default patterns matched (configurable):
+Orphan detection is now **registry-only**. We only look at processes that loopwork actually spawned and tracked:
 
 ```typescript
-const DEFAULT_ORPHAN_PATTERNS = [
-  'bun test',           // Test runners
-  'tail -f',            // Log watchers
-  'zsh -c -l source.*shell-snapshots',  // Shell environments
-  'claude',             // Claude CLI
-  'opencode',           // OpenCode CLI
-]
+// Detection methods (in OrphanDetector.scan())
+const orphans = []
+
+// Method 1: Dead parent - tracked process whose parent PID died
+orphans.push(...this.detectDeadParents())
+
+// Method 2: Stale - tracked process running > 2x timeout
+orphans.push(...this.detectStaleProcesses())
+
+// Method 3: REMOVED - untracked pattern matching (was dangerous)
+// This was killing users' independent CLI sessions!
 ```
 
-Custom patterns can be added via `DetectorOptions.patterns`.
+### Why Pattern-Based Detection Was Removed
 
-### Ancestry Verification
+The old pattern-based detection would:
+1. Scan ALL running processes via `ps aux`
+2. Filter to those matching patterns like `claude`, `opencode`, `bun test`
+3. Kill any matching process NOT in the registry
 
-For untracked processes, the detector verifies loopwork ancestry by walking PPID chain:
+**The problem:** If you had a Claude CLI running in another terminal (not spawned by loopwork), it would be killed because it matched the pattern but wasn't tracked.
 
-```
-Process X
-  ↑ ppid
-Parent Y (claude)
-  ↑ ppid
-Grandparent Z (loopwork) ← Found: confirmed as loopwork descendant
-  ↑ ppid
-init (PID 1) ← Stop walking
-```
-
-**Protection:** Stops at PID 1, prevents infinite loops, uses visited set.
-
-### Working Directory Check
-
-Processes are only classified as confirmed if:
-
-1. **Tracked PID**: In `spawned-pids.json` (always confirmed)
-2. **Untracked PID**: Must be in project directory (via `lsof` cwd detection)
-
-This prevents killing unrelated user processes like `tail -f` in home directory.
+**The fix:** Only kill processes that are:
+- In the registry (loopwork spawned them)
+- AND either their parent died OR they exceeded stale timeout
 
 ## Process Lifecycle
 
@@ -301,21 +274,16 @@ Summary: Would kill 1 orphan(s), skipped 1
 Tip: Use --force to also kill 1 suspected orphan(s)
 ```
 
-### Kill Confirmed Only
+### Kill Tracked Orphans
 
 ```bash
 loopwork kill --orphans
 ```
 
-Only kills confirmed orphans (from tracking file). Skips suspected.
+Kills orphaned processes that are tracked in the registry (loopwork spawned them).
 
-### Kill All (With Force)
-
-```bash
-loopwork kill --orphans --force
-```
-
-Kills both confirmed and suspected orphans. Use carefully!
+> **Note (v0.3.4+)**: The `--force` flag no longer has special meaning for orphan killing.
+> We no longer have "suspected" vs "confirmed" categories since we only kill tracked processes.
 
 ### JSON Output
 
@@ -349,10 +317,12 @@ Machine-readable output:
 
 | Flag | Type | Default | Purpose |
 |------|------|---------|---------|
-| `--orphans` | boolean | false | Scan for and kill orphans |
+| `--orphans` | boolean | false | Scan for and kill tracked orphans |
 | `--dry-run` | boolean | false | Preview without killing |
-| `--force` | boolean | false | Kill suspected orphans too |
 | `--json` | boolean | false | JSON output format |
+
+> **Note**: The `--force` flag was used for killing "suspected" orphans, but suspected
+> orphan detection was removed in v0.3.4 for safety reasons.
 
 ## Monitor Integration
 
@@ -472,14 +442,15 @@ All process info is gathered via standard Unix tools:
 
 ## Design Decisions
 
-### Why Dual Classification?
+### Why Registry-Only Detection? (v0.3.4+)
 
-Two-tier classification allows safe cleanup without risky guessing:
+We removed pattern-based "suspected orphan" detection because it was too dangerous:
 
-- **Confirmed**: We have proof (tracking file) → Safe to auto-kill
-- **Suspected**: Pattern match only → Requires user consent
+- **Problem**: Pattern matching killed ANY process matching 'claude', 'opencode', etc.
+- **Real bug**: Users' independent CLI sessions (not from loopwork) were being killed
+- **Solution**: Only kill processes we definitely spawned (in registry)
 
-This prevents accidentally killing legitimate processes.
+This is more conservative but much safer. We'd rather miss some orphans than kill legitimate user processes.
 
 ### Why Store spawned-pids.json?
 
@@ -514,17 +485,16 @@ cat .loopwork-state/spawned-pids.json
 
 If empty or missing, orphans were either never tracked or already cleaned.
 
-### Suspected Orphans Blocking Cleanup
+### Processes Not Being Cleaned Up
 
-Run with `--force` after confirming they're safe:
-```bash
-loopwork kill --orphans --force
-```
+If orphan processes aren't being killed, they might not be in the registry:
 
-Or use `--dry-run` first to preview:
-```bash
-loopwork kill --orphans --force --dry-run
-```
+1. Check the registry: `cat .loopwork/processes.json`
+2. If empty, the processes weren't spawned by loopwork
+3. Kill manually with `kill <PID>` or `pkill -f <pattern>`
+
+> **Note (v0.3.4+)**: We no longer kill "suspected" orphans that match patterns but aren't
+> tracked. This was removed because it killed users' independent CLI sessions.
 
 ### Permission Denied Errors
 
@@ -573,3 +543,290 @@ const cleanedPids = tracked.pids.filter(p => processExists(p.pid))
 | `untrackPid()` | Remove a PID from tracking |
 | `killer.kill()` | Terminate orphan processes |
 | `monitor.startOrphanWatch()` | Periodic background monitoring |
+
+---
+
+## Prevention Strategies
+
+This section describes how to prevent orphan processes from accumulating in the first place.
+
+### 1. Enable Automatic Orphan Watch (Recommended)
+
+The most effective prevention is enabling automatic orphan monitoring in your config file:
+
+```typescript
+// loopwork.config.ts
+import { defineConfig, compose, withJSONBackend } from 'loopwork'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+)(defineConfig({
+  cli: 'claude',
+
+  // Orphan prevention configuration
+  orphanWatch: {
+    enabled: true,          // Enable automatic monitoring
+    interval: 60000,        // Check every 60 seconds
+    maxAge: 1800000,        // Kill orphans older than 30 minutes
+    autoKill: true,         // Automatically kill confirmed orphans
+    patterns: [],           // Additional process patterns to watch
+  },
+}))
+```
+
+**Configuration Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable automatic orphan monitoring |
+| `interval` | number | `60000` | How often to scan for orphans (ms) |
+| `maxAge` | number | `1800000` | Only kill orphans older than this age (ms) |
+| `autoKill` | boolean | `false` | Automatically kill confirmed orphans |
+| `patterns` | string[] | `[]` | Additional process name patterns to watch |
+
+### 2. Configure Test Timeouts
+
+Runaway tests are a common source of orphan processes. Configure Bun to enforce timeouts:
+
+**File: `bunfig.toml` (project root)**
+
+```toml
+[test]
+# Global test timeout - prevents tests from running indefinitely
+# This is critical for preventing orphan test processes
+timeout = 10000  # 10 seconds
+```
+
+**File: `packages/loopwork/bunfig.toml` (package level)**
+
+```toml
+[test]
+# Package-specific timeout (overrides root if present)
+timeout = 10000
+```
+
+**In test files:**
+
+```typescript
+import { test, describe } from 'bun:test'
+
+// Per-test timeout override for long-running tests
+test('slow integration test', async () => {
+  // ... test code
+}, { timeout: 30000 }) // 30 second timeout for this specific test
+```
+
+### 3. Manual Cleanup Commands
+
+For immediate cleanup, use the CLI:
+
+```bash
+# Dry-run: see what would be killed
+loopwork kill --orphans --dry-run
+
+# Kill confirmed orphans only (safe)
+loopwork kill --orphans
+
+# Kill ALL orphans including suspected (use with caution)
+loopwork kill --orphans --force
+
+# Get JSON output for scripting
+loopwork kill --orphans --json
+```
+
+### 4. Shell Aliases for Quick Cleanup
+
+Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+# Quick orphan cleanup alias
+alias loopwork-cleanup='loopwork kill --orphans'
+
+# Force cleanup (use carefully)
+alias loopwork-cleanup-all='loopwork kill --orphans --force'
+
+# View orphans without killing
+alias loopwork-orphans='loopwork kill --orphans --dry-run'
+```
+
+### 5. Git Hooks for Cleanup
+
+Create `.git/hooks/post-checkout` (make executable with `chmod +x`):
+
+```bash
+#!/bin/bash
+# Clean up orphan processes when switching branches
+loopwork kill --orphans 2>/dev/null || true
+```
+
+### 6. Process Groups for Child Processes
+
+When loopwork spawns child processes, they're added to a process group. This allows killing all children when the parent exits:
+
+```typescript
+// This is handled internally by loopwork
+const child = spawn(cmd, args, {
+  detached: false,  // Keep in same process group
+})
+
+// On cleanup, kill entire process group
+process.on('exit', () => {
+  try {
+    process.kill(-child.pid, 'SIGTERM')  // Negative PID = process group
+  } catch {}
+})
+```
+
+### 7. Systemd/Launchd Integration
+
+For production deployments, consider using system service managers that handle process cleanup automatically:
+
+**macOS LaunchAgent (`~/Library/LaunchAgents/com.loopwork.agent.plist`):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.loopwork.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/loopwork</string>
+        <string>run</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/path/to/project</string>
+    <key>AbandonProcessGroup</key>
+    <false/>  <!-- Kills all child processes when service stops -->
+</dict>
+</plist>
+```
+
+---
+
+## Common Orphan Scenarios
+
+### Scenario 1: Test Process Stuck in Infinite Loop
+
+**Symptoms:**
+- `bun test` process consuming 99%+ CPU
+- PPID = 1 (reparented to init)
+- Running for hours
+
+**Prevention:**
+```toml
+# bunfig.toml
+[test]
+timeout = 10000
+```
+
+**Manual fix:**
+```bash
+loopwork kill --orphans --force
+```
+
+### Scenario 2: Claude/OpenCode CLI Hangs on API Error
+
+**Symptoms:**
+- `claude` or `opencode` process idle
+- No output in log files
+- Network connectivity issues
+
+**Prevention:**
+```typescript
+// loopwork.config.ts
+defineConfig({
+  timeout: 600,  // 10 minute timeout per task
+  orphanWatch: {
+    enabled: true,
+    maxAge: 900000,  // 15 minutes
+    autoKill: true,
+  },
+})
+```
+
+### Scenario 3: Playwright Test Server Left Running
+
+**Symptoms:**
+- `node` process running playwright test server
+- Consuming ports (usually 3000-3100)
+- Started days ago
+
+**Prevention:**
+- Always use `--exit` flag with playwright
+- Add to orphan patterns:
+
+```typescript
+orphanWatch: {
+  patterns: ['playwright', 'chromium', 'firefox', 'webkit'],
+}
+```
+
+---
+
+## Monitoring and Alerting
+
+### View Orphan Statistics
+
+```typescript
+import { LoopworkMonitor } from 'loopwork'
+
+const monitor = new LoopworkMonitor(projectRoot)
+monitor.startOrphanWatch({ autoKill: true })
+
+// Later...
+const stats = monitor.getOrphanStats()
+console.log(stats)
+// {
+//   watching: true,
+//   lastCheck: "2025-01-30T10:05:00.000Z",
+//   orphansDetected: 5,
+//   orphansKilled: 3
+// }
+```
+
+### Event Logging
+
+All orphan events are logged to `.loopwork/orphan-events.log`:
+
+```log
+[2025-01-30T10:05:12.345Z] DETECTED pid=12345 cmd="claude -p" age=5min status=confirmed
+[2025-01-30T10:05:13.567Z] KILLED pid=12345 cmd="claude -p" age=5min status=confirmed
+[2025-01-30T10:05:14.890Z] SKIPPED pid=67890 cmd="bun test" age=2min status=suspected reason="suspected, autoKill disabled"
+```
+
+### Programmatic Event Handling
+
+```typescript
+import { OrphanKiller } from 'loopwork'
+
+const killer = new OrphanKiller()
+
+killer.on('orphan:killed', ({ pid, command }) => {
+  console.log(`Killed orphan: ${pid} (${command})`)
+  // Send alert, log to external service, etc.
+})
+
+killer.on('orphan:skipped', ({ pid, command, reason }) => {
+  console.log(`Skipped orphan: ${pid} - ${reason}`)
+})
+
+killer.on('orphan:failed', ({ pid, command, error }) => {
+  console.error(`Failed to kill orphan ${pid}: ${error}`)
+})
+```
+
+---
+
+## Best Practices Summary
+
+| Practice | Impact | Difficulty |
+|----------|--------|------------|
+| Enable `orphanWatch` in config | High | Easy |
+| Set test timeouts in `bunfig.toml` | High | Easy |
+| Run `loopwork kill --orphans` periodically | Medium | Easy |
+| Add cleanup to git hooks | Medium | Easy |
+| Use process groups for spawned processes | High | Internal |
+| Monitor orphan event logs | Low | Easy |
+| Set up alerting for orphan accumulation | Medium | Medium |
