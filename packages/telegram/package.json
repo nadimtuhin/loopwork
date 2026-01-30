@@ -4,6 +4,7 @@
   "main": "dist/index.js",
   "types": "src/index.ts",
   "scripts": {
-    "build": "bun build src/*.ts --outdir dist --target node --external bun"
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
   }
 }
