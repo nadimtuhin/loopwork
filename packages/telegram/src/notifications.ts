@@ -33,8 +33,8 @@ export interface NotificationPlugin {
 }
 
 export interface TelegramConfig {
-  botToken: string
-  chatId: string
+  botToken?: string
+  chatId?: string
   parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2'
   disableNotification?: boolean
 }

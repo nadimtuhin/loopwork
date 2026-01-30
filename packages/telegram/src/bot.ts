@@ -22,15 +22,26 @@
 import { createBackend } from '../../loopwork/src/backends'
 import type { TaskBackend, Task } from '../../loopwork/src/contracts'
 import type { BackendConfig } from '../../loopwork/src/contracts'
+import { SessionManager, type UserSession } from './session'
+import { IPCHandler } from './ipc-handler'
 
 interface TelegramUpdate {
   update_id: number
   message?: {
     message_id: number
-    from: { id: number; username?: string }
+    from: { id: number; username?: string; first_name?: string }
     chat: { id: number }
     text?: string
     date: number
+  }
+  callback_query?: {
+    id: string
+    from: { id: number; username?: string; first_name?: string }
+    message?: {
+      message_id: number
+      chat: { id: number }
+    }
+    data?: string
   }
 }
 
@@ -46,14 +57,22 @@ export class TelegramTaskBot {
   private backend: TaskBackend
   private lastUpdateId = 0
   private running = false
+  private sessionManager: SessionManager
+  private loopProcess: any = null // Subprocess
+  private loopCommand: string[]
+  private ipcHandler: IPCHandler
 
   constructor(config: {
     botToken?: string
     chatId?: string
     backend?: BackendConfig
+    loopCommand?: string[]
   } = {}) {
     this.botToken = config.botToken || process.env.TELEGRAM_BOT_TOKEN || ''
     this.allowedChatId = config.chatId || process.env.TELEGRAM_CHAT_ID || ''
+    this.sessionManager = new SessionManager()
+    this.loopCommand = config.loopCommand || ['loopwork', 'run']
+    this.ipcHandler = new IPCHandler(this)
 
     if (!this.botToken) {
       throw new Error('TELEGRAM_BOT_TOKEN is required')
@@ -110,13 +129,123 @@ export class TelegramTaskBot {
   }
 
   /**
+   * Handle an update
+   */
+  private async handleUpdate(update: TelegramUpdate): Promise<void> {
+    if (!update.message?.text) return
+
+    const chatId = update.message.chat.id
+    const userId = update.message.from.id
+    const text = update.message.text.trim()
+
+    // Security check - only allow configured chat
+    if (String(chatId) !== this.allowedChatId) {
+      return
+    }
+
+    const session = this.sessionManager.getSession(userId, chatId)
+
+    // Handle cancel anytime
+    if (text.toLowerCase() === '/cancel') {
+      this.sessionManager.clearSession(userId)
+      await this.sendMessage('🚫 Operation cancelled.')
+      return
+    }
+
+    // Handle commands regardless of state (unless drafting description?)
+    if (text.startsWith('/')) {
+      const response = await this.handleCommand(chatId, text)
+      await this.sendMessage(response)
+      return
+    }
+
+    // State machine
+    switch (session.state) {
+      case 'DRAFTING_TASK':
+        await this.handleDraftingState(session, text)
+        break
+      case 'CONFIRM_TASK':
+        await this.handleConfirmState(session, text)
+        break
+      default:
+        // Treat as new task request or chat
+        await this.startTaskDraft(session, text)
+        break
+    }
+  }
+
+  private async startTaskDraft(session: UserSession, text: string) {
+    this.sessionManager.updateSession(session.userId, {
+      state: 'DRAFTING_TASK',
+      draft: { title: text }
+    })
+    
+    await this.sendMessage(
+      `📝 <b>Drafting Task:</b> ${escapeHtml(text)}\n\n` +
+      `Please provide a description for this task, or type "skip" to use the title as description.`
+    )
+  }
+
+  private async handleDraftingState(session: UserSession, text: string) {
+    if (!session.draft) {
+      this.sessionManager.clearSession(session.userId)
+      return
+    }
+
+    const description = text.toLowerCase() === 'skip' ? session.draft.title : text
+    
+    this.sessionManager.updateSession(session.userId, {
+      state: 'CONFIRM_TASK',
+      draft: { ...session.draft, description }
+    })
+
+    await this.sendMessage(
+      `📋 <b>Confirm Task Creation?</b>\n\n` +
+      `<b>Title:</b> ${escapeHtml(session.draft.title || '')}\n` +
+      `<b>Description:</b> ${escapeHtml(description || '')}\n\n` +
+      `Type <b>yes</b> to create, or <b>no</b> to cancel.`
+    )
+  }
+
+  private async handleConfirmState(session: UserSession, text: string) {
+    if (['yes', 'y', 'ok', 'confirm'].includes(text.toLowerCase())) {
+      await this.createTaskFromDraft(session)
+    } else {
+      this.sessionManager.clearSession(session.userId)
+      await this.sendMessage('🚫 Task creation cancelled.')
+    }
+  }
+
+  private async createTaskFromDraft(session: UserSession) {
+    if (!session.draft || !this.backend.createTask) {
+      await this.sendMessage('❌ Error: Backend does not support task creation or draft lost.')
+      this.sessionManager.clearSession(session.userId)
+      return
+    }
+
+    try {
+      const task = await this.backend.createTask({
+        title: session.draft.title!,
+        description: session.draft.description || session.draft.title!,
+        priority: 'medium',
+      })
+
+      await this.sendMessage(
+        `✅ <b>Task Created!</b>\n\n` +
+        `<b>ID:</b> <code>${task.id}</code>\n` +
+        `<b>Title:</b> ${escapeHtml(task.title)}`
+      )
+    } catch (e: any) {
+      await this.sendMessage(`❌ Failed to create task: ${escapeHtml(e.message)}`)
+    } finally {
+      this.sessionManager.clearSession(session.userId)
+    }
+  }
+
+  /**
    * Handle a command
    */
   private async handleCommand(chatId: number, text: string): Promise<string> {
-    // Security check - only allow configured chat
-    if (String(chatId) !== this.allowedChatId) {
-      return '⛔ Unauthorized'
-    }
 
     const parts = text.trim().split(/\s+/)
     const command = parts[0].toLowerCase()
@@ -151,6 +280,15 @@ export class TelegramTaskBot {
 
       case '/priority':
         return this.handleSetPriority(parts[1], parts[2] as 'high' | 'medium' | 'low')
+
+      case '/run':
+        return this.handleRunLoop()
+
+      case '/stop':
+        return this.handleStopLoop()
+
+      case '/input':
+        return this.handleInput(parts.slice(1).join(' '))
 
       case '/help':
       case '/start':
@@ -415,12 +553,13 @@ Example:
       return `❌ Task not found: ${taskId}`
     }
 
-    if (!this.backend.setPriority) {
+    const backend = this.backend as any
+    if (!backend.setPriority) {
       return '❌ This backend does not support priority changes'
     }
 
     const oldPriority = task.priority
-    const result = await this.backend.setPriority(taskId, priority)
+    const result = await backend.setPriority(taskId, priority)
 
     if (result.success) {
       const priorityEmoji: Record<string, string> = {
@@ -438,19 +577,104 @@ Example:
     return `❌ Failed to update priority: ${result.error || 'Unknown error'}`
   }
 
-  private handleHelp(): string {
-    return `🤖 <b>Loopwork Task Bot</b>
+  private async handleRunLoop(): Promise<string> {
+    if (this.loopProcess) {
+      return '⚠️ Loop is already running!'
+    }
 
-<b>View Tasks:</b>
-/tasks - List pending tasks
-/task &lt;id&gt; - Get task details
+    try {
+      await this.sendMessage('🚀 Starting Loopwork...')
+      
+      this.loopProcess = Bun.spawn(this.loopCommand, {
+        stdin: 'pipe',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        onExit: (proc, exitCode, signalCode, error) => {
+          this.loopProcess = null
+          this.sendMessage(`🏁 Loop finished (Exit code: ${exitCode})`)
+        }
+      })
+      
+      this.streamOutput(this.loopProcess.stdout)
+      this.streamOutput(this.loopProcess.stderr)
+
+      return '✅ Loop started successfully!'
+    } catch (e: any) {
+      this.loopProcess = null
+      return `❌ Failed to start loop: ${e.message}`
+    }
+  }
+
+  private async handleStopLoop(): Promise<string> {
+    if (!this.loopProcess) {
+      return '⚠️ No loop running.'
+    }
+
+    this.loopProcess.kill()
+    this.loopProcess = null
+    return '🛑 Loop stopped.'
+  }
+
+  private async streamOutput(readable: any) {
+    if (!readable) return
+    const reader = readable.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let lastSendTime = Date.now()
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        buffer += decoder.decode(value)
+        
+        if (buffer.length > 2000 || (Date.now() - lastSendTime > 2000 && buffer.length > 0)) {
+          await this.sendMessage(`<pre>${escapeHtml(buffer)}</pre>`)
+          buffer = ''
+          lastSendTime = Date.now()
+        }
+      }
+      
+      if (buffer.length > 0) {
+        await this.sendMessage(`<pre>${escapeHtml(buffer)}</pre>`)
+      }
+    } catch (e) {
+      console.error('Error streaming output:', e)
+    }
+  }
+
+  private async handleInput(text: string): Promise<string> {
+    if (!this.loopProcess || !this.loopProcess.stdin) {
+      return '⚠️ No running loop to send input to.'
+    }
+
+    try {
+      const writer = this.loopProcess.stdin.getWriter()
+      const encoder = new TextEncoder()
+      await writer.write(encoder.encode(text + '\n'))
+      writer.releaseLock()
+      return '📤 Input sent.'
+    } catch (e: any) {
+      return `❌ Failed to send input: ${e.message}`
+    }
+  }
+
+  private handleHelp(): string {
+    return `🤖 <b>Loopwork Teleloop Agent</b>
+
+<b>Loop Control:</b>
+/run - Start the automation loop
+/stop - Stop the running loop
+/input &lt;text&gt; - Send input to running loop
 /status - Get backend status
 
-<b>Create Tasks:</b>
-/new &lt;title&gt; - Create new task
-/subtask &lt;parent&gt; &lt;title&gt; - Create sub-task
+<b>Task Management:</b>
+Simply type "Create a task..." to start drafting!
 
-<b>Update Tasks:</b>
+<b>Commands:</b>
+/tasks - List pending tasks
+/task &lt;id&gt; - Get task details
 /complete &lt;id&gt; - Mark complete
 /fail &lt;id&gt; [reason] - Mark failed
 /reset &lt;id&gt; - Reset to pending
@@ -477,11 +701,7 @@ Example:
           this.lastUpdateId = update.update_id
 
           if (update.message?.text) {
-            const response = await this.handleCommand(
-              update.message.chat.id,
-              update.message.text
-            )
-            await this.sendMessage(response)
+            await this.handleUpdate(update)
           }
         }
       } catch (e: any) {
