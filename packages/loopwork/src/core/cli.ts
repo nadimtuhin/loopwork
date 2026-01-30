@@ -1,4 +1,4 @@
-import { spawn, spawnSync, ChildProcess } from 'child_process'
+import { spawnSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { logger, StreamLogger } from './utils'
@@ -13,6 +13,10 @@ import type {
 } from '../contracts/cli'
 import { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG } from '../contracts/cli'
 import { ModelSelector, calculateBackoffDelay } from './model-selector'
+import type { ProcessSpawner, SpawnedProcess } from '../contracts/spawner'
+import { createSpawner } from './spawners'
+import type { IProcessManager } from '../contracts/process-manager'
+import { createProcessManager } from './process-management/process-manager'
 
 /**
  * Legacy CliConfig interface for backward compatibility
@@ -53,18 +57,38 @@ const CLI_PATH_ENV_VARS: Record<CliType, string> = {
   gemini: 'LOOPWORK_GEMINI_PATH',
 }
 
+/**
+ * Options for CliExecutor constructor
+ */
+export interface CliExecutorOptions {
+  /**
+   * Custom process spawner for dependency injection
+   * If not provided, uses the default spawner based on preferPty config
+   * @deprecated Use processManager instead
+   */
+  spawner?: ProcessSpawner
+
+  /**
+   * Custom process manager for dependency injection
+   * If not provided, creates a default ProcessManager with the configured spawner
+   */
+  processManager?: IProcessManager
+}
+
 export class CliExecutor {
   private cliPaths: Map<string, string> = new Map()
-  private currentSubprocess: ChildProcess | null = null
+  private currentProcess: SpawnedProcess | null = null
   private modelSelector: ModelSelector
   private cliConfig: CliExecutorConfig
   private retryConfig: Required<RetryConfig>
+  private spawner: ProcessSpawner
+  private processManager: IProcessManager
 
   // Timing configuration
   private sigkillDelayMs: number
   private progressIntervalMs: number
 
-  constructor(private config: Config) {
+  constructor(private config: Config, options?: CliExecutorOptions) {
     // Merge default config with user config
     this.cliConfig = {
       ...DEFAULT_CLI_EXECUTOR_CONFIG,
@@ -80,6 +104,19 @@ export class CliExecutor {
     // Set timing values
     this.sigkillDelayMs = this.cliConfig.sigkillDelayMs ?? SIGKILL_DELAY_MS
     this.progressIntervalMs = this.cliConfig.progressIntervalMs ?? PROGRESS_UPDATE_INTERVAL_MS
+
+    // Initialize spawner (use provided or create default based on preferPty config)
+    const preferPty = this.cliConfig.preferPty ?? true
+    this.spawner = options?.spawner ?? createSpawner(preferPty)
+    logger.debug(`Spawner initialized: ${this.spawner.name} (preferPty: ${preferPty})`)
+
+    // Initialize process manager
+    // If processManager provided, use it; otherwise create one with the spawner
+    this.processManager = options?.processManager ?? createProcessManager({
+      spawner: this.spawner,
+      staleTimeoutMs: (this.cliConfig.timeout ?? 600) * 1000 * 2, // 2x CLI timeout
+      gracePeriodMs: this.sigkillDelayMs,
+    })
 
     // Detect CLI paths
     this.detectClis()
@@ -228,10 +265,43 @@ export class CliExecutor {
    * Kill current subprocess if running
    */
   killCurrent(): void {
-    if (this.currentSubprocess) {
-      this.currentSubprocess.kill('SIGTERM')
-      this.currentSubprocess = null
+    if (this.currentProcess) {
+      this.currentProcess.kill('SIGTERM')
+      this.currentProcess = null
     }
+  }
+
+  /**
+   * Clean up all tracked processes and persist state
+   * Should be called before process exit
+   */
+  async cleanup(): Promise<void> {
+    logger.info('Cleaning up tracked processes...')
+
+    // Kill current process if running
+    this.killCurrent()
+
+    // Detect and clean orphans
+    const result = await this.processManager.cleanup()
+
+    if (result.cleaned.length > 0) {
+      logger.info(`Cleaned up ${result.cleaned.length} orphan process(es)`)
+    }
+
+    if (result.failed.length > 0) {
+      logger.warn(`Failed to clean ${result.failed.length} process(es)`)
+      result.errors.forEach(e => logger.debug(`PID ${e.pid}: ${e.error}`))
+    }
+
+    // Persist final state
+    await this.processManager.persist()
+  }
+
+  /**
+   * Get process manager for external access
+   */
+  getProcessManager(): IProcessManager {
+    return this.processManager
   }
 
   /**
@@ -245,7 +315,8 @@ export class CliExecutor {
   async execute(
     prompt: string,
     outputFile: string,
-    timeoutSecs: number
+    timeoutSecs: number,
+    taskId?: string
   ): Promise<number> {
     const promptFile = path.join(path.dirname(outputFile), 'current-prompt.md')
     fs.writeFileSync(promptFile, prompt)
@@ -314,6 +385,7 @@ export class CliExecutor {
           env,
           input: modelConfig.cli === 'claude' ? prompt : undefined,
           prefix: displayName,
+          taskId,
         },
         outputFile,
         effectiveTimeout
@@ -405,7 +477,7 @@ export class CliExecutor {
   private spawnWithTimeout(
     command: string,
     args: string[],
-    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string },
+    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string; taskId?: string },
     outputFile: string,
     timeoutSecs: number
   ): Promise<{ exitCode: number; timedOut: boolean }> {
@@ -415,14 +487,32 @@ export class CliExecutor {
       const startTime = Date.now()
       const streamLogger = new StreamLogger(options.prefix)
 
-      const child = spawn(command, args, {
+      // Spawn via process manager for automatic tracking
+      logger.debug(`Spawning ${command} with spawner: ${this.spawner.name}`)
+      const child = this.processManager.spawn(command, args, {
         env: options.env,
-        stdio: ['pipe', 'pipe', 'pipe'],
       })
 
-      this.currentSubprocess = child
+      this.currentProcess = child
+
+      // Track additional metadata if process has PID
+      if (child.pid && options.taskId) {
+        this.processManager.track(child.pid, {
+          command,
+          args,
+          namespace: this.config.namespace || 'loopwork',
+          taskId: options.taskId,
+          startTime: Date.now(),
+        })
+      }
 
       const progressInterval = setInterval(() => {
+        // Skip progress update if StreamLogger output happened recently (within 500ms)
+        // This prevents progress bar from overwriting streaming CLI output
+        if (Date.now() - logger.lastOutputTime < 500) {
+          return
+        }
+
         const elapsed = Math.floor((Date.now() - startTime) / 1000)
         const _remaining = Math.max(0, timeoutSecs - elapsed)
         const percent = Math.min(100, Math.floor((elapsed / timeoutSecs) * 100))
@@ -434,15 +524,19 @@ export class CliExecutor {
         logger.update(`${bar} ${percent}% | ${options.prefix || 'CLI'} | ${elapsed}s elapsed (timeout ${timeoutSecs}s)`)
       }, this.progressIntervalMs)
 
+      // Handle stdout (always available)
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
         streamLogger.log(data)
       })
 
-      child.stderr?.on('data', (data) => {
-        writeStream.write(data)
-        streamLogger.log(data)
-      })
+      // Handle stderr (may be null for PTY spawner - stderr merged into stdout)
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          writeStream.write(data)
+          streamLogger.log(data)
+        })
+      }
 
       if (child.stdin) {
         if (options.input) {
@@ -462,7 +556,7 @@ export class CliExecutor {
         clearTimeout(timer)
         streamLogger.flush()
         writeStream.end()
-        this.currentSubprocess = null
+        this.currentProcess = null
         const totalTime = Math.floor((Date.now() - startTime) / 1000)
         const minutes = Math.floor(totalTime / 60)
         const seconds = totalTime % 60
@@ -492,7 +586,7 @@ export class CliExecutor {
         clearTimeout(timer)
         streamLogger.flush()
         writeStream.end()
-        this.currentSubprocess = null
+        this.currentProcess = null
 
         // Provide specific error messages based on error code
         const errorDetails: Record<string, string[]> = {

@@ -35,6 +35,7 @@ export type {
 export type {
   LoopworkConfig,
   LogLevel,
+  ParallelFailureMode,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
 
@@ -52,3 +53,19 @@ export { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG } from './cli'
 // Executor/state interfaces
 export type { ICliExecutor } from './executor'
 export type { IStateManager, StateSnapshot, IStateManagerConstructor } from './state'
+
+// Spawner types
+export type {
+  SpawnedProcess,
+  SpawnOptions,
+  ProcessSpawner,
+} from './spawner'
+
+// Process manager types
+export type {
+  ProcessMetadata,
+  ProcessInfo,
+  OrphanInfo,
+  CleanupResult,
+  IProcessManager,
+} from './process-manager'

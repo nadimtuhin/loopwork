@@ -12,6 +12,13 @@ import type { CliExecutorConfig } from './cli'
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent'
 
 /**
+ * Failure mode for parallel execution
+ * - 'continue': Keep running other workers on task failure
+ * - 'abort-all': Stop all workers when any task fails
+ */
+export type ParallelFailureMode = 'continue' | 'abort-all'
+
+/**
  * Main Loopwork configuration
  */
 export interface LoopworkConfig {
@@ -33,6 +40,20 @@ export interface LoopworkConfig {
   dryRun?: boolean
   debug?: boolean
   logLevel?: LogLevel
+
+  // Parallel execution settings
+  /**
+   * Number of parallel workers (1 = sequential mode)
+   * Default: 1 (sequential)
+   * Recommended: 2-3 for parallel mode
+   */
+  parallel?: number
+
+  /**
+   * How to handle task failures in parallel mode
+   * Default: 'continue' (other workers keep running)
+   */
+  parallelFailureMode?: ParallelFailureMode
 
   // Task filtering
   feature?: string
@@ -66,4 +87,6 @@ export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
   circuitBreakerThreshold: 5,
   taskDelay: 2000,
   retryDelay: 3000,
+  parallel: 1,
+  parallelFailureMode: 'continue',
 }

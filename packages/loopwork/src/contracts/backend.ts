@@ -46,6 +46,13 @@ export interface TaskBackend {
   /** Find the next pending task */
   findNextTask(options?: FindTaskOptions): Promise<Task | null>
 
+  /**
+   * Atomically claim the next available task (find + mark in-progress)
+   * Used for parallel execution to prevent race conditions.
+   * If not implemented, falls back to findNextTask + markInProgress.
+   */
+  claimTask?(options?: FindTaskOptions): Promise<Task | null>
+
   /** Get a specific task by ID */
   getTask(taskId: string): Promise<Task | null>
 

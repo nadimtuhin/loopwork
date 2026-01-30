@@ -49,12 +49,14 @@ export class LogWatcher extends EventEmitter {
       fs.mkdirSync(dir, { recursive: true })
     }
 
-    // Initialize file size (existing content is ignored)
-    if (fs.existsSync(this.logFile)) {
+    // Create file if it doesn't exist
+    if (!fs.existsSync(this.logFile)) {
+      fs.writeFileSync(this.logFile, '')
+      this.fileSize = 0
+    } else {
+      // Initialize file size (existing content is ignored)
       const stats = fs.statSync(this.logFile)
       this.fileSize = stats.size
-    } else {
-      this.fileSize = 0
     }
 
     this.watching = true

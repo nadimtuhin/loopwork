@@ -113,6 +113,15 @@ export function matchPattern(line: string): PatternMatch | null {
 }
 
 /**
+ * Get error pattern by name
+ * @param patternName - Pattern name to find
+ * @returns ErrorPattern object or null if not found
+ */
+export function getPatternByName(patternName: string): ErrorPattern | null {
+  return ERROR_PATTERNS.find(p => p.name === patternName) || null
+}
+
+/**
  * Check if a pattern is known (has explicit handling)
  * @param patternName - Pattern name to check
  * @returns true if pattern is known

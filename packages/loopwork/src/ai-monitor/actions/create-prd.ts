@@ -3,6 +3,9 @@
  *
  * When a task is started but its PRD file doesn't exist,
  * this action generates a stub PRD with a basic template.
+ *
+ * Task metadata is read from .specs/tasks/tasks.json to populate
+ * the PRD with accurate title and description from the task registry.
  */
 
 import fs from 'fs'
@@ -13,7 +16,53 @@ import type { Action } from './index'
 export interface CreatePRDContext {
   taskId: string
   title?: string
+  description?: string
   path?: string
+}
+
+export interface TaskMetadata {
+  id: string
+  title: string
+  description?: string
+  [key: string]: unknown
+}
+
+/**
+ * Read task metadata from tasks.json
+ */
+function readTaskMetadata(tasksFilePath: string, taskId: string): TaskMetadata | null {
+  try {
+    if (!fs.existsSync(tasksFilePath)) {
+      logger.debug(`Tasks file not found: ${tasksFilePath}`)
+      return null
+    }
+
+    const content = fs.readFileSync(tasksFilePath, 'utf8')
+    const data = JSON.parse(content)
+
+    // Support both { tasks: [...] } and direct array format
+    const tasksList = Array.isArray(data) ? data : data.tasks || []
+
+    // Find task by ID (case-insensitive match)
+    const task = tasksList.find(
+      (t: Record<string, unknown>) =>
+        typeof t.id === 'string' && t.id.toUpperCase() === taskId.toUpperCase()
+    )
+
+    if (!task) {
+      logger.debug(`Task not found in tasks.json: ${taskId}`)
+      return null
+    }
+
+    return {
+      id: task.id as string,
+      title: (task.title as string) || taskId,
+      description: (task.description as string) || undefined
+    }
+  } catch (error) {
+    logger.debug(`Error reading task metadata: ${error instanceof Error ? error.message : String(error)}`)
+    return null
+  }
 }
 
 /**
@@ -28,7 +77,8 @@ export function extractTaskInfo(context: Record<string, string>): CreatePRDConte
   }
 
   // Extract task ID from path: .specs/tasks/TASK-001.md -> TASK-001
-  const match = prdPath.match(/([A-Z]+-\d+[a-z]?)\.md$/i)
+  // Also handles multi-word prefixes: AI-MONITOR-001d
+  const match = prdPath.match(/([A-Z]+(?:-[A-Z]+)*-\d+[a-z]?)\.md$/i)
   if (!match) {
     logger.debug(`Could not extract task ID from path: ${prdPath}`)
     return null
@@ -42,18 +92,17 @@ export function extractTaskInfo(context: Record<string, string>): CreatePRDConte
 }
 
 /**
- * Generate PRD template content
+ * Generate PRD template content with task metadata
  */
-export function generatePRDTemplate(taskId: string, title?: string): string {
+export function generatePRDTemplate(taskId: string, title?: string, description?: string): string {
   const taskTitle = title || taskId
+  const goalSection = description
+    ? `## Goal\n${description}`
+    : `## Goal\n[Auto-generated stub - please fill in goal]\n\nThis task was started without a detailed specification.`
 
   return `# ${taskId}: ${taskTitle}
 
-## Goal
-[Auto-generated stub - please fill in requirements]
-
-This PRD was automatically created by AI Monitor when the task was started
-without an existing specification file.
+${goalSection}
 
 ## Requirements
 - [ ] Define specific requirements
@@ -114,12 +163,21 @@ export async function executeCreatePRD(action: Action): Promise<void> {
     return
   }
 
-  // Generate template
-  const content = generatePRDTemplate(taskId, taskInfo.title)
+  // Try to read task metadata from tasks.json
+  const tasksJsonPath = path.join(process.cwd(), '.specs', 'tasks', 'tasks.json')
+  const taskMetadata = readTaskMetadata(tasksJsonPath, taskId)
+
+  // Generate template with metadata (falls back to taskId if metadata not found)
+  const content = generatePRDTemplate(
+    taskId,
+    taskMetadata?.title || taskInfo.title,
+    taskMetadata?.description
+  )
 
   // Create file
   await createPRDFile(filePath, content)
 
-  logger.success(`Auto-created PRD file: ${filePath}`)
+  const metadataSource = taskMetadata ? ' (with metadata from tasks.json)' : ''
+  logger.success(`Auto-created PRD file: ${filePath}${metadataSource}`)
   logger.info('Please review and update the PRD with actual requirements')
 }

@@ -33,6 +33,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 export const logger = {
   logFile: null as string | null,
   logLevel: 'info' as LogLevel,
+  lastOutputTime: 0,
 
   setLogFile: (filePath: string) => {
     logger.logFile = filePath
@@ -52,8 +53,16 @@ export const logger = {
 
   _logToFile: (level: string, msg: string) => {
     if (logger.logFile) {
-      const timestamp = getTimestamp()
-      fs.appendFileSync(logger.logFile, `[${timestamp}] [${level}] ${msg}\n`)
+      try {
+        const timestamp = getTimestamp()
+        const dir = path.dirname(logger.logFile)
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true })
+        }
+        fs.appendFileSync(logger.logFile, `[${timestamp}] [${level}] ${msg}\n`)
+      } catch {
+        // Silently ignore log file errors to prevent test failures
+      }
     }
   },
 
@@ -249,6 +258,9 @@ export class StreamLogger {
         process.stdout.write(`${indent} ${chalk.dim(wrappedLines[i])}\n`)
       }
     }
+
+    // Signal that output just happened to coordinate with progress updates
+    logger.lastOutputTime = Date.now()
   }
 
   private wrapText(text: string, maxWidth: number): string[] {

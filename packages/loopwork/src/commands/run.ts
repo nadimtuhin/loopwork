@@ -13,6 +13,7 @@ import type { TaskContext } from '../contracts/plugin'
 import type { ICliExecutor } from '../contracts/executor'
 import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
 import { LoopworkError, handleError } from '../core/errors'
+import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
 
 function generateSuccessCriteria(task: Task): string[] {
   const criteria: string[] = []
@@ -222,9 +223,14 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   let currentTaskId: string | null = null
   let currentIteration = 0
 
-  const cleanup = () => {
+  const cleanup = async () => {
     activeLogger.warn('\nReceived interrupt signal. Saving state...')
-    cliExecutor.killCurrent()
+
+    // Clean up processes (kills current + orphans)
+    await cliExecutor.cleanup().catch(err => {
+      activeLogger.debug(`Process cleanup failed: ${err.message}`)
+    })
+
     if (currentTaskId) {
       const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
       stateManager.saveState(stateRef, currentIteration)
@@ -234,8 +240,16 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     runtimeProcess.exit(130)
   }
 
-  runtimeProcess.on('SIGINT', cleanup)
-  runtimeProcess.on('SIGTERM', cleanup)
+  runtimeProcess.on('SIGINT', () => {
+    cleanup().catch(() => {
+      runtimeProcess.exit(130)
+    })
+  })
+  runtimeProcess.on('SIGTERM', () => {
+    cleanup().catch(() => {
+      runtimeProcess.exit(130)
+    })
+  })
 
   fs.mkdirSync(config.outputDir, { recursive: true })
   fs.mkdirSync(path.join(config.outputDir, 'logs'), { recursive: true })
@@ -287,6 +301,10 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   activeLogger.info(`Max Iterations: ${config.maxIterations}`)
   activeLogger.info(`Timeout:        ${config.timeout}s per task`)
   activeLogger.info(`CLI:            ${config.cli}`)
+  activeLogger.info(`Parallel:       ${config.parallel > 1 ? `${config.parallel} workers` : 'off (sequential)'}`)
+  if (config.parallel > 1) {
+    activeLogger.info(`Failure Mode:   ${config.parallelFailureMode}`)
+  }
   activeLogger.info(`Session ID:     ${config.sessionId}`)
   activeLogger.info(`Output Dir:     ${config.outputDir}`)
   activeLogger.info(`Dry Run:        ${config.dryRun}`)
@@ -324,6 +342,23 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     return
   }
 
+  // Branch: Parallel execution mode
+  if (config.parallel > 1) {
+    await runParallel(
+      config,
+      backend,
+      cliExecutor,
+      stateManager,
+      namespace,
+      activePlugins,
+      activeLogger,
+      handleLoopworkError,
+      runtimeProcess
+    )
+    return
+  }
+
+  // Sequential execution mode (original behavior)
   let iteration = 0
   let tasksCompleted = 0
   let tasksFailed = 0
@@ -447,7 +482,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     let exitCode: number
     try {
       activeLogger.startSpinner(`Executing task ${task.id}...`)
-      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600)
+      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600, task.id)
       activeLogger.stopSpinner()
     } catch (error: unknown) {
       if (error instanceof LoopworkError) {
@@ -617,6 +652,172 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 }
 
 /**
+ * Run in parallel mode
+ */
+async function runParallel(
+  config: Config,
+  backend: TaskBackend,
+  cliExecutor: ICliExecutor,
+  stateManager: IStateManager,
+  namespace: string,
+  activePlugins: typeof plugins,
+  activeLogger: RunLogger,
+  handleLoopworkError: typeof handleError,
+  runtimeProcess: NodeJS.Process
+): Promise<void> {
+  const parallelRunner = new ParallelRunner({
+    config,
+    backend,
+    cliExecutor,
+    logger: activeLogger,
+    onTaskStart: async (context) => {
+      await activePlugins.runHook('onTaskStart', context)
+    },
+    onTaskComplete: async (context, result) => {
+      await activePlugins.runHook('onTaskComplete', context, result)
+    },
+    onTaskFailed: async (context, error) => {
+      await activePlugins.runHook('onTaskFailed', context, error)
+    },
+    buildPrompt,
+  })
+
+  // Handle interrupt signals
+  const parallelCleanup = async () => {
+    activeLogger.warn('\nReceived interrupt signal. Saving parallel state...')
+    parallelRunner.abort()
+
+    // Clean up processes
+    await cliExecutor.cleanup().catch(err => {
+      activeLogger.debug(`Process cleanup failed: ${err.message}`)
+    })
+
+    // Save parallel state for resume
+    const state = parallelRunner.getState()
+    saveParallelState(config.projectRoot, config.namespace || 'default', state)
+
+    // Reset interrupted tasks
+    await parallelRunner.resetInterruptedTasks(state.interruptedTasks)
+
+    activeLogger.info('State saved. Resume with: --resume')
+    stateManager.releaseLock()
+    runtimeProcess.exit(130)
+  }
+
+  // Override signal handlers for parallel mode
+  runtimeProcess.removeAllListeners('SIGINT')
+  runtimeProcess.removeAllListeners('SIGTERM')
+  runtimeProcess.on('SIGINT', () => {
+    parallelCleanup().catch(() => runtimeProcess.exit(130))
+  })
+  runtimeProcess.on('SIGTERM', () => {
+    parallelCleanup().catch(() => runtimeProcess.exit(130))
+  })
+
+  // Check for resume state
+  if (config.resume) {
+    const parallelState = loadParallelState(config.projectRoot, config.namespace || 'default')
+    if (parallelState && parallelState.interruptedTasks.length > 0) {
+      activeLogger.info(`Resuming ${parallelState.interruptedTasks.length} interrupted task(s)`)
+      await parallelRunner.resetInterruptedTasks(parallelState.interruptedTasks)
+    }
+  }
+
+  try {
+    const stats = await parallelRunner.run({ feature: config.feature })
+
+    runtimeProcess.stdout.write('\n')
+    activeLogger.info('═══════════════════════════════════════════════════════════════')
+    activeLogger.info('Loopwork Complete (Parallel Mode)')
+    activeLogger.info('═══════════════════════════════════════════════════════════════')
+    activeLogger.info(`Backend:         ${backend.name}`)
+    activeLogger.info(`Workers:         ${stats.workers}`)
+    activeLogger.info(`Tasks Completed: ${stats.completed}`)
+    activeLogger.info(`Tasks Failed:    ${stats.failed}`)
+    activeLogger.info(`Duration:        ${stats.duration.toFixed(1)}s`)
+    activeLogger.info(`Session ID:      ${config.sessionId}`)
+    activeLogger.info(`Output Dir:      ${config.outputDir}`)
+
+    if (stats.tasksPerWorker) {
+      activeLogger.info(`Tasks/Worker:    ${stats.tasksPerWorker.map((c, i) => `W${i}:${c}`).join(', ')}`)
+    }
+    runtimeProcess.stdout.write('\n')
+
+    let finalPending = 0
+    try {
+      finalPending = await backend.countPending({ feature: config.feature })
+      activeLogger.info(`Final Status: ${finalPending} pending`)
+    } catch (error: unknown) {
+      activeLogger.warn(`Could not get final task count: ${(error as Error).message}`)
+    }
+
+    if (finalPending === 0) {
+      activeLogger.success('All tasks completed!')
+      stateManager.clearState()
+      clearParallelState(config.projectRoot, config.namespace || 'default')
+    }
+
+    await activePlugins.runHook('onLoopEnd', namespace, stats)
+  } catch (error) {
+    if (error instanceof LoopworkError) {
+      handleLoopworkError(error)
+    } else {
+      activeLogger.error(`Parallel execution error: ${error}`)
+    }
+  } finally {
+    stateManager.releaseLock()
+  }
+}
+
+/**
+ * Save parallel state for resume
+ */
+function saveParallelState(projectRoot: string, namespace: string, state: ParallelState): void {
+  const stateDir = path.join(projectRoot, '.loopwork')
+  fs.mkdirSync(stateDir, { recursive: true })
+
+  const suffix = namespace === 'default' ? '' : `-${namespace}`
+  const stateFile = path.join(stateDir, `parallel-state${suffix}.json`)
+
+  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2))
+}
+
+/**
+ * Load parallel state for resume
+ */
+function loadParallelState(projectRoot: string, namespace: string): ParallelState | null {
+  const suffix = namespace === 'default' ? '' : `-${namespace}`
+  const stateFile = path.join(projectRoot, '.loopwork', `parallel-state${suffix}.json`)
+
+  if (!fs.existsSync(stateFile)) {
+    return null
+  }
+
+  try {
+    const content = fs.readFileSync(stateFile, 'utf-8')
+    return JSON.parse(content) as ParallelState
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Clear parallel state after successful completion
+ */
+function clearParallelState(projectRoot: string, namespace: string): void {
+  const suffix = namespace === 'default' ? '' : `-${namespace}`
+  const stateFile = path.join(projectRoot, '.loopwork', `parallel-state${suffix}.json`)
+
+  try {
+    if (fs.existsSync(stateFile)) {
+      fs.unlinkSync(stateFile)
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+/**
  * Create the run command configuration for CLI registration
  *
  * This returns a command object suitable for use with commander or similar CLI frameworks.
@@ -633,6 +834,9 @@ export function createRunCommand() {
       { command: 'loopwork run --feature auth', description: 'Process only auth-tagged tasks' },
       { command: 'loopwork run --dry-run', description: 'Preview tasks without executing' },
       { command: 'loopwork run --max-iterations 10 --timeout 300', description: 'Custom limits' },
+      { command: 'loopwork run --parallel', description: 'Run with 2 parallel workers' },
+      { command: 'loopwork run --parallel 3', description: 'Run with 3 parallel workers' },
+      { command: 'loopwork run --sequential', description: 'Force sequential mode' },
     ],
     seeAlso: [
       'loopwork start    Start with optional daemon mode',

@@ -47,6 +47,8 @@ const RUN_ARGS = [
   '--namespace',
   '--config',
   '--debug',
+  '--parallel',
+  '--sequential',
   '-y',
   '--yes',
 ]
@@ -118,6 +120,8 @@ if (import.meta.main) {
       .option('--debug', 'Enable debug logging')
       .option('--namespace <name>', 'Namespace for running multiple loops')
       .option('--config <path>', 'Path to config file')
+      .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
+      .option('--sequential', 'Force sequential execution (parallel=1)')
       .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
       .action(async (options) => {
         try {

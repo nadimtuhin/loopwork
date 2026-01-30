@@ -199,6 +199,19 @@ export interface CliExecutorConfig {
    * Default: 2000 (2 seconds)
    */
   progressIntervalMs?: number
+
+  /**
+   * Prefer PTY (pseudo-terminal) for process spawning
+   *
+   * When true (default), uses node-pty if available for real-time streaming.
+   * PTY prevents output buffering that occurs when CLI stdout is piped.
+   * Falls back to standard process spawn if node-pty is not available.
+   *
+   * When false, always uses standard process spawn (child_process).
+   *
+   * Default: true
+   */
+  preferPty?: boolean
 }
 
 /**

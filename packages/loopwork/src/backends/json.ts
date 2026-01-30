@@ -182,6 +182,72 @@ export class JsonTaskAdapter implements TaskBackend {
     return this.getTask(tasks[0].id)
   }
 
+  /**
+   * Atomically claim the next available task
+   * Combines findNextTask + markInProgress under a single lock
+   * to prevent race conditions in parallel execution
+   */
+  async claimTask(options?: FindTaskOptions): Promise<Task | null> {
+    return await this.withLock(async () => {
+      const data = this.loadTasksFile()
+      if (!data) return null
+
+      // Find pending tasks with same logic as listPendingTasks
+      let entries = data.tasks.filter(t => t.status === 'pending')
+
+      if (options?.feature) {
+        entries = entries.filter(t => t.feature === options.feature)
+      }
+
+      if (options?.priority) {
+        entries = entries.filter(t => (t.priority || 'medium') === options.priority)
+      }
+
+      if (options?.parentId) {
+        entries = entries.filter(t => t.parentId === options.parentId)
+      }
+
+      if (options?.topLevelOnly) {
+        entries = entries.filter(t => !t.parentId)
+      }
+
+      // Sort by priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 }
+      entries.sort((a, b) => {
+        const pa = priorityOrder[a.priority || 'medium']
+        const pb = priorityOrder[b.priority || 'medium']
+        return pa - pb
+      })
+
+      // Filter out blocked tasks
+      if (!options?.includeBlocked) {
+        entries = entries.filter(entry => {
+          if (!entry.dependsOn || entry.dependsOn.length === 0) return true
+          return this.areDependenciesMetInternal(entry.dependsOn, data)
+        })
+      }
+
+      // Handle startFrom option
+      if (options?.startFrom) {
+        const startIdx = entries.findIndex(t => t.id === options.startFrom)
+        if (startIdx >= 0) {
+          entries = entries.slice(startIdx)
+        }
+      }
+
+      if (entries.length === 0) return null
+
+      const entry = entries[0]
+
+      // Mark as in-progress atomically
+      entry.status = 'in-progress'
+      this.saveTasksFile(data)
+
+      // Return full task with PRD content
+      return this.loadFullTask(entry, data)
+    })
+  }
+
   async getTask(taskId: string): Promise<Task | null> {
     const data = this.loadTasksFile()
     if (!data) return null

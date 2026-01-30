@@ -39,9 +39,16 @@ const DEFAULT_ORPHAN_PATTERNS = [
 ]
 
 /**
- * Get path to spawned PIDs tracking file
+ * Get path to spawned PIDs tracking file for reading (does not create directory)
  */
-function getTrackingFilePath(projectRoot: string): string {
+function getTrackingFilePathForRead(projectRoot: string): string {
+  return path.join(projectRoot, '.loopwork', 'spawned-pids.json')
+}
+
+/**
+ * Get path to spawned PIDs tracking file for writing (creates directory if needed)
+ */
+function getTrackingFilePathForWrite(projectRoot: string): string {
   const stateDir = path.join(projectRoot, '.loopwork')
   if (!fs.existsSync(stateDir)) {
     fs.mkdirSync(stateDir, { recursive: true })
@@ -53,7 +60,7 @@ function getTrackingFilePath(projectRoot: string): string {
  * Read tracked PIDs from file
  */
 function readTrackedPids(projectRoot: string): TrackedPidsData {
-  const filePath = getTrackingFilePath(projectRoot)
+  const filePath = getTrackingFilePathForRead(projectRoot)
   if (!fs.existsSync(filePath)) {
     return { pids: [] }
   }
@@ -71,7 +78,7 @@ function readTrackedPids(projectRoot: string): TrackedPidsData {
  * Write tracked PIDs to file
  */
 function writeTrackedPids(projectRoot: string, data: TrackedPidsData): void {
-  const filePath = getTrackingFilePath(projectRoot)
+  const filePath = getTrackingFilePathForWrite(projectRoot)
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), { mode: 0o600 })
   } catch (error) {
@@ -104,12 +111,11 @@ export function trackSpawnedPid(pid: number, command: string, cwd: string): void
 /**
  * Untrack a PID (when process is cleaned up)
  */
-export function untrackPid(pid: number): void {
+export function untrackPid(pid: number, projectRoot?: string): void {
   // Find which project root this PID belongs to by searching common locations
-  const possibleRoots = [
-    process.cwd(),
-    path.resolve(process.cwd(), '../..'),
-  ]
+  const possibleRoots = projectRoot
+    ? [projectRoot]
+    : [process.cwd(), path.resolve(process.cwd(), '../..')]
 
   for (const root of possibleRoots) {
     const data = readTrackedPids(root)

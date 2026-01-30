@@ -76,10 +76,12 @@ export class ActionExecutor {
   private actionHistory: ActionResult[] = []
   private namespace?: string
   private llmModel?: string
+  private anthropicApiKey?: string
 
-  constructor(config?: { namespace?: string; llmModel?: string }) {
+  constructor(config?: { namespace?: string; llmModel?: string; anthropicApiKey?: string }) {
     this.namespace = config?.namespace
     this.llmModel = config?.llmModel || 'haiku'
+    this.anthropicApiKey = config?.anthropicApiKey
   }
 
   /**
@@ -206,9 +208,9 @@ export class ActionExecutor {
           break
 
         case 'analyze':
-          const analysisResult = await executeAnalyze(action, this.llmModel)
+          const analysisResult = await executeAnalyze(action, this.llmModel, this.anthropicApiKey)
           result.success = true
-          result.details = analysisResult
+          result.details = analysisResult as unknown as Record<string, unknown>
           logger.debug(`Analyze action completed for pattern: ${action.pattern}`)
           break
 

@@ -1,12 +1,28 @@
 import { Command } from 'commander'
 import path from 'path'
 import fs from 'fs'
-import type { LoopworkConfig } from '../contracts'
+import type { LoopworkConfig, ParallelFailureMode } from '../contracts'
 import { DEFAULT_CONFIG } from '../contracts'
 import type { BackendConfig } from '../contracts/backend'
 import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
 import { logger } from './utils'
 import { LoopworkError } from './errors'
+
+/**
+ * Parse --parallel option value
+ * --parallel → 2 (default)
+ * --parallel 3 → 3
+ */
+function parseParallelOption(value: string | undefined): number {
+  if (value === undefined || value === '') {
+    return 2 // Default to 2 workers when --parallel is used without a number
+  }
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || parsed < 1) {
+    return 2
+  }
+  return Math.min(parsed, 5) // Cap at 5 workers
+}
 
 export interface Config extends LoopworkConfig {
   projectRoot: string
@@ -17,6 +33,8 @@ export interface Config extends LoopworkConfig {
   startTask?: string
   backend: BackendConfig
   namespace: string // For running multiple loops concurrently
+  parallel: number // Number of parallel workers (1 = sequential)
+  parallelFailureMode: ParallelFailureMode
 }
 
 /**
@@ -321,12 +339,14 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       .option('--debug', 'Enable debug logging')
       .option('--namespace <name>', 'Namespace for running multiple loops')
       .option('--config <path>', 'Path to config file (loopwork.config.ts)')
+      .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)', parseParallelOption)
+      .option('--sequential', 'Force sequential execution (parallel=1)')
       .parse(process.argv)
 
     return program.opts()
   })()
 
-  const options = {
+  const options: Record<string, unknown> = {
     ...rawOptions,
     yes: rawOptions.yes ?? rawOptions.autoConfirm,
     task: rawOptions.task ?? rawOptions.startTask,
@@ -433,6 +453,13 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
         repo: options.repo || fileConfig?.backend?.repo,
       }
 
+  // Determine parallel setting: --sequential forces 1, --parallel [N] sets workers
+  const parallelValue = options.sequential
+    ? 1
+    : (options.parallel !== undefined
+      ? options.parallel
+      : (fileConfig?.parallel ?? 1))
+
   const config: Config = {
     ...DEFAULT_CONFIG,
     repo: options.repo || fileConfig?.backend?.repo,
@@ -443,6 +470,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     timeout: options.timeout !== undefined ? parseInt(options.timeout, 10) : (fileConfig?.timeout ?? 600),
     cli: options.cli || fileConfig?.cli || 'opencode',
     model: options.model || fileConfig?.model,
+    cliConfig: fileConfig?.cliConfig,
     autoConfirm: options.yes ||
       process.env.LOOPWORK_NON_INTERACTIVE === 'true' ||
       fileConfig?.autoConfirm ||
@@ -459,6 +487,8 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     sessionId: `loopwork-${namespace}-${timestamp}-${process.pid}`,
     backend,
     namespace,
+    parallel: parallelValue,
+    parallelFailureMode: fileConfig?.parallelFailureMode ?? 'continue',
   }
 
   // Validate the final config
