@@ -8,7 +8,7 @@ import type { LoopworkPlugin } from '../contracts/plugin'
 import type { TaskBackend } from '../contracts/backend'
 import type { TaskContext } from '../contracts/plugin'
 import type { PluginTaskResult } from '../contracts/plugin'
-import type { TaskAnalyzer } from '../contracts/analysis'
+import type { TaskAnalyzer, SuggestedTask } from '../contracts/analysis'
 import type { ConfigWrapper } from '../contracts'
 import { PatternAnalyzer } from '../analyzers/pattern-analyzer'
 import { logger } from '../core/utils'
@@ -87,7 +87,7 @@ export function createDynamicTasksPlugin(
   }
 
   let backend: TaskBackend | null = null
-  const pendingApprovals: Map<string, any> = new Map()
+  const pendingApprovals: Map<string, SuggestedTask[]> = new Map()
 
   return {
     name: 'dynamic-tasks',
@@ -208,7 +208,7 @@ export function createDynamicTasksPlugin(
 async function createTasks(
   backend: TaskBackend,
   parentId: string,
-  suggestedTasks: any[],
+  suggestedTasks: SuggestedTask[],
   createAsSubTasks: boolean,
   logCreatedTasks: boolean
 ): Promise<void> {

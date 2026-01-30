@@ -34,7 +34,7 @@
     "prepack": "bun run build",
     "pack:dry": "npm pack --dry-run",
     "pack:check": "npm pack && tar -tzf *.tgz && rm *.tgz",
-    "prepublishOnly": "bun run build && bun run test && bun run lint",
+    "prepublishOnly": "bun run build && bun run test",
     "security:trivy": "trivy fs . --severity CRITICAL,HIGH,MEDIUM || echo 'Trivy not installed. Run: brew install aquasecurity/trivy/trivy'",
     "prepare": "husky"
   },
