@@ -156,7 +156,7 @@
     },
     {
       "id": "TELE-010",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Teleloop: Implement 'Overseer' IPC Communication",
       "feature": "teleloop",
@@ -209,7 +209,7 @@
     },
     {
       "id": "TELE-013",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "title": "Teleloop: Smart Daily Briefings",
       "feature": "teleloop",
@@ -227,7 +227,7 @@
     },
     {
       "id": "AI-MONITOR-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Intelligent Log Watcher & Auto-Healer",
       "feature": "ai-monitor",
@@ -254,7 +254,7 @@
     },
     {
       "id": "AI-MONITOR-001b",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Concurrency Manager",
       "feature": "ai-monitor",
@@ -307,7 +307,7 @@
     },
     {
       "id": "AI-MONITOR-001e",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: Task Recovery (Early Exit Enhancement)",
       "feature": "ai-monitor",
@@ -326,7 +326,7 @@
     },
     {
       "id": "AI-MONITOR-001f",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: Verification Engine",
       "feature": "ai-monitor",
@@ -377,12 +377,14 @@
           "caching",
           "cache retrieval"
         ],
-        "testRequired": "Integration test: unknown error → LLM called → response cached → same error uses cache"
+        "testRequired": "Integration test: unknown error → LLM called → response cached → same error uses cache",
+        "completed": true,
+        "notes": "Implementation complete. All 20 tests passing. Includes: LLM integration with Haiku model, rate limiting (10 calls/session, 5-min cooldown), 24h response caching, proper cache schema, graceful error handling, and session state tracking."
       }
     },
     {
       "id": "AI-MONITOR-001i",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "title": "AI Monitor: CLI Command (loopwork ai-monitor)",
       "feature": "ai-monitor",
@@ -412,7 +414,7 @@
     },
     {
       "id": "PROC-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Process Management: Robust Child Process Lifecycle & Orphan Cleanup",
       "feature": "process-management",
@@ -556,7 +558,7 @@
     },
     {
       "id": "PROC-001e",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Process Management: Unit Tests (Mocked Dependencies)",
       "feature": "process-management",
@@ -582,7 +584,7 @@
     },
     {
       "id": "PROC-001f",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Process Management: Integration Tests (Real Processes)",
       "feature": "process-management",
@@ -607,7 +609,7 @@
     },
     {
       "id": "PROC-001g",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Process Management: E2E Tests (Full Loop Scenario)",
       "feature": "process-management",
@@ -634,7 +636,7 @@
     },
     {
       "id": "PROC-001h",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "title": "Process Management: CLI Commands (loopwork processes)",
       "feature": "process-management",
@@ -649,6 +651,144 @@
         ],
         "testRequired": "Integration test: CLI commands work and produce expected output (avoid cliConfig bug pattern!)"
       }
+    },
+    {
+      "id": "HEALTH-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create health check endpoint handler",
+      "feature": "health"
+    },
+    {
+      "id": "HEALTH-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add unit tests for health check endpoint",
+      "feature": "health",
+      "dependsOn": [
+        "HEALTH-001"
+      ]
+    },
+    {
+      "id": "CLIOUTPU-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create unified output utilities module",
+      "feature": "cli-output-design"
+    },
+    {
+      "id": "CLIOUTPU-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Standardize output method across all commands",
+      "feature": "cli-output-design",
+      "dependsOn": [
+        "CLIOUTPU-001"
+      ]
+    },
+    {
+      "id": "CLIOUTPU-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add progress bar and completion summary components",
+      "feature": "cli-output-design",
+      "dependsOn": [
+        "CLIOUTPU-001"
+      ]
+    },
+    {
+      "id": "CLIOUTPU-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add JSON output mode support",
+      "feature": "cli-output-design",
+      "dependsOn": [
+        "CLIOUTPU-001"
+      ]
+    },
+    {
+      "id": "CLIOUTPU-005",
+      "status": "completed",
+      "priority": "low",
+      "title": "Add verbosity control flags",
+      "feature": "cli-output-design",
+      "dependsOn": [
+        "CLIOUTPU-001"
+      ]
+    },
+    {
+      "id": "CLIOUTPU-006",
+      "status": "completed",
+      "priority": "low",
+      "title": "Improve error display with codes and formatting",
+      "feature": "cli-output-design",
+      "dependsOn": [
+        "CLIOUTPU-001"
+      ]
+    },
+    {
+      "id": "DYNAMICT-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Define TaskAnalysis contract and result parsing interface",
+      "feature": "dynamic-task-creation"
+    },
+    {
+      "id": "DYNAMICT-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement output pattern analyzer for detecting follow-up work",
+      "feature": "dynamic-task-creation",
+      "dependsOn": [
+        "DYNAMICT-001"
+      ]
+    },
+    {
+      "id": "DYNAMICT-003",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create withDynamicTasks plugin for automatic task creation",
+      "feature": "dynamic-task-creation",
+      "dependsOn": [
+        "DYNAMICT-001",
+        "DYNAMICT-002"
+      ]
+    },
+    {
+      "id": "DYNAMICT-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add AI-powered task analysis using LLM",
+      "feature": "dynamic-task-creation",
+      "dependsOn": [
+        "DYNAMICT-001",
+        "DYNAMICT-002"
+      ]
+    },
+    {
+      "id": "DYNAMICT-005",
+      "status": "completed",
+      "priority": "low",
+      "title": "Add configuration and documentation for dynamic task creation",
+      "feature": "dynamic-task-creation",
+      "dependsOn": [
+        "DYNAMICT-003",
+        "DYNAMICT-004"
+      ]
     }
-  ]
+  ],
+  "features": {
+    "health": {
+      "name": "Health",
+      "description": "Tasks for health"
+    },
+    "cli-output-design": {
+      "name": "Cli output design",
+      "description": "Tasks for cli-output-design"
+    },
+    "dynamic-task-creation": {
+      "name": "Dynamic task creation",
+      "description": "Tasks for dynamic-task-creation"
+    }
+  }
 }

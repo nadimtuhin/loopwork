@@ -3,6 +3,7 @@ import path from 'path'
 import type { ProcessInfo, ProcessMetadata } from '../../contracts/process-manager'
 import { logger } from '../utils'
 import { isProcessAlive } from '../../commands/shared/process-utils'
+import { LoopworkError } from '../errors'
 
 interface RegistryData {
   version: number
@@ -201,6 +202,13 @@ export class ProcessRegistry {
       }
     }
 
-    throw new Error('Failed to acquire lock after max retries')
+    throw new LoopworkError(
+      'ERR_LOCK_CONFLICT',
+      'Failed to acquire lock after max retries',
+      [
+        'Wait for other process to finish',
+        `Or manually remove: rm ${this.lockPath}`,
+      ]
+    )
   }
 }

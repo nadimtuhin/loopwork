@@ -1,0 +1,15 @@
+# Bun configuration for loopwork package
+# See: https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Test timeout in milliseconds (10 seconds)
+# Prevents runaway tests from becoming orphan processes
+timeout = 10000
+
+# Coverage settings (optional)
+# coverage = true
+# coverageDir = "coverage"
+
+[install]
+# Lockfile settings
+# frozen = true  # Uncomment in CI to fail on lockfile changes

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.4] - 2026-01-30
 
+### Added
+- **Self-Healing Circuit Breaker** - Instead of just stopping on repeated failures, the circuit breaker now:
+  - Analyzes failure patterns (rate limits, timeouts, memory pressure, unknown)
+  - Automatically adjusts execution parameters based on detected pattern:
+    - Rate limits: Reduces workers and increases delay
+    - Timeouts: Increases timeout duration
+    - Memory pressure: Reduces parallel workers
+    - Unknown: Conservative reduction of workers and delay
+  - Attempts up to 3 self-healing adjustments before giving up
+  - Configurable cooldown period between healing attempts (`selfHealingCooldown` config option)
+
 ### Fixed
 - **macOS Memory Calculation** - Fixed memory check that was preventing CLI spawning on macOS
   - `os.freemem()` on macOS returns only truly "free" pages (~90MB) due to aggressive caching

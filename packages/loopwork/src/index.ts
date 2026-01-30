@@ -24,7 +24,7 @@ export {
   ModelPresets,
   RetryPresets,
 } from './plugins'
-export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper } from './contracts'
+export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper, DynamicTasksConfig } from './contracts'
 export type {
   ModelConfig,
   CliExecutorConfig,
@@ -38,12 +38,20 @@ export type {
   AIMonitorConfig,
   MonitorState,
   RecoveryHistoryEntry,
-} from './ai-monitor'
+} from '@loopwork-ai/ai-monitor'
 
 // Export analyzers for task analysis
-export { PatternAnalyzer } from './analyzers'
+export { PatternAnalyzer, LLMAnalyzer } from './analyzers'
 export type { PatternAnalyzerConfig } from './analyzers'
 export type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from './contracts/analysis'
+
+// Export error handling
+export {
+  LoopworkError,
+  handleError,
+  ERROR_CODES,
+} from './core/errors'
+export type { ErrorCode } from './core/errors'
 
 // Export centralized state management
 export {
@@ -83,6 +91,10 @@ const RUN_ARGS = [
   '--sequential',
   '-y',
   '--yes',
+  '--quiet',
+  '-q',
+  '--verbose',
+  '-v',
 ]
 
 /**
@@ -108,6 +120,28 @@ if (import.meta.main) {
       .name('loopwork')
       .description('AI-powered task automation framework')
       .version(packageJson.version)
+      .option('-q, --quiet', 'Quiet mode: errors only')
+      .option('-v, --verbose', 'Verbose mode: add debug info (-v=debug, -vv=verbose, -vvv=trace)', false)
+
+    // Apply global verbosity settings before any command runs
+    program.hook('preAction', (thisCommand) => {
+      const opts = thisCommand.optsWithGlobals()
+
+      if (opts.quiet) {
+        logger.setLogLevel('error')
+      } else if (opts.verbose) {
+        // Count how many times -v was specified
+        const verbosityCount = typeof opts.verbose === 'number' ? opts.verbose : 1
+
+        if (verbosityCount >= 3) {
+          logger.setLogLevel('trace')
+        } else if (verbosityCount >= 2) {
+          logger.setLogLevel('debug')
+        } else {
+          logger.setLogLevel('debug')
+        }
+      }
+    })
 
     // Backward compatibility: auto-insert 'run' for legacy args
     const args = process.argv.slice(2)
@@ -163,6 +197,7 @@ if (import.meta.main) {
       .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
       .option('--sequential', 'Force sequential execution (parallel=1)')
       .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
+      .option('--no-dynamic-tasks', 'Disable dynamic task creation')
       .option('--json', 'Output as newline-delimited JSON events')
       .action(async (options) => {
         try {
@@ -331,7 +366,7 @@ if (import.meta.main) {
       .option('--status', 'Show circuit breaker status and exit')
       .action(async (options) => {
         try {
-          const { aiMonitor } = await import('./ai-monitor/cli')
+          const { aiMonitor } = await import('@loopwork-ai/ai-monitor/cli')
           await aiMonitor(options)
         } catch (err) {
           handleError(err)
@@ -374,6 +409,8 @@ if (import.meta.main) {
       .option('--debug', 'Enable debug logging')
       .option('--config <path>', 'Path to config file')
       .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
+      .option('--no-dynamic-tasks', 'Disable dynamic task creation')
+      .option('--clean-orphans', 'Clean up orphan processes before starting')
       .action(async (options) => {
         try {
           const { start } = await import('./commands/start')
@@ -417,6 +454,7 @@ if (import.meta.main) {
               logger.success(`Stopped namespace '${ns}'`)
             } else {
               throw new LoopworkError(
+                'ERR_PROCESS_KILL',
                 result.error || 'Failed to stop',
                 [
                   `Check if namespace '${ns}' is actually running: loopwork status`,
@@ -488,6 +526,49 @@ if (import.meta.main) {
             lines: parseInt(options.lines, 10) || 50,
             session: options.session,
             task: options.task,
+            json: options.json,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Processes command with subcommands
+    const processesCmd = program
+      .command('processes <subcommand> [options...]')
+      .description('Manage loopwork processes')
+
+    processesCmd
+      .command('list [options...]')
+      .description('List all running loopwork processes')
+      .option('--namespace <name>', 'Filter by namespace')
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
+        try {
+          const { list } = await import('./commands/processes')
+          await list({
+            namespace: options.namespace,
+            json: options.json,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    processesCmd
+      .command('clean [options...]')
+      .description('Clean up orphan processes')
+      .option('--force', 'Kill all orphans including suspected')
+      .option('--dry-run', 'Preview without killing')
+      .option('--json', 'Output results as JSON')
+      .action(async (options) => {
+        try {
+          const { clean } = await import('./commands/processes')
+          await clean({
+            force: options.force,
+            dryRun: options.dryRun,
             json: options.json,
           })
         } catch (err) {

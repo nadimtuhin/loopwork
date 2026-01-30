@@ -4,7 +4,7 @@ import { DashboardBroadcaster } from './broadcaster'
 import { createRoutes } from './routes'
 import { startFileWatcher, stopFileWatcher } from './file-watcher'
 
-import type { TaskBackend } from 'loopwork/contracts'
+import type { TaskBackend } from '@loopwork-ai/loopwork/contracts'
 
 export class DashboardServer {
   private config: DashboardConfig

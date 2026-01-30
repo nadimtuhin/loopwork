@@ -1,4 +1,4 @@
-import type { LoopworkPlugin, ConfigWrapper } from 'loopwork/contracts'
+import type { LoopworkPlugin, ConfigWrapper } from '@loopwork-ai/loopwork/contracts'
 import { DashboardServer } from './server'
 import type { DashboardConfig } from './types'
 

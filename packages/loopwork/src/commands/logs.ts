@@ -140,6 +140,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
         session = sessions.find(s => s.timestamp === options.session || s.timestamp.startsWith(options.session!))
         if (!session) {
           throw new LoopworkErrorClass(
+            'ERR_FILE_NOT_FOUND',
             `Session '${options.session}' not found for namespace '${ns}'`,
             [
               'List available sessions: ls .loopwork/runs/' + ns,
@@ -171,6 +172,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
 
     if (!logFile) {
       throw new LoopworkErrorClass(
+        'ERR_FILE_NOT_FOUND',
         `No logs found for namespace '${ns}'`,
         [
           'Start loopwork to generate logs: loopwork start',
@@ -189,6 +191,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
       const taskMatch = options.task.match(/^(?:iteration-)?(\d+)$/)
       if (!taskMatch) {
         throw new LoopworkErrorClass(
+          'ERR_TASK_INVALID',
           `Invalid task format: '${options.task}'`,
           [
             "Use iteration number (e.g., '3' or 'iteration-3')",
@@ -202,6 +205,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
 
       if (!taskLogs.prompt && !taskLogs.output) {
         throw new LoopworkErrorClass(
+          'ERR_FILE_NOT_FOUND',
           `No logs found for iteration ${iteration}`,
           [
             'Check if the iteration number is correct',

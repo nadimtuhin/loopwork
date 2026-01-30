@@ -2,6 +2,7 @@ import { $ } from 'bun'
 import type { TaskBackend, Task, FindTaskOptions, UpdateResult, BackendConfig } from './types'
 import { LABELS } from '../contracts/task'
 import { GITHUB_RETRY_BASE_DELAY_MS, GITHUB_MAX_RETRIES } from '../core/constants'
+import { LoopworkError } from '../core/errors'
 
 /**
  * Patterns for parsing dependencies and parent references from issue body
@@ -244,7 +245,16 @@ export class GitHubTaskAdapter implements TaskBackend {
 
   async createSubTask(parentId: string, task: Omit<Task, 'id' | 'parentId' | 'status'>): Promise<Task> {
     const parentNum = this.extractIssueNumber(parentId)
-    if (!parentNum) throw new Error('Invalid parent task ID')
+    if (!parentNum) {
+      throw new LoopworkError(
+        'ERR_TASK_INVALID',
+        'Invalid parent task ID',
+        [
+          `Parent ID "${parentId}" cannot be parsed`,
+          'Expected format: #123 or FEATURE-001',
+        ]
+      )
+    }
 
     const body = `Parent: #${parentNum}\n\n${task.description}`
     const labels = [

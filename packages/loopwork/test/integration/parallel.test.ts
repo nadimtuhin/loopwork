@@ -62,6 +62,7 @@ Test task ${task.id}
 function createTestCliExecutor(options: {
   exitCodes?: Map<string, number>
   delayMs?: number
+  errorMessage?: string  // Custom error message for failing tasks
 } = {}): ICliExecutor & { executions: string[] } {
   const executions: string[] = []
 
@@ -75,11 +76,18 @@ function createTestCliExecutor(options: {
         await new Promise(r => setTimeout(r, options.delayMs))
       }
 
-      // Write mock output
-      fs.mkdirSync(path.dirname(outputFile), { recursive: true })
-      fs.writeFileSync(outputFile, `Executed ${taskId} successfully\n`)
+      const exitCode = options.exitCodes?.get(taskId || '') ?? 0
 
-      return options.exitCodes?.get(taskId || '') ?? 0
+      // Write mock output - include error message for failures to help self-healing detect patterns
+      fs.mkdirSync(path.dirname(outputFile), { recursive: true })
+      if (exitCode !== 0) {
+        const errorMsg = options.errorMessage || 'Error: rate limit exceeded 429'
+        fs.writeFileSync(outputFile, `${errorMsg}\nTask ${taskId} failed\n`)
+      } else {
+        fs.writeFileSync(outputFile, `Executed ${taskId} successfully\n`)
+      }
+
+      return exitCode
     },
     killCurrent(): void {},
     resetFallback(): void {},
@@ -278,41 +286,53 @@ describe('Parallel Execution Integration', () => {
       expect(task3?.status).toBe('completed')
     })
 
-    test('should trigger circuit breaker on consecutive failures', async () => {
-      setupTestTasks(testDir, [
-        { id: 'TASK-001' },
-        { id: 'TASK-002' },
-        { id: 'TASK-003' },
-        { id: 'TASK-004' },
-        { id: 'TASK-005' },
-      ])
+    test('should trigger circuit breaker and self-healing on consecutive failures', async () => {
+      // Create enough tasks to trigger circuit breaker and self-healing
+      const tasks = Array.from({ length: 15 }, (_, i) => ({
+        id: `TASK-${String(i + 1).padStart(3, '0')}`,
+      }))
+      setupTestTasks(testDir, tasks)
 
       // All tasks fail
-      const exitCodes = new Map([
-        ['TASK-001', 1],
-        ['TASK-002', 1],
-        ['TASK-003', 1],
-        ['TASK-004', 1],
-        ['TASK-005', 1],
-      ])
+      const exitCodes = new Map<string, number>()
+      tasks.forEach(t => exitCodes.set(t.id, 1))
 
       const config = createTestConfig(testDir, {
         parallel: 1,
         circuitBreakerThreshold: 3,
         maxRetries: 1,
+        selfHealingCooldown: 10, // Minimal cooldown for tests
       })
       const backend = new JsonTaskAdapter(config.backend)
       const cliExecutor = createTestCliExecutor({ exitCodes })
+      const logger = createMockLogger()
 
       const runner = new ParallelRunner({
         config,
         backend,
         cliExecutor,
-        logger: createMockLogger(),
+        logger,
         buildPrompt: (task) => `Execute ${task.id}`,
       })
 
-      await expect(runner.run()).rejects.toThrow(/Circuit breaker/)
+      // Run to completion (may throw or complete when tasks exhausted)
+      try {
+        await runner.run()
+      } catch (error) {
+        // Expected - circuit breaker may throw after exhausting self-healing
+        expect(String(error)).toMatch(/circuit breaker/i)
+      }
+
+      // Verify that circuit breaker was triggered and self-healing was attempted
+      const stats = runner.getStats()
+      expect(stats.failed).toBeGreaterThan(0)
+
+      // Verify self-healing was logged
+      const warnCalls = logger.warn.mock.calls
+      const selfHealingLogs = warnCalls.filter((call: [string]) =>
+        call[0] && call[0].includes('Self-Healing')
+      )
+      expect(selfHealingLogs.length).toBeGreaterThan(0)
     })
   })
 

@@ -44,6 +44,8 @@ export interface StartOptions {
   tail?: boolean
   follow?: boolean
   lines?: number
+  cleanOrphans?: boolean
+  'clean-orphans'?: boolean
   // Pass through to run command
   feature?: string
   backend?: string
@@ -57,6 +59,10 @@ export interface StartOptions {
   yes?: boolean
   debug?: boolean
   config?: string
+  withAIMonitor?: boolean
+  'with-ai-monitor'?: boolean
+  dynamicTasks?: boolean
+  'no-dynamic-tasks'?: boolean
 }
 
 export interface RunCommandOptions {
@@ -73,6 +79,8 @@ export interface RunCommandOptions {
   yes?: boolean
   debug?: boolean
   config?: string
+  withAIMonitor?: boolean
+  dynamicTasks?: boolean
 }
 
 /**
@@ -84,9 +92,22 @@ export interface RunCommandOptions {
  * Supports all run command options plus daemon-specific options.
  */
 export async function start(options: StartOptions = {}, deps: StartDeps = {}): Promise<void> {
-  const { findProjectRoot, runCommand } = resolveDeps(deps)
+  const { findProjectRoot, runCommand, logger } = resolveDeps(deps)
   const projectRoot = findProjectRoot()
   const namespace = options.namespace || 'default'
+  const shouldCleanOrphans = options.cleanOrphans || options['clean-orphans']
+
+  // Clean orphans before starting if requested
+  if (shouldCleanOrphans) {
+    logger.info('Cleaning up orphan processes...')
+    try {
+      const { clean } = await import('./processes')
+      await clean({ force: false, dryRun: false })
+      logger.raw('')
+    } catch (err) {
+      logger.warn(`Failed to clean orphans: ${err}`)
+    }
+  }
 
   // Build args to pass through to the run command
   const passThoughArgs = buildPassThroughArgs(options)
@@ -123,6 +144,7 @@ async function startDaemon(
 
   if (existing) {
     throw new LoopworkError(
+      'ERR_PROCESS_SPAWN',
       `Namespace '${namespace}' is already running (PID: ${existing.pid})`,
       [
         `Use 'loopwork stop ${namespace}' to stop it first`,
@@ -155,6 +177,7 @@ async function startDaemon(
     }
   } else {
     handleError(new LoopworkError(
+      'ERR_MONITOR_START',
       `Failed to start daemon: ${result.error}`,
       [
         'Check if another process is using the same port',
@@ -267,6 +290,7 @@ function buildPassThroughArgs(options: StartOptions): string[] {
   if (options.yes) args.push('--yes')
   if (options.debug) args.push('--debug')
   if (options.config) args.push('--config', options.config)
+  if (options.withAIMonitor || options['with-ai-monitor']) args.push('--with-ai-monitor')
 
   return args
 }
@@ -290,6 +314,8 @@ function buildRunOptions(options: StartOptions): RunCommandOptions {
   if (options.yes) runOptions.yes = options.yes
   if (options.debug) runOptions.debug = options.debug
   if (options.config) runOptions.config = options.config
+  if (options.withAIMonitor || options['with-ai-monitor']) runOptions.withAIMonitor = true
+  if (options.dynamicTasks === false || options['no-dynamic-tasks']) runOptions.dynamicTasks = false
 
   return runOptions
 }

@@ -1,4 +1,4 @@
-import type { PluginTask, PluginTaskResult, LoopStats } from 'loopwork/contracts'
+import type { PluginTask, PluginTaskResult, LoopStats } from '@loopwork-ai/loopwork/contracts'
 
 export interface DashboardConfig {
   port?: number
@@ -55,4 +55,26 @@ export interface LoopEndEvent extends DashboardEvent {
 export interface StateUpdateEvent extends DashboardEvent {
   type: 'state_update'
   data: any
+}
+
+export interface TaskListResponse {
+  tasks: PluginTask[]
+  total: number
+}
+
+export interface CurrentTaskResponse {
+  task: PluginTask | null
+}
+
+export interface NextTaskResponse {
+  task: PluginTask | null
+}
+
+export interface TaskStatsResponse {
+  total: number
+  pending: number
+  inProgress: number
+  completed: number
+  failed: number
+  successRate: number
 }

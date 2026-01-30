@@ -152,6 +152,7 @@ export class JsonTaskAdapter implements TaskBackend {
     const acquired = await this.acquireLock()
     if (!acquired) {
       throw new LoopworkError(
+        'ERR_LOCK_CONFLICT',
         'Failed to acquire file lock',
         [
           'Another process may be accessing the tasks file',
@@ -298,8 +299,8 @@ export class JsonTaskAdapter implements TaskBackend {
         if (!depsMet) continue // Skip blocked tasks
       }
 
-      const task = this.loadTaskSummary(entry, data)
-      tasks.push(task)
+      const task = await this.loadFullTask(entry, data)
+      if (task) tasks.push(task)
     }
 
     return tasks
@@ -427,6 +428,7 @@ export class JsonTaskAdapter implements TaskBackend {
     } catch (e: unknown) {
       logger.error(`Failed to load tasks file ${this.tasksFile}: ${getErrorMessage(e)}`)
       throw new LoopworkError(
+        'ERR_FILE_READ',
         `Cannot read or parse tasks file: ${this.tasksFile}`,
         [
           'Check that the file exists and contains valid JSON',
@@ -445,6 +447,7 @@ export class JsonTaskAdapter implements TaskBackend {
     } catch (e: unknown) {
       logger.error(`Failed to save tasks file ${this.tasksFile}: ${getErrorMessage(e)}`)
       throw new LoopworkError(
+        'ERR_FILE_WRITE',
         `Cannot write to tasks file: ${this.tasksFile}`,
         [
           'Check file permissions allow writing',
@@ -570,7 +573,16 @@ export class JsonTaskAdapter implements TaskBackend {
   async createTask(task: Omit<Task, 'id' | 'status'>): Promise<Task> {
     return await this.withLock(() => {
       const data = this.loadTasksFile()
-      if (!data) throw new Error('Tasks file not found')
+      if (!data) {
+        throw new LoopworkError(
+          'ERR_FILE_NOT_FOUND',
+          'Tasks file not found',
+          [
+            `Create tasks file: ${this.tasksFile}`,
+            'Or run: loopwork init',
+          ]
+        )
+      }
 
       // Generate new task ID based on existing tasks
       const existingIds = data.tasks.map(t => t.id)
@@ -620,11 +632,29 @@ export class JsonTaskAdapter implements TaskBackend {
   ): Promise<Task> {
     return await this.withLock(() => {
       const data = this.loadTasksFile()
-      if (!data) throw new Error('Tasks file not found')
+      if (!data) {
+        throw new LoopworkError(
+          'ERR_FILE_NOT_FOUND',
+          'Tasks file not found',
+          [
+            `Create tasks file: ${this.tasksFile}`,
+            'Or run: loopwork init',
+          ]
+        )
+      }
 
       // Check parent exists
       const parent = data.tasks.find(t => t.id === parentId)
-      if (!parent) throw new Error(`Parent task ${parentId} not found`)
+      if (!parent) {
+        throw new LoopworkError(
+          'ERR_TASK_NOT_FOUND',
+          `Parent task ${parentId} not found`,
+          [
+            'Verify the parent task ID is correct',
+            `Check tasks file: ${this.tasksFile}`,
+          ]
+        )
+      }
 
       // Generate sub-task ID (parent-01a, parent-01b, etc.)
       const existingSubtasks = data.tasks.filter(t => t.parentId === parentId)

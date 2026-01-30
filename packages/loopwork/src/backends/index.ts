@@ -38,6 +38,7 @@ export function createBackend(config: BackendConfig): TaskBackend {
 
     default:
       throw new LoopworkError(
+        'ERR_BACKEND_INVALID',
         `Unknown backend type: "${(config as { type?: string }).type}"`,
         [
           'Valid backend types: "json" or "github"',

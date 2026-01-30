@@ -138,6 +138,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
       const a = await getAdapter()
       if (!a.createTask) {
         throw new LoopworkError(
+          'ERR_BACKEND_INVALID',
           'This backend does not support creating tasks',
           [
             'Try using a different backend that supports task creation',
@@ -153,6 +154,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
       const a = await getAdapter()
       if (!a.createSubTask) {
         throw new LoopworkError(
+          'ERR_BACKEND_INVALID',
           'This backend does not support creating sub-tasks',
           [
             'Sub-tasks may need to be created manually',
@@ -332,6 +334,7 @@ export function requireBackend(config: LoopworkConfig): BackendPlugin {
   const backend = getBackendPlugin(config)
   if (!backend) {
     throw new LoopworkError(
+      'ERR_BACKEND_INIT',
       'No backend plugin found in configuration',
       [
         'Add a backend to your loopwork.config.ts:',

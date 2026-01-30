@@ -76,3 +76,9 @@ plans/
 # Internal notes
 .sisyphus/
 .npmrc
+
+# Test artifacts
+.test-unit-*/
+.specs/attachments/
+**/test-photo-*.jpg
+**/test-photo-*.png

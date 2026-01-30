@@ -24,6 +24,36 @@ function parseParallelOption(value: string | undefined): number {
   return Math.min(parsed, 5) // Cap at 5 workers
 }
 
+/**
+ * Parse verbosity level from command-line arguments
+ * Returns log level based on:
+ * - --quiet / -q: 'silent'
+ * - -v / --verbose: 'debug'
+ * - -vv: 'debug'
+ * - -vvv: 'trace'
+ */
+function parseVerbosityLevel(args: string[]): 'silent' | 'debug' | 'trace' | undefined {
+  // Check for quiet flag first (takes priority)
+  if (args.includes('--quiet') || args.includes('-q')) {
+    return 'silent'
+  }
+
+  // Look for verbose patterns: -v, -vv, -vvv
+  for (const arg of args) {
+    if (arg === '-vvv' || arg === '--verbose=vvv') {
+      return 'trace'
+    }
+    if (arg === '-vv') {
+      return 'debug'
+    }
+    if (arg === '-v' || arg === '--verbose') {
+      return 'debug'
+    }
+  }
+
+  return undefined
+}
+
 export interface Config extends LoopworkConfig {
   projectRoot: string
   outputDir: string
@@ -54,6 +84,7 @@ function validateEnvironmentVariables(): void {
   const backend = process.env.LOOPWORK_BACKEND
   if (backend && backend !== 'json' && backend !== 'github') {
     throw new LoopworkError(
+      'ERR_ENV_INVALID',
       `Invalid LOOPWORK_BACKEND environment variable: "${backend}"`,
       [
         'Valid values: "json" or "github"',
@@ -66,6 +97,7 @@ function validateEnvironmentVariables(): void {
   const nonInteractive = process.env.LOOPWORK_NON_INTERACTIVE
   if (nonInteractive && nonInteractive !== 'true' && nonInteractive !== 'false') {
     throw new LoopworkError(
+      'ERR_ENV_INVALID',
       `Invalid LOOPWORK_NON_INTERACTIVE environment variable: "${nonInteractive}"`,
       [
         'Valid values: "true" or "false"',
@@ -77,6 +109,7 @@ function validateEnvironmentVariables(): void {
   const debug = process.env.LOOPWORK_DEBUG
   if (debug && debug !== 'true' && debug !== 'false') {
     throw new LoopworkError(
+      'ERR_ENV_INVALID',
       `Invalid LOOPWORK_DEBUG environment variable: "${debug}"`,
       [
         'Valid values: "true" or "false"',
@@ -93,6 +126,7 @@ function validateConfig(config: Config): void {
   const supportedClis = ['opencode', 'claude', 'gemini']
   if (!supportedClis.includes(config.cli)) {
     throw new LoopworkError(
+      'ERR_CONFIG_INVALID',
       `Invalid CLI: "${config.cli}"`,
       [
         `Supported CLIs: ${supportedClis.join(', ')}`,
@@ -104,6 +138,7 @@ function validateConfig(config: Config): void {
 
   if (isNaN(config.maxIterations) || config.maxIterations <= 0) {
     throw new LoopworkError(
+      'ERR_CONFIG_INVALID',
       `Invalid maxIterations: ${config.maxIterations}`,
       [
         'maxIterations must be a positive number',
@@ -115,6 +150,7 @@ function validateConfig(config: Config): void {
 
   if (isNaN(config.timeout) || config.timeout <= 0) {
     throw new LoopworkError(
+      'ERR_CONFIG_INVALID',
       `Invalid timeout: ${config.timeout}`,
       [
         'timeout must be a positive number (in seconds)',
@@ -128,6 +164,7 @@ function validateConfig(config: Config): void {
     if (isNaN(config.defaultPriority) || !Number.isInteger(config.defaultPriority) ||
         config.defaultPriority < 1 || config.defaultPriority > 5) {
       throw new LoopworkError(
+        'ERR_CONFIG_INVALID',
         `Invalid defaultPriority: ${config.defaultPriority}`,
         [
           'defaultPriority must be an integer between 1 and 5',
@@ -174,6 +211,7 @@ function validateConfig(config: Config): void {
       }
 
       throw new LoopworkError(
+        'ERR_CONFIG_INVALID',
         `Invalid model ID: "${config.model}"`,
         suggestions
       )
@@ -190,6 +228,7 @@ function validateConfig(config: Config): void {
       // Check if parent directory exists and is writable
       if (!fs.existsSync(tasksDir)) {
         throw new LoopworkError(
+          'ERR_FILE_NOT_FOUND',
           `Tasks directory does not exist: ${tasksDir}`,
           [
             'Create the directory:',
@@ -204,6 +243,7 @@ function validateConfig(config: Config): void {
         fs.accessSync(tasksDir, fs.constants.W_OK)
       } catch {
         throw new LoopworkError(
+          'ERR_FILE_WRITE',
           `Tasks directory is not writable: ${tasksDir}`,
           [
             'Check directory permissions:',
@@ -220,6 +260,7 @@ function validateConfig(config: Config): void {
       const repoPattern = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
       if (!repoPattern.test(repo)) {
         throw new LoopworkError(
+          'ERR_CONFIG_INVALID',
           `Invalid GitHub repository format: "${repo}"`,
           [
             'Repository must be in format: owner/repo',
@@ -251,6 +292,7 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
         // Validate that we got a config object
         if (!config || typeof config !== 'object') {
           throw new LoopworkError(
+            'ERR_CONFIG_INVALID',
             'Config file does not export a configuration object',
             [
               'Make sure your config file has a default export',
@@ -277,6 +319,7 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
           const lineMatch = errorMessage.match(/at line (\d+)/) || errorStack?.match(/:(\d+):\d+/)
           const lineInfo = lineMatch ? ` at line ${lineMatch[1]}` : ''
           throw new LoopworkError(
+            'ERR_CONFIG_LOAD',
             `Syntax error in config file${lineInfo}: ${errorMessage}`,
             [
               'Check your loopwork.config.ts for syntax errors',
@@ -288,6 +331,7 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
           )
         } else if (isImportError) {
           throw new LoopworkError(
+            'ERR_CONFIG_LOAD',
             `Missing dependency in config file: ${errorMessage}`,
             [
               'Install missing dependencies: npm install (or bun install)',
@@ -298,6 +342,7 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
           )
         } else {
           throw new LoopworkError(
+            'ERR_CONFIG_LOAD',
             `Invalid config file: ${errorMessage}`,
             [
               'Check your loopwork.config.ts for errors',
@@ -389,6 +434,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     const foundWrongExt = wrongExtensions.find(p => fs.existsSync(p))
     if (foundWrongExt) {
       throw new LoopworkError(
+        'ERR_CONFIG_INVALID',
         `Found config file with wrong format: ${path.basename(foundWrongExt)}`,
         [
           'Loopwork requires a TypeScript or JavaScript config file',
@@ -402,6 +448,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     const parentConfig = path.join(path.dirname(projectRoot), 'loopwork.config.ts')
     if (fs.existsSync(parentConfig)) {
       throw new LoopworkError(
+        'ERR_CONFIG_MISSING',
         'Config file found in parent directory',
         [
           `Found: ${parentConfig}`,
@@ -412,6 +459,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     }
 
     throw new LoopworkError(
+      'ERR_CONFIG_MISSING',
       'loopwork.config.ts not found',
       [
         "Run 'npx loopwork init' to create a config file",
@@ -460,6 +508,21 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       ? options.parallel
       : (fileConfig?.parallel ?? 1))
 
+  // Determine log level: CLI flags > debug flag > file config > default
+  let logLevel: import('../contracts/config').LogLevel = fileConfig?.logLevel || DEFAULT_CONFIG.logLevel || 'info'
+
+  // Check CLI flags for verbosity overrides
+  const cliVerbosity = parseVerbosityLevel(process.argv)
+  if (cliVerbosity === 'silent') {
+    logLevel = 'error'
+  } else if (cliVerbosity === 'debug') {
+    logLevel = 'debug'
+  } else if (cliVerbosity === 'trace') {
+    logLevel = 'trace'
+  } else if (options.debug) {
+    logLevel = 'debug'
+  }
+
   const config: Config = {
     ...DEFAULT_CONFIG,
     repo: options.repo || fileConfig?.backend?.repo,
@@ -481,7 +544,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       process.env.LOOPWORK_DEBUG === 'true' ||
       fileConfig?.debug ||
       false,
-    logLevel: fileConfig?.logLevel || DEFAULT_CONFIG.logLevel || 'info',
+    logLevel,
     projectRoot,
     outputDir: path.join(projectRoot, '.loopwork', 'runs', namespace, timestamp),
     sessionId: `loopwork-${namespace}-${timestamp}-${process.pid}`,
@@ -489,17 +552,14 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     namespace,
     parallel: parallelValue,
     parallelFailureMode: fileConfig?.parallelFailureMode ?? 'continue',
+    dynamicTasks: fileConfig?.dynamicTasks,
   }
 
   // Validate the final config
   validateConfig(config)
 
   // Set log level on logger
-  if (config.debug) {
-    logger.setLogLevel('debug')
-  } else if (config.logLevel) {
-    logger.setLogLevel(config.logLevel)
-  }
+  logger.setLogLevel(config.logLevel)
 
   return config
 }

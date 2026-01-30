@@ -156,6 +156,7 @@ export async function restart(options: RestartOptions = {}, deps: RestartDeps = 
 
   if (!savedArgs) {
     handleError(new LoopworkError(
+      'ERR_STATE_INVALID',
       `No saved arguments found for namespace '${namespace}'`,
       [
         `This namespace hasn't been started in daemon mode before`,
@@ -178,6 +179,7 @@ export async function restart(options: RestartOptions = {}, deps: RestartDeps = 
     const stopResult = monitor.stop(namespace)
     if (!stopResult.success) {
       handleError(new LoopworkError(
+        'ERR_PROCESS_KILL',
         `Failed to stop existing process: ${stopResult.error}`,
         [
           'Check if you have permissions to kill the process',
@@ -194,6 +196,7 @@ export async function restart(options: RestartOptions = {}, deps: RestartDeps = 
     const exitWaitSuccess = await waitFn(existing.pid, 10000)
     if (!exitWaitSuccess) {
       handleError(new LoopworkError(
+        'ERR_PROCESS_KILL',
         `Process ${existing.pid} did not exit within 10 seconds`,
         [
           'The process may be stuck or unresponsive',
@@ -219,6 +222,7 @@ export async function restart(options: RestartOptions = {}, deps: RestartDeps = 
     proc.stdout.write('\n')
   } else {
     handleError(new LoopworkError(
+      'ERR_MONITOR_START',
       `Failed to restart daemon: ${startResult.error}`,
       [
         'Check if another process is using the same port',

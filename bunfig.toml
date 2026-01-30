@@ -1,0 +1,16 @@
+# Root Bun configuration for loopwork monorepo
+# See: https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Global test timeout in milliseconds (10 seconds)
+# This prevents runaway tests from becoming orphan processes
+# Individual packages can override this in their own bunfig.toml
+timeout = 10000
+
+# Don't run tests in parallel at root level
+# Each package manages its own parallelization
+# parallel = false
+
+[install]
+# Use workspaces
+# Bun auto-detects from package.json workspaces field

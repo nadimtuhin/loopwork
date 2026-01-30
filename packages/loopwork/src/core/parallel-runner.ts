@@ -118,6 +118,7 @@ export class ParallelRunner {
   private recentFailures: TrackedFailure[] = []
   private selfHealingAttempts = 0
   private maxSelfHealingAttempts = 3
+  private selfHealingCooldown: number // Cooldown delay after healing (ms)
   private originalWorkers: number
   private originalTaskDelay: number
   private originalTimeout: number
@@ -130,6 +131,10 @@ export class ParallelRunner {
   private interruptedTasks: string[] = []
   private tasksPerWorker: number[] = []
   private retryCount: Map<string, number> = new Map()
+
+  // Periodic cleanup
+  private lastCleanupTime: number = 0
+  private cleanupInterval: number
 
   constructor(options: ParallelRunnerOptions) {
     this.config = options.config
@@ -147,6 +152,10 @@ export class ParallelRunner {
     this.originalWorkers = this.workers
     this.originalTaskDelay = options.config.taskDelay ?? 2000
     this.originalTimeout = options.config.timeout || 600
+    // Self-healing cooldown (default 30s, can be reduced for testing)
+    this.selfHealingCooldown = options.config.selfHealingCooldown ?? 30000
+    // Cleanup interval (default 5 minutes)
+    this.cleanupInterval = options.config.orphanWatch?.interval ?? 300000
   }
 
   /**
@@ -170,6 +179,7 @@ export class ParallelRunner {
 
         if (!healed) {
           throw new LoopworkError(
+            'ERR_TASK_INVALID',
             `Circuit breaker activated: ${this.consecutiveFailures} consecutive task failures (${this.selfHealingAttempts} self-healing attempts exhausted)`,
             [
               'The circuit breaker stops execution after too many failures to prevent wasting resources',
@@ -182,8 +192,14 @@ export class ParallelRunner {
         }
 
         // Healing applied - add a cooldown delay before retrying
-        this.logger.info('Waiting 30s before resuming with adjusted configuration...')
-        await new Promise(r => setTimeout(r, 30000))
+        const cooldownSec = Math.round(this.selfHealingCooldown / 1000)
+        this.logger.info(`Waiting ${cooldownSec}s before resuming with adjusted configuration...`)
+        await new Promise(r => setTimeout(r, this.selfHealingCooldown))
+      }
+
+      // Periodic cleanup of stale test runners
+      if (this.config.orphanWatch?.enabled) {
+        await this.performPeriodicCleanup()
       }
 
       this.iterationCount++
@@ -449,6 +465,36 @@ export class ParallelRunner {
       completed: this.tasksCompleted,
       failed: this.tasksFailed,
       iterations: this.iterationCount,
+    }
+  }
+
+  /**
+   * Perform periodic cleanup of stale test runners
+   */
+  private async performPeriodicCleanup(): Promise<void> {
+    const now = Date.now()
+    if (now - this.lastCleanupTime < this.cleanupInterval) {
+      return // Not time yet
+    }
+
+    this.lastCleanupTime = now
+
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { createStaleTestKiller } = await import('./stale-test-killer')
+      const killer = createStaleTestKiller({
+        projectRoot: this.config.projectRoot || process.cwd(),
+        maxAge: this.config.orphanWatch?.maxAge ?? 600000,
+        silent: true, // Don't spam logs
+      })
+
+      const result = await killer.kill()
+
+      if (result.killed.length > 0) {
+        this.logger.info(`Cleaned up ${result.killed.length} stale test runner(s)`)
+      }
+    } catch (error) {
+      this.logger.debug(`Periodic cleanup failed: ${error}`)
     }
   }
 

@@ -24,6 +24,7 @@ function stopActiveSpinner() {
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {
+  trace: -1,
   debug: 0,
   info: 1,
   warn: 2,
@@ -137,9 +138,22 @@ export const logger = {
     process.stdout.write('\r\x1b[K')
     process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.cyan('[DEBUG]')} ${msg}\n`)
   },
-  update: (msg: string) => {
+  trace: (msg: string) => {
+    if (!logger._shouldLog('trace')) return
+    logger._logToFile('TRACE', msg)
+
     // Suppress console output in JSON mode
     if (logger.outputFormat === 'json') {
+      return
+    }
+
+    stopActiveSpinner()
+    process.stdout.write('\r\x1b[K')
+    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.dim('[TRACE]')} ${msg}\n`)
+  },
+  update: (msg: string) => {
+    // Suppress console output in JSON mode or quiet mode
+    if (logger.outputFormat === 'json' || logger.logLevel === 'error') {
       return
     }
 
@@ -162,8 +176,8 @@ export const logger = {
   },
 
   startSpinner: (msg: string) => {
-    // Suppress spinner in JSON mode
-    if (logger.outputFormat === 'json') {
+    // Suppress spinner in JSON mode or quiet mode
+    if (logger.outputFormat === 'json' || logger.logLevel === 'error') {
       return
     }
 

@@ -16,6 +16,7 @@ import { spawn } from 'child_process'
 import { logger, separator, Table, ProgressBar, CompletionSummary } from '../core/utils'
 import { getConfig } from '../core/config'
 import type { DecomposeJsonOutput } from '../contracts/output'
+import { LoopworkError } from '../core/errors'
 
 interface DecomposeOptions {
   feature?: string
@@ -119,7 +120,15 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
     // Extract JSON from response (in case there's extra text)
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      throw new Error('No JSON found in response')
+      throw new LoopworkError(
+        'ERR_UNKNOWN',
+        'No JSON found in AI response',
+        [
+          'Check if the AI CLI is working correctly',
+          'Try running the command again',
+          'Verify the model supports JSON output',
+        ]
+      )
     }
     generated = JSON.parse(jsonMatch[0])
   } catch (error) {

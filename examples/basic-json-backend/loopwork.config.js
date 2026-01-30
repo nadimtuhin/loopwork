@@ -30,6 +30,25 @@ export default {
   retryDelay: 3000,    // Wait 3 seconds before retry
   taskDelay: 2000,     // Wait 2 seconds between tasks
 
+  // Dynamic task creation - automatically generate follow-up tasks from task results
+  // This feature analyzes completed tasks and suggests relevant follow-up work
+  dynamicTasks: {
+    enabled: true,           // Enable automatic task generation
+
+    // Analyzer option 1: Built-in pattern-based analyzer (fast, no API calls)
+    analyzer: 'pattern',     // Detects common patterns like "TODO:", "FIXME:", unhandled errors
+
+    // Analyzer option 2: LLM-based analyzer (more intelligent, requires API)
+    // analyzer: 'llm',      // Uses AI to understand context and suggest tasks
+
+    // Analyzer option 3: Custom analyzer instance
+    // analyzer: new PatternAnalyzer({ patterns: [...] }),
+
+    createSubTasks: true,    // Create generated tasks as sub-tasks of completed task
+    maxTasksPerExecution: 5, // Limit new tasks per completed task (prevents task explosion)
+    autoApprove: true,       // Automatically create tasks (set to false for approval queue)
+  },
+
   // Namespace for concurrent runs
   namespace: 'basic-example',
 }

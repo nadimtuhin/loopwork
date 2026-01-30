@@ -15,7 +15,7 @@ import {
   withRetry,
   ModelPresets,
   RetryPresets,
-} from "loopwork";
+} from "@loopwork-ai/loopwork";
 import { withTelegram } from "@loopwork-ai/telegram";
 import { withCostTracking } from "@loopwork-ai/cost-tracking";
 import { withAsana } from "@loopwork-ai/asana";
@@ -53,6 +53,13 @@ export default compose(
       ModelPresets.claudeOpus({ timeout: 900 }),   // Heavy tasks
     ],
     selectionStrategy: "round-robin",
+    orphanWatch: {
+      enabled: true,          // Enable automatic monitoring
+      interval: 60000,        // Check every 60 seconds
+      maxAge: 1800000,        // Kill orphans older than 30 minutes
+      autoKill: true,         // Automatically kill confirmed orphans
+      patterns: [],           // Additional process patterns to watch
+    },
     retry: {
       exponentialBackoff: true,
       baseDelayMs: 2000,

@@ -5,11 +5,12 @@
 import type { LoopworkPlugin } from './plugin'
 import type { BackendConfig } from './backend'
 import type { CliExecutorConfig } from './cli'
+import type { TaskAnalyzer } from './analysis'
 
 /**
  * Log levels for controlling output verbosity
  */
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent'
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
 
 /**
  * Failure mode for parallel execution
@@ -74,6 +75,42 @@ export interface OrphanWatchConfig {
 /**
  * Main Loopwork configuration
  */
+/**
+ * Configuration for dynamic task creation
+ */
+export interface DynamicTasksConfig {
+  /**
+   * Enable automatic task creation based on analysis
+   * @default true
+   */
+  enabled?: boolean
+
+  /**
+   * Task analyzer to use: 'pattern' for pattern-based, 'llm' for LLM-based analysis,
+   * or provide a custom TaskAnalyzer instance
+   * @default 'pattern'
+   */
+  analyzer?: 'pattern' | 'llm' | TaskAnalyzer
+
+  /**
+   * Create generated tasks as sub-tasks of the completed task
+   * @default true
+   */
+  createSubTasks?: boolean
+
+  /**
+   * Maximum number of new tasks to create per task execution
+   * @default 5
+   */
+  maxTasksPerExecution?: number
+
+  /**
+   * Automatically create tasks (true) or queue for approval (false)
+   * @default true
+   */
+  autoApprove?: boolean
+}
+
 export interface LoopworkConfig {
   // Backend
   backend: BackendConfig
@@ -118,6 +155,19 @@ export interface LoopworkConfig {
   taskDelay?: number
   retryDelay?: number
 
+  /**
+   * Cooldown delay after self-healing (in milliseconds)
+   * Gives APIs time to recover after rate limit detection
+   * @default 30000 (30 seconds)
+   */
+  selfHealingCooldown?: number
+
+  /**
+   * Dynamic task creation configuration
+   * Automatically generates follow-up tasks based on completed task analysis
+   */
+  dynamicTasks?: DynamicTasksConfig
+
   // Registered plugins
   plugins?: LoopworkPlugin[]
 
@@ -146,8 +196,16 @@ export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
   circuitBreakerThreshold: 5,
   taskDelay: 2000,
   retryDelay: 3000,
+  selfHealingCooldown: 30000, // 30 seconds
   parallel: 1,
   parallelFailureMode: 'continue',
+  dynamicTasks: {
+    enabled: true,
+    analyzer: 'pattern',
+    createSubTasks: true,
+    maxTasksPerExecution: 5,
+    autoApprove: true,
+  },
   orphanWatch: {
     enabled: false,
     interval: 60000,       // 1 minute

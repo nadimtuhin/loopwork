@@ -246,6 +246,7 @@ export class CliExecutor {
         .join('\n')
 
       throw new LoopworkError(
+        'ERR_CLI_NOT_FOUND',
         'No AI CLI tools found in PATH or known locations',
         [
           'Checked the following locations:',
@@ -269,6 +270,7 @@ export class CliExecutor {
     const requestedCli = this.config.cli
     if (requestedCli && !this.cliPaths.has(requestedCli)) {
       throw new LoopworkError(
+        'ERR_CLI_NOT_FOUND',
         `AI CLI '${requestedCli}' not found in PATH`,
         [
           `Install ${requestedCli === 'claude' ? 'Claude Code' : 'OpenCode'}: ${requestedCli === 'claude' ? 'https://claude.com/code' : 'https://opencode.ai'}`,
@@ -507,6 +509,7 @@ export class CliExecutor {
       .join(', ')
 
     throw new LoopworkError(
+      'ERR_CLI_EXEC',
       'All CLI configurations failed after exhausting all models',
       [
         `Tried the following configurations: ${triedConfigs}`,
@@ -541,6 +544,7 @@ export class CliExecutor {
         const totalMemoryMB = Math.round(os.totalmem() / (1024 * 1024))
         logger.warn(`Low memory: ${availableMemoryMB}MB available (need ${MIN_FREE_MEMORY_MB}MB). Total: ${totalMemoryMB}MB`)
         return reject(new LoopworkError(
+          'ERR_PROCESS_SPAWN',
           `SPAWN_FAILED: Insufficient memory to spawn CLI process: ${availableMemoryMB}MB available (need ${MIN_FREE_MEMORY_MB}MB minimum)`,
           ['Wait for other processes to complete or free up memory']
         ))

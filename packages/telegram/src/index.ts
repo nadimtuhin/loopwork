@@ -23,3 +23,4 @@ export function withTelegram(options: TelegramConfig = {}): ConfigWrapper {
 
 export * from './notifications'
 export * from './bot'
+export * from './daily-briefing'

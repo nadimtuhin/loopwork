@@ -58,7 +58,9 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
 
   // Handle orphan management
   if (options.orphans) {
-    activeLogger.info('Scanning for orphan processes...')
+    if (!options.json) {
+      activeLogger.info('Scanning for orphan processes...')
+    }
 
     const orphans = await detectOrphansFunc({ projectRoot })
 
@@ -77,6 +79,7 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       const result = await killer.kill(orphans, {
         force: options.force,
         dryRun: options.dryRun,
+        silent: true,
       })
 
       const output = {

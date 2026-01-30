@@ -27,7 +27,7 @@ describe('dashboard command', () => {
   })
 
   test('displays dashboard in one-time mode', async () => {
-    await dashboard({}, { DashboardClass: MockDashboard as any })
+    await dashboard({ watch: false }, { DashboardClass: MockDashboard as any })
 
     expect(MockDashboard.instances.length).toBe(1)
     expect(mockDisplay).toHaveBeenCalled()
@@ -41,11 +41,11 @@ describe('dashboard command', () => {
     expect(mockDisplay).not.toHaveBeenCalled()
   })
 
-  test('defaults to non-interactive mode', async () => {
+  test('defaults to interactive mode', async () => {
     await dashboard(undefined, { DashboardClass: MockDashboard as any })
 
-    expect(mockDisplay).toHaveBeenCalled()
-    expect(mockInteractive).not.toHaveBeenCalled()
+    expect(mockInteractive).toHaveBeenCalled()
+    expect(mockDisplay).not.toHaveBeenCalled()
   })
 
   test('handles errors gracefully', async () => {
@@ -65,7 +65,8 @@ describe('dashboard command', () => {
     console.error = mock(() => {})
 
     try {
-      await dashboard({}, { DashboardClass: MockDashboard as any })
+      // Use watch: false to trigger the display() path which throws
+      await dashboard({ watch: false }, { DashboardClass: MockDashboard as any })
     } catch (e: any) {
       if (e.message !== 'process.exit') throw e
     } finally {

@@ -180,10 +180,10 @@ Mitigations:
 ### Output Logging
 
 All AI interactions are logged to:
-- `loopwork-runs/{session}/logs/` - Full conversation logs
+- `.loopwork/runs/{namespace}/{session}/logs/` - Full conversation logs
 - May contain sensitive information
 
-**Action**: Add `loopwork-runs/` to `.gitignore` (already done)
+**Action**: Add `.loopwork/` to `.gitignore` (already done)
 
 ## Third-Party Security
 

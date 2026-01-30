@@ -2,6 +2,7 @@ import type { OrphanInfo, CleanupResult } from '../../contracts/process-manager'
 import { ProcessRegistry } from './registry'
 import { logger } from '../utils'
 import { isProcessAlive } from '../../commands/shared/process-utils'
+import { LoopworkError } from '../errors'
 
 /**
  * ProcessCleaner - Graceful process termination with fallback to force kill
@@ -125,7 +126,14 @@ export class ProcessCleaner {
       }
       if ((error as NodeJS.ErrnoException).code === 'EPERM') {
         // Permission denied - can't clean this process
-        throw new Error(`Permission denied to kill process ${pid}`)
+        throw new LoopworkError(
+          'ERR_PROCESS_KILL',
+          `Permission denied to kill process ${pid}`,
+          [
+            'Process may be owned by another user',
+            'Try running with elevated privileges (sudo)',
+          ]
+        )
       }
       throw error
     }
@@ -153,7 +161,14 @@ export class ProcessCleaner {
       }
       if ((error as NodeJS.ErrnoException).code === 'EPERM') {
         // Permission denied
-        throw new Error(`Permission denied to kill process ${pid}`)
+        throw new LoopworkError(
+          'ERR_PROCESS_KILL',
+          `Permission denied to kill process ${pid}`,
+          [
+            'Process may be owned by another user',
+            'Try running with elevated privileges (sudo)',
+          ]
+        )
       }
       throw error
     }

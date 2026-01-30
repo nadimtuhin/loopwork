@@ -17,6 +17,7 @@ Loopwork is an extensible task automation framework that runs AI CLI tools (Clau
 - 🔔 **Notifications** - Telegram bot & Discord webhooks
 - 💰 **Cost Tracking** - Token usage and cost monitoring
 - 🌳 **Sub-tasks & Dependencies** - Hierarchical task structures
+- 🤖 **Dynamic Task Creation** - Automatic follow-up task generation based on output analysis
 - 🔧 **MCP Server** - Model Context Protocol for AI tool integration
 - 📺 **Real-time Streaming** - Live output from AI execution
 - 🎯 **Smart Retries** - Automatic failover between AI models
@@ -92,6 +93,67 @@ export default compose(
 }))
 ```
 
+### With Dynamic Task Creation
+
+Enable automatic follow-up task generation based on completed task output analysis:
+
+```typescript
+import {
+  defineConfig,
+  compose,
+  withDynamicTasks,
+  PatternAnalyzer,
+  LLMAnalyzer,
+} from '@loopwork-ai/loopwork'
+import { withJSONBackend } from '@loopwork-ai/loopwork'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+
+  // Option 1: Use built-in pattern analyzer (fast, no API calls)
+  withDynamicTasks({
+    enabled: true,
+    analyzer: 'pattern',           // Detects TODO, FIXME, errors, etc.
+    createSubTasks: true,
+    maxTasksPerExecution: 5,
+    autoApprove: true,
+  }),
+
+  // Option 2: Use LLM analyzer (intelligent, uses API)
+  // withDynamicTasks({
+  //   analyzer: 'llm',              // Claude-powered analysis
+  //   createSubTasks: true,
+  //   maxTasksPerExecution: 3,
+  //   autoApprove: false,           // Queue for manual approval
+  // }),
+
+  // Option 3: Custom analyzer with your own patterns
+  // withDynamicTasks({
+  //   analyzer: new PatternAnalyzer({
+  //     patterns: [
+  //       { regex: /REVIEW:/gi, priority: 'high', prefix: 'Code review' },
+  //       { regex: /PERF:/gi, priority: 'medium', prefix: 'Performance' },
+  //     ],
+  //   }),
+  //   createSubTasks: true,
+  // }),
+)(defineConfig({
+  cli: 'claude',
+  maxIterations: 50,
+}))
+```
+
+**What it does:**
+- Analyzes completed task output for patterns like TODO, FIXME, test coverage gaps
+- Automatically creates follow-up tasks to address identified issues
+- Creates sub-tasks under the completed parent task (maintains hierarchy)
+- Prevents task explosion with `maxTasksPerExecution` limit
+
+**Disable at runtime:**
+```bash
+loopwork run --no-dynamic-tasks
+```
+
 ### Run Loopwork
 
 ```bash
@@ -114,6 +176,7 @@ loopwork --feature auth
 |--------|---------|-------------|
 | JSON Backend | Local JSON task files | Built-in |
 | GitHub Backend | GitHub Issues | Built-in |
+| Dynamic Tasks | Auto-generate follow-up tasks | Built-in |
 | Telegram | Bot commands & notifications | `@loopwork-ai/telegram` |
 | Discord | Webhook notifications | `@loopwork-ai/discord` |
 | Asana | Task sync & comments | `@loopwork-ai/asana` |
@@ -121,6 +184,42 @@ loopwork --feature auth
 | Todoist | Task sync | `@loopwork-ai/todoist` |
 | Cost Tracking | Token/cost monitoring | `@loopwork-ai/cost-tracking` |
 | Notion | Notion database backend | `@loopwork-ai/notion` |
+
+### Dynamic Task Creation
+
+Enable automatic task generation based on completed task analysis:
+
+```typescript
+import { compose, defineConfig, withDynamicTasks } from '@loopwork-ai/loopwork'
+import { withJSONBackend } from '@loopwork-ai/loopwork'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+  withDynamicTasks({
+    enabled: true,                    // Auto-generate follow-up tasks
+    analyzer: 'pattern',              // 'pattern' or 'llm'
+    createSubTasks: true,             // Create as sub-tasks
+    maxTasksPerExecution: 5,          // Max new tasks per completion
+    autoApprove: true,                // Auto-create or queue for approval
+  })
+)(defineConfig({
+  cli: 'claude',
+  maxIterations: 50,
+}))
+```
+
+**Analyzers:**
+- `'pattern'` - Fast regex-based analysis (default)
+  - Detects: TODO comments, FIXME markers, coverage gaps
+  - No additional API costs
+- `'llm'` - Claude-based intelligent analysis
+  - Detects: meaningful follow-ups, refinement needs
+  - Additional API usage
+
+**Runtime Control:**
+```bash
+loopwork run --no-dynamic-tasks  # Disable at runtime
+```
 
 ## 📝 Task Format
 

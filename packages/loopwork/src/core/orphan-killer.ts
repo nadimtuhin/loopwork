@@ -12,6 +12,7 @@ export interface KillOptions {
   force?: boolean       // Kill suspected orphans too
   dryRun?: boolean      // Just report what would be killed
   timeout?: number      // SIGKILL timeout in ms (default 5000)
+  silent?: boolean      // Suppress logging output (for JSON mode)
 }
 
 /**
@@ -65,6 +66,7 @@ export class OrphanKiller extends EventEmitter {
       force = false,
       dryRun = false,
       timeout = 5000,
+      silent = false,
     } = options
 
     const result: KillResult = {
@@ -105,7 +107,9 @@ export class OrphanKiller extends EventEmitter {
 
       // Dry run mode: just report
       if (dryRun) {
-        logger.info(`[DRY RUN] Would kill PID ${pid}: ${command}`)
+        if (!silent) {
+          logger.info(`[DRY RUN] Would kill PID ${pid}: ${command}`)
+        }
         result.killed.push(pid)
         continue
       }

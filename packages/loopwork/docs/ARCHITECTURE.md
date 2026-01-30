@@ -138,6 +138,7 @@ interface LoopworkConfig {
   circuitBreakerThreshold?: number (default: 5)
   taskDelay?: number (default: 2000ms)
   retryDelay?: number (default: 3000ms)
+  selfHealingCooldown?: number (default: 30000ms)
 
   // Plugins
   plugins?: LoopworkPlugin[]
@@ -198,6 +199,156 @@ export default compose(
   maxIterations: 50
 }))
 ```
+
+## Dynamic Task Creation
+
+**Directory:** `src/plugins/dynamic-tasks.ts`
+
+The Dynamic Task Creation system automatically generates follow-up tasks based on analysis of completed task outputs. This enables self-improving workflows where the system can identify additional work needed and create tasks without manual intervention.
+
+### Configuration
+
+Add to your `loopwork.config.ts`:
+
+```typescript
+import { compose, defineConfig, withDynamicTasks } from '@loopwork-ai/loopwork'
+import { withJSONBackend } from '@loopwork-ai/loopwork'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+  withDynamicTasks({
+    enabled: true,                  // Enable automatic task generation
+    analyzer: 'pattern',            // 'pattern' for pattern-based, 'llm' for LLM analysis
+    createSubTasks: true,           // Create as sub-tasks of completed task
+    maxTasksPerExecution: 5,        // Limit new tasks per completion
+    autoApprove: true,              // Auto-create (false = queue for approval)
+  })
+)(defineConfig({
+  cli: 'claude',
+  maxIterations: 50,
+}))
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enable/disable automatic task generation |
+| `analyzer` | `'pattern' \| 'llm' \| TaskAnalyzer` | `'pattern'` | Analysis strategy: pattern-based regex matching, LLM-based with Claude, or custom analyzer |
+| `createSubTasks` | `boolean` | `true` | Create generated tasks as sub-tasks (maintains hierarchy) |
+| `maxTasksPerExecution` | `number` | `5` | Maximum new tasks to create per task completion |
+| `autoApprove` | `boolean` | `true` | Auto-create tasks or queue for human approval |
+
+### Analyzers
+
+#### Pattern Analyzer (Default)
+
+Fast regex-based analysis that identifies common patterns in task output:
+
+- TODO/FIXME comments
+- Code review suggestions
+- Test coverage gaps
+- Documentation gaps
+- Follow-up items
+
+**Usage:**
+```typescript
+withDynamicTasks({
+  analyzer: 'pattern',  // Auto-uses PatternAnalyzer
+})
+```
+
+#### LLM Analyzer (Experimental)
+
+Uses Claude to intelligently analyze task output and suggest meaningful follow-ups:
+
+```typescript
+withDynamicTasks({
+  analyzer: 'llm',  // Uses Claude for analysis
+})
+```
+
+**Note:** LLM analysis consumes additional API tokens.
+
+#### Custom Analyzer
+
+Implement the `TaskAnalyzer` interface for custom analysis logic:
+
+```typescript
+import type { TaskAnalyzer, TaskAnalysisResult } from '@loopwork-ai/loopwork'
+
+const myAnalyzer: TaskAnalyzer = {
+  async analyze(task, result): Promise<TaskAnalysisResult> {
+    // Your analysis logic
+    return {
+      shouldCreateTasks: true,
+      suggestedTasks: [
+        {
+          title: 'Follow-up task',
+          description: 'Based on analysis',
+          priority: 'medium',
+        }
+      ],
+      reason: 'Custom analysis reason'
+    }
+  }
+}
+
+withDynamicTasks({
+  analyzer: myAnalyzer,
+})
+```
+
+### Plugin Lifecycle
+
+The plugin hooks into the task completion flow:
+
+1. **`onBackendReady`** - Store backend reference for task creation
+2. **`onTaskComplete`** - Analyze completed task output
+3. **Create tasks** - Generate follow-ups if analysis recommends
+4. **`onTaskFailed`** - Optionally create remediation tasks for failures
+
+### Task Creation Flow
+
+```
+Task Completes
+    ↓
+TaskAnalyzer.analyze(task, result)
+    ↓
+ShouldCreateTasks?
+    ├─ No → Skip
+    └─ Yes → Check autoApprove
+        ├─ true → Create tasks immediately
+        └─ false → Queue for approval
+    ↓
+Backend.createTask() or Backend.createSubTask()
+    ↓
+Log creation results
+```
+
+### CLI Override
+
+Disable dynamic tasks at runtime:
+
+```bash
+loopwork run --no-dynamic-tasks
+loopwork start --no-dynamic-tasks
+```
+
+### Error Handling
+
+- Analyzer failures are caught and logged, never crash the loop
+- Task creation failures log warnings but don't affect main execution
+- Missing backend capability (no `createTask` method) logs warning and continues
+- Plugin is fault-tolerant and designed for production reliability
+
+### Use Cases
+
+1. **Self-improving loops** - Generate refinement tasks after initial implementation
+2. **Documentation generation** - Create doc tasks after feature completion
+3. **Testing follow-ups** - Generate test coverage tasks based on code analysis
+4. **Code review preparation** - Create review tasks with specific focus areas
+5. **Bug remediation** - Auto-generate debug tasks when parent task fails
 
 ## AI Monitor System
 
@@ -673,9 +824,21 @@ monitor.getStats(): {
 
 **CLI Commands:**
 ```bash
-loopwork ai-monitor          # Start monitor in foreground
-loopwork status              # Check circuit breaker status
-cat .loopwork/monitor-state.json  # View persisted state
+# Standalone commands
+loopwork ai-monitor --watch              # Watch and heal logs in real-time
+loopwork ai-monitor --dry-run            # Watch only, no healing
+loopwork ai-monitor --status             # Show circuit breaker status
+loopwork ai-monitor --log-file <path>    # Monitor specific log file
+loopwork ai-monitor --log-dir <path>     # Override log directory
+loopwork ai-monitor --namespace <name>   # Monitor specific namespace
+loopwork ai-monitor --model <id>         # Use specific LLM model
+
+# Integration with run/start
+loopwork run --with-ai-monitor           # Run with AI monitoring
+loopwork start --with-ai-monitor         # Start with AI monitoring
+
+# View state
+cat .loopwork/monitor-state.json         # View persisted state
 ```
 
 ### Testing
@@ -1113,6 +1276,60 @@ class OrphanKiller {
 3. If still alive: Send SIGKILL (force kill)
 ```
 
+### Self-Healing Circuit Breaker (v0.3.4+)
+
+**File:** `src/core/parallel-runner.ts`
+
+When the circuit breaker threshold is reached (default: 5 consecutive failures), the parallel runner
+attempts to self-heal before giving up. It analyzes failure patterns and adjusts execution parameters.
+
+**Failure Categories:**
+| Category | Detection Patterns | Healing Action |
+|----------|-------------------|----------------|
+| `rate_limit` | "rate limit", "429", "too many requests", "overloaded" | Reduce workers by 50%, double delay |
+| `timeout` | "timeout", "etimedout", "timed out" | Increase timeout by 50% |
+| `memory` | "memory", "oom", "out of memory" | Reduce workers by 50% |
+| `unknown` | No pattern match | Reduce workers by 1, add 2s delay |
+
+**Self-Healing Flow:**
+```
+Circuit Breaker Triggered (5+ consecutive failures)
+    ↓
+Analyze recent failures (last 10)
+    ↓
+Categorize each failure (rate_limit, timeout, memory, unknown)
+    ↓
+If 60%+ match one category → apply category-specific healing
+    ↓
+Reset circuit breaker counter
+    ↓
+Wait cooldown period (default: 30s)
+    ↓
+Resume execution with adjusted parameters
+    ↓
+If fails again: repeat up to 3 self-healing attempts
+    ↓
+After 3 attempts exhausted → throw LoopworkError and stop
+```
+
+**Configuration:**
+```typescript
+{
+  circuitBreakerThreshold: 5,    // Failures before healing
+  selfHealingCooldown: 30000,    // Wait time after healing (ms)
+}
+```
+
+**Example Output:**
+```
+─────────────────────────────────────
+🔄 Self-Healing Activated
+Rate limit detected (4/5 failures). Reducing workers from 3 to 1, increasing delay to 4s
+Self-healing attempt 1/3
+New configuration: 1 workers, 4000ms delay, 600s timeout
+─────────────────────────────────────
+```
+
 ## Data Flow
 
 ### Main Task Execution Loop
@@ -1138,7 +1355,7 @@ loopwork run
 7. Run plugins onLoopStart hooks
     ↓
 8. LOOP (up to maxIterations):
-    ├─ Check circuit breaker (5 failures → stop)
+    ├─ Check circuit breaker (5 failures → self-heal or stop)
     ├─ Find next pending task
     │  └─ Apply feature/priority filters
     ├─ Run plugins onTaskStart hooks

@@ -23,11 +23,14 @@
     "@loopwork-ai/loopwork": "workspace:*"
   },
   "dependencies": {
+    "blessed": "^0.1.81",
+    "blessed-contrib": "^4.11.0",
     "chokidar": "^3.5.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.0",
     "@loopwork-ai/loopwork": "workspace:*",
+    "@playwright/test": "^1.58.0",
+    "@types/blessed": "^0.1.27",
     "tsup": "^8.0.0"
   },
   "keywords": [

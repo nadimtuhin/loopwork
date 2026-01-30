@@ -20,43 +20,101 @@ describe('error-handling', () => {
   describe('LoopworkError', () => {
     test('correctly stores message, suggestions and docsUrl', () => {
       const error = new LoopworkError(
+        'ERR_UNKNOWN',
         'Test message',
         ['Suggestion 1', 'Suggestion 2'],
         'https://docs.example.com'
       )
       expect(error.message).toBe('Test message')
+      expect(error.code).toBe('ERR_UNKNOWN')
       expect(error.suggestions).toEqual(['Suggestion 1', 'Suggestion 2'])
       expect(error.docsUrl).toBe('https://docs.example.com')
       expect(error.name).toBe('LoopworkError')
     })
 
     test('works without docsUrl', () => {
-      const error = new LoopworkError('Test message', ['Suggestion'])
-      expect(error.docsUrl).toBeUndefined()
+      const error = new LoopworkError('ERR_UNKNOWN', 'Test message', ['Suggestion'])
+      // Falls back to ERROR_CODES registry URL
+      expect(error.docsUrl).toBe('https://docs.loopwork.ai/errors/unknown')
     })
   })
 
   describe('handleError', () => {
     test('handles LoopworkError correctly', () => {
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
       const error = new LoopworkError(
+        'ERR_UNKNOWN',
         'Special error',
         ['Try this', 'Try that'],
         'https://example.com'
       )
       handleError(error)
 
-      // Error is logged to stderr
-      expect(stderrSpy).toHaveBeenCalled()
-      const stderrOutput = stderrSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(stderrOutput).toContain('Special error')
+      // Error is logged via console.error with formatted box
+      expect(consoleSpy).toHaveBeenCalled()
+      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(consoleOutput).toContain('Special error')
+      expect(consoleOutput).toContain('Try this')
+      expect(consoleOutput).toContain('Try that')
+      expect(consoleOutput).toContain('https://example.com')
+      consoleSpy.mockRestore()
+    })
 
-      // Suggestions and docs are logged to stdout
-      expect(stdoutSpy).toHaveBeenCalled()
-      const stdoutOutput = stdoutSpy.mock.calls.map((call: any) => call[0]).join('')
-      expect(stdoutOutput).toContain('💡 Try this')
-      expect(stdoutOutput).toContain('💡 Try that')
-      expect(stdoutOutput).toContain('📚 Documentation:')
-      expect(stdoutOutput).toContain('https://example.com')
+    test('formats error box with error code', () => {
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
+      const error = new LoopworkError(
+        'ERR_LOCK_CONFLICT',
+        'Failed to acquire state lock',
+        ['Wait for other instance to finish'],
+        'https://docs.loopwork.ai/errors/lock-conflict'
+      )
+      handleError(error)
+
+      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(consoleOutput).toContain('ERR_LOCK_CONFLICT')
+      expect(consoleOutput).toContain('Failed to acquire state lock')
+      expect(consoleOutput).toContain('ERROR')
+      expect(consoleOutput).toContain('╭')
+      expect(consoleOutput).toContain('╰')
+      consoleSpy.mockRestore()
+    })
+
+    test('formats error box with multiple suggestions', () => {
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
+      const error = new LoopworkError(
+        'ERR_CONFIG_INVALID',
+        'Configuration is invalid',
+        ['Check your config file', 'Verify all required fields are present'],
+        'https://docs.loopwork.ai/errors/config-invalid'
+      )
+      handleError(error)
+
+      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(consoleOutput).toContain('ERR_CONFIG_INVALID')
+      expect(consoleOutput).toContain('Configuration is invalid')
+      expect(consoleOutput).toContain('Check your config file')
+      expect(consoleOutput).toContain('Verify all required fields are present')
+      expect(consoleOutput).toContain('💡')
+      expect(consoleOutput).toContain('📚')
+      consoleSpy.mockRestore()
+    })
+
+    test('formats error box without suggestions', () => {
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
+      const error = new LoopworkError(
+        'ERR_FILE_NOT_FOUND',
+        'File not found',
+        [],
+        'https://docs.loopwork.ai/errors/file-not-found'
+      )
+      handleError(error)
+
+      const consoleOutput = consoleSpy.mock.calls.map((call: any) => call[0]).join('')
+      expect(consoleOutput).toContain('ERR_FILE_NOT_FOUND')
+      expect(consoleOutput).toContain('File not found')
+      expect(!consoleOutput.includes('💡')).toBe(true)
+      expect(consoleOutput).toContain('📚')
+      consoleSpy.mockRestore()
     })
 
     test('handles generic Error correctly', () => {

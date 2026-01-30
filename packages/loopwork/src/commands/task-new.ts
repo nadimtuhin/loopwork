@@ -27,6 +27,7 @@ export async function taskNew(options: {
 
   if (!options.title) {
     throw new ErrorClass(
+      'ERR_TASK_INVALID',
       'Task title is required',
       [
         'Use --title "My task title"',
@@ -39,6 +40,7 @@ export async function taskNew(options: {
 
   if (typeof backend.createTask !== 'function') {
     throw new ErrorClass(
+      'ERR_BACKEND_INVALID',
       `Backend '${backend.name}' does not support creating tasks`,
       [
         'Check if your backend version is up to date',
@@ -62,6 +64,7 @@ export async function taskNew(options: {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     throw new ErrorClass(
+      'ERR_BACKEND_INIT',
       `Failed to create task: ${message}`,
       [
         'Check backend connectivity and permissions',

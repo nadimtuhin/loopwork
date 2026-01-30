@@ -130,10 +130,41 @@ The JSON backend uses filesystem-based locking (`packages/loopwork/src/backends/
 - `loopwork.config.ts` or `loopwork.config.js` - Main config (supports TypeScript or CommonJS)
 - `.specs/tasks/tasks.json` - JSON backend task registry
 - `.specs/tasks/{TASK-ID}.md` - PRD files for each task
+- `bunfig.toml` - Bun configuration (test timeouts, install settings)
 - `.loopwork/` - State directory containing:
   - `state.json` - Session state for resume functionality
   - `runs/` - Historical run logs
   - `monitor-state.json` - Monitor process state
+  - `spawned-pids.json` - Tracked spawned process PIDs
+  - `orphan-events.log` - Orphan detection/cleanup event log
+
+### Orphan Watch Configuration
+
+To prevent orphan processes (stale test runners, hung CLI processes), configure automatic monitoring:
+
+```typescript
+// loopwork.config.ts
+export default defineConfig({
+  cli: 'claude',
+
+  orphanWatch: {
+    enabled: true,          // Enable automatic monitoring
+    interval: 60000,        // Check every 60 seconds
+    maxAge: 1800000,        // Kill orphans older than 30 minutes
+    autoKill: true,         // Automatically kill confirmed orphans
+    patterns: [],           // Additional process patterns to watch
+  },
+})
+```
+
+### Test Timeout Configuration
+
+Prevent runaway tests with `bunfig.toml`:
+
+```toml
+[test]
+timeout = 10000  # 10 seconds - prevents orphan test processes
+```
 
 ## Important Patterns
 

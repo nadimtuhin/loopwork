@@ -95,6 +95,177 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
       })
     }
 
+    if (url.pathname === '/api/tasks' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const tasks = await server.backend.listPendingTasks()
+        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+          ? await server.backend.listCompletedTasks()
+          : []
+        const failedTasks = typeof server.backend.listFailedTasks === 'function'
+          ? await server.backend.listFailedTasks()
+          : []
+
+        const allTasks = [...tasks, ...completedTasks, ...failedTasks]
+
+        return new Response(JSON.stringify({ tasks: allTasks, total: allTasks.length }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/tasks/current' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        let currentTask = null
+        if (server.currentTaskId) {
+          currentTask = await server.backend.getTask(server.currentTaskId)
+        }
+
+        return new Response(JSON.stringify({ task: currentTask }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/tasks/next' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const nextTask = await server.backend.findNextTask()
+
+        return new Response(JSON.stringify({ task: nextTask }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/tasks/completed' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+          ? await server.backend.listCompletedTasks()
+          : []
+
+        return new Response(JSON.stringify({ tasks: completedTasks, total: completedTasks.length }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/tasks/pending' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const pendingTasks = await server.backend.listPendingTasks()
+
+        return new Response(JSON.stringify({ tasks: pendingTasks, total: pendingTasks.length }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/tasks/stats' && req.method === 'GET') {
+      try {
+        if (!server.backend) {
+          return new Response(JSON.stringify({ error: 'Backend not initialized' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
+        const pendingTasks = await server.backend.listPendingTasks()
+        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+          ? await server.backend.listCompletedTasks()
+          : []
+        const failedTasks = typeof server.backend.listFailedTasks === 'function'
+          ? await server.backend.listFailedTasks()
+          : []
+
+        const pending = pendingTasks.length
+        const completed = completedTasks.length
+        const failed = failedTasks.length
+        const inProgress = server.currentTaskId ? 1 : 0
+        const total = pending + completed + failed + inProgress
+        const successRate = total > 0 ? (completed / total) * 100 : 0
+
+        return new Response(JSON.stringify({
+          total,
+          pending,
+          inProgress,
+          completed,
+          failed,
+          successRate: Math.round(successRate * 100) / 100,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
     return undefined
   }
 }

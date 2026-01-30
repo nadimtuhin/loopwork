@@ -84,7 +84,7 @@ bun ../../src/index.ts --cli opencode --dry-run 2>&1 | grep "CLI:"
 bun run start
 
 # Monitor in another terminal
-tail -f loopwork-runs/basic-example/*/logs/iteration-*.txt
+tail -f .loopwork/runs/basic-example/*/logs/iteration-*.txt
 ```
 
 ### Test 3: State Management

@@ -81,6 +81,7 @@ export async function monitorStart(options: MonitorStartOptions, deps: MonitorDe
 
     if (existing) {
       throw new LoopworkErrorClass(
+        'ERR_PROCESS_SPAWN',
         `Namespace '${options.namespace}' is already running (PID: ${existing.pid})`,
         [
           `Use 'loopwork monitor stop ${options.namespace}' to stop it first`,
@@ -98,6 +99,7 @@ export async function monitorStart(options: MonitorStartOptions, deps: MonitorDe
       logger.info(`View logs: loopwork monitor logs ${options.namespace}`)
     } else {
       throw new LoopworkErrorClass(
+        'ERR_MONITOR_START',
         `Failed to start: ${result.error}`,
         [
           'Check system resources and permissions',
@@ -137,6 +139,7 @@ export async function monitorStop(namespace: string, deps: MonitorDeps = {}): Pr
       logger.success(`Stopped namespace '${namespace}'`)
     } else {
       throw new LoopworkErrorClass(
+        'ERR_MONITOR_STOP',
         result.error || 'Failed to stop',
         [
           `Check if namespace '${namespace}' is actually running`,
@@ -263,6 +266,7 @@ export async function monitorLogs(options: MonitorLogsOptions, deps: MonitorDeps
 
     if (!logFile) {
       throw new LoopworkErrorClass(
+        'ERR_FILE_NOT_FOUND',
         `No logs found for namespace '${namespace}'`,
         [
           'Check if the namespace exists: loopwork status',
