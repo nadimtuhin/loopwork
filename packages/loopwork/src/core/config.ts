@@ -483,7 +483,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       false,
     logLevel: fileConfig?.logLevel || DEFAULT_CONFIG.logLevel || 'info',
     projectRoot,
-    outputDir: path.join(projectRoot, 'loopwork-runs', namespace, timestamp),
+    outputDir: path.join(projectRoot, '.loopwork', 'runs', namespace, timestamp),
     sessionId: `loopwork-${namespace}-${timestamp}-${process.pid}`,
     backend,
     namespace,

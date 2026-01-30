@@ -8,6 +8,9 @@
 export type { Task, TaskStatus, Priority, TaskResult, GitHubLabel, GitHubIssue } from './task'
 export { LABELS, STATUS_LABELS, PRIORITY_LABELS } from './task'
 
+// Analysis types
+export type { TaskAnalysisResult, SuggestedTask, TaskAnalyzer } from './analysis'
+
 // Plugin types
 export type {
   LoopworkPlugin,
@@ -36,6 +39,7 @@ export type {
   LoopworkConfig,
   LogLevel,
   ParallelFailureMode,
+  OrphanWatchConfig,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
 
@@ -69,3 +73,14 @@ export type {
   CleanupResult,
   IProcessManager,
 } from './process-manager'
+
+// Output types
+export type {
+  OutputFormat,
+  JsonEvent,
+  RunJsonOutput,
+  StatusJsonOutput,
+  LogsJsonOutput,
+  KillJsonOutput,
+  DecomposeJsonOutput,
+} from './output'

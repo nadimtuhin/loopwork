@@ -154,7 +154,7 @@ class Dashboard {
     }
 
     // Count tasks from logs
-    const logsDir = path.join(this.projectRoot, 'loopwork-runs', namespace)
+    const logsDir = path.join(this.projectRoot, '.loopwork/runs', namespace)
     if (fs.existsSync(logsDir)) {
       const runDirs = fs.readdirSync(logsDir, { withFileTypes: true })
         .filter(d => d.isDirectory() && d.name !== 'monitor-logs')
@@ -255,7 +255,7 @@ class Dashboard {
   private getRecentActivity(): { time: string; namespace: string; type: string; message: string }[] {
     const activity: { time: string; namespace: string; type: string; message: string }[] = []
 
-    const runsDir = path.join(this.projectRoot, 'loopwork-runs')
+    const runsDir = path.join(this.projectRoot, '.loopwork/runs')
     if (!fs.existsSync(runsDir)) return activity
 
     const namespaces = fs.readdirSync(runsDir, { withFileTypes: true })

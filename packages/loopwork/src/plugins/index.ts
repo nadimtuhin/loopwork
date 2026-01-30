@@ -26,7 +26,9 @@ export { withJSONBackend, withGitHubBackend }
 export { createClaudeCodePlugin, withClaudeCode } from './claude-code'
 export { createIPCPlugin, withIPC } from './ipc'
 export { createAIMonitor, withAIMonitor } from '../ai-monitor'
+export { createDynamicTasksPlugin, withDynamicTasks } from './dynamic-tasks'
 export type { IPCMessage, IPCEventType, IPCPluginOptions } from './ipc'
+export type { DynamicTasksOptions } from './dynamic-tasks'
 
 // CLI configuration plugins
 export {
