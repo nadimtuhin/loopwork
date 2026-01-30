@@ -2,6 +2,7 @@ import chokidar from 'chokidar'
 import path from 'path'
 import fs from 'fs'
 import type { DashboardBroadcaster } from './broadcaster'
+import { STATE_WATCH_PATTERNS } from '@loopwork-ai/loopwork'
 
 let watcher: chokidar.FSWatcher | null = null
 
@@ -10,7 +11,7 @@ export function startFileWatcher(broadcaster: DashboardBroadcaster, watchDir: st
     return watcher
   }
 
-  watcher = chokidar.watch('.loopwork-state*', {
+  watcher = chokidar.watch(STATE_WATCH_PATTERNS, {
     cwd: watchDir,
     ignoreInitial: false,
     persistent: true,

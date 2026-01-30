@@ -17,6 +17,16 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
       })
     }
 
+    if (url.pathname === '/health' && req.method === 'GET') {
+      return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      })
+    }
+
     if (url.pathname === '/api/tasks' && req.method === 'POST') {
       try {
         const body = await req.json()
