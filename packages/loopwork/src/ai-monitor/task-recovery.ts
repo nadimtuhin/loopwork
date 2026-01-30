@@ -99,16 +99,16 @@ export function detectExitReason(logs: string[]): ExitReason {
 /**
  * Find relevant files for a task using simple heuristics
  */
-export async function findRelevantFiles(task: Task): Promise<string[]> {
+export async function findRelevantFiles(task: Task, projectRoot?: string): Promise<string[]> {
   const relevantFiles: string[] = []
-  const projectRoot = process.cwd()
+  const root = projectRoot || process.env.PWD || '.'
 
   // Extract potential file paths from task description
   const filePathPattern = /(?:packages\/[a-z-]+\/src\/[a-z-/]+\.(?:ts|js|tsx|jsx))/gi
   const matches = task.description.match(filePathPattern)
   if (matches) {
     for (const match of matches) {
-      const fullPath = path.join(projectRoot, match)
+      const fullPath = path.join(root, match)
       if (fs.existsSync(fullPath)) {
         relevantFiles.push(match)
       }
@@ -119,13 +119,13 @@ export async function findRelevantFiles(task: Task): Promise<string[]> {
   if (task.feature) {
     const featureName = task.feature.toLowerCase()
     const srcDirs = [
-      path.join(projectRoot, 'packages', featureName, 'src'),
-      path.join(projectRoot, 'packages/loopwork/src', featureName)
+      path.join(root, 'packages', featureName, 'src'),
+      path.join(root, 'packages/loopwork/src', featureName)
     ]
 
     for (const dir of srcDirs) {
       if (fs.existsSync(dir)) {
-        const files = findFilesRecursive(dir, projectRoot)
+        const files = findFilesRecursive(dir, root)
         relevantFiles.push(...files)
       }
     }
@@ -310,7 +310,8 @@ function generateSubtasks(task: Task, prdContent: string): string[] {
 export async function analyzeEarlyExit(
   taskId: string,
   logs: string[],
-  backend: TaskBackend
+  backend: TaskBackend,
+  projectRoot?: string
 ): Promise<TaskRecoveryAnalysis> {
   logger.debug(`Analyzing early exit for task ${taskId}`)
 
@@ -324,13 +325,13 @@ export async function analyzeEarlyExit(
   }
 
   // 3. Read PRD content
-  const prdPath = getPRDPath(taskId)
+  const prdPath = getPRDPath(taskId, projectRoot)
   const prdContent = fs.existsSync(prdPath)
     ? fs.readFileSync(prdPath, 'utf-8')
     : ''
 
   // 4. Find relevant files
-  const relevantFiles = await findRelevantFiles(task)
+  const relevantFiles = await findRelevantFiles(task, projectRoot)
 
   // 5. Generate enhancement
   const enhancement = await generateEnhancement(
@@ -357,7 +358,8 @@ export async function analyzeEarlyExit(
  */
 export async function enhanceTask(
   analysis: TaskRecoveryAnalysis,
-  backend: TaskBackend
+  backend: TaskBackend,
+  projectRoot?: string
 ): Promise<void> {
   const { taskId, enhancement } = analysis
 
@@ -365,12 +367,12 @@ export async function enhanceTask(
 
   // 1. Update PRD if additions present
   if (enhancement.prdAdditions) {
-    await updatePRD(taskId, enhancement.prdAdditions)
+    await updatePRD(taskId, enhancement.prdAdditions, projectRoot)
   }
 
   // 2. Create test scaffolding if needed
   if (enhancement.testScaffolding) {
-    await createTestScaffolding(taskId, enhancement.testScaffolding)
+    await createTestScaffolding(taskId, enhancement.testScaffolding, projectRoot)
   }
 
   // 3. Split into subtasks if needed
@@ -394,8 +396,9 @@ export async function enhanceTask(
 /**
  * Get PRD file path for a task
  */
-function getPRDPath(taskId: string): string {
-  return path.join(process.cwd(), '.specs/tasks', `${taskId}.md`)
+function getPRDPath(taskId: string, projectRoot?: string): string {
+  const root = projectRoot || process.cwd()
+  return path.join(root, '.specs/tasks', `${taskId}.md`)
 }
 
 /**
@@ -403,9 +406,10 @@ function getPRDPath(taskId: string): string {
  */
 async function updatePRD(
   taskId: string,
-  additions: NonNullable<TaskEnhancement['prdAdditions']>
+  additions: NonNullable<TaskEnhancement['prdAdditions']>,
+  projectRoot?: string
 ): Promise<void> {
-  const prdPath = getPRDPath(taskId)
+  const prdPath = getPRDPath(taskId, projectRoot)
 
   let content = ''
   if (fs.existsSync(prdPath)) {
@@ -457,10 +461,12 @@ async function updatePRD(
  */
 async function createTestScaffolding(
   taskId: string,
-  scaffolding: string
+  scaffolding: string,
+  projectRoot?: string
 ): Promise<void> {
+  const root = projectRoot || process.cwd()
   const testPath = path.join(
-    process.cwd(),
+    root,
     'test',
     `${taskId.toLowerCase()}.test.ts`
   )

@@ -63,11 +63,23 @@ export class VerificationEngine {
   private defaultChecks: Map<VerificationCheckType, VerificationCheck>
 
   constructor(config: VerificationEngineConfig = {}) {
+    // Use provided cwd or fallback to '.' (safer than process.cwd() in tests)
+    let workingDir = config.cwd ?? '.'
+    try {
+      // Try to resolve to absolute path if process.cwd() is available
+      if (!config.cwd && typeof process?.cwd === 'function') {
+        workingDir = process.cwd()
+      }
+    } catch {
+      // In test environments, process.cwd() might fail - use '.' as fallback
+      workingDir = '.'
+    }
+
     this.config = {
       freshnessTTL: config.freshnessTTL ?? 5 * 60 * 1000, // 5 minutes
       checks: config.checks ?? [],
       requireArchitectApproval: config.requireArchitectApproval ?? false,
-      cwd: config.cwd ?? process.cwd(),
+      cwd: workingDir,
       logFile: config.logFile ?? ''
     }
 

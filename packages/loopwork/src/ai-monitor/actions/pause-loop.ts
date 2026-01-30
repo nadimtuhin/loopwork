@@ -6,8 +6,8 @@
  */
 
 import fs from 'fs'
-import path from 'path'
 import { logger } from '../../core/utils'
+import { LoopworkState } from '../../core/loopwork-state'
 import type { Action } from './index'
 
 export interface PauseState {
@@ -19,13 +19,13 @@ export interface PauseState {
 }
 
 const MAX_PAUSE_DURATION = 5 * 60 * 1000 // 5 minutes safety limit
-const PAUSE_STATE_FILE = '.loopwork/pause-state.json'
 
 /**
  * Get pause state file path
  */
 function getPauseStateFile(): string {
-  return path.join(process.cwd(), PAUSE_STATE_FILE)
+  const loopworkState = new LoopworkState()
+  return loopworkState.paths.pause()
 }
 
 /**

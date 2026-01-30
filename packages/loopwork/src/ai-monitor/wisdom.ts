@@ -18,6 +18,7 @@ import path from 'path'
 import { createHash } from 'crypto'
 import type { ErrorPattern } from './types'
 import { logger } from '../core/utils'
+import { LoopworkState } from '../core/loopwork-state'
 
 export interface LearnedPattern {
   signature: string                    // Hash of error pattern
@@ -61,9 +62,12 @@ export class WisdomSystem {
   private sessionStartTime: number
 
   constructor(config: WisdomConfig = {}) {
+    const loopworkState = new LoopworkState()
+    const defaultStateDir = loopworkState.paths.aiMonitorDir()
+
     this.config = {
       enabled: config.enabled ?? true,
-      stateDir: config.stateDir ?? path.join(process.cwd(), '.loopwork/ai-monitor'),
+      stateDir: config.stateDir ?? defaultStateDir,
       patternExpiryDays: config.patternExpiryDays ?? 30,
       minSuccessForTrust: config.minSuccessForTrust ?? 3
     }

@@ -5,6 +5,8 @@ import chalk from 'chalk'
 import { logger } from '../core/utils'
 import { detectOrphans, OrphanProcess } from '../core/orphan-detector'
 import { OrphanKiller } from '../core/orphan-killer'
+import { LoopworkState } from '../core/loopwork-state'
+import { isProcessAlive } from '../commands/shared/process-utils'
 
 /**
  * Monitor for running Loopwork instances in the background
@@ -43,16 +45,16 @@ interface OrphanWatchState {
   options: OrphanWatchOptions
 }
 
-const MONITOR_STATE_FILE = '.loopwork/monitor-state.json'
-
 export class LoopworkMonitor {
   private stateFile: string
   private projectRoot: string
   private orphanWatch: OrphanWatchState
+  private loopworkState: LoopworkState
 
   constructor(projectRoot?: string) {
     this.projectRoot = projectRoot || process.cwd()
-    this.stateFile = path.join(this.projectRoot, MONITOR_STATE_FILE)
+    this.loopworkState = new LoopworkState({ projectRoot: this.projectRoot })
+    this.stateFile = this.loopworkState.paths.monitor()
     this.orphanWatch = {
       watching: false,
       intervalId: null,
@@ -82,7 +84,7 @@ export class LoopworkMonitor {
     }
 
     // Create log directory
-    const logsDir = path.join(this.projectRoot, 'loopwork-runs', namespace, 'monitor-logs')
+    const logsDir = this.loopworkState.paths.monitorLogs(namespace)
     fs.mkdirSync(logsDir, { recursive: true })
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -189,7 +191,7 @@ export class LoopworkMonitor {
     const toRemove: string[] = []
 
     for (const proc of state.processes) {
-      if (this.isProcessAlive(proc.pid)) {
+      if (isProcessAlive(proc.pid)) {
         running.push(proc)
       } else {
         toRemove.push(proc.namespace)
@@ -215,7 +217,7 @@ export class LoopworkMonitor {
     const running = this.getRunningProcesses()
 
     // Find all namespaces from directories
-    const runsDir = path.join(this.projectRoot, 'loopwork-runs')
+    const runsDir = path.join(this.loopworkState.dir, 'runs')
     const namespaces: { name: string; status: 'running' | 'stopped'; lastRun?: string }[] = []
 
     if (fs.existsSync(runsDir)) {
@@ -267,7 +269,7 @@ export class LoopworkMonitor {
       logFile = proc.logFile
     } else {
       // Find most recent log file
-      const logsDir = path.join(this.projectRoot, 'loopwork-runs', namespace, 'monitor-logs')
+      const logsDir = this.loopworkState.paths.monitorLogs(namespace)
       if (fs.existsSync(logsDir)) {
         try {
           const files = fs.readdirSync(logsDir)
@@ -435,12 +437,8 @@ export class LoopworkMonitor {
    * Log a single orphan event
    */
   private logOrphanEvent(orphan: OrphanProcess, event: string, reason?: string): void {
-    const stateDir = path.join(this.projectRoot, '.loopwork')
-    if (!fs.existsSync(stateDir)) {
-      fs.mkdirSync(stateDir, { recursive: true })
-    }
-
-    const logFile = path.join(stateDir, 'orphan-events.log')
+    this.loopworkState.ensureDir()
+    const logFile = this.loopworkState.paths.orphanEvents()
     const timestamp = new Date().toISOString()
     const ageMin = Math.floor(orphan.age / 60000)
     const statusStr = `status=${orphan.classification}`
@@ -452,18 +450,6 @@ export class LoopworkMonitor {
       fs.appendFileSync(logFile, logLine, 'utf-8')
     } catch (error) {
       logger.debug(`Failed to write orphan event log: ${error}`)
-    }
-  }
-
-  /**
-   * Check if a process is still alive
-   */
-  private isProcessAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0)
-      return true
-    } catch {
-      return false
     }
   }
 

@@ -18,6 +18,7 @@ import { CircuitBreaker } from './circuit-breaker'
 import { analyzeEarlyExit, enhanceTask } from './task-recovery'
 import { VerificationEngine, type VerificationEngineConfig } from './verification'
 import { WisdomSystem, type WisdomConfig } from './wisdom'
+import { LoopworkState } from '../core/loopwork-state'
 
 // Export task recovery functions
 export {
@@ -127,6 +128,7 @@ export class AIMonitor implements LoopworkPlugin {
   private logFile: string | null = null
   private namespace: string = 'default'
   private backend: TaskBackend | null = null
+  private projectRoot: string = process.cwd()
 
   constructor(config: AIMonitorConfig = {}) {
     this.config = {
@@ -151,7 +153,8 @@ export class AIMonitor implements LoopworkPlugin {
 
     this.executor = new ActionExecutor({
       llmModel: this.config.llmModel,
-      anthropicApiKey: this.config.anthropicApiKey
+      anthropicApiKey: this.config.anthropicApiKey,
+      projectRoot: this.projectRoot
     })
     this.circuitBreaker = new CircuitBreaker(this.config.circuitBreaker)
     this.verificationEngine = new VerificationEngine(this.config.verification)
@@ -248,9 +251,11 @@ export class AIMonitor implements LoopworkPlugin {
       return config
     }
 
-    // Set state file path
+    // Set state file path using LoopworkState
     const projectRoot = (config.projectRoot as string) || process.cwd()
-    this.stateFile = path.join(projectRoot, '.loopwork/monitor-state.json')
+    this.projectRoot = projectRoot
+    const loopworkState = new LoopworkState({ projectRoot })
+    this.stateFile = loopworkState.paths.aiMonitor()
 
     // Load existing state
     this.loadState()
@@ -281,7 +286,8 @@ export class AIMonitor implements LoopworkPlugin {
     this.executor = new ActionExecutor({
       namespace: this.namespace,
       llmModel: this.config.llmModel,
-      anthropicApiKey: this.config.anthropicApiKey
+      anthropicApiKey: this.config.anthropicApiKey,
+      projectRoot: this.projectRoot
     })
 
     // Determine log file path from logger
@@ -388,7 +394,7 @@ export class AIMonitor implements LoopworkPlugin {
       logger.debug(`AI Monitor: Analyzing failure for task ${taskId}`)
       this.state.recoveryAttempts++
 
-      const analysis = await analyzeEarlyExit(taskId, logs, this.backend)
+      const analysis = await analyzeEarlyExit(taskId, logs, this.backend, this.projectRoot)
 
       // Check if we've already enhanced for this reason
       const historyKey = `${taskId}:${analysis.exitReason}`
@@ -399,7 +405,7 @@ export class AIMonitor implements LoopworkPlugin {
 
       // Apply enhancements
       logger.info(`AI Monitor: Enhancing task ${taskId} for retry (reason: ${analysis.exitReason})`)
-      await enhanceTask(analysis, this.backend)
+      await enhanceTask(analysis, this.backend, this.projectRoot)
 
       // Record success
       this.state.recoveryHistory[historyKey] = {

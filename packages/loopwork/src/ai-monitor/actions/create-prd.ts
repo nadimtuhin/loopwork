@@ -145,7 +145,7 @@ export async function createPRDFile(filePath: string, content: string): Promise<
 /**
  * Execute auto-create PRD action
  */
-export async function executeCreatePRD(action: Action): Promise<void> {
+export async function executeCreatePRD(action: Action, projectRoot?: string): Promise<void> {
   const taskInfo = extractTaskInfo(action.context)
 
   if (!taskInfo) {
@@ -153,9 +153,13 @@ export async function executeCreatePRD(action: Action): Promise<void> {
   }
 
   const { taskId, path: prdPath } = taskInfo
+  const root = projectRoot || process.cwd()
 
   // Determine PRD file path
-  const filePath = prdPath || path.join(process.cwd(), '.specs', 'tasks', `${taskId}.md`)
+  // If prdPath is provided from context, it's relative to project root
+  const filePath = prdPath
+    ? (path.isAbsolute(prdPath) ? prdPath : path.join(root, prdPath))
+    : path.join(root, '.specs', 'tasks', `${taskId}.md`)
 
   // Check if file already exists (race condition protection)
   if (fs.existsSync(filePath)) {
@@ -164,7 +168,7 @@ export async function executeCreatePRD(action: Action): Promise<void> {
   }
 
   // Try to read task metadata from tasks.json
-  const tasksJsonPath = path.join(process.cwd(), '.specs', 'tasks', 'tasks.json')
+  const tasksJsonPath = path.join(root, '.specs', 'tasks', 'tasks.json')
   const taskMetadata = readTaskMetadata(tasksJsonPath, taskId)
 
   // Generate template with metadata (falls back to taskId if metadata not found)

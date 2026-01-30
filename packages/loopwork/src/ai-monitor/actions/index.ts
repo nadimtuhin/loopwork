@@ -70,6 +70,16 @@ export interface ActionStats {
 }
 
 /**
+ * Throttle state for LLM calls
+ */
+export interface ThrottleState {
+  llmCallCount: number
+  lastLLMCall: number
+  llmCooldown: number
+  llmMaxPerSession: number
+}
+
+/**
  * Action executor - decides and executes actions based on pattern matches
  */
 export class ActionExecutor {
@@ -77,11 +87,34 @@ export class ActionExecutor {
   private namespace?: string
   private llmModel?: string
   private anthropicApiKey?: string
+  private projectRoot?: string
+  private throttleState: ThrottleState
 
-  constructor(config?: { namespace?: string; llmModel?: string; anthropicApiKey?: string }) {
+  constructor(config?: { namespace?: string; llmModel?: string; anthropicApiKey?: string; projectRoot?: string; llmCooldown?: number; llmMaxPerSession?: number }) {
     this.namespace = config?.namespace
     this.llmModel = config?.llmModel || 'haiku'
     this.anthropicApiKey = config?.anthropicApiKey
+    this.projectRoot = config?.projectRoot
+    this.throttleState = {
+      llmCallCount: 0,
+      lastLLMCall: 0,
+      llmCooldown: config?.llmCooldown ?? 5 * 60 * 1000, // 5 minutes default
+      llmMaxPerSession: config?.llmMaxPerSession ?? 10
+    }
+  }
+
+  /**
+   * Set throttle state (useful for restoring from saved state)
+   */
+  setThrottleState(state: ThrottleState): void {
+    this.throttleState = state
+  }
+
+  /**
+   * Get current throttle state
+   */
+  getThrottleState(): ThrottleState {
+    return { ...this.throttleState }
   }
 
   /**
@@ -102,7 +135,7 @@ export class ActionExecutor {
               pattern: match.pattern,
               context: match.context,
               fn: async () => {}
-            })
+            }, this.projectRoot)
           }
         } as AutoFixAction
 
@@ -208,7 +241,7 @@ export class ActionExecutor {
           break
 
         case 'analyze':
-          const analysisResult = await executeAnalyze(action, this.llmModel, this.anthropicApiKey)
+          const analysisResult = await executeAnalyze(action, this.llmModel, this.anthropicApiKey, this.projectRoot, this.throttleState)
           result.success = true
           result.details = analysisResult as unknown as Record<string, unknown>
           logger.debug(`Analyze action completed for pattern: ${action.pattern}`)
@@ -290,4 +323,5 @@ export class ActionExecutor {
 export { executeCreatePRD } from './create-prd'
 export { executePauseLoop, resumeLoop, isLoopPaused, waitForPauseCompletion } from './pause-loop'
 export { executeNotify } from './notify'
-export { executeAnalyze, cleanupCache } from './analyze'
+export { executeAnalyze, cleanupCache, shouldThrottleLLM } from './analyze'
+export type { ThrottleState as AnalyzeThrottleState } from './analyze'

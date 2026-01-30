@@ -10,6 +10,7 @@ import path from 'path'
 import { spawnSync } from 'child_process'
 import Anthropic from '@anthropic-ai/sdk'
 import { logger } from '../../core/utils'
+import { LoopworkState } from '../../core/loopwork-state'
 import type { Action } from './index'
 
 export interface AnalysisResult {
@@ -38,7 +39,6 @@ export interface AnalysisCache {
   [errorHash: string]: LLMCacheEntry
 }
 
-const ANALYSIS_CACHE_FILE = '.loopwork/ai-monitor/llm-cache.json'
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
 
 function findOpencode(): string | null {
@@ -96,15 +96,16 @@ function patternBasedAnalysis(errorMessage: string): AnalysisResult {
 /**
  * Get cache file path
  */
-function getCacheFilePath(): string {
-  return path.join(process.cwd(), ANALYSIS_CACHE_FILE)
+function getCacheFilePath(projectRoot?: string): string {
+  const loopworkState = new LoopworkState({ projectRoot })
+  return loopworkState.paths.llmCache()
 }
 
 /**
  * Load analysis cache from disk
  */
-export function loadAnalysisCache(): AnalysisCache {
-  const cacheFile = getCacheFilePath()
+export function loadAnalysisCache(projectRoot?: string): AnalysisCache {
+  const cacheFile = getCacheFilePath(projectRoot)
 
   if (!fs.existsSync(cacheFile)) {
     return {}
@@ -122,8 +123,8 @@ export function loadAnalysisCache(): AnalysisCache {
 /**
  * Save analysis cache to disk
  */
-export function saveAnalysisCache(cache: AnalysisCache): void {
-  const cacheFile = getCacheFilePath()
+export function saveAnalysisCache(cache: AnalysisCache, projectRoot?: string): void {
+  const cacheFile = getCacheFilePath(projectRoot)
 
   try {
     const dir = path.dirname(cacheFile)
@@ -163,8 +164,8 @@ function isCacheValid(cacheEntry: LLMCacheEntry): boolean {
 /**
  * Get cached analysis result
  */
-export function getCachedAnalysis(errorMessage: string): AnalysisResult | null {
-  const cache = loadAnalysisCache()
+export function getCachedAnalysis(errorMessage: string, projectRoot?: string): AnalysisResult | null {
+  const cache = loadAnalysisCache(projectRoot)
   const hash = hashError(errorMessage)
   const entry = cache[hash]
 
@@ -184,8 +185,8 @@ export function getCachedAnalysis(errorMessage: string): AnalysisResult | null {
 /**
  * Cache analysis result with proper schema
  */
-export function cacheAnalysisResult(errorMessage: string, result: AnalysisResult): void {
-  const cache = loadAnalysisCache()
+export function cacheAnalysisResult(errorMessage: string, result: AnalysisResult, projectRoot?: string): void {
+  const cache = loadAnalysisCache(projectRoot)
   const hash = hashError(errorMessage)
   const now = new Date()
   const expiresAt = new Date(now.getTime() + CACHE_TTL)
@@ -201,14 +202,14 @@ export function cacheAnalysisResult(errorMessage: string, result: AnalysisResult
     expiresAt: expiresAt.toISOString()
   }
 
-  saveAnalysisCache(cache)
+  saveAnalysisCache(cache, projectRoot)
 }
 
 /**
  * Clean up expired cache entries
  */
-export function cleanupCache(): void {
-  const cache = loadAnalysisCache()
+export function cleanupCache(projectRoot?: string): void {
+  const cache = loadAnalysisCache(projectRoot)
   let cleaned = 0
 
   for (const [hash, entry] of Object.entries(cache)) {
@@ -219,7 +220,7 @@ export function cleanupCache(): void {
   }
 
   if (cleaned > 0) {
-    saveAnalysisCache(cache)
+    saveAnalysisCache(cache, projectRoot)
     logger.debug(`Cleaned up ${cleaned} expired cache entries`)
   }
 }
@@ -323,7 +324,8 @@ Where confidence is a number between 0 and 1 indicating how confident you are in
   try {
     const result = spawnSync(opencode, ['run', '--model', fullModel, prompt], {
       encoding: 'utf-8',
-      env: { ...process.env, OPENCODE_PERMISSION: '{"*":"allow"}' }
+      env: { ...process.env, OPENCODE_PERMISSION: '{"*":"allow"}' },
+      timeout: 5000 // 5 second timeout to prevent hanging
     })
 
     if (result.status === 0 && result.stdout) {
@@ -347,9 +349,51 @@ Where confidence is a number between 0 and 1 indicating how confident you are in
 }
 
 /**
+ * Throttling state - tracks LLM call limits per session
+ */
+interface ThrottleState {
+  llmCallCount: number
+  lastLLMCall: number
+  llmCooldown: number
+  llmMaxPerSession: number
+}
+
+/**
+ * Check if we should throttle LLM analysis
+ * Returns null if allowed, or a throttle result if blocked
+ */
+export function shouldThrottleLLM(state: ThrottleState): { throttled: true; reason: string } | { throttled: false } {
+  // Check if we've exceeded max calls per session
+  if (state.llmCallCount >= state.llmMaxPerSession) {
+    return {
+      throttled: true,
+      reason: `LLM analysis throttled: max ${state.llmMaxPerSession} calls per session reached`
+    }
+  }
+
+  // Check if we're within the cooldown period
+  const timeSinceLastCall = Date.now() - state.lastLLMCall
+  if (timeSinceLastCall < state.llmCooldown) {
+    const remainingCooldown = Math.ceil((state.llmCooldown - timeSinceLastCall) / 1000)
+    return {
+      throttled: true,
+      reason: `LLM analysis throttled: ${remainingCooldown}s remaining in cooldown period`
+    }
+  }
+
+  return { throttled: false }
+}
+
+/**
  * Execute analyze action
  */
-export async function executeAnalyze(action: Action, llmModel?: string, anthropicApiKey?: string): Promise<AnalysisResult> {
+export async function executeAnalyze(
+  action: Action,
+  llmModel?: string,
+  anthropicApiKey?: string,
+  projectRoot?: string,
+  throttleState?: ThrottleState
+): Promise<AnalysisResult> {
   if (action.type !== 'analyze') {
     throw new Error('Invalid action type for analyze executor')
   }
@@ -362,17 +406,33 @@ export async function executeAnalyze(action: Action, llmModel?: string, anthropi
   }
 
   // Check cache first
-  const cached = getCachedAnalysis(errorMessage)
+  const cached = getCachedAnalysis(errorMessage, projectRoot)
   if (cached) {
     logger.debug('Using cached analysis result')
     return cached
+  }
+
+  // Check throttling if state is provided
+  if (throttleState) {
+    const throttle = shouldThrottleLLM(throttleState)
+    if (throttle.throttled) {
+      logger.warn(throttle.reason)
+      // Return pattern-based fallback when throttled
+      return patternBasedAnalysis(errorMessage)
+    }
   }
 
   // Perform LLM analysis
   const result = await analyzeLLM(errorMessage, llmModel || 'haiku', anthropicApiKey)
 
   // Cache the result
-  cacheAnalysisResult(errorMessage, result)
+  cacheAnalysisResult(errorMessage, result, projectRoot)
+
+  // Update throttle state if provided
+  if (throttleState) {
+    throttleState.llmCallCount++
+    throttleState.lastLLMCall = Date.now()
+  }
 
   // Log analysis
   logger.info(`Error Analysis:`)
