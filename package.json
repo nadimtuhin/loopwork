@@ -14,7 +14,8 @@
     "dev:loopwork": "turbo run dev --filter loopwork",
     "dev:dashboard": "turbo run dev --filter @loopwork-ai/dashboard",
     "dev:web": "turbo run dev --filter @loopwork-ai/dashboard-web",
-    "publish:all": "bun run build && bun run --filter './packages/*' publish"
+    "publish:all": "bun run build && bun run --filter './packages/*' publish",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

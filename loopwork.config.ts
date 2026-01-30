@@ -1,17 +1,27 @@
+/**
+ * Development Configuration for Loopwork Monorepo
+ *
+ * This file uses production-style imports (matching what `init` generates)
+ * The workspace resolver handles mapping 'loopwork' to the local package
+ */
 import {
   defineConfig,
-  withTelegram,
-  withCostTracking,
-  withJSON,
-  withGitHub,
-  withPlugin,
-  withAsana,
-  withEverhour,
-  withTodoist,
-  withDiscord,
   compose,
-} from './src/loopwork-config-types'
-import { withJSONBackend, withGitHubBackend } from './src/backend-plugin'
+  withPlugin,
+  withJSONBackend,
+  withGitHubBackend,
+  withCli,
+  withModels,
+  withRetry,
+  ModelPresets,
+  RetryPresets,
+} from "loopwork";
+import { withTelegram } from "@loopwork-ai/telegram";
+import { withCostTracking } from "@loopwork-ai/cost-tracking";
+import { withAsana } from "@loopwork-ai/asana";
+import { withEverhour } from "@loopwork-ai/everhour";
+import { withTodoist } from "@loopwork-ai/todoist";
+import { withDiscord } from "@loopwork-ai/discord";
 
 /**
  * Loopwork Configuration
@@ -29,20 +39,35 @@ import { withJSONBackend, withGitHubBackend } from './src/backend-plugin'
 // =============================================================================
 
 export default compose(
-  // Backend plugins (choose one)
-  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+  // Backend plugin (choose one)
+  withJSONBackend({ tasksFile: ".specs/tasks/tasks.json" }),
   // withGitHubBackend({ repo: 'owner/repo' }),
 
-  // Legacy backend config (still supported)
-  // withJSON({ tasksFile: '.specs/tasks/tasks.json' }),
-  // withGitHub({ repo: 'owner/repo' }),
+  // CLI configuration with custom model pools
+  withCli({
+    models: [
+      ModelPresets.claudeSonnet({ timeout: 300 }), // Primary: balanced
+      ModelPresets.claudeHaiku({ timeout: 120 }),  // Fast fallback
+    ],
+    fallbackModels: [
+      ModelPresets.claudeOpus({ timeout: 900 }),   // Heavy tasks
+    ],
+    selectionStrategy: "round-robin",
+    retry: {
+      exponentialBackoff: true,
+      baseDelayMs: 2000,
+      maxDelayMs: 120000,
+      retrySameModel: true,
+      maxRetriesPerModel: 2,
+    },
+  }),
 
   // Telegram notifications on task events
-  withTelegram({
-    botToken: process.env.TELEGRAM_BOT_TOKEN,
-    chatId: process.env.TELEGRAM_CHAT_ID,
-    silent: false,
-  }),
+  // withTelegram({
+  //   botToken: process.env.TELEGRAM_BOT_TOKEN,
+  //   chatId: process.env.TELEGRAM_CHAT_ID,
+  //   silent: false,
+  // }),
 
   // Asana integration: sync task status to Asana project
   // Tasks should have metadata.asanaGid set in the tasks file
@@ -78,7 +103,7 @@ export default compose(
   // Cost tracking for token usage
   withCostTracking({
     enabled: true,
-    defaultModel: 'claude-3.5-sonnet',
+    defaultModel: "claude-4.5-sonnet",
   }),
 
   // Dashboard TUI: live progress display
@@ -87,21 +112,23 @@ export default compose(
 
   // Custom plugin: Log to console
   withPlugin({
-    name: 'console-logger',
+    name: "console-logger",
     onLoopStart: (namespace) => {
-      console.log(`\n🚀 Loop starting in namespace: ${namespace}\n`)
+      console.log(`\n🚀 Loop starting in namespace: ${namespace}\n`);
     },
     onTaskStart: (task) => {
-      console.log(`📋 Starting: ${task.id} - ${task.title}`)
+      console.log(`📋 Starting: ${task.id} - ${task.title}`);
     },
     onTaskComplete: (task, result) => {
-      console.log(`✅ Completed: ${task.id} in ${result.duration}s`)
+      console.log(`✅ Completed: ${task.id} in ${result.duration}s`);
     },
     onTaskFailed: (task, error) => {
-      console.log(`❌ Failed: ${task.id} - ${error}`)
+      console.log(`❌ Failed: ${task.id} - ${error}`);
     },
     onLoopEnd: (stats) => {
-      console.log(`\n📊 Loop finished: ${stats.completed} completed, ${stats.failed} failed\n`)
+      console.log(
+        `\n📊 Loop finished: ${stats.completed} completed, ${stats.failed} failed\n`,
+      );
     },
   }),
 
@@ -118,47 +145,69 @@ export default compose(
   //     })
   //   },
   // }),
-)(defineConfig({
-  // AI CLI tool: 'opencode', 'claude', or 'gemini'
-  cli: 'opencode',
+)(
+  defineConfig({
+    // Loop settings
+    maxIterations: 50,
+    timeout: 600, // default timeout (can be overridden per-model via withCli)
+    namespace: "default", // for concurrent loops
 
-  // Loop settings
-  maxIterations: 50,
-  timeout: 600,          // seconds per task
-  namespace: 'default',  // for concurrent loops
+    // Behavior
+    autoConfirm: false, // -y flag
+    dryRun: false,
+    debug: false,
 
-  // Behavior
-  autoConfirm: false,    // -y flag
-  dryRun: false,
-  debug: false,
-
-  // Retry settings
-  maxRetries: 3,
-  circuitBreakerThreshold: 5,
-  taskDelay: 2000,       // ms between tasks
-  retryDelay: 3000,      // ms before retry
-}))
+    // Retry settings
+    maxRetries: 3,
+    circuitBreakerThreshold: 5,
+    taskDelay: 2000, // ms between tasks
+    retryDelay: 3000, // ms before retry
+  }),
+);
 
 // =============================================================================
-// Alternative: Backend Plugins Pattern (recommended)
+// Alternative: Simple CLI Config (backward compatible)
 // =============================================================================
 
 // export default compose(
 //   withJSONBackend({ tasksFile: 'tasks.json' }),
 //   withTelegram(),
-//   withAsana(),
-//   withEverhour(),
-// )(defineConfig({ cli: 'opencode' }))
+// )(defineConfig({
+//   cli: 'claude',        // Legacy: simple CLI selection
+//   model: 'sonnet',      // Legacy: single model
+//   timeout: 600,
+// }))
 
 // =============================================================================
-// Alternative: GitHub Backend Plugin
+// Alternative: Cost-Aware Model Selection
+// =============================================================================
+
+// export default compose(
+//   withJSONBackend({ tasksFile: 'tasks.json' }),
+//   withModels({
+//     models: [
+//       { name: 'haiku', cli: 'claude', model: 'haiku', costWeight: 1, timeout: 60 },
+//       { name: 'sonnet', cli: 'claude', model: 'sonnet', costWeight: 5, timeout: 300 },
+//     ],
+//     fallbackModels: [
+//       { name: 'opus', cli: 'claude', model: 'opus', costWeight: 15, timeout: 900 },
+//     ],
+//     strategy: 'cost-aware',  // Prefer cheaper models first
+//   }),
+//   withRetry(RetryPresets.aggressive()),
+// )(defineConfig({ maxIterations: 100 }))
+
+// =============================================================================
+// Alternative: GitHub Backend with Gentle Retry
 // =============================================================================
 
 // export default compose(
 //   withGitHubBackend({ repo: 'myorg/myrepo' }),
-//   withTelegram(),
+//   withCli({
+//     models: [ModelPresets.claudeSonnet()],
+//     retry: RetryPresets.gentle(),  // Longer waits, no same-model retry
+//   }),
 //   withDiscord({ webhookUrl: process.env.DISCORD_WEBHOOK_URL }),
 // )(defineConfig({
-//   cli: 'claude',
 //   feature: 'auth',  // filter by feature label
 // }))

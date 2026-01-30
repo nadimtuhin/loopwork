@@ -1,0 +1,159 @@
+{
+  "tasks": [
+    {
+      "id": "IMPROVE-001",
+      "status": "in-progress",
+      "priority": "high",
+      "title": "Update root loopwork.config.ts to use correct imports",
+      "description": "Replace legacy import paths with proper package imports"
+    },
+    {
+      "id": "IMPROVE-002",
+      "status": "in-progress",
+      "priority": "high",
+      "title": "Update README examples to use @loopwork-ai scope",
+      "description": "Update all documentation examples to use @loopwork-ai package names"
+    },
+    {
+      "id": "IMPROVE-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add end-to-end integration test for init workflow",
+      "description": "Create comprehensive integration test that runs init and verifies all generated files"
+    },
+    {
+      "id": "IMPROVE-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Improve CLI error handling and user feedback",
+      "description": "Add better error messages and recovery suggestions for common failure scenarios"
+    },
+    {
+      "id": "IMPROVE-005",
+      "status": "completed",
+      "priority": "low",
+      "title": "Add CLI progress indicators for long-running operations",
+      "description": "Show spinners or progress bars during task execution and file operations"
+    },
+    {
+      "id": "TELE-010",
+      "status": "in-progress",
+      "priority": "high",
+      "title": "Teleloop: Implement 'Overseer' IPC Communication",
+      "feature": "teleloop",
+      "description": "Establish structured IPC channel between bot and loop process to enable interactive approvals (buttons) and structured questions instead of raw stdin/stdout."
+    },
+    {
+      "id": "TELE-011",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Teleloop: Voice-to-Task (Audio Notes)",
+      "feature": "teleloop",
+      "description": "Enable Telegram voice notes support. Transcribe audio using an API (e.g. OpenAI Whisper or Google STT) and parse intent to create tasks."
+    },
+    {
+      "id": "TELE-012",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Teleloop: 'Vision' Bug Reporting",
+      "feature": "teleloop",
+      "description": "Handle image uploads in Telegram. Save image to .specs/attachments and create a task referencing it for multimodal AI analysis."
+    },
+    {
+      "id": "TELE-013",
+      "status": "pending",
+      "priority": "low",
+      "title": "Teleloop: Smart Daily Briefings",
+      "feature": "teleloop",
+      "description": "Generate AI summaries of loop activity (completed tasks, errors, files modified) and send a daily briefing to the user."
+    },
+    {
+      "id": "AI-MONITOR-001",
+      "status": "pending",
+      "priority": "high",
+      "title": "AI Monitor: Intelligent Log Watcher & Auto-Healer",
+      "feature": "ai-monitor",
+      "description": "Implement an intelligent meta-monitor that watches loopwork logs in real-time, detects issues (missing PRDs, rate limits, config errors), and automatically takes corrective actions."
+    },
+    {
+      "id": "AI-MONITOR-001a",
+      "status": "pending",
+      "priority": "high",
+      "title": "AI Monitor: Core Infrastructure (LogWatcher + PatternDetector)",
+      "feature": "ai-monitor",
+      "description": "Create AIMonitor class with event emitter, LogWatcher using chokidar (event-driven + 2s polling), and PatternDetector with regex matchers for known errors."
+    },
+    {
+      "id": "AI-MONITOR-001b",
+      "status": "pending",
+      "priority": "high",
+      "title": "AI Monitor: Concurrency Manager",
+      "feature": "ai-monitor",
+      "description": "Implement per-provider/model concurrency limits with key-based queuing. acquire()/release() pattern. Prevents API rate limits."
+    },
+    {
+      "id": "AI-MONITOR-001c",
+      "status": "pending",
+      "priority": "high",
+      "title": "AI Monitor: Circuit Breaker",
+      "feature": "ai-monitor",
+      "description": "Implement circuit breaker pattern (closed/open/half-open states). 3 failures → 60s cooldown. Prevents infinite healing loops."
+    },
+    {
+      "id": "AI-MONITOR-001d",
+      "status": "pending",
+      "priority": "high",
+      "title": "AI Monitor: Auto-Create PRD Action",
+      "feature": "ai-monitor",
+      "description": "When 'PRD file not found' detected, read task metadata from tasks.json and generate stub PRD with title, goal, and placeholder requirements."
+    },
+    {
+      "id": "AI-MONITOR-001e",
+      "status": "pending",
+      "priority": "medium",
+      "title": "AI Monitor: Task Recovery (Early Exit Enhancement)",
+      "feature": "ai-monitor",
+      "description": "Detect early task exits, analyze failure reason, and enhance PRD/docs/tests for retry. Improve task context so loop has better success on next attempt."
+    },
+    {
+      "id": "AI-MONITOR-001f",
+      "status": "pending",
+      "priority": "medium",
+      "title": "AI Monitor: Verification Engine",
+      "feature": "ai-monitor",
+      "description": "Implement verification-before-completion protocol. Require fresh evidence (<5 min). Run BUILD/TEST/LINT checks before claiming healing success."
+    },
+    {
+      "id": "AI-MONITOR-001g",
+      "status": "pending",
+      "priority": "medium",
+      "title": "AI Monitor: Wisdom System (Learn from Healing)",
+      "feature": "ai-monitor",
+      "description": "Store learned error patterns in .loopwork/ai-monitor/. Track what fixes work, accumulate wisdom across sessions, expire old patterns after 30 days."
+    },
+    {
+      "id": "AI-MONITOR-001h",
+      "status": "pending",
+      "priority": "medium",
+      "title": "AI Monitor: LLM Fallback Analyzer",
+      "feature": "ai-monitor",
+      "description": "For unknown errors, send to LLM (haiku) for analysis. Throttle to max 10 calls/session, 5-min cooldown. Cache responses for 24h."
+    },
+    {
+      "id": "AI-MONITOR-001i",
+      "status": "pending",
+      "priority": "low",
+      "title": "AI Monitor: CLI Command (loopwork ai-monitor)",
+      "feature": "ai-monitor",
+      "description": "Create 'loopwork ai-monitor --watch' command and '--with-ai-monitor' flag for 'loopwork start'. Add to CLI help and documentation."
+    },
+    {
+      "id": "CLI-005",
+      "status": "pending",
+      "priority": "high",
+      "title": "Fix CLI output streaming - output not showing in real-time",
+      "feature": "cli",
+      "description": "CLI output from AI tools (claude, opencode, gemini) is not streaming in real-time. Output should be displayed as it's generated, not buffered until completion. Check StreamLogger class in core/utils.ts and CliExecutor spawn options in core/cli.ts."
+    }
+  ]
+}
