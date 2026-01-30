@@ -371,6 +371,37 @@ export class JsonTaskAdapter implements TaskBackend {
     return this.updateTaskStatus(taskId, 'pending')
   }
 
+  async resetAllInProgress(): Promise<UpdateResult> {
+    try {
+      return await this.withLock(() => {
+        const data = this.loadTasksFile()
+        if (!data) {
+          return { success: false, error: 'Tasks file not found' }
+        }
+
+        let resetCount = 0
+        for (const entry of data.tasks) {
+          if (entry.status === 'in-progress') {
+            entry.status = 'pending'
+            resetCount++
+          }
+        }
+
+        if (resetCount === 0) {
+          return { success: true }
+        }
+
+        if (this.saveTasksFile(data)) {
+          return { success: true }
+        }
+
+        return { success: false, error: 'Failed to save tasks file' }
+      })
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
   async setPriority(taskId: string, priority: Task['priority']): Promise<UpdateResult> {
     return this.withLock(async () => {
       const data = this.loadTasksFile()

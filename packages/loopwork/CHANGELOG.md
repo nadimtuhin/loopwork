@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.5] - 2026-01-31
+
+### Fixed
+- **Sequential Mode Task Limbo** - Sequential mode now properly resets in-progress tasks to pending on interrupt (Ctrl+C), matching parallel mode behavior. Tasks no longer get stuck in "in-progress" state and can be properly resumed with `--resume`.
+
 ## [0.3.4] - 2026-01-30
 
 ### Added

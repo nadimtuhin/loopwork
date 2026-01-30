@@ -260,6 +260,18 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     activeLogger.stopSpinner('Loopwork initialized')
   }
 
+  // Clean up stale in-progress tasks on startup (unless resuming)
+  if (!config.resume && backend.resetAllInProgress) {
+    try {
+      const result = await backend.resetAllInProgress()
+      if (result.success) {
+        activeLogger.debug('Reset any stale in-progress tasks to pending')
+      }
+    } catch (e) {
+      activeLogger.debug(`Failed to reset stale tasks: ${e}`)
+    }
+  }
+
   if (config.resume) {
     const state = stateManager.loadState()
     if (!state) {
@@ -320,6 +332,15 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     if (currentTaskId) {
       const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
       stateManager.saveState(stateRef, currentIteration)
+
+      // Reset in-progress task to pending
+      try {
+        await backend.resetToPending(currentTaskId)
+        activeLogger.info(`Task ${currentTaskId} reset to pending`)
+      } catch (err) {
+        activeLogger.debug(`Failed to reset task: ${err}`)
+      }
+
       activeLogger.info('State saved. Resume with: --resume')
     }
     stateManager.releaseLock()

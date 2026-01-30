@@ -74,6 +74,9 @@ export interface TaskBackend {
   /** Reset task to pending */
   resetToPending(taskId: string): Promise<UpdateResult>
 
+  /** Reset all in-progress tasks to pending (for startup cleanup) */
+  resetAllInProgress?(): Promise<UpdateResult>
+
   /** Add a comment to a task (optional) */
   addComment?(taskId: string, comment: string): Promise<UpdateResult>
 

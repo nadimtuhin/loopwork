@@ -1330,6 +1330,38 @@ New configuration: 1 workers, 4000ms delay, 600s timeout
 ─────────────────────────────────────
 ```
 
+### Graceful Shutdown (v0.3.5+)
+
+When the task loop receives SIGINT (Ctrl+C) or SIGTERM:
+
+**Sequential Mode:**
+- Saves current state to `.loopwork/state-{namespace}.json`
+- Resets the in-progress task back to pending status
+- Releases the state lock cleanly
+- Exits gracefully
+
+**Parallel Mode:**
+- Saves current state
+- Resets ALL in-progress tasks to pending status
+- Waits for spawned worker processes to finish (with timeout)
+- Releases state lock
+- Exits gracefully
+
+**Result:** Tasks can be properly resumed with `--resume` flag and don't get stuck in "in-progress" limbo. The task backlog remains consistent after any interrupt.
+
+**Example workflow:**
+```bash
+# Start execution
+loopwork run
+
+# During execution, press Ctrl+C
+# Tasks reset to pending automatically
+
+# Resume later from saved state
+loopwork run --resume
+# Previously interrupted tasks available for re-execution
+```
+
 ## Data Flow
 
 ### Main Task Execution Loop
