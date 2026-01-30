@@ -113,6 +113,9 @@ export class IPCHandler {
       }
     }
 
+    // Clean up multiple consecutive newlines left after IPC message removal
+    logs = logs.replace(/\n\n+/g, '\n')
+
     return { ipcMessages: messages, logs: logs.trim() }
   }
 
@@ -160,14 +163,12 @@ export class IPCHandler {
 
     await this.bot.sendMessage(question, {
       reply_markup: { inline_keyboard: keyboard }
-    } as any)
+    })
 
-    // Wait for response with timeout
-    try {
-      await this.waitForResponse(msg.messageId, timeout)
-    } catch (e) {
-      // Timeout handled in waitForResponse
-    }
+    // Start waiting for response (non-blocking)
+    this.waitForResponse(msg.messageId, timeout).catch(() => {
+      // Timeout handled silently - message already sent
+    })
   }
 
   /**
@@ -187,14 +188,13 @@ export class IPCHandler {
           { text: '❌ Deny', callback_data: `ipc:${msg.messageId}:deny` }
         ]]
       }
-    } as any)
+    })
 
-    try {
-      await this.waitForResponse(msg.messageId, timeout)
-    } catch (e) {
+    // Start waiting for response (non-blocking)
+    this.waitForResponse(msg.messageId, timeout).catch(async () => {
       // Timeout - deny by default for safety
       await this.bot.sendMessage('⏱️ Approval timeout - request denied for safety')
-    }
+    })
   }
 
   /**
@@ -294,7 +294,7 @@ export class IPCHandler {
    */
   private createProgressBar(progress: number): string {
     const total = 10
-    const filled = Math.round((progress / 100) * total)
+    const filled = Math.floor((progress / 100) * total)
     const empty = total - filled
     return '█'.repeat(filled) + '░'.repeat(empty)
   }

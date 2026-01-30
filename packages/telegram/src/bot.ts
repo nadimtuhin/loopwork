@@ -19,9 +19,8 @@
  *   4. Run: bun run src/telegram-bot.ts
  */
 
-import { createBackend } from '../../loopwork/src/backends'
-import type { TaskBackend, Task } from '../../loopwork/src/contracts'
-import type { BackendConfig } from '../../loopwork/src/contracts'
+import { createBackend } from '@loopwork-ai/loopwork/backends'
+import type { TaskBackend, Task, BackendConfig } from '@loopwork-ai/loopwork/contracts'
 import { SessionManager, type UserSession } from './session'
 import { IPCHandler } from './ipc-handler'
 
@@ -125,7 +124,7 @@ export class TelegramTaskBot {
   /**
    * Send a message to the configured chat
    */
-  async sendMessage(text: string, parseMode: 'HTML' | 'Markdown' = 'HTML'): Promise<boolean> {
+  async sendMessage(text: string, options?: { parseMode?: 'HTML' | 'Markdown', reply_markup?: any }): Promise<boolean> {
     try {
       const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`
       const response = await fetch(url, {
@@ -134,7 +133,8 @@ export class TelegramTaskBot {
         body: JSON.stringify({
           chat_id: this.allowedChatId,
           text,
-          parse_mode: parseMode,
+          parse_mode: options?.parseMode || 'HTML',
+          ...(options?.reply_markup && { reply_markup: options.reply_markup }),
         }),
       })
       return response.ok
@@ -681,17 +681,30 @@ Example:
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        
-        buffer += decoder.decode(value)
-        
+
+        const chunk = decoder.decode(value)
+
+        // Parse IPC messages from chunk
+        const { ipcMessages, logs } = this.ipcHandler.parseOutput(chunk)
+
+        // Handle structured IPC messages
+        for (const msg of ipcMessages) {
+          await this.ipcHandler.handleMessage(msg)
+        }
+
+        // Add remaining logs to buffer
+        buffer += logs
+
         if (buffer.length > 2000 || (Date.now() - lastSendTime > 2000 && buffer.length > 0)) {
-          await this.sendMessage(`<pre>${escapeHtml(buffer)}</pre>`)
+          if (buffer.trim()) {
+            await this.sendMessage(`<pre>${escapeHtml(buffer)}</pre>`)
+          }
           buffer = ''
           lastSendTime = Date.now()
         }
       }
-      
-      if (buffer.length > 0) {
+
+      if (buffer.trim().length > 0) {
         await this.sendMessage(`<pre>${escapeHtml(buffer)}</pre>`)
       }
     } catch (e) {
@@ -1018,6 +1031,83 @@ Simply type "Create a task..." to start drafting!${voiceNoteInfo}
   }
 
   /**
+   * Handle callback query from inline keyboard button clicks
+   */
+  private async handleCallbackQuery(query: TelegramUpdate['callback_query']): Promise<void> {
+    if (!query || !query.data) return
+
+    const data = query.data
+
+    // Handle IPC-related callback queries
+    if (data.startsWith('ipc:')) {
+      const [_, messageId, response] = data.split(':')
+
+      // Send response to loopwork via stdin
+      if (this.loopProcess && this.loopProcess.stdin) {
+        try {
+          const writer = this.loopProcess.stdin.getWriter()
+          await writer.write(new TextEncoder().encode(`${response}\n`))
+          await writer.releaseLock()
+        } catch (e) {
+          console.error('Error sending response to loopwork:', e)
+        }
+      }
+
+      // Resolve pending request in IPC handler
+      this.ipcHandler.resolveRequest(messageId, response)
+
+      // Answer callback query to remove loading state
+      await this.answerCallbackQuery(query.id)
+
+      // Edit message to remove buttons
+      if (query.message) {
+        await this.editMessageReplyMarkup(query.message.message_id, { inline_keyboard: [] })
+      }
+    }
+  }
+
+  /**
+   * Answer a callback query
+   */
+  private async answerCallbackQuery(queryId: string, text?: string): Promise<boolean> {
+    try {
+      const url = `https://api.telegram.org/bot${this.botToken}/answerCallbackQuery`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callback_query_id: queryId,
+          text,
+        }),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Edit message reply markup (buttons)
+   */
+  private async editMessageReplyMarkup(messageId: number, replyMarkup: any): Promise<boolean> {
+    try {
+      const url = `https://api.telegram.org/bot${this.botToken}/editMessageReplyMarkup`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: this.allowedChatId,
+          message_id: messageId,
+          reply_markup: replyMarkup,
+        }),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  /**
    * Start the bot polling loop
    */
   async start(): Promise<void> {
@@ -1033,6 +1123,11 @@ Simply type "Create a task..." to start drafting!${voiceNoteInfo}
 
         for (const update of updates) {
           this.lastUpdateId = update.update_id
+
+          // Handle callback queries (button clicks)
+          if (update.callback_query) {
+            await this.handleCallbackQuery(update.callback_query)
+          }
 
           // Handle text messages, voice notes, audio files, and photos
           if (update.message?.text || update.message?.voice || update.message?.audio || update.message?.photo) {

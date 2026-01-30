@@ -118,10 +118,92 @@ bot.start()
 | `whisperModel` | string | `'whisper-1'` | Whisper model to use |
 | `whisperLanguage` | string | `undefined` | Force language code (e.g., 'en', 'es') |
 
+## IPC Communication
+
+The Telegram bot supports **Inter-Process Communication (IPC)** for rich, structured notifications and interactive features. When enabled, the bot can:
+
+- 📊 **Rich Notifications**: Receive structured task lifecycle events (start, complete, failed) with formatted messages
+- ❓ **Interactive Questions**: Display AI questions as inline keyboards for quick user responses
+- ✅ **Approval Requests**: Show approve/deny buttons for dangerous operations
+- 📈 **Progress Updates**: Display real-time task progress with visual progress bars
+
+### Enabling IPC
+
+To enable IPC communication, configure your `loopwork.config.ts` with the IPC plugin:
+
+```typescript
+import { compose, defineConfig, withIPC } from 'loopwork'
+import { withJSONBackend } from 'loopwork/backends'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+  withIPC({ enabled: true })
+)(defineConfig({
+  cli: 'claude',
+  maxIterations: 50
+}))
+```
+
+See `examples/loopwork.bot.config.ts` for a complete example.
+
+### IPC Event Types
+
+The IPC protocol supports the following event types:
+
+| Event | Description | Visual |
+|-------|-------------|--------|
+| `task_start` | Task execution started | 🚀 Task Started |
+| `task_complete` | Task completed successfully | ✅ Task Completed |
+| `task_failed` | Task execution failed | ❌ Task Failed |
+| `loop_start` | Automation loop started | 🎯 Loop Started |
+| `loop_end` | Automation loop ended | 🏁 Loop Complete |
+| `question` | AI asking for user input | ❓ Question with buttons |
+| `approval_request` | Requires user approval | ⚠️ Approval buttons |
+| `progress_update` | Task progress update | ⚙️ Progress bar |
+
+### Interactive Features
+
+**Questions**: When the AI needs input, it displays options as inline keyboard buttons:
+
+```
+❓ Which approach should I use?
+
+[Approach A (Fast)]  [Approach B (Robust)]
+```
+
+**Approval Requests**: For dangerous operations, the bot shows approve/deny buttons:
+
+```
+⚠️ Approval Required
+
+About to delete 50 test files
+
+Action: delete_all_tests
+
+[✅ Approve]  [❌ Deny]
+```
+
+### How It Works
+
+1. **Loopwork subprocess** emits IPC messages to stdout with special delimiters: `__IPC_START__{...JSON...}__IPC_END__`
+2. **Bot parser** extracts IPC messages from stdout chunks using regex
+3. **IPC handler** routes messages to specific handlers based on event type
+4. **Telegram API** displays formatted messages with inline keyboards
+5. **Button clicks** send responses back to loopwork via stdin
+
+### Backward Compatibility
+
+IPC is fully backward compatible:
+- IPC plugin is **opt-in** via config
+- Regular stdout/stderr logs continue to work
+- Existing notification plugin remains unchanged
+- No breaking changes to bot commands
+
 ## Architecture
 
 The Teleloop agent runs as a daemon process that:
 1. Listens for Telegram updates (polling).
 2. Spawns `loopwork` as a child process when `/run` is requested.
 3. Streams `stdout/stderr` from the child process to Telegram.
-4. Manages user sessions for interactive task creation.
+4. Parses IPC messages from stdout for rich notifications (when enabled).
+5. Manages user sessions for interactive task creation.

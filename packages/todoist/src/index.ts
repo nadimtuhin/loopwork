@@ -10,7 +10,7 @@
  * 3. Add todoistId to task metadata in your tasks file
  */
 
-import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '../../loopwork/src/contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
 
 export interface TodoistConfig {
   apiToken?: string

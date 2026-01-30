@@ -5,7 +5,8 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./contracts": "./src/contracts/index.ts"
+    "./contracts": "./src/contracts/index.ts",
+    "./backends": "./src/backends/index.ts"
   },
   "bin": {
     "loopwork": "bin/loopwork"

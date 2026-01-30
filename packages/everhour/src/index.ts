@@ -12,7 +12,7 @@
  * 4. Add everhourId or asanaGid to task metadata
  */
 
-import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '../../loopwork/src/contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
 
 export interface EverhourConfig {
   apiKey?: string

@@ -2,7 +2,7 @@
  * Telegram Plugin for Loopwork
  */
 
-import type { ConfigWrapper } from '../../loopwork/src/contracts'
+import type { ConfigWrapper } from '@loopwork-ai/loopwork/contracts'
 import type { TelegramConfig } from './notifications'
 
 /**

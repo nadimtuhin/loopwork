@@ -9,7 +9,7 @@
  * 3. Set DISCORD_WEBHOOK_URL env var
  */
 
-import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '../../loopwork/src/contracts'
+import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
 
 export interface DiscordConfig {
   webhookUrl?: string

@@ -21,7 +21,7 @@ Transform the basic Telegram bot into a fully interactive AI agent interface for
 - **Streaming Updates**: Stream key CLI events to a dedicated Telegram topic or main chat.
 - **Buffering**: Logs are buffered (2000 chars or 2s) to avoid rate limits.
 
-### 4. The "Overseer" (Structured IPC) 🧠 (Planned)
+### 4. The "Overseer" (Structured IPC) ✅ Implemented
 - **Problem**: Raw text streaming is dumb. The bot doesn't "know" when the AI is asking for permission.
 - **Solution**: Implement a structured IPC channel.
 - **Features**:
@@ -74,11 +74,16 @@ A long-running process that:
 - [x] Implement `handleRunLoop` and `handleStopLoop`.
 - [x] Stream stdout/stderr from child process to Telegram with buffering.
 
-### Phase 3: The Overseer (IPC)
-- [ ] Design IPC Protocol (JSON over stdout or dedicated IPC channel).
-- [ ] Update `TelegramTaskBot` to parse structured IPC messages.
-- [ ] Implement `withIPC()` plugin in Loopwork to emit structured events.
-- [ ] Add Telegram Button support (CallbackQueries).
+### Phase 3: The Overseer (IPC) ✅
+- [x] Design IPC Protocol (JSON over stdout with delimiters).
+- [x] Update `TelegramTaskBot` to parse structured IPC messages.
+- [x] Implement `withIPC()` plugin in Loopwork to emit structured events.
+- [x] Add Telegram Button support (CallbackQueries).
+- [x] Support interactive questions with inline keyboards.
+- [x] Support approval requests with approve/deny buttons.
+- [x] Support progress updates with visual progress bars.
+- [x] Implement bidirectional communication (stdin responses).
+- [x] Add comprehensive test coverage.
 
 ### Phase 4: Multimodal & Voice
 - [ ] Add `voice` and `photo` message handlers to `TelegramTaskBot`.

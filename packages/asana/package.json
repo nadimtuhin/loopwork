@@ -5,5 +5,8 @@
   "types": "src/index.ts",
   "scripts": {
     "build": "bun build src/*.ts --outdir dist --target node --external bun"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
   }
 }

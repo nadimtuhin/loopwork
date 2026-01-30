@@ -6,7 +6,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper, TaskContext, PluginTaskResult } from '../../loopwork/src/contracts'
+import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
 
 export interface CostTrackingConfig {
   enabled?: boolean

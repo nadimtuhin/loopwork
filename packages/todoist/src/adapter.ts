@@ -6,7 +6,7 @@ import type {
   FindTaskOptions,
   UpdateResult,
   PingResult,
-} from '../../loopwork/src/contracts'
+} from '@loopwork-ai/loopwork/contracts'
 
 export interface TodoistBackendOptions {
   client: TodoistClient
