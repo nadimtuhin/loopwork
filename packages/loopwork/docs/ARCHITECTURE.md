@@ -1073,24 +1073,29 @@ Return immediately (process runs in background)
 
 ### Orphan Detection
 
-**File:** `src/core/orphan-detector.ts`
+**File:** `src/core/process-management/orphan-detector.ts`
 
 ```typescript
-interface OrphanProcess {
+interface OrphanInfo {
   pid: number
-  ppid: number
-  command: string
-  startTime: Date
+  reason: 'parent-dead' | 'stale'
+  process: ProcessInfo
 }
 
-function detectOrphans(patterns?: string[]): OrphanProcess[]
+class OrphanDetector {
+  scan(): Promise<OrphanInfo[]>
+}
 ```
 
-**Detection strategy:**
-1. List all processes
-2. Check for loopwork-related command patterns
-3. Verify parent process is gone
-4. Return orphaned processes
+**Detection strategy (v0.3.4+):**
+1. Check tracked processes in registry
+2. For each tracked process:
+   - Dead parent: Parent PID no longer exists → orphan
+   - Stale: Running longer than 2x timeout → orphan
+3. Return only tracked orphans
+
+> **Note:** Pattern-based "untracked" detection was removed in v0.3.4 because it was
+> killing users' independent CLI sessions that weren't spawned by loopwork.
 
 ### Orphan Killer
 
@@ -1291,9 +1296,14 @@ ps aux | grep -E "loopwork|claude|opencode" | grep -v grep
 # Force kill by PID
 kill -9 <PID>
 
-# Or use loopwork's orphan detection
-loopwork kill --all
+# Use loopwork's orphan detection (only kills tracked processes)
+loopwork kill --orphans
+
+# Or enable automatic orphan watch in config
 ```
+
+> **Note (v0.3.4+):** `loopwork kill --orphans` only kills processes that loopwork
+> actually spawned (tracked in registry). Independent CLI sessions won't be affected.
 
 **State files cleaned up on kill/stop:**
 - `.loopwork/state-{namespace}.lock` - Process lock
