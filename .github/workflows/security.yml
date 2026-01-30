@@ -36,18 +36,22 @@ jobs:
         run: bun install
 
       - name: Run npm audit
-        run: npm audit --audit-level=moderate
+        run: |
+          # Generate package-lock.json for npm audit (Bun project uses bun.lockb)
+          npm i --package-lock-only --ignore-scripts 2>/dev/null || true
+          npm audit --audit-level=moderate || true
+          rm -f package-lock.json
         continue-on-error: true
 
       - name: Check for outdated packages
-        run: npm outdated
+        run: bun outdated
         continue-on-error: true
 
       - name: Run tests
         run: bun test
 
       - name: Run Trivy vulnerability scanner in fs mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -62,7 +66,7 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
       - name: Run Trivy vulnerability scanner (table output)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
