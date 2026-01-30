@@ -164,10 +164,17 @@ describe('monitor commands', () => {
 
   describe('monitorStatus', () => {
     test('displays status of all loops', async () => {
+      const mockLogger = {
+        raw: mock((msg: string) => {
+          (mockProcess.stdout.write as any)(msg + '\n')
+        })
+      }
+
       await monitorStatus({
         MonitorClass,
         findProjectRoot: mockFindProjectRoot,
         formatUptime: mockFormatUptime,
+        logger: mockLogger as any,
         process: mockProcess,
       })
 
@@ -188,6 +195,13 @@ describe('monitor commands', () => {
         },
       ])
 
+      const mockLogger = {
+        info: mock(() => {}),
+        raw: mock((msg: string) => {
+          (mockProcess.stdout.write as any)(msg + '\n')
+        })
+      }
+
       await monitorLogs({
         namespace: 'test-ns',
         lines: 50,
@@ -195,6 +209,7 @@ describe('monitor commands', () => {
         MonitorClass,
         findProjectRoot: mockFindProjectRoot,
         formatUptime: mockFormatUptime,
+        logger: mockLogger as any,
         LoopworkErrorClass: TestLoopworkError,
         handleError: mockHandleError,
         logUtils: {

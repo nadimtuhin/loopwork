@@ -7,27 +7,17 @@ import { LoopworkMonitor } from '../src/monitor'
 describe('kill command - LoopworkMonitor', () => {
   let testRoot: string
   let stateFile: string
-  let originalCwd: string
 
   beforeEach(() => {
-    originalCwd = process.cwd()
     // Create test directory
     testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-kill-test-'))
     stateFile = path.join(testRoot, '.loopwork-monitor-state.json')
-
-    // Change to test directory
-    process.chdir(testRoot)
   })
 
   afterEach(() => {
-    try {
-      // Restore original directory
-      process.chdir(originalCwd)
-    } finally {
-      // Clean up test directory
-      if (fs.existsSync(testRoot)) {
-        fs.rmSync(testRoot, { recursive: true, force: true })
-      }
+    // Clean up test directory
+    if (fs.existsSync(testRoot)) {
+      fs.rmSync(testRoot, { recursive: true, force: true })
     }
   })
 
@@ -210,17 +200,12 @@ describe('kill command - handler', () => {
     debug: mock(() => {}),
     update: mock(() => {}),
   }
-  let originalCwd: string
 
   beforeEach(() => {
-    originalCwd = process.cwd()
     // Create test directory and package.json
     testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-kill-handler-test-'))
     stateFile = path.join(testRoot, '.loopwork-monitor-state.json')
     fs.writeFileSync(path.join(testRoot, 'package.json'), '{}')
-
-    // Change to test directory
-    process.chdir(testRoot)
 
     // Reset logger mocks
     mockLogger.info.mockClear()
@@ -232,14 +217,9 @@ describe('kill command - handler', () => {
   })
 
   afterEach(() => {
-    try {
-      // Restore original directory
-      process.chdir(originalCwd)
-    } finally {
-      // Clean up test directory
-      if (fs.existsSync(testRoot)) {
-        fs.rmSync(testRoot, { recursive: true, force: true })
-      }
+    // Clean up test directory
+    if (fs.existsSync(testRoot)) {
+      fs.rmSync(testRoot, { recursive: true, force: true })
     }
   })
 
@@ -260,10 +240,13 @@ describe('kill command - handler', () => {
     }
     fs.writeFileSync(stateFile, JSON.stringify(mockState))
 
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
     // When PID doesn't exist, monitor.stop handles ESRCH gracefully
     // and returns success: true, so kill command should succeed
     try {
-      await kill({ namespace: 'default' }, { logger: mockLogger })
+      await kill({ namespace: 'default' }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })
 
       // Verify state was cleaned up
       const updatedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
@@ -300,7 +283,10 @@ describe('kill command - handler', () => {
     }
     fs.writeFileSync(stateFile, JSON.stringify(mockState))
 
-    await expect(kill({ all: true }, { logger: mockLogger })).resolves.toBeUndefined()
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
+    await expect(kill({ all: true }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })).resolves.toBeUndefined()
 
     // Logger should be called for the result
     expect(mockLogger.success.mock.calls.length + mockLogger.info.mock.calls.length).toBeGreaterThan(0)
@@ -312,8 +298,11 @@ describe('kill command - handler', () => {
     // Empty state file
     fs.writeFileSync(stateFile, JSON.stringify({ processes: [] }))
 
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
     // Should throw LoopworkError
-    await expect(kill({ namespace: 'nonexistent' }, { logger: mockLogger })).rejects.toThrow()
+    await expect(kill({ namespace: 'nonexistent' }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })).rejects.toThrow()
   })
 
   test('handles stale PID (process not running)', async () => {
@@ -333,9 +322,12 @@ describe('kill command - handler', () => {
     }
     fs.writeFileSync(stateFile, JSON.stringify(mockState))
 
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
     // ESRCH is handled gracefully by monitor.stop()
     try {
-      await kill({ namespace: 'stale-test' }, { logger: mockLogger })
+      await kill({ namespace: 'stale-test' }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })
 
       // State should be cleaned up
       const updatedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
@@ -365,9 +357,12 @@ describe('kill command - handler', () => {
     }
     fs.writeFileSync(stateFile, JSON.stringify(mockState))
 
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
     // Kill without namespace should target 'default'
     try {
-      await kill({}, { logger: mockLogger })
+      await kill({}, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })
       expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining("default"))
     } catch (e: any) {
       // May fail on some systems, but error message should mention default
@@ -381,7 +376,10 @@ describe('kill command - handler', () => {
     // Empty state file
     fs.writeFileSync(stateFile, JSON.stringify({ processes: [] }))
 
-    await kill({ all: true }, { logger: mockLogger })
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
+    await kill({ all: true }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })
 
     // Should report no running processes
     expect(mockLogger.info).toHaveBeenCalledWith('No running processes to stop')
@@ -411,7 +409,10 @@ describe('kill command - handler', () => {
     }
     fs.writeFileSync(stateFile, JSON.stringify(mockState))
 
-    await kill({ all: true }, { logger: mockLogger })
+    // Mock findProjectRoot to return test directory
+    const mockFindProjectRoot = () => testRoot
+
+    await kill({ all: true }, { logger: mockLogger, findProjectRoot: mockFindProjectRoot })
 
     // Either stopped or errors should be reported
     const successCalls = mockLogger.success.mock.calls.length

@@ -23,7 +23,7 @@ describe('Config', () => {
       const config: Config = {
         ...DEFAULT_CONFIG,
         projectRoot: '/test/project',
-        outputDir: '/test/project/loopwork-runs/2026-01-17',
+        outputDir: '/test/project/.loopwork/runs/2026-01-17',
         sessionId: 'loopwork-2026-01-17-123',
         debug: false,
         resume: false,
@@ -82,9 +82,9 @@ describe('Config', () => {
     test('outputDir includes timestamp', () => {
       const timestamp = '2026-01-17T10-30-00'
       const projectRoot = '/home/user/project'
-      const outputDir = `${projectRoot}/loopwork-runs/${timestamp}`
+      const outputDir = `${projectRoot}/.loopwork/runs/${timestamp}`
 
-      expect(outputDir).toBe('/home/user/project/loopwork-runs/2026-01-17T10-30-00')
+      expect(outputDir).toBe('/home/user/project/.loopwork/runs/2026-01-17T10-30-00')
     })
   })
 })

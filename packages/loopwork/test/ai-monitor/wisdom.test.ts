@@ -6,11 +6,9 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import { WisdomSystem, type WisdomConfig } from '../../src/ai-monitor/wisdom'
 import type { ErrorPattern } from '../../src/ai-monitor/types'
-
-const TEST_DIR = path.join(process.cwd(), 'test-temp-wisdom')
-const TEST_STATE_DIR = path.join(TEST_DIR, 'ai-monitor')
 
 // Helper to create a test error pattern
 function createTestPattern(name: string): ErrorPattern {
@@ -25,13 +23,13 @@ function createTestPattern(name: string): ErrorPattern {
 
 describe('WisdomSystem', () => {
   let wisdom: WisdomSystem
+  let TEST_DIR: string
+  let TEST_STATE_DIR: string
 
   beforeEach(() => {
-    // Clean up test directory
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true })
-    }
-    fs.mkdirSync(TEST_DIR, { recursive: true })
+    // Create unique temp directory for each test
+    TEST_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'test-wisdom-'))
+    TEST_STATE_DIR = path.join(TEST_DIR, 'ai-monitor')
 
     // Create wisdom system with test config
     const config: WisdomConfig = {

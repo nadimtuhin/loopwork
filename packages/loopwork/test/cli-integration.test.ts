@@ -21,7 +21,7 @@ describe('CLI Integration: logs and kill workflow', () => {
 
     try {
       // Step 1: Simulate a loopwork session
-      const sessionDir = path.join(testRoot, 'loopwork-runs/default/2025-01-25T12-00-00')
+      const sessionDir = path.join(testRoot, '.loopwork/runs/default/2025-01-25T12-00-00')
       const logFile = path.join(sessionDir, 'loopwork.log')
       fs.mkdirSync(sessionDir, { recursive: true })
       fs.writeFileSync(
@@ -65,7 +65,7 @@ describe('CLI Integration: logs and kill workflow', () => {
     fs.mkdirSync(testRoot, { recursive: true })
 
     try {
-      const sessionDir = path.join(testRoot, 'loopwork-runs/default/2025-01-25T12-00-00')
+      const sessionDir = path.join(testRoot, '.loopwork/runs/default/2025-01-25T12-00-00')
       const logsDir = path.join(sessionDir, 'logs')
       fs.mkdirSync(logsDir, { recursive: true })
 
@@ -98,7 +98,7 @@ describe('CLI Integration: logs and kill workflow', () => {
       // Create sessions for multiple namespaces
       const namespaces = ['default', 'feature-a', 'feature-b']
       namespaces.forEach(ns => {
-        const sessionDir = path.join(testRoot, `loopwork-runs/${ns}/2025-01-25T12-00-00`)
+        const sessionDir = path.join(testRoot, `.loopwork/runs/${ns}/2025-01-25T12-00-00`)
         fs.mkdirSync(sessionDir, { recursive: true })
         fs.writeFileSync(
           path.join(sessionDir, 'loopwork.log'),

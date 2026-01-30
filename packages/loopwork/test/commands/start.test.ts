@@ -58,6 +58,7 @@ describe('Start Command', () => {
         error: mock(() => {}),
         debug: mock(() => {}),
         update: mock(() => {}),
+        raw: mock(() => {}),
       } as any,
       handleError: mockHandleError,
       runCommand: async (options) => {

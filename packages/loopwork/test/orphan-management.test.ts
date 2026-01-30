@@ -15,23 +15,16 @@ describe('orphan-detector', () => {
   let testRoot: string
   let stateDir: string
   let trackingFile: string
-  let originalCwd: string
 
   beforeEach(() => {
-    originalCwd = process.cwd()
     testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orphan-detector-test-'))
     stateDir = path.join(testRoot, '.loopwork')
     trackingFile = path.join(stateDir, 'spawned-pids.json')
-    process.chdir(testRoot)
   })
 
   afterEach(() => {
-    try {
-      process.chdir(originalCwd)
-    } finally {
-      if (fs.existsSync(testRoot)) {
-        fs.rmSync(testRoot, { recursive: true, force: true })
-      }
+    if (fs.existsSync(testRoot)) {
+      fs.rmSync(testRoot, { recursive: true, force: true })
     }
   })
 
@@ -104,7 +97,7 @@ describe('orphan-detector', () => {
 
   describe('getTrackedPids', () => {
     test('returns empty array when no tracking file', () => {
-      const pids = getTrackedPids()
+      const pids = getTrackedPids(testRoot)
       expect(pids).toEqual([])
     })
 
@@ -112,7 +105,7 @@ describe('orphan-detector', () => {
       trackSpawnedPid(12345, 'bun test', testRoot)
       trackSpawnedPid(67890, 'tail -f', testRoot)
 
-      const pids = getTrackedPids()
+      const pids = getTrackedPids(testRoot)
       expect(pids).toHaveLength(2)
       expect(pids.map(p => p.pid)).toContain(12345)
       expect(pids.map(p => p.pid)).toContain(67890)
@@ -122,7 +115,7 @@ describe('orphan-detector', () => {
       fs.mkdirSync(stateDir, { recursive: true })
       fs.writeFileSync(trackingFile, 'not valid json')
 
-      const pids = getTrackedPids()
+      const pids = getTrackedPids(testRoot)
       expect(pids).toEqual([])
     })
 
@@ -130,7 +123,7 @@ describe('orphan-detector', () => {
       fs.mkdirSync(stateDir, { recursive: true })
       fs.writeFileSync(trackingFile, '')
 
-      const pids = getTrackedPids()
+      const pids = getTrackedPids(testRoot)
       expect(pids).toEqual([])
     })
 
@@ -139,7 +132,7 @@ describe('orphan-detector', () => {
       fs.writeFileSync(trackingFile, '{"wrong": "structure"}')
 
       // Should not throw but return empty on type error
-      expect(() => getTrackedPids()).not.toThrow()
+      expect(() => getTrackedPids(testRoot)).not.toThrow()
     })
   })
 
@@ -498,7 +491,6 @@ describe('orphan-killer', () => {
 
 describe('kill command - orphan integration', () => {
   let testRoot: string
-  let originalCwd: string
   const mockLogger = {
     info: mock(() => {}),
     success: mock(() => {}),
@@ -506,13 +498,12 @@ describe('kill command - orphan integration', () => {
     error: mock(() => {}),
     debug: mock(() => {}),
     update: mock(() => {}),
+    raw: mock(() => {}),
   }
 
   beforeEach(() => {
-    originalCwd = process.cwd()
     testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orphan-cli-test-'))
     fs.writeFileSync(path.join(testRoot, 'package.json'), '{}')
-    process.chdir(testRoot)
 
     mockLogger.info.mockClear()
     mockLogger.success.mockClear()
@@ -520,15 +511,12 @@ describe('kill command - orphan integration', () => {
     mockLogger.error.mockClear()
     mockLogger.debug.mockClear()
     mockLogger.update.mockClear()
+    mockLogger.raw.mockClear()
   })
 
   afterEach(() => {
-    try {
-      process.chdir(originalCwd)
-    } finally {
-      if (fs.existsSync(testRoot)) {
-        fs.rmSync(testRoot, { recursive: true, force: true })
-      }
+    if (fs.existsSync(testRoot)) {
+      fs.rmSync(testRoot, { recursive: true, force: true })
     }
   })
 
@@ -541,6 +529,7 @@ describe('kill command - orphan integration', () => {
         return { killed: [], skipped: [], failed: [] }
       }
     }
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true },
@@ -548,6 +537,7 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
@@ -576,6 +566,7 @@ describe('kill command - orphan integration', () => {
         return { killed: [12345], skipped: [], failed: [] }
       }
     }
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true, dryRun: true },
@@ -583,6 +574,7 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
@@ -612,6 +604,7 @@ describe('kill command - orphan integration', () => {
         return { killed: [67890], skipped: [], failed: [] }
       }
     }
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true, force: true },
@@ -619,6 +612,7 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
@@ -646,8 +640,7 @@ describe('kill command - orphan integration', () => {
         return { killed: [12345], skipped: [], failed: [] }
       }
     }
-
-    const consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {})
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true, json: true },
@@ -655,17 +648,24 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
-    expect(consoleLogSpy).toHaveBeenCalled()
-    const output = consoleLogSpy.mock.calls[0][0]
-    const parsed = JSON.parse(output)
+    expect(mockLogger.raw).toHaveBeenCalled()
+    const output = mockLogger.raw.mock.calls.find((call: any) => {
+      try {
+        const parsed = JSON.parse(call[0])
+        return parsed.orphans !== undefined
+      } catch {
+        return false
+      }
+    })
+    expect(output).toBeDefined()
+    const parsed = JSON.parse(output[0])
     expect(parsed).toHaveProperty('orphans')
     expect(parsed).toHaveProperty('summary')
     expect(parsed.summary.killed).toBe(1)
-
-    consoleLogSpy.mockRestore()
   })
 
   test('shows tip to use --force when suspected orphans skipped', async () => {
@@ -698,6 +698,7 @@ describe('kill command - orphan integration', () => {
         return { killed: [12345], skipped: [67890], failed: [] }
       }
     }
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true },
@@ -705,11 +706,12 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
-    const tipCall = mockLogger.info.mock.calls.find((call: any) =>
-      call[0]?.includes('Use --force')
+    const tipCall = mockLogger.raw.mock.calls.find((call: any) =>
+      call[0]?.includes('--force')
     )
     expect(tipCall).toBeDefined()
   })
@@ -739,6 +741,7 @@ describe('kill command - orphan integration', () => {
         }
       }
     }
+    const mockFindProjectRoot = mock(() => testRoot)
 
     await kill(
       { orphans: true },
@@ -746,11 +749,12 @@ describe('kill command - orphan integration', () => {
         logger: mockLogger,
         detectOrphans: mockDetectOrphans,
         OrphanKillerClass: mockOrphanKiller as any,
+        findProjectRoot: mockFindProjectRoot as any,
       }
     )
 
-    const summaryCall = mockLogger.info.mock.calls.find((call: any) =>
-      call[0]?.includes('failed')
+    const summaryCall = mockLogger.raw.mock.calls.find((call: any) =>
+      call[0]?.includes('Failed') || call[0]?.includes('failed')
     )
     expect(summaryCall).toBeDefined()
   })
@@ -759,23 +763,16 @@ describe('kill command - orphan integration', () => {
 describe('monitor - orphan watch', () => {
   let testRoot: string
   let monitor: LoopworkMonitor
-  let originalCwd: string
 
   beforeEach(() => {
-    originalCwd = process.cwd()
     testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orphan-watch-test-'))
-    process.chdir(testRoot)
     monitor = new LoopworkMonitor(testRoot)
   })
 
   afterEach(() => {
     monitor.stopOrphanWatch()
-    try {
-      process.chdir(originalCwd)
-    } finally {
-      if (fs.existsSync(testRoot)) {
-        fs.rmSync(testRoot, { recursive: true, force: true })
-      }
+    if (fs.existsSync(testRoot)) {
+      fs.rmSync(testRoot, { recursive: true, force: true })
     }
   })
 

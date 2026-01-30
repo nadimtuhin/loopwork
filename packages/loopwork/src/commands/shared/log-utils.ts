@@ -17,7 +17,7 @@ export interface SessionInfo {
  * Find the latest session directory for a namespace
  */
 export function findLatestSession(projectRoot: string, namespace: string = 'default'): SessionInfo | null {
-  const runsDir = path.join(projectRoot, 'loopwork-runs', namespace)
+  const runsDir = path.join(projectRoot, '.loopwork/runs', namespace)
 
   if (!fs.existsSync(runsDir)) {
     return null
@@ -201,7 +201,7 @@ function parseTimestamp(timestamp: string): Date {
  * List all sessions for a namespace
  */
 export function listSessions(projectRoot: string, namespace: string = 'default'): SessionInfo[] {
-  const runsDir = path.join(projectRoot, 'loopwork-runs', namespace)
+  const runsDir = path.join(projectRoot, '.loopwork/runs', namespace)
 
   if (!fs.existsSync(runsDir)) {
     return []

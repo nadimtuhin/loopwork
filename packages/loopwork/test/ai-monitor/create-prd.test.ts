@@ -6,6 +6,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import {
   extractTaskInfo,
   generatePRDTemplate,
@@ -14,17 +15,15 @@ import {
 } from '../../src/ai-monitor/actions/create-prd'
 import type { AutoFixAction } from '../../src/ai-monitor/actions'
 
-const TEST_DIR = path.join(process.cwd(), 'test-temp-prd')
-const TEST_TASKS_DIR = path.join(TEST_DIR, '.specs', 'tasks')
-
 describe('Create PRD Action', () => {
+  let TEST_DIR: string
+  let TEST_TASKS_DIR: string
+
   beforeEach(() => {
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true })
-    }
-    if (!fs.existsSync(TEST_TASKS_DIR)) {
-      fs.mkdirSync(TEST_TASKS_DIR, { recursive: true })
-    }
+    // Create unique temp directory for each test
+    TEST_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'test-prd-'))
+    TEST_TASKS_DIR = path.join(TEST_DIR, '.specs', 'tasks')
+    fs.mkdirSync(TEST_TASKS_DIR, { recursive: true })
   })
 
   afterEach(() => {
@@ -151,253 +150,204 @@ describe('Create PRD Action', () => {
     test('should create PRD file from stub template when no metadata found', async () => {
       const taskId = 'TEST-001'
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toContain('# TEST-001: TEST-001')
-        expect(content).toContain('[Auto-generated stub')
-      } finally {
-        process.chdir(cwd)
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
       }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toContain('# TEST-001: TEST-001')
+      expect(content).toContain('[Auto-generated stub')
     })
 
     test('should create PRD file with metadata from tasks.json', async () => {
       const taskId = 'META-001'
       const tasksJson = path.join(TEST_TASKS_DIR, 'tasks.json')
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Create tasks.json with metadata
-        const tasksData = {
-          tasks: [
-            {
-              id: taskId,
-              title: 'My Important Task',
-              description: 'This is a detailed description of the task to be completed'
-            }
-          ]
-        }
-        fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
-
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toContain('# META-001: My Important Task')
-        expect(content).toContain('This is a detailed description of the task to be completed')
-        expect(content).not.toContain('[Auto-generated stub')
-      } finally {
-        process.chdir(cwd)
+      // Create tasks.json with metadata
+      const tasksData = {
+        tasks: [
+          {
+            id: taskId,
+            title: 'My Important Task',
+            description: 'This is a detailed description of the task to be completed'
+          }
+        ]
       }
+      fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
+
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
+      }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toContain('# META-001: My Important Task')
+      expect(content).toContain('This is a detailed description of the task to be completed')
+      expect(content).not.toContain('[Auto-generated stub')
     })
 
     test('should handle case-insensitive task ID lookup', async () => {
       const taskId = 'case-001'
       const tasksJson = path.join(TEST_TASKS_DIR, 'tasks.json')
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Create tasks.json with uppercase task ID
-        const tasksData = {
-          tasks: [
-            {
-              id: 'CASE-001',
-              title: 'Case Sensitive Test',
-              description: 'Testing case-insensitive lookup'
-            }
-          ]
-        }
-        fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
-
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toContain('Case Sensitive Test')
-        expect(content).toContain('Testing case-insensitive lookup')
-      } finally {
-        process.chdir(cwd)
+      // Create tasks.json with uppercase task ID
+      const tasksData = {
+        tasks: [
+          {
+            id: 'CASE-001',
+            title: 'Case Sensitive Test',
+            description: 'Testing case-insensitive lookup'
+          }
+        ]
       }
+      fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
+
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
+      }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toContain('Case Sensitive Test')
+      expect(content).toContain('Testing case-insensitive lookup')
     })
 
     test('should not overwrite existing PRD file', async () => {
       const taskId = 'EXIST-001'
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Create existing PRD file
-        const existingContent = '# Existing PRD\n\nThis should not be overwritten'
-        fs.writeFileSync(filePath, existingContent)
+      // Create existing PRD file
+      const existingContent = '# Existing PRD\n\nThis should not be overwritten'
+      fs.writeFileSync(filePath, existingContent)
 
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        // File should still contain original content
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toBe(existingContent)
-      } finally {
-        process.chdir(cwd)
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
       }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      // File should still contain original content
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toBe(existingContent)
     })
 
     test('should handle missing tasks.json gracefully', async () => {
       const taskId = 'NOMETA-001'
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Don't create tasks.json, just use stub
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toContain('# NOMETA-001: NOMETA-001')
-        expect(content).toContain('[Auto-generated stub')
-      } finally {
-        process.chdir(cwd)
+      // Don't create tasks.json, just use stub
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
       }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toContain('# NOMETA-001: NOMETA-001')
+      expect(content).toContain('[Auto-generated stub')
     })
 
     test('should handle task not found in tasks.json gracefully', async () => {
       const taskId = 'NOTFOUND-001'
       const tasksJson = path.join(TEST_TASKS_DIR, 'tasks.json')
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Create tasks.json with different task
-        const tasksData = {
-          tasks: [
-            {
-              id: 'OTHER-001',
-              title: 'Other Task',
-              description: 'Different task'
-            }
-          ]
-        }
-        fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
-
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
-        }
-
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        // Should fall back to stub when task not found
-        expect(content).toContain('# NOTFOUND-001: NOTFOUND-001')
-        expect(content).toContain('[Auto-generated stub')
-      } finally {
-        process.chdir(cwd)
+      // Create tasks.json with different task
+      const tasksData = {
+        tasks: [
+          {
+            id: 'OTHER-001',
+            title: 'Other Task',
+            description: 'Different task'
+          }
+        ]
       }
+      fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
+
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
+      }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      // Should fall back to stub when task not found
+      expect(content).toContain('# NOTFOUND-001: NOTFOUND-001')
+      expect(content).toContain('[Auto-generated stub')
     })
 
     test('should handle tasks.json with direct array format', async () => {
       const taskId = 'ARRAY-001'
       const tasksJson = path.join(TEST_TASKS_DIR, 'tasks.json')
       const filePath = path.join(TEST_TASKS_DIR, `${taskId}.md`)
-      const cwd = process.cwd()
 
-      try {
-        // Create tasks.json with direct array (not wrapped in object)
-        const tasksData = [
-          {
-            id: taskId,
-            title: 'Array Format Task',
-            description: 'Testing direct array format in tasks.json'
-          }
-        ]
-        fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
-
-        process.chdir(TEST_DIR)
-
-        const action: AutoFixAction = {
-          type: 'auto-fix',
-          pattern: 'prd-not-found',
-          context: {
-            path: path.relative(TEST_DIR, filePath)
-          },
-          fn: async () => {}
+      // Create tasks.json with direct array (not wrapped in object)
+      const tasksData = [
+        {
+          id: taskId,
+          title: 'Array Format Task',
+          description: 'Testing direct array format in tasks.json'
         }
+      ]
+      fs.writeFileSync(tasksJson, JSON.stringify(tasksData, null, 2))
 
-        await executeCreatePRD(action)
-
-        expect(fs.existsSync(filePath)).toBe(true)
-        const content = fs.readFileSync(filePath, 'utf8')
-        expect(content).toContain('Array Format Task')
-        expect(content).toContain('Testing direct array format')
-      } finally {
-        process.chdir(cwd)
+      const action: AutoFixAction = {
+        type: 'auto-fix',
+        pattern: 'prd-not-found',
+        context: {
+          path: path.relative(TEST_DIR, filePath)
+        },
+        fn: async () => {}
       }
+
+      await executeCreatePRD(action, TEST_DIR)
+
+      expect(fs.existsSync(filePath)).toBe(true)
+      const content = fs.readFileSync(filePath, 'utf8')
+      expect(content).toContain('Array Format Task')
+      expect(content).toContain('Testing direct array format')
     })
   })
 })

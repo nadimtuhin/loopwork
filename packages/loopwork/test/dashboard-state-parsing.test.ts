@@ -30,7 +30,7 @@ describe('Dashboard state parsing', () => {
       'NAMESPACE=default',
       'LAST_ISSUE=123',
       'LAST_ITERATION=5',
-      'LAST_OUTPUT_DIR=loopwork-runs/default/session-001',
+      'LAST_OUTPUT_DIR=.loopwork/runs/default/session-001',
       'SESSION_ID=session-001',
       'SAVED_AT=2024-01-01T00:00:00.000Z',
     ].join('\n')
@@ -53,7 +53,7 @@ describe('Dashboard state parsing', () => {
       'NAMESPACE=custom',
       'LAST_ISSUE=456',
       'LAST_ITERATION=10',
-      'LAST_OUTPUT_DIR=loopwork-runs/custom/session-002',
+      'LAST_OUTPUT_DIR=.loopwork/runs/custom/session-002',
       'SESSION_ID=session-002',
       'SAVED_AT=2024-01-01T00:00:00.000Z',
     ].join('\n')
@@ -178,7 +178,7 @@ describe('Dashboard state parsing', () => {
       '  NAMESPACE=default  ',
       '  LAST_ISSUE=200  ',
       '  LAST_ITERATION=7  ',
-      '  LAST_OUTPUT_DIR=loopwork-runs/default/session-001  ',
+      '  LAST_OUTPUT_DIR=.loopwork/runs/default/session-001  ',
       '  SESSION_ID=session-001  ',
       '  SAVED_AT=2024-01-01T00:00:00.000Z  ',
     ].join('\n')

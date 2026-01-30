@@ -533,4 +533,206 @@ describe('ParallelRunner', () => {
       expect(executeSpy).not.toHaveBeenCalled()
     })
   })
+
+  describe('Self-Healing', () => {
+    // Create a failing executor that includes error messages in output
+    function createFailingExecutor(errorMessage: string): ICliExecutor {
+      return {
+        async execute(prompt: string, outputFile: string, timeout: number, taskId?: string): Promise<number> {
+          fs.mkdirSync(path.dirname(outputFile), { recursive: true })
+          fs.writeFileSync(outputFile, `Error: ${errorMessage}`)
+          return 1
+        },
+        killCurrent(): void {},
+        resetFallback(): void {},
+        async cleanup(): Promise<void> {},
+      }
+    }
+
+    test('should attempt self-healing on rate limit errors', async () => {
+      const tasks = Array.from({ length: 10 }, (_, i) =>
+        createMockTask(`TASK-${String(i + 1).padStart(3, '0')}`)
+      )
+      const backend = createMockBackend(tasks)
+
+      const config = createTestConfig({
+        parallel: 3,
+        circuitBreakerThreshold: 3,
+        maxRetries: 1,
+        taskDelay: 10,
+      })
+
+      const logger = createMockLogger()
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: createFailingExecutor('rate limit exceeded, 429 too many requests'),
+        logger,
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Should eventually throw after exhausting self-healing attempts
+      await expect(runner.run()).rejects.toThrow(/Circuit breaker activated/)
+
+      // Should have logged self-healing attempts
+      const warnCalls = logger.warn.mock.calls
+      const selfHealingLogs = warnCalls.filter((call: [string]) =>
+        call[0] && (
+          call[0].includes('Self-Healing') ||
+          call[0].includes('Rate limit detected') ||
+          call[0].includes('self-healing attempt')
+        )
+      )
+      expect(selfHealingLogs.length).toBeGreaterThan(0)
+    })
+
+    test('should attempt self-healing on timeout errors', async () => {
+      const tasks = Array.from({ length: 10 }, (_, i) =>
+        createMockTask(`TASK-${String(i + 1).padStart(3, '0')}`)
+      )
+      const backend = createMockBackend(tasks)
+
+      const config = createTestConfig({
+        parallel: 2,
+        circuitBreakerThreshold: 3,
+        maxRetries: 1,
+        timeout: 60,
+        taskDelay: 10,
+      })
+
+      const logger = createMockLogger()
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: createFailingExecutor('operation timed out ETIMEDOUT'),
+        logger,
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Should eventually throw after exhausting self-healing attempts
+      await expect(runner.run()).rejects.toThrow(/Circuit breaker activated/)
+
+      // Should have logged timeout-specific self-healing
+      const warnCalls = logger.warn.mock.calls
+      const timeoutLogs = warnCalls.filter((call: [string]) =>
+        call[0] && call[0].includes('Timeout detected')
+      )
+      expect(timeoutLogs.length).toBeGreaterThan(0)
+    })
+
+    test('should attempt self-healing on memory errors', async () => {
+      const tasks = Array.from({ length: 10 }, (_, i) =>
+        createMockTask(`TASK-${String(i + 1).padStart(3, '0')}`)
+      )
+      const backend = createMockBackend(tasks)
+
+      const config = createTestConfig({
+        parallel: 3,
+        circuitBreakerThreshold: 3,
+        maxRetries: 1,
+        taskDelay: 10,
+      })
+
+      const logger = createMockLogger()
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: createFailingExecutor('out of memory OOM killed'),
+        logger,
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Should eventually throw after exhausting self-healing attempts
+      await expect(runner.run()).rejects.toThrow(/Circuit breaker activated/)
+
+      // Should have logged memory-specific self-healing
+      const warnCalls = logger.warn.mock.calls
+      const memoryLogs = warnCalls.filter((call: [string]) =>
+        call[0] && call[0].includes('Memory pressure detected')
+      )
+      expect(memoryLogs.length).toBeGreaterThan(0)
+    })
+
+    test('should exhaust self-healing attempts and then throw', async () => {
+      const tasks = Array.from({ length: 20 }, (_, i) =>
+        createMockTask(`TASK-${String(i + 1).padStart(3, '0')}`)
+      )
+      const backend = createMockBackend(tasks)
+
+      const config = createTestConfig({
+        parallel: 2,
+        circuitBreakerThreshold: 3,
+        maxRetries: 1,
+        taskDelay: 10,
+      })
+
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: createFailingExecutor('some unknown error'),
+        logger: createMockLogger(),
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Should throw with exhausted attempts message
+      await expect(runner.run()).rejects.toThrow(/self-healing attempts exhausted/)
+    })
+
+    test('should reset circuit breaker and continue after successful healing', async () => {
+      let failCount = 0
+      const maxFailsBeforeSuccess = 6 // Fail enough to trigger healing, then succeed
+
+      const healingExecutor: ICliExecutor = {
+        async execute(prompt: string, outputFile: string, timeout: number, taskId?: string): Promise<number> {
+          fs.mkdirSync(path.dirname(outputFile), { recursive: true })
+
+          failCount++
+          if (failCount <= maxFailsBeforeSuccess) {
+            fs.writeFileSync(outputFile, 'Error: rate limit exceeded')
+            return 1
+          }
+
+          fs.writeFileSync(outputFile, `Success for ${taskId}`)
+          return 0
+        },
+        killCurrent(): void {},
+        resetFallback(): void {},
+        async cleanup(): Promise<void> {},
+      }
+
+      const tasks = Array.from({ length: 10 }, (_, i) =>
+        createMockTask(`TASK-${String(i + 1).padStart(3, '0')}`)
+      )
+      const backend = createMockBackend(tasks)
+
+      const config = createTestConfig({
+        parallel: 1,
+        circuitBreakerThreshold: 3,
+        maxRetries: 1,
+        taskDelay: 10,
+      })
+
+      const logger = createMockLogger()
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: healingExecutor,
+        logger,
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Should complete without throwing because healing worked
+      const stats = await runner.run()
+
+      // Should have some completed tasks
+      expect(stats.completed).toBeGreaterThan(0)
+
+      // Should have logged self-healing
+      const warnCalls = logger.warn.mock.calls
+      const selfHealingLogs = warnCalls.filter((call: [string]) =>
+        call[0] && call[0].includes('Self-Healing')
+      )
+      expect(selfHealingLogs.length).toBeGreaterThan(0)
+    })
+  })
 })

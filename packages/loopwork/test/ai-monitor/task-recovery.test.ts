@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import {
   detectExitReason,
   findRelevantFiles,
@@ -13,14 +14,15 @@ import type { TaskBackend } from '../../src/contracts/backend'
 import type { ExitReason } from '../../src/ai-monitor/types'
 
 describe('Task Recovery System', () => {
-  const testDir = path.join(process.cwd(), '.test-tmp-recovery')
-  const tasksDir = path.join(testDir, '.specs/tasks')
+  let testDir: string
+  let tasksDir: string
 
   beforeEach(() => {
+    // Create unique temp directory for each test
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-recovery-'))
+    tasksDir = path.join(testDir, '.specs/tasks')
     // Create test directory structure
-    if (!fs.existsSync(tasksDir)) {
-      fs.mkdirSync(tasksDir, { recursive: true })
-    }
+    fs.mkdirSync(tasksDir, { recursive: true })
   })
 
   afterEach(() => {
@@ -109,7 +111,7 @@ describe('Task Recovery System', () => {
         priority: 'medium'
       }
 
-      const files = await findRelevantFiles(task)
+      const files = await findRelevantFiles(task, testDir)
       // Files may or may not exist depending on environment
       expect(files).toBeDefined()
       expect(Array.isArray(files)).toBe(true)
@@ -125,7 +127,7 @@ describe('Task Recovery System', () => {
         feature: 'ai-monitor'
       }
 
-      const files = await findRelevantFiles(task)
+      const files = await findRelevantFiles(task, testDir)
       expect(files).toBeDefined()
       // May or may not find files depending on directory structure
     })
@@ -140,7 +142,7 @@ describe('Task Recovery System', () => {
         feature: 'loopwork' // Large feature
       }
 
-      const files = await findRelevantFiles(task)
+      const files = await findRelevantFiles(task, testDir)
       expect(files.length).toBeLessThanOrEqual(10)
     })
   })
@@ -254,148 +256,122 @@ Content 3`
       const prdPath = path.join(tasksDir, 'TEST-001.md')
       fs.writeFileSync(prdPath, '# TEST-001\n\n## Goal\nTest goal')
 
-      // Change to test directory temporarily
-      const originalCwd = process.cwd()
-      process.chdir(testDir)
+      const analysis = await analyzeEarlyExit(
+        'TEST-001',
+        logs,
+        mockBackend as TaskBackend,
+        testDir
+      )
 
-      try {
-        const analysis = await analyzeEarlyExit(
-          'TEST-001',
-          logs,
-          mockBackend as TaskBackend
-        )
-
-        expect(analysis.taskId).toBe('TEST-001')
-        expect(analysis.exitReason).toBe('vague_prd')
-        expect(analysis.evidence).toBeDefined()
-        expect(analysis.enhancement).toBeDefined()
-        expect(analysis.timestamp).toBeInstanceOf(Date)
-      } finally {
-        process.chdir(originalCwd)
-      }
+      expect(analysis.taskId).toBe('TEST-001')
+      expect(analysis.exitReason).toBe('vague_prd')
+      expect(analysis.evidence).toBeDefined()
+      expect(analysis.enhancement).toBeDefined()
+      expect(analysis.timestamp).toBeInstanceOf(Date)
     })
   })
 
   describe('enhanceTask', () => {
     test('should update PRD with additions', async () => {
       const prdPath = path.join(tasksDir, 'TEST-002.md')
-      const originalCwd = process.cwd()
-      process.chdir(testDir)
 
-      try {
-        const mockBackend: Partial<TaskBackend> = {
-          getTask: mock(async () => ({
-            id: 'TEST-002',
-            title: 'Test Task 2',
-            description: 'Test',
-            status: 'pending' as const,
-            priority: 'medium' as const
-          }))
-        }
-
-        const analysis = {
-          taskId: 'TEST-002',
-          exitReason: 'vague_prd' as ExitReason,
-          evidence: [],
-          enhancement: {
-            prdAdditions: {
-              keyFiles: ['src/test.ts'],
-              context: 'Test context',
-              approachHints: ['Hint 1', 'Hint 2']
-            }
-          },
-          timestamp: new Date()
-        }
-
-        await enhanceTask(analysis, mockBackend as TaskBackend)
-
-        expect(fs.existsSync(prdPath)).toBe(true)
-        const content = fs.readFileSync(prdPath, 'utf-8')
-        expect(content).toContain('## Key Files')
-        expect(content).toContain('src/test.ts')
-        expect(content).toContain('## Context')
-        expect(content).toContain('## Approach Hints')
-      } finally {
-        process.chdir(originalCwd)
+      const mockBackend: Partial<TaskBackend> = {
+        getTask: mock(async () => ({
+          id: 'TEST-002',
+          title: 'Test Task 2',
+          description: 'Test',
+          status: 'pending' as const,
+          priority: 'medium' as const
+        }))
       }
+
+      const analysis = {
+        taskId: 'TEST-002',
+        exitReason: 'vague_prd' as ExitReason,
+        evidence: [],
+        enhancement: {
+          prdAdditions: {
+            keyFiles: ['src/test.ts'],
+            context: 'Test context',
+            approachHints: ['Hint 1', 'Hint 2']
+          }
+        },
+        timestamp: new Date()
+      }
+
+      await enhanceTask(analysis, mockBackend as TaskBackend, testDir)
+
+      expect(fs.existsSync(prdPath)).toBe(true)
+      const content = fs.readFileSync(prdPath, 'utf-8')
+      expect(content).toContain('## Key Files')
+      expect(content).toContain('src/test.ts')
+      expect(content).toContain('## Context')
+      expect(content).toContain('## Approach Hints')
     })
 
     test('should create test scaffolding', async () => {
       const testPath = path.join(testDir, 'test', 'test-003.test.ts')
-      const originalCwd = process.cwd()
-      process.chdir(testDir)
 
-      try {
-        const mockBackend: Partial<TaskBackend> = {
-          getTask: mock(async () => ({
-            id: 'TEST-003',
-            title: 'Test Task 3',
-            description: 'Test',
-            status: 'pending' as const,
-            priority: 'medium' as const
-          }))
-        }
-
-        const analysis = {
-          taskId: 'TEST-003',
-          exitReason: 'missing_tests' as ExitReason,
-          evidence: [],
-          enhancement: {
-            testScaffolding: 'import { test } from "bun:test"\ntest("sample", () => {})'
-          },
-          timestamp: new Date()
-        }
-
-        await enhanceTask(analysis, mockBackend as TaskBackend)
-
-        expect(fs.existsSync(testPath)).toBe(true)
-        const content = fs.readFileSync(testPath, 'utf-8')
-        expect(content).toContain('import { test }')
-      } finally {
-        process.chdir(originalCwd)
-      }
-    })
-
-    test('should create subtasks when split needed', async () => {
-      const originalCwd = process.cwd()
-      process.chdir(testDir)
-
-      try {
-        const createSubTaskMock = mock(async () => ({
-          id: 'TEST-004a',
-          title: 'Subtask',
-          description: 'Part of TEST-004',
+      const mockBackend: Partial<TaskBackend> = {
+        getTask: mock(async () => ({
+          id: 'TEST-003',
+          title: 'Test Task 3',
+          description: 'Test',
           status: 'pending' as const,
           priority: 'medium' as const
         }))
-
-        const mockBackend: Partial<TaskBackend> = {
-          getTask: mock(async () => ({
-            id: 'TEST-004',
-            title: 'Test Task 4',
-            description: 'Test',
-            status: 'pending' as const,
-            priority: 'high' as const
-          })),
-          createSubTask: createSubTaskMock
-        }
-
-        const analysis = {
-          taskId: 'TEST-004',
-          exitReason: 'scope_large' as ExitReason,
-          evidence: [],
-          enhancement: {
-            splitInto: ['TEST-004a: Part 1', 'TEST-004b: Part 2']
-          },
-          timestamp: new Date()
-        }
-
-        await enhanceTask(analysis, mockBackend as TaskBackend)
-
-        expect(createSubTaskMock).toHaveBeenCalledTimes(2)
-      } finally {
-        process.chdir(originalCwd)
       }
+
+      const analysis = {
+        taskId: 'TEST-003',
+        exitReason: 'missing_tests' as ExitReason,
+        evidence: [],
+        enhancement: {
+          testScaffolding: 'import { test } from "bun:test"\ntest("sample", () => {})'
+        },
+        timestamp: new Date()
+      }
+
+      await enhanceTask(analysis, mockBackend as TaskBackend, testDir)
+
+      expect(fs.existsSync(testPath)).toBe(true)
+      const content = fs.readFileSync(testPath, 'utf-8')
+      expect(content).toContain('import { test }')
+    })
+
+    test('should create subtasks when split needed', async () => {
+      const createSubTaskMock = mock(async () => ({
+        id: 'TEST-004a',
+        title: 'Subtask',
+        description: 'Part of TEST-004',
+        status: 'pending' as const,
+        priority: 'medium' as const
+      }))
+
+      const mockBackend: Partial<TaskBackend> = {
+        getTask: mock(async () => ({
+          id: 'TEST-004',
+          title: 'Test Task 4',
+          description: 'Test',
+          status: 'pending' as const,
+          priority: 'high' as const
+        })),
+        createSubTask: createSubTaskMock
+      }
+
+      const analysis = {
+        taskId: 'TEST-004',
+        exitReason: 'scope_large' as ExitReason,
+        evidence: [],
+        enhancement: {
+          splitInto: ['TEST-004a: Part 1', 'TEST-004b: Part 2']
+        },
+        timestamp: new Date()
+      }
+
+      await enhanceTask(analysis, mockBackend as TaskBackend, testDir)
+
+      expect(createSubTaskMock).toHaveBeenCalledTimes(2)
     })
   })
 })

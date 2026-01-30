@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import { LoopworkMonitor } from '../monitor'
 import { logger as defaultLogger } from '../core/utils'
 import { LoopworkError, handleError as defaultHandleError } from '../core/errors'
@@ -140,13 +141,13 @@ async function startDaemon(
 
   if (result.success) {
     logger.success(`Daemon started (PID: ${result.pid})`)
-    proc.stdout.write('\n')
+    logger.raw('')
     logger.info('Useful commands:')
     logger.info(`  View logs:    loopwork logs ${namespace}`)
     logger.info(`  Tail logs:    loopwork logs ${namespace} --follow`)
     logger.info(`  Status:       loopwork status`)
     logger.info(`  Stop:         loopwork stop ${namespace}`)
-    proc.stdout.write('\n')
+    logger.raw('')
 
     // Optionally tail logs after starting
     if (options.tail || options.follow) {
@@ -174,6 +175,7 @@ async function tailDaemonLogs(
   namespace: string,
   initialLines: number = 20
 ): Promise<void> {
+  const logger = defaultLogger
   const monitor = new LoopworkMonitor(projectRoot)
   const running = monitor.getRunningProcesses()
   const proc = running.find(p => p.namespace === namespace)
@@ -184,28 +186,28 @@ async function tailDaemonLogs(
     if (session) {
       const logFile = getMainLogFile(session.fullPath)
       if (logFile) {
-        process.stdout.write(chalk.gray(`\nTailing ${logFile}...`) + '\n')
-        process.stdout.write(chalk.gray('(Press Ctrl+C to stop)\n') + '\n')
+        logger.raw(chalk.gray(`\nTailing ${logFile}...`))
+        logger.raw(chalk.gray('(Press Ctrl+C to stop)\n'))
 
         // Show initial lines
         const initial = readLastLines(logFile, initialLines)
         initial.forEach(line => {
           if (line.trim()) {
-            process.stdout.write(formatLogLine(line) + '\n')
+            logger.raw(formatLogLine(line))
           }
         })
 
         // Start tailing
         const { stop } = tailLogs(logFile, {
           onLine: (line) => {
-            process.stdout.write(formatLogLine(line) + '\n')
+            logger.raw(formatLogLine(line))
           },
         })
 
         // Handle Ctrl+C
         process.on('SIGINT', () => {
           stop()
-          process.stdout.write('\n')
+          logger.raw('')
           process.exit(0)
         })
 
@@ -217,29 +219,29 @@ async function tailDaemonLogs(
     return
   }
 
-  process.stdout.write(chalk.gray(`\nTailing ${proc.logFile}...`) + '\n')
-  process.stdout.write(chalk.gray(`Started: ${proc.startedAt} (uptime: ${formatUptime(proc.startedAt)})`) + '\n')
-  process.stdout.write(chalk.gray('(Press Ctrl+C to stop)\n') + '\n')
+  logger.raw(chalk.gray(`\nTailing ${proc.logFile}...`))
+  logger.raw(chalk.gray(`Started: ${proc.startedAt} (uptime: ${formatUptime(proc.startedAt)})`))
+  logger.raw(chalk.gray('(Press Ctrl+C to stop)\n'))
 
   // Show initial lines
   const initial = readLastLines(proc.logFile, initialLines)
   initial.forEach(line => {
     if (line.trim()) {
-      process.stdout.write(formatLogLine(line) + '\n')
+      logger.raw(formatLogLine(line))
     }
   })
 
   // Start tailing
   const { stop } = tailLogs(proc.logFile, {
     onLine: (line) => {
-      process.stdout.write(formatLogLine(line) + '\n')
+      logger.raw(formatLogLine(line))
     },
   })
 
   // Handle Ctrl+C
   process.on('SIGINT', () => {
     stop()
-    process.stdout.write('\n')
+    logger.raw('')
     process.exit(0)
   })
 

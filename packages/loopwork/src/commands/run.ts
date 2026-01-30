@@ -5,7 +5,7 @@ import { getConfig, type Config } from '../core/config'
 import { StateManager } from '../core/state'
 import { createBackend, type TaskBackend, type Task } from '../backends'
 import { CliExecutor } from '../core/cli'
-import { logger } from '../core/utils'
+import { logger, separator, Banner, ProgressBar, CompletionSummary } from '../core/utils'
 import { plugins, createAIMonitor } from '../plugins'
 import { createCostTrackingPlugin } from '../../../cost-tracking/src/index'
 import { createTelegramHookPlugin } from '../../../telegram/src/notifications'
@@ -14,6 +14,30 @@ import type { ICliExecutor } from '../contracts/executor'
 import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
 import { LoopworkError, handleError } from '../core/errors'
 import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
+import { LoopworkMonitor } from '../monitor'
+import type { JsonEvent } from '../contracts/output'
+
+/**
+ * Emit a JSON event to stdout
+ */
+function emitJsonEvent(
+  type: 'info' | 'success' | 'error' | 'warn' | 'progress' | 'result',
+  data: Record<string, unknown>,
+  activeLogger: RunLogger
+): void {
+  const event: JsonEvent = {
+    timestamp: new Date().toISOString(),
+    type,
+    command: 'run',
+    data,
+  }
+  // Use jsonEvent if available, otherwise fall back to raw
+  if ('jsonEvent' in activeLogger && typeof activeLogger.jsonEvent === 'function') {
+    activeLogger.jsonEvent(event)
+  } else {
+    activeLogger.raw(JSON.stringify(event))
+  }
+}
 
 function generateSuccessCriteria(task: Task): string[] {
   const criteria: string[] = []
@@ -132,7 +156,10 @@ export interface RunLogger {
   warn(message: string): void
   error(message: string): void
   debug(message: string): void
+  raw(message: string): void
   setLogFile(filePath: string): void
+  jsonEvent?(event: JsonEvent): void
+  setOutputFormat?(format: 'human' | 'json'): void
 }
 
 export interface RunDeps {
@@ -146,6 +173,7 @@ export interface RunDeps {
   plugins?: typeof plugins
   createCostTrackingPlugin?: typeof createCostTrackingPlugin
   createTelegramHookPlugin?: typeof createTelegramHookPlugin
+  json?: boolean
 }
 
 function resolveDeps(deps: RunDeps = {}) {
@@ -177,14 +205,38 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     createTelegramHookPlugin: makeTelegramHookPlugin,
   } = resolveDeps(deps)
 
-  activeLogger.startSpinner('Initializing Loopwork...')
+  const isJsonMode = options.json === true
+
+  // Set output format on logger if supported
+  if (isJsonMode && activeLogger.setOutputFormat) {
+    activeLogger.setOutputFormat('json')
+  }
+
+  if (!isJsonMode) {
+    activeLogger.startSpinner('Initializing Loopwork...')
+  }
   const config = await loadConfig(options)
   const stateManager: IStateManager = new StateManagerClass(config)
   const backend: TaskBackend = makeBackend(config.backend)
   const cliExecutor = new CliExecutorClass(config)
 
+  // Initialize orphan watch if configured
+  let monitor: LoopworkMonitor | null = null
+  if (config.orphanWatch?.enabled) {
+    monitor = new LoopworkMonitor(config.projectRoot)
+    monitor.startOrphanWatch({
+      interval: config.orphanWatch.interval,
+      maxAge: config.orphanWatch.maxAge,
+      autoKill: config.orphanWatch.autoKill,
+      patterns: config.orphanWatch.patterns,
+    })
+    activeLogger.debug('Orphan watch started')
+  }
+
   await activePlugins.runHook('onBackendReady', backend)
-  activeLogger.stopSpinner('Loopwork initialized')
+  if (!isJsonMode) {
+    activeLogger.stopSpinner('Loopwork initialized')
+  }
 
   if (config.resume) {
     const state = stateManager.loadState()
@@ -222,9 +274,19 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   let currentTaskId: string | null = null
   let currentIteration = 0
+  let isCleaningUp = false
 
   const cleanup = async () => {
+    if (isCleaningUp) {
+      return // Prevent multiple cleanup calls
+    }
+    isCleaningUp = true
     activeLogger.warn('\nReceived interrupt signal. Saving state...')
+
+    // Stop orphan watch if running
+    if (monitor) {
+      monitor.stopOrphanWatch()
+    }
 
     // Clean up processes (kills current + orphans)
     await cliExecutor.cleanup().catch(err => {
@@ -289,32 +351,59 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   await activePlugins.runHook('onLoopStart', namespace)
 
-  activeLogger.info('Loopwork Starting')
-  activeLogger.info('─────────────────────────────────────')
-  activeLogger.info(`Backend:        ${backend.name}`)
-  if (config.backend.type === 'github') {
-    activeLogger.info(`Repo:           ${config.backend.repo || '(current)'}`)
+  // Display startup configuration
+  if (isJsonMode) {
+    emitJsonEvent('info', {
+      namespace,
+      backend: backend.name,
+      backendConfig: config.backend.type === 'github'
+        ? { repo: config.backend.repo || '(current)' }
+        : { tasksFile: config.backend.tasksFile },
+      feature: config.feature || 'all',
+      maxIterations: config.maxIterations,
+      timeout: config.timeout,
+      cli: config.cli,
+      parallel: config.parallel > 1 ? config.parallel : false,
+      parallelFailureMode: config.parallel > 1 ? config.parallelFailureMode : undefined,
+      sessionId: config.sessionId,
+      outputDir: config.outputDir,
+      dryRun: config.dryRun,
+    }, activeLogger)
   } else {
-    activeLogger.info(`Tasks File:     ${config.backend.tasksFile}`)
+    activeLogger.raw('')
+    const startupBanner = new Banner('Loopwork Starting')
+    startupBanner.addRow('Backend', backend.name)
+    if (config.backend.type === 'github') {
+      startupBanner.addRow('Repo', config.backend.repo || '(current)')
+    } else {
+      startupBanner.addRow('Tasks File', config.backend.tasksFile)
+    }
+    startupBanner.addRow('Feature', config.feature || 'all')
+    startupBanner.addRow('Max Iterations', config.maxIterations.toString())
+    startupBanner.addRow('Timeout', `${config.timeout}s per task`)
+    startupBanner.addRow('CLI', config.cli)
+    startupBanner.addRow('Parallel', config.parallel > 1 ? `${config.parallel} workers` : 'off (sequential)')
+    if (config.parallel > 1) {
+      startupBanner.addRow('Failure Mode', config.parallelFailureMode)
+    }
+    startupBanner.addRow('Session ID', config.sessionId)
+    startupBanner.addRow('Output Dir', config.outputDir)
+    startupBanner.addRow('Dry Run', config.dryRun.toString())
+    activeLogger.raw(startupBanner.render())
+    activeLogger.raw('')
   }
-  activeLogger.info(`Feature:        ${config.feature || 'all'}`)
-  activeLogger.info(`Max Iterations: ${config.maxIterations}`)
-  activeLogger.info(`Timeout:        ${config.timeout}s per task`)
-  activeLogger.info(`CLI:            ${config.cli}`)
-  activeLogger.info(`Parallel:       ${config.parallel > 1 ? `${config.parallel} workers` : 'off (sequential)'}`)
-  if (config.parallel > 1) {
-    activeLogger.info(`Failure Mode:   ${config.parallelFailureMode}`)
-  }
-  activeLogger.info(`Session ID:     ${config.sessionId}`)
-  activeLogger.info(`Output Dir:     ${config.outputDir}`)
-  activeLogger.info(`Dry Run:        ${config.dryRun}`)
-  activeLogger.info('─────────────────────────────────────')
 
   let pendingCount = 0
   try {
-    activeLogger.startSpinner('Fetching pending tasks...')
+    if (!isJsonMode) {
+      activeLogger.startSpinner('Fetching pending tasks...')
+    }
     pendingCount = await backend.countPending({ feature: config.feature })
-    activeLogger.stopSpinner(`Found ${pendingCount} pending tasks`)
+    if (isJsonMode) {
+      emitJsonEvent('info', { pendingTasks: pendingCount }, activeLogger)
+    } else {
+      activeLogger.stopSpinner(`Found ${pendingCount} pending tasks`)
+    }
   } catch (error: unknown) {
     const suggestions: string[] = ['Check backend connectivity and permissions']
     if (config.backend.type === 'json') {
@@ -333,11 +422,15 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   }
 
   if (pendingCount === 0) {
-    activeLogger.info('No pending tasks found')
-    runtimeProcess.stdout.write('\n')
-    activeLogger.info('💡 Create tasks in .specs/tasks/tasks.json')
-    activeLogger.info('💡 Or run: npx loopwork task-new')
-    runtimeProcess.stdout.write('\n')
+    if (isJsonMode) {
+      emitJsonEvent('info', { message: 'No pending tasks found' }, activeLogger)
+    } else {
+      activeLogger.info('No pending tasks found')
+      activeLogger.raw('')
+      activeLogger.info('💡 Create tasks in .specs/tasks/tasks.json')
+      activeLogger.info('💡 Or run: npx loopwork task-new')
+      activeLogger.raw('')
+    }
     stateManager.releaseLock()
     return
   }
@@ -353,7 +446,8 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       activePlugins,
       activeLogger,
       handleLoopworkError,
-      runtimeProcess
+      runtimeProcess,
+      isJsonMode
     )
     return
   }
@@ -424,18 +518,30 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       break
     }
 
-    runtimeProcess.stdout.write('\n')
-    activeLogger.info('═══════════════════════════════════════════════════════════════')
-    activeLogger.info(`Iteration ${iteration} / ${config.maxIterations}`)
-    activeLogger.info(`Task:     ${task.id}`)
-    activeLogger.info(`Title:    ${task.title}`)
-    activeLogger.info(`Priority: ${task.priority}`)
-    activeLogger.info(`Feature:  ${task.feature || 'none'}`)
-    if (task.metadata?.url) {
-      activeLogger.info(`URL:      ${task.metadata.url}`)
+    if (isJsonMode) {
+      emitJsonEvent('progress', {
+        iteration,
+        maxIterations: config.maxIterations,
+        taskId: task.id,
+        taskTitle: task.title,
+        taskPriority: task.priority,
+        taskFeature: task.feature || 'none',
+        taskUrl: task.metadata?.url,
+      }, activeLogger)
+    } else {
+      activeLogger.raw('')
+      activeLogger.raw(separator('heavy'))
+      activeLogger.info(`Iteration ${iteration} / ${config.maxIterations}`)
+      activeLogger.info(`Task:     ${task.id}`)
+      activeLogger.info(`Title:    ${task.title}`)
+      activeLogger.info(`Priority: ${task.priority}`)
+      activeLogger.info(`Feature:  ${task.feature || 'none'}`)
+      if (task.metadata?.url) {
+        activeLogger.info(`URL:      ${task.metadata.url}`)
+      }
+      activeLogger.raw(separator('heavy'))
+      activeLogger.raw('')
     }
-    activeLogger.info('═══════════════════════════════════════════════════════════════')
-    runtimeProcess.stdout.write('\n')
 
     currentTaskId = task.id
     currentIteration = iteration
@@ -512,6 +618,14 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
             'You may need to manually mark the task as completed'
           ]
         ))
+        if (isJsonMode) {
+          emitJsonEvent('error', {
+            taskId: task.id,
+            iteration,
+            error: 'Failed to mark task as completed in backend',
+            message: (error as Error).message,
+          }, activeLogger)
+        }
         continue
       }
 
@@ -528,13 +642,35 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       tasksCompleted++
       consecutiveFailures = 0
       retryCount.delete(task.id)
-      activeLogger.success(`Task ${task.id} completed!`)
+
+      if (isJsonMode) {
+        emitJsonEvent('success', {
+          taskId: task.id,
+          iteration,
+          duration,
+          completed: true,
+          tasksCompleted,
+        }, activeLogger)
+      } else {
+        activeLogger.success(`Task ${task.id} completed!`)
+      }
     } else {
       const currentRetries = retryCount.get(task.id) || 0
 
       if (currentRetries < maxRetries - 1) {
         retryCount.set(task.id, currentRetries + 1)
-        activeLogger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
+
+        if (isJsonMode) {
+          emitJsonEvent('warn', {
+            taskId: task.id,
+            iteration,
+            retry: currentRetries + 2,
+            maxRetries,
+            message: 'Task failed, retrying',
+          }, activeLogger)
+        } else {
+          activeLogger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
+        }
 
         try {
           await backend.resetToPending(task.id)
@@ -546,6 +682,14 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
               'The task may need manual intervention'
             ]
           ))
+          if (isJsonMode) {
+            emitJsonEvent('error', {
+              taskId: task.id,
+              iteration,
+              error: 'Failed to reset task to pending',
+              message: (error as Error).message,
+            }, activeLogger)
+          }
           continue
         }
 
@@ -583,9 +727,6 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         consecutiveFailures++
         retryCount.delete(task.id)
 
-        runtimeProcess.stdout.write('\n')
-        activeLogger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
-        
         let lastOutput = ''
         try {
           if (fs.existsSync(outputFile)) {
@@ -595,53 +736,95 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           }
         } catch {}
 
-        if (lastOutput) {
-          runtimeProcess.stdout.write('\n')
-          runtimeProcess.stdout.write(chalk.gray('Last 10 lines of output:') + '\n')
-          runtimeProcess.stdout.write(chalk.gray('─────────────────────────────────────') + '\n')
-          runtimeProcess.stdout.write(chalk.dim(lastOutput) + '\n')
-          runtimeProcess.stdout.write(chalk.gray('─────────────────────────────────────') + '\n')
-          runtimeProcess.stdout.write('\n')
-        }
+        if (isJsonMode) {
+          emitJsonEvent('error', {
+            taskId: task.id,
+            iteration,
+            failed: true,
+            attempts: maxRetries,
+            tasksFailed,
+            consecutiveFailures,
+            lastOutput: lastOutput.substring(0, 500),
+          }, activeLogger)
+        } else {
+          activeLogger.raw('')
+          activeLogger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
 
-        const prdPath = task.metadata?.prdFile || `.specs/tasks/${task.id}.md`
-        activeLogger.info(`💡 Check task requirements in ${prdPath}`)
-        activeLogger.info(`💡 Check full output: ${outputFile}`)
-        activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
-        activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
-        runtimeProcess.stdout.write('\n')
+          if (lastOutput) {
+            activeLogger.raw('')
+            activeLogger.raw(chalk.gray('Last 10 lines of output:'))
+            activeLogger.raw(chalk.gray('─────────────────────────────────────'))
+            activeLogger.raw(chalk.dim(lastOutput))
+            activeLogger.raw(chalk.gray('─────────────────────────────────────'))
+            activeLogger.raw('')
+          }
+
+          const prdPath = task.metadata?.prdFile || `.specs/tasks/${task.id}.md`
+          activeLogger.info(`💡 Check task requirements in ${prdPath}`)
+          activeLogger.info(`💡 Check full output: ${outputFile}`)
+          activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
+          activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
+          activeLogger.raw('')
+        }
       }
     }
 
     await new Promise(r => setTimeout(r, config.taskDelay ?? 2000))
   }
 
-  runtimeProcess.stdout.write('\n')
-  activeLogger.info('═══════════════════════════════════════════════════════════════')
-  activeLogger.info('Loopwork Complete')
-  activeLogger.info('═══════════════════════════════════════════════════════════════')
-  activeLogger.info(`Backend:         ${backend.name}`)
-  activeLogger.info(`Iterations:      ${iteration}`)
-  activeLogger.info(`Tasks Completed: ${tasksCompleted}`)
-  activeLogger.info(`Tasks Failed:    ${tasksFailed}`)
-  activeLogger.info(`Session ID:      ${config.sessionId}`)
-  activeLogger.info(`Output Dir:      ${config.outputDir}`)
-  runtimeProcess.stdout.write('\n')
+  const loopDuration = Date.now() - (stateManager.loadState()?.startedAt || Date.now())
 
   let finalPending = 0
   try {
     finalPending = await backend.countPending({ feature: config.feature })
-    activeLogger.info(`Final Status: ${finalPending} pending`)
+    if (!isJsonMode) {
+      activeLogger.info(`Final Status: ${finalPending} pending`)
+    }
   } catch (error: unknown) {
-    activeLogger.warn(`Could not get final task count: ${error.message}`)
+    if (!isJsonMode) {
+      activeLogger.warn(`Could not get final task count: ${error.message}`)
+    }
   }
 
   if (finalPending === 0) {
-    activeLogger.success('All tasks completed!')
+    if (!isJsonMode) {
+      activeLogger.success('All tasks completed!')
+    }
     stateManager.clearState()
   }
 
-  const loopDuration = Date.now() - (stateManager.loadState()?.startedAt || Date.now())
+  if (isJsonMode) {
+    // Emit final result JSON
+    emitJsonEvent('result', {
+      summary: {
+        totalIterations: iteration,
+        tasksCompleted,
+        tasksFailed,
+        tasksSkipped: 0,
+        duration: Math.floor(loopDuration / 1000),
+        pendingTasks: finalPending,
+      },
+      sessionId: config.sessionId,
+      outputDir: config.outputDir,
+    }, activeLogger)
+  } else {
+    const summary = new CompletionSummary('Loopwork Complete')
+    summary.setStats({
+      completed: tasksCompleted,
+      failed: tasksFailed,
+      skipped: 0
+    })
+    summary.setDuration(loopDuration)
+    summary.addNextSteps([
+      `View output: ${config.outputDir}`,
+      `Session: ${config.sessionId}`
+    ])
+
+    activeLogger.raw('')
+    activeLogger.raw(summary.render())
+    activeLogger.raw('')
+  }
+
   await activePlugins.runHook('onLoopEnd', namespace, {
     completed: tasksCompleted,
     failed: tasksFailed,
@@ -663,7 +846,8 @@ async function runParallel(
   activePlugins: typeof plugins,
   activeLogger: RunLogger,
   handleLoopworkError: typeof handleError,
-  runtimeProcess: NodeJS.Process
+  runtimeProcess: NodeJS.Process,
+  isJsonMode: boolean = false
 ): Promise<void> {
   const parallelRunner = new ParallelRunner({
     config,
@@ -683,7 +867,12 @@ async function runParallel(
   })
 
   // Handle interrupt signals
+  let isCleaningUp = false
   const parallelCleanup = async () => {
+    if (isCleaningUp) {
+      return // Prevent multiple cleanup calls
+    }
+    isCleaningUp = true
     activeLogger.warn('\nReceived interrupt signal. Saving parallel state...')
     parallelRunner.abort()
 
@@ -726,35 +915,59 @@ async function runParallel(
   try {
     const stats = await parallelRunner.run({ feature: config.feature })
 
-    runtimeProcess.stdout.write('\n')
-    activeLogger.info('═══════════════════════════════════════════════════════════════')
-    activeLogger.info('Loopwork Complete (Parallel Mode)')
-    activeLogger.info('═══════════════════════════════════════════════════════════════')
-    activeLogger.info(`Backend:         ${backend.name}`)
-    activeLogger.info(`Workers:         ${stats.workers}`)
-    activeLogger.info(`Tasks Completed: ${stats.completed}`)
-    activeLogger.info(`Tasks Failed:    ${stats.failed}`)
-    activeLogger.info(`Duration:        ${stats.duration.toFixed(1)}s`)
-    activeLogger.info(`Session ID:      ${config.sessionId}`)
-    activeLogger.info(`Output Dir:      ${config.outputDir}`)
-
-    if (stats.tasksPerWorker) {
-      activeLogger.info(`Tasks/Worker:    ${stats.tasksPerWorker.map((c, i) => `W${i}:${c}`).join(', ')}`)
-    }
-    runtimeProcess.stdout.write('\n')
-
     let finalPending = 0
     try {
       finalPending = await backend.countPending({ feature: config.feature })
-      activeLogger.info(`Final Status: ${finalPending} pending`)
+      if (!isJsonMode) {
+        activeLogger.info(`Final Status: ${finalPending} pending`)
+      }
     } catch (error: unknown) {
-      activeLogger.warn(`Could not get final task count: ${(error as Error).message}`)
+      if (!isJsonMode) {
+        activeLogger.warn(`Could not get final task count: ${(error as Error).message}`)
+      }
     }
 
     if (finalPending === 0) {
-      activeLogger.success('All tasks completed!')
+      if (!isJsonMode) {
+        activeLogger.success('All tasks completed!')
+      }
       stateManager.clearState()
       clearParallelState(config.projectRoot, config.namespace || 'default')
+    }
+
+    if (isJsonMode) {
+      // Emit final result JSON for parallel mode
+      emitJsonEvent('result', {
+        summary: {
+          totalIterations: 0, // Not tracked in parallel mode
+          tasksCompleted: stats.completed,
+          tasksFailed: stats.failed,
+          tasksSkipped: 0,
+          duration: Math.floor(stats.duration),
+          pendingTasks: finalPending,
+          workers: stats.workers,
+        },
+        sessionId: config.sessionId,
+        outputDir: config.outputDir,
+        mode: 'parallel',
+      }, activeLogger)
+    } else {
+      const parallelSummary = new CompletionSummary('Loopwork Complete (Parallel Mode)')
+      parallelSummary.setStats({
+        completed: stats.completed,
+        failed: stats.failed,
+        skipped: 0
+      })
+      parallelSummary.setDuration(stats.duration * 1000)
+      parallelSummary.addNextSteps([
+        `Workers: ${stats.workers}`,
+        `View output: ${config.outputDir}`,
+        `Session: ${config.sessionId}`
+      ])
+
+      activeLogger.raw('')
+      activeLogger.raw(parallelSummary.render())
+      activeLogger.raw('')
     }
 
     await activePlugins.runHook('onLoopEnd', namespace, stats)

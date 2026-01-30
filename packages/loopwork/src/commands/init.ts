@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { logger } from '../core/utils'
+import { logger, Banner, separator, CompletionSummary } from '../core/utils'
 import readline from 'readline'
 import packageJson from '../../package.json'
 
@@ -470,40 +470,40 @@ Implement the first feature
   const projectName = path.basename(runtimeProcess.cwd())
   await createReadme(projectName, aiTool, deps)
 
-  activeLogger.info('\n' + '='.repeat(60))
-  activeLogger.success('Loopwork initialization complete!')
-  activeLogger.info('='.repeat(60))
+  // Build next steps
+  const nextSteps: string[] = [
+    'Install loopwork: bun add loopwork'
+  ]
 
-  activeLogger.info('\nNext steps:')
-  activeLogger.info('1. Install loopwork: bun add loopwork')
-
-  // Generate plugin installation commands
   if (pluginPackages.length > 0) {
-    activeLogger.info('2. Install plugin packages:')
     const packageNames = pluginPackages.map(pkg => pkg.package).join(' ')
-    activeLogger.info(`   bun add ${packageNames}`)
+    nextSteps.push(`Install plugins: bun add ${packageNames}`)
   }
 
-  // Environment variables notice
   if (pluginConfigs.some(p => p.includes('withTelegram') || p.includes('withDiscord'))) {
-    const stepNum = pluginPackages.length > 0 ? '3' : '2'
-    activeLogger.info(`${stepNum}. Set environment variables for plugins:`)
+    let envVars = 'Set environment variables: '
+    const vars: string[] = []
     if (pluginConfigs.some(p => p.includes('withTelegram'))) {
-      activeLogger.info('   - TELEGRAM_BOT_TOKEN')
-      activeLogger.info('   - TELEGRAM_CHAT_ID')
+      vars.push('TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID')
     }
     if (pluginConfigs.some(p => p.includes('withDiscord'))) {
-      activeLogger.info('   - DISCORD_WEBHOOK_URL')
+      vars.push('DISCORD_WEBHOOK_URL')
     }
-    activeLogger.info(`${parseInt(stepNum) + 1}. Run loopwork: npx loopwork`)
-  } else {
-    const stepNum = pluginPackages.length > 0 ? '3' : '2'
-    activeLogger.info(`${stepNum}. Run loopwork: npx loopwork`)
+    nextSteps.push(envVars + vars.join(', '))
   }
 
+  nextSteps.push('Run loopwork: npx loopwork')
+
   if (backendType === 'json') {
-    activeLogger.info(`\nPRD templates available at: ${path.join(prdDir, 'templates')}`)
+    nextSteps.push(`View PRD templates: ${path.join(prdDir, 'templates')}`)
   }
+
+  const summary = new CompletionSummary('Initialization Complete')
+  summary.addNextSteps(nextSteps)
+
+  activeLogger.raw('')
+  activeLogger.raw(summary.render())
+  activeLogger.raw('')
 }
 
 /**

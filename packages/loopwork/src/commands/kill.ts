@@ -1,4 +1,4 @@
-import { logger } from '../core/utils'
+import { logger, Table, CompletionSummary } from '../core/utils'
 import { LoopworkMonitor } from '../monitor'
 import { findProjectRoot } from './shared/process-utils'
 import { LoopworkError } from '../core/errors'
@@ -64,7 +64,7 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
 
     if (orphans.length === 0) {
       if (options.json) {
-        console.log(JSON.stringify({ orphans: [], summary: { killed: 0, skipped: 0, failed: 0 } }, null, 2))
+        activeLogger.raw(JSON.stringify({ orphans: [], summary: { killed: 0, skipped: 0, failed: 0 } }, null, 2))
       } else {
         activeLogger.success('No orphan processes found')
       }
@@ -102,15 +102,12 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
         })),
       }
 
-      console.log(JSON.stringify(output, null, 2))
+      activeLogger.raw(JSON.stringify(output, null, 2))
       return
     }
 
     // Table output mode
-    activeLogger.info(`\nOrphan Processes Found:`)
-    console.log('┌───────┬─────────────────────────────────────────┬────────┬────────────┬─────────┐')
-    console.log('│  PID  │              Command                    │  Age   │   Status   │ Action  │')
-    console.log('├───────┼─────────────────────────────────────────┼────────┼────────────┼─────────┤')
+    activeLogger.info('\nOrphan Processes Found:')
 
     const killer = new OrphanKillerClass()
     const result = await killer.kill(orphans, {
@@ -118,11 +115,19 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       dryRun: options.dryRun,
     })
 
+    const table = new Table(['PID', 'Command', 'Age', 'Status', 'Action'], [
+      { width: 5, align: 'right' },
+      { width: 39, align: 'left' },
+      { width: 6, align: 'right' },
+      { width: 10, align: 'left' },
+      { width: 9, align: 'left' },
+    ])
+
     for (const orphan of orphans) {
-      const pid = orphan.pid.toString().padEnd(5)
-      const command = orphan.command.substring(0, 39).padEnd(39)
-      const age = formatAge(orphan.age).padEnd(6)
-      const status = orphan.classification.padEnd(10)
+      const pid = orphan.pid.toString()
+      const command = orphan.command.substring(0, 39)
+      const age = formatAge(orphan.age)
+      const status = orphan.classification
 
       let action: string
       if (result.killed.includes(orphan.pid)) {
@@ -132,36 +137,37 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       } else {
         action = 'failed'
       }
-      action = action.padEnd(7)
 
-      console.log(`│ ${pid} │ ${command} │ ${age} │ ${status} │ ${action} │`)
+      table.addRow([pid, command, age, status, action])
     }
 
-    console.log('└───────┴─────────────────────────────────────────┴────────┴────────────┴─────────┘')
+    activeLogger.raw(table.render())
 
-    // Summary
-    const _confirmedCount = orphans.filter(o => o.classification === 'confirmed').length
+    // Summary using CompletionSummary
+    const confirmedCount = orphans.filter(o => o.classification === 'confirmed').length
     const suspectedCount = orphans.filter(o => o.classification === 'suspected').length
 
-    let summary = `\nSummary: `
+    const completionSummary = new CompletionSummary('Orphan Cleanup Summary')
+    completionSummary.setStats({
+      completed: result.killed.length,
+      failed: result.failed.length,
+      skipped: result.skipped.length
+    })
+
+    const nextSteps: string[] = []
     if (options.dryRun) {
-      summary += `Would kill ${result.killed.length} orphan(s)`
-    } else {
-      summary += `Killed ${result.killed.length} orphan(s)`
+      nextSteps.push('Run without --dry-run to kill orphans')
     }
-
-    if (result.skipped.length > 0) {
-      summary += `, skipped ${result.skipped.length}`
-    }
-    if (result.failed.length > 0) {
-      summary += `, failed ${result.failed.length}`
-    }
-
-    activeLogger.info(summary)
-
     if (suspectedCount > 0 && !options.force && !options.dryRun) {
-      activeLogger.info(`\nTip: Use --force to also kill ${suspectedCount} suspected orphan(s)`)
+      nextSteps.push(`Use --force to also kill ${suspectedCount} suspected orphan(s)`)
     }
+    if (nextSteps.length > 0) {
+      completionSummary.addNextSteps(nextSteps)
+    }
+
+    activeLogger.raw('')
+    activeLogger.raw(completionSummary.render())
+    activeLogger.raw('')
 
     return
   }

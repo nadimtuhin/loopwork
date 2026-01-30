@@ -35,7 +35,6 @@ describe('CLI Commands E2E', () => {
   let tempDir: string
   let stateDir: string
   let logsDir: string
-  let originalCwd: string
 
   // Shared mock state
   let runningProcesses: Array<{
@@ -52,13 +51,12 @@ describe('CLI Commands E2E', () => {
     // Create isolated temp directory
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-e2e-cli-'))
     stateDir = path.join(tempDir, '.loopwork-state')
-    logsDir = path.join(tempDir, 'loopwork-runs')
-    originalCwd = process.cwd()
+    logsDir = path.join(tempDir, '.loopwork/runs')
 
     // Create directory structure
     fs.mkdirSync(stateDir, { recursive: true })
     fs.mkdirSync(logsDir, { recursive: true })
-    fs.mkdirSync(path.join(tempDir, 'loopwork-runs', 'default', 'monitor-logs'), { recursive: true })
+    fs.mkdirSync(path.join(tempDir, '.loopwork/runs', 'default', 'monitor-logs'), { recursive: true })
 
     // Create package.json for project detection
     fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify({ name: 'test-project' }))
@@ -66,15 +64,9 @@ describe('CLI Commands E2E', () => {
     // Reset shared state
     runningProcesses = []
     processCounter = 10000
-
-    // Change to test directory
-    process.chdir(tempDir)
   })
 
   afterEach(() => {
-    // Restore working directory
-    process.chdir(originalCwd)
-
     // Cleanup temp directory
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true })
@@ -101,7 +93,7 @@ describe('CLI Commands E2E', () => {
 
         // Create log file
         const sessionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-        const sessionDir = path.join(this.projectRoot, 'loopwork-runs', namespace, sessionTimestamp)
+        const sessionDir = path.join(this.projectRoot, '.loopwork/runs', namespace, sessionTimestamp)
         fs.mkdirSync(sessionDir, { recursive: true })
         fs.mkdirSync(path.join(sessionDir, 'logs'), { recursive: true })
 
@@ -155,7 +147,7 @@ describe('CLI Commands E2E', () => {
     }
   }
 
-  function createMockLogger() {
+  function createMockLogger(proc?: any) {
     const calls: any[] = []
     return {
       info: mock((msg: string) => calls.push({ level: 'info', msg })),
@@ -164,6 +156,12 @@ describe('CLI Commands E2E', () => {
       error: mock((msg: string) => calls.push({ level: 'error', msg })),
       debug: mock((msg: string) => calls.push({ level: 'debug', msg })),
       update: mock((msg: string) => calls.push({ level: 'update', msg })),
+      raw: mock((msg: string) => {
+        calls.push({ level: 'raw', msg })
+        if (proc?.stdout?.write) {
+          proc.stdout.write(msg + '\n')
+        }
+      }),
       _calls: calls,
     }
   }
@@ -504,7 +502,7 @@ describe('CLI Commands E2E', () => {
       fs.appendFileSync(logFile, '[2025-01-30T12:01:00] SUCCESS: Task completed\n')
 
       const proc = createMockProcess()
-      const logger = createMockLogger()
+      const logger = createMockLogger(proc)
 
       await logs(
         { namespace: 'log-test', lines: 10 },
@@ -524,14 +522,14 @@ describe('CLI Commands E2E', () => {
     test('shows logs for stopped namespace', async () => {
       // Create session logs manually
       const sessionTimestamp = '2025-01-30T12-00-00'
-      const sessionDir = path.join(tempDir, 'loopwork-runs', 'stopped-test', sessionTimestamp)
+      const sessionDir = path.join(tempDir, '.loopwork/runs', 'stopped-test', sessionTimestamp)
       fs.mkdirSync(sessionDir, { recursive: true })
 
       const logFile = path.join(sessionDir, 'loopwork.log')
       fs.writeFileSync(logFile, '[2025-01-30T12:00:00] INFO: Previous run\n')
 
       const proc = createMockProcess()
-      const logger = createMockLogger()
+      const logger = createMockLogger(proc)
 
       await logs(
         { namespace: 'stopped-test', lines: 10 },
@@ -572,7 +570,7 @@ describe('CLI Commands E2E', () => {
     test('shows task-specific logs with --task flag', async () => {
       // Create session with task logs
       const sessionTimestamp = '2025-01-30T12-00-00'
-      const sessionDir = path.join(tempDir, 'loopwork-runs', 'task-logs', sessionTimestamp)
+      const sessionDir = path.join(tempDir, '.loopwork/runs', 'task-logs', sessionTimestamp)
       const logsDir = path.join(sessionDir, 'logs')
       fs.mkdirSync(logsDir, { recursive: true })
 
@@ -585,7 +583,7 @@ describe('CLI Commands E2E', () => {
       fs.writeFileSync(outputFile, 'Bug fixed successfully')
 
       const proc = createMockProcess()
-      const logger = createMockLogger()
+      const logger = createMockLogger(proc)
 
       await logs(
         { namespace: 'task-logs', task: '1' },
@@ -652,10 +650,12 @@ describe('CLI Commands E2E', () => {
       await monitor.start('status-test-2', [])
 
       const proc = createMockProcess()
+      const logger = createMockLogger(proc)
 
       await monitorStatus({
         MonitorClass: createMockMonitor() as any,
         findProjectRoot: () => tempDir,
+        logger: logger as any,
         process: proc as any,
       })
 
@@ -674,12 +674,14 @@ describe('CLI Commands E2E', () => {
       fs.appendFileSync(logFile, '[2025-01-30T12:00:00] Monitor log entry\n')
 
       const proc = createMockProcess()
+      const logger = createMockLogger(proc)
 
       await monitorLogs(
         { namespace: 'monitor-logs-test', lines: 10 },
         {
           MonitorClass: createMockMonitor() as any,
           findProjectRoot: () => tempDir,
+          logger: logger as any,
           process: proc as any,
         }
       )
@@ -695,8 +697,8 @@ describe('CLI Commands E2E', () => {
 
   describe('complete CLI workflows', () => {
     test('full lifecycle: start → logs → restart → kill', async () => {
-      const logger = createMockLogger()
       const proc = createMockProcess()
+      const logger = createMockLogger(proc)
 
       // 1. Start daemon
       await start(

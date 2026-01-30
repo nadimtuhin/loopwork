@@ -221,7 +221,7 @@ describe('Log Utils', () => {
     })
 
     test('finds latest session by timestamp', () => {
-      const runsDir = path.join(testDir, 'loopwork-runs', 'test')
+      const runsDir = path.join(testDir, '.loopwork/runs', 'test')
       fs.mkdirSync(path.join(runsDir, '2025-01-20T10-00-00'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, '2025-01-25T15-30-00'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, '2025-01-22T08-00-00'), { recursive: true })
@@ -234,7 +234,7 @@ describe('Log Utils', () => {
     })
 
     test('ignores monitor-logs directory', () => {
-      const runsDir = path.join(testDir, 'loopwork-runs', 'test')
+      const runsDir = path.join(testDir, '.loopwork/runs', 'test')
       fs.mkdirSync(path.join(runsDir, 'monitor-logs'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, '2025-01-20T10-00-00'), { recursive: true })
 
@@ -326,7 +326,7 @@ describe('Log Utils', () => {
     })
 
     test('returns sessions sorted by date descending', () => {
-      const runsDir = path.join(testDir, 'loopwork-runs', 'multi')
+      const runsDir = path.join(testDir, '.loopwork/runs', 'multi')
       fs.mkdirSync(path.join(runsDir, '2025-01-10T10-00-00'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, '2025-01-15T10-00-00'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, '2025-01-12T10-00-00'), { recursive: true })

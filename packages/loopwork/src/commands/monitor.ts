@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { LoopworkMonitor } from '../monitor'
-import { logger } from '../core/utils'
+import { logger, Table, separator } from '../core/utils'
 import { LoopworkError, handleError } from '../core/errors'
 import {
   findLatestSession,
@@ -57,6 +57,7 @@ function resolveDeps(deps: MonitorDeps = {}) {
     process: deps.process ?? process,
   }
 }
+
 
 /**
  * Monitor start subcommand - start a loop in daemon mode
@@ -161,37 +162,59 @@ export async function monitorStatus(deps: MonitorDeps = {}): Promise<void> {
     MonitorClass,
     findProjectRoot,
     formatUptime,
-    process: runtimeProcess,
+    logger: activeLogger = logger,
   } = resolveDeps(deps)
   const projectRoot = findProjectRoot()
   const monitor = new MonitorClass(projectRoot)
   const { running, namespaces } = monitor.getStatus()
 
-  runtimeProcess.stdout.write(chalk.bold('\nLoopwork Monitor Status') + '\n')
-  runtimeProcess.stdout.write(chalk.gray('-'.repeat(50)) + '\n')
+  activeLogger.raw('')
+  activeLogger.raw(chalk.bold('Loopwork Monitor Status'))
+  activeLogger.raw(separator('light'))
 
   if (running.length === 0) {
-    runtimeProcess.stdout.write(chalk.gray('No loops currently running\n') + '\n')
+    activeLogger.raw(chalk.gray('No loops currently running'))
+    activeLogger.raw('')
   } else {
-    runtimeProcess.stdout.write(chalk.bold(`\nRunning (${running.length}):`) + '\n')
+    activeLogger.raw('')
+    activeLogger.raw(chalk.bold(`Running (${running.length}):`))
+    const table = new Table(['Namespace', 'PID', 'Uptime', 'Log File'], [
+      { align: 'left' },
+      { align: 'right' },
+      { align: 'right' },
+      { align: 'left' },
+    ])
+
     for (const proc of running) {
       const uptime = formatUptime(proc.startedAt)
-      runtimeProcess.stdout.write(`  ${chalk.green('\u25cf')} ${chalk.bold(proc.namespace)}\n`)
-      runtimeProcess.stdout.write(`    PID: ${proc.pid} | Uptime: ${uptime}\n`)
-      runtimeProcess.stdout.write(`    Log: ${proc.logFile}\n`)
+      table.addRow([
+        chalk.bold(proc.namespace),
+        proc.pid.toString(),
+        uptime,
+        proc.logFile,
+      ])
     }
+    activeLogger.raw(table.render())
   }
 
   if (namespaces.length > 0) {
-    runtimeProcess.stdout.write(chalk.bold('\nAll namespaces:') + '\n')
+    activeLogger.raw('')
+    activeLogger.raw(chalk.bold('All Namespaces:'))
+    const table = new Table(['', 'Namespace', 'Last Run'], [
+      { align: 'center' },
+      { align: 'left' },
+      { align: 'left' },
+    ])
+
     for (const ns of namespaces) {
       const icon = ns.status === 'running' ? chalk.green('\u25cf') : chalk.gray('\u25cb')
-      const lastRunStr = ns.lastRun ? chalk.gray(`(last: ${ns.lastRun})`) : ''
-      runtimeProcess.stdout.write(`  ${icon} ${ns.name} ${lastRunStr}\n`)
+      const lastRunDisplay = ns.lastRun ? chalk.gray(ns.lastRun) : chalk.gray('-')
+      table.addRow([icon, ns.name, lastRunDisplay])
     }
+    activeLogger.raw(table.render())
   }
 
-  runtimeProcess.stdout.write('\n')
+  activeLogger.raw('')
 }
 
 /**
@@ -205,6 +228,7 @@ export async function monitorLogs(options: MonitorLogsOptions, deps: MonitorDeps
     handleError,
     LoopworkErrorClass,
     logUtils,
+    logger: activeLogger = logger,
     process: runtimeProcess,
   } = resolveDeps(deps)
   try {
@@ -221,18 +245,18 @@ export async function monitorLogs(options: MonitorLogsOptions, deps: MonitorDeps
 
     if (proc) {
       logFile = proc.logFile
-      runtimeProcess.stdout.write(chalk.gray(`Namespace: ${namespace} (running)`) + '\n')
-      runtimeProcess.stdout.write(chalk.gray(`Uptime: ${formatUptime(proc.startedAt)}`) + '\n')
-      runtimeProcess.stdout.write(chalk.gray(`Log: ${logFile}`) + '\n')
+      activeLogger.info(`Namespace: ${namespace} (running)`)
+      activeLogger.info(`Uptime: ${formatUptime(proc.startedAt)}`)
+      activeLogger.info(`Log: ${logFile}`)
     } else {
       // Find latest session
       const session = logUtils.findLatestSession(projectRoot, namespace)
       if (session) {
         logFile = logUtils.getMainLogFile(session.fullPath)
-        runtimeProcess.stdout.write(chalk.gray(`Namespace: ${namespace} (stopped)`) + '\n')
-        runtimeProcess.stdout.write(chalk.gray(`Last run: ${session.timestamp}`) + '\n')
+        activeLogger.info(`Namespace: ${namespace} (stopped)`)
+        activeLogger.info(`Last run: ${session.timestamp}`)
         if (logFile) {
-          runtimeProcess.stdout.write(chalk.gray(`Log: ${logFile}`) + '\n')
+          activeLogger.info(`Log: ${logFile}`)
         }
       }
     }
@@ -248,29 +272,30 @@ export async function monitorLogs(options: MonitorLogsOptions, deps: MonitorDeps
       )
     }
 
-    runtimeProcess.stdout.write('\n')
+    activeLogger.raw('')
 
     if (options.follow) {
-      runtimeProcess.stdout.write(chalk.gray('(Press Ctrl+C to stop)\n') + '\n')
+      activeLogger.info('(Press Ctrl+C to stop)')
+      activeLogger.raw('')
 
       // Show initial lines
       const initial = logUtils.readLastLines(logFile, lines)
       initial.forEach(line => {
         if (line.trim()) {
-          runtimeProcess.stdout.write(logUtils.formatLogLine(line))
+          activeLogger.raw(logUtils.formatLogLine(line))
         }
       })
 
       // Start tailing
       const { stop } = logUtils.tailLogs(logFile, {
         onLine: (line) => {
-          runtimeProcess.stdout.write(logUtils.formatLogLine(line))
+          activeLogger.raw(logUtils.formatLogLine(line))
         },
       })
 
       runtimeProcess.on('SIGINT', () => {
         stop()
-        runtimeProcess.stdout.write('\n')
+        activeLogger.raw('')
         runtimeProcess.exit(0)
       })
 
@@ -281,7 +306,7 @@ export async function monitorLogs(options: MonitorLogsOptions, deps: MonitorDeps
       const logLines = logUtils.readLastLines(logFile, lines)
       logLines.forEach(line => {
         if (line.trim()) {
-          runtimeProcess.stdout.write(logUtils.formatLogLine(line))
+          activeLogger.raw(logUtils.formatLogLine(line))
         }
       })
     }

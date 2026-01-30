@@ -25,7 +25,7 @@ export interface StatusDeps {
 }
 
 export async function status(deps: StatusDeps): Promise<void> {
-  const { MonitorClass, process, fs, path, isProcessAlive, formatUptime, formatDuration, cwd, chalk, logger: activeLogger = logger, json: isJsonMode = false } = deps
+  const { MonitorClass, fs, path, isProcessAlive, formatUptime, formatDuration, cwd, chalk, logger: activeLogger = logger, json: isJsonMode = false } = deps
 
   const monitor = new MonitorClass()
   const { running: monitorRunning, namespaces } = monitor.getStatus()

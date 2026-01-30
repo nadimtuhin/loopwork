@@ -41,7 +41,7 @@ describe('Dashboard class implementation', () => {
       }
       getStatus() {
         const running = this.getRunningProcesses()
-        const runsDir = path.join(this.projectRoot, 'loopwork-runs')
+        const runsDir = path.join(this.projectRoot, '.loopwork/runs')
         const namespaces: any[] = []
 
         if (fs.existsSync(runsDir)) {
@@ -164,7 +164,7 @@ describe('Dashboard class implementation', () => {
 
   describe('activity parsing', () => {
     test('identifies completed tasks', () => {
-      const monitorLogsDir = path.join(testRoot, 'loopwork-runs/default/monitor-logs')
+      const monitorLogsDir = path.join(testRoot, '.loopwork/runs/default/monitor-logs')
       fs.mkdirSync(monitorLogsDir, { recursive: true })
 
       const timestamp = new Date().toLocaleTimeString()
@@ -179,7 +179,7 @@ describe('Dashboard class implementation', () => {
     })
 
     test('identifies failed tasks', () => {
-      const monitorLogsDir = path.join(testRoot, 'loopwork-runs/default/monitor-logs')
+      const monitorLogsDir = path.join(testRoot, '.loopwork/runs/default/monitor-logs')
       fs.mkdirSync(monitorLogsDir, { recursive: true })
 
       const timestamp = new Date().toLocaleTimeString()
@@ -194,7 +194,7 @@ describe('Dashboard class implementation', () => {
     })
 
     test('identifies iteration progress', () => {
-      const monitorLogsDir = path.join(testRoot, 'loopwork-runs/default/monitor-logs')
+      const monitorLogsDir = path.join(testRoot, '.loopwork/runs/default/monitor-logs')
       fs.mkdirSync(monitorLogsDir, { recursive: true })
 
       const timestamp = new Date().toLocaleTimeString()
@@ -210,7 +210,7 @@ describe('Dashboard class implementation', () => {
     })
 
     test('limits activity to 10 items', () => {
-      const monitorLogsDir = path.join(testRoot, 'loopwork-runs/default/monitor-logs')
+      const monitorLogsDir = path.join(testRoot, '.loopwork/runs/default/monitor-logs')
       fs.mkdirSync(monitorLogsDir, { recursive: true })
 
       const timestamp = new Date().toLocaleTimeString()
@@ -229,7 +229,7 @@ describe('Dashboard class implementation', () => {
 
   describe('namespace statistics', () => {
     test('counts completed tasks from logs', () => {
-      const logsDir = path.join(testRoot, 'loopwork-runs/default/run-1/logs')
+      const logsDir = path.join(testRoot, '.loopwork/runs/default/run-1/logs')
       fs.mkdirSync(logsDir, { recursive: true })
       fs.writeFileSync(path.join(logsDir, 'task-1-completed.log'), 'done')
       fs.writeFileSync(path.join(logsDir, 'task-2-completed.log'), 'done')
@@ -241,7 +241,7 @@ describe('Dashboard class implementation', () => {
     })
 
     test('counts failed tasks from logs', () => {
-      const logsDir = path.join(testRoot, 'loopwork-runs/default/run-1/logs')
+      const logsDir = path.join(testRoot, '.loopwork/runs/default/run-1/logs')
       fs.mkdirSync(logsDir, { recursive: true })
       fs.writeFileSync(path.join(logsDir, 'task-1-failed.log'), 'error')
 

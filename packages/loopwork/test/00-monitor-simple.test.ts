@@ -104,7 +104,7 @@ describe('LoopworkMonitor Simple Integration', () => {
     })
 
     test('getLogs reads from log file', () => {
-      const logsDir = path.join(tempDir, 'loopwork-runs', 'test', 'monitor-logs')
+      const logsDir = path.join(tempDir, '.loopwork/runs', 'test', 'monitor-logs')
       fs.mkdirSync(logsDir, { recursive: true })
       const logFile = path.join(logsDir, 'test.log')
       fs.writeFileSync(logFile, 'Line 1\nLine 2\nLine 3\n')
@@ -131,7 +131,7 @@ describe('LoopworkMonitor Simple Integration', () => {
     })
 
     test('getLogs limits line count', () => {
-      const logsDir = path.join(tempDir, 'loopwork-runs', 'test', 'monitor-logs')
+      const logsDir = path.join(tempDir, '.loopwork/runs', 'test', 'monitor-logs')
       fs.mkdirSync(logsDir, { recursive: true })
       const logFile = path.join(logsDir, 'test.log')
       const manyLines = Array.from({ length: 100 }, (_, i) => `Line ${i}`).join('\n')
@@ -165,7 +165,7 @@ describe('LoopworkMonitor Simple Integration', () => {
     })
 
     test('getStatus lists namespaces', () => {
-      const runsDir = path.join(tempDir, 'loopwork-runs')
+      const runsDir = path.join(tempDir, '.loopwork/runs')
       fs.mkdirSync(path.join(runsDir, 'namespace-1'), { recursive: true })
       fs.mkdirSync(path.join(runsDir, 'namespace-2'), { recursive: true })
 
@@ -177,7 +177,7 @@ describe('LoopworkMonitor Simple Integration', () => {
     })
 
     test('getStatus shows namespace status', () => {
-      const runsDir = path.join(tempDir, 'loopwork-runs')
+      const runsDir = path.join(tempDir, '.loopwork/runs')
       fs.mkdirSync(path.join(runsDir, 'stopped-ns'), { recursive: true })
 
       const status = monitor.getStatus()

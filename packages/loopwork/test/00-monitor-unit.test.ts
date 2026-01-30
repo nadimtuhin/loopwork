@@ -75,8 +75,8 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getStatus discovers namespaces from directories', () => {
-    const ns1Dir = path.join(tempDir, 'loopwork-runs', 'feature-a', '2024-01-01T00-00-00')
-    const ns2Dir = path.join(tempDir, 'loopwork-runs', 'feature-b', '2024-01-02T00-00-00')
+    const ns1Dir = path.join(tempDir, '.loopwork/runs', 'feature-a', '2024-01-01T00-00-00')
+    const ns2Dir = path.join(tempDir, '.loopwork/runs', 'feature-b', '2024-01-02T00-00-00')
     fs.mkdirSync(ns1Dir, { recursive: true })
     fs.mkdirSync(ns2Dir, { recursive: true })
 
@@ -91,7 +91,7 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getLogs reads from monitor-logs directory', () => {
-    const logsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', 'monitor-logs')
+    const logsDir = path.join(tempDir, '.loopwork/runs', 'test-ns', 'monitor-logs')
     fs.mkdirSync(logsDir, { recursive: true })
     fs.writeFileSync(path.join(logsDir, '2024-01-01.log'), 'Line 1\nLine 2\nLine 3')
 
@@ -232,7 +232,7 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getLogs limits lines returned', () => {
-    const logsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', 'monitor-logs')
+    const logsDir = path.join(tempDir, '.loopwork/runs', 'test-ns', 'monitor-logs')
     fs.mkdirSync(logsDir, { recursive: true })
     const lines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`).join('\n')
     fs.writeFileSync(path.join(logsDir, '2024-01-01.log'), lines)
@@ -242,7 +242,7 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getStatus shows running status correctly', () => {
-    const ns1Dir = path.join(tempDir, 'loopwork-runs', 'running-ns', '2024-01-01T00-00-00')
+    const ns1Dir = path.join(tempDir, '.loopwork/runs', 'running-ns', '2024-01-01T00-00-00')
     fs.mkdirSync(ns1Dir, { recursive: true })
 
     const stateDir = path.join(tempDir, '.loopwork')
@@ -265,8 +265,8 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getStatus filters out monitor-logs directory', () => {
-    const nsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', '2024-01-01T00-00-00')
-    const logsDir = path.join(tempDir, 'loopwork-runs', 'test-ns', 'monitor-logs')
+    const nsDir = path.join(tempDir, '.loopwork/runs', 'test-ns', '2024-01-01T00-00-00')
+    const logsDir = path.join(tempDir, '.loopwork/runs', 'test-ns', 'monitor-logs')
     fs.mkdirSync(nsDir, { recursive: true })
     fs.mkdirSync(logsDir, { recursive: true })
 
@@ -275,7 +275,7 @@ describe('LoopworkMonitor', () => {
   })
 
   test('getStatus handles errors reading directories gracefully', () => {
-    const nsDir = path.join(tempDir, 'loopwork-runs', 'test-ns')
+    const nsDir = path.join(tempDir, '.loopwork/runs', 'test-ns')
     fs.mkdirSync(nsDir, { recursive: true })
     // Create a file instead of a directory to cause read error
     fs.writeFileSync(path.join(nsDir, 'not-a-directory'), 'content')
@@ -303,7 +303,7 @@ describe('LoopworkMonitor', () => {
   })
 
   test('start creates log directory structure', async () => {
-    const logsDir = path.join(tempDir, 'loopwork-runs', 'new-ns', 'monitor-logs')
+    const logsDir = path.join(tempDir, '.loopwork/runs', 'new-ns', 'monitor-logs')
     const result = await monitor.start('new-ns')
 
     expect(fs.existsSync(logsDir)).toBe(true)
