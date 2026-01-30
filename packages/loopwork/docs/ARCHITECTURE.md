@@ -199,6 +199,510 @@ export default compose(
 }))
 ```
 
+## AI Monitor System
+
+**Directory:** `src/ai-monitor/`
+
+The AI Monitor is an intelligent log watcher and auto-healer that monitors loopwork execution logs in real-time, detects known error patterns, and automatically takes corrective actions to keep the loop running smoothly.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    AI Monitor                            │
+├─────────────────────────────────────────────────────────┤
+│  LogWatcher  →  PatternMatcher  →  ActionExecutor       │
+│      │              │                     │              │
+│      ↓              ↓                     ↓              │
+│  Chokidar      ErrorPatterns        CircuitBreaker      │
+│   Events         Registry           VerificationEngine  │
+│                                      WisdomSystem        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Core Components
+
+#### 1. Log Watcher (`watcher.ts`)
+
+Monitors log files using chokidar for file system events.
+
+```typescript
+class LogWatcher extends EventEmitter {
+  constructor(config: {
+    logFile: string
+    debounceMs?: number // Default: 100ms
+  })
+
+  start(): Promise<void>
+  stop(): void
+
+  // Events
+  on('line', (logLine: LogLine) => void)
+  on('error', (error: Error) => void)
+}
+```
+
+**Features:**
+- Event-driven log monitoring with chokidar
+- Polling fallback for reliability (2s interval)
+- Line buffering to prevent splitting
+- Debounced pattern checking (100ms default)
+
+#### 2. Pattern Matcher (`patterns.ts`)
+
+Detects known error patterns using regex matching.
+
+```typescript
+interface ErrorPattern {
+  name: string
+  regex: RegExp
+  severity: 'INFO' | 'WARN' | 'ERROR' | 'HIGH'
+  action: MonitorAction
+  category?: string
+  description?: string
+}
+```
+
+**Built-in Patterns:**
+- Type errors: `TS2304`, `TS2345`, etc.
+- Build failures: `npm ERR!`, compilation errors
+- Rate limits: API throttling, quota exceeded
+- Dependency issues: missing modules, version conflicts
+- Timeout errors: execution timeouts, network timeouts
+
+**Pattern Matching Flow:**
+```
+Log Line → Match against patterns → Found? → Execute action
+                                  → Not found? → LLM analysis (throttled)
+```
+
+#### 3. Action Executor (`actions/index.ts`)
+
+Executes healing actions based on detected patterns.
+
+```typescript
+type MonitorActionType = 'auto-fix' | 'pause' | 'skip' | 'notify' | 'analyze' | 'enhance-task'
+
+interface Action {
+  type: MonitorActionType
+  pattern: string
+  context?: Record<string, any>
+  prompt?: string
+}
+```
+
+**Action Types:**
+- `auto-fix`: Spawn agent to fix the issue automatically
+- `pause`: Pause the loop for manual intervention
+- `skip`: Skip the current task and move to next
+- `notify`: Send notification via Telegram/Discord
+- `analyze`: Use LLM to understand unknown errors
+- `enhance-task`: Update PRD with missing context
+
+#### 4. Circuit Breaker (`circuit-breaker.ts`)
+
+Prevents infinite healing loops by tracking failures.
+
+```typescript
+class CircuitBreaker {
+  constructor(config: {
+    maxFailures?: number         // Default: 3
+    cooldownPeriodMs?: number    // Default: 60000
+    maxHalfOpenAttempts?: number // Default: 1
+  })
+
+  canProceed(): boolean
+  recordSuccess(): void
+  recordFailure(): void
+  reset(): void
+
+  getState(): CircuitBreakerState
+  getStatus(): string
+  isOpen(): boolean
+  getCooldownRemaining(): number
+}
+```
+
+**States:**
+- `CLOSED`: Normal operation, allows all requests
+- `OPEN`: Failure threshold reached, blocks requests during cooldown
+- `HALF_OPEN`: Testing recovery, allows limited attempts
+
+**Flow:**
+```
+CLOSED ──[3 failures]──> OPEN ──[60s cooldown]──> HALF_OPEN ──[success]──> CLOSED
+   ↑                                                    │
+   └────────────────────[failure]─────────────────────┘
+```
+
+#### 5. Verification Engine (`verification.ts`)
+
+**NEW in AI-MONITOR-001f**: Enforces verification-before-completion protocol.
+
+```typescript
+class VerificationEngine {
+  constructor(config: {
+    freshnessTTL?: number           // Default: 300000 (5 minutes)
+    checks?: VerificationCheck[]    // Check types to run
+    requireArchitectApproval?: boolean
+    cwd?: string
+    logFile?: string
+  })
+
+  async verify(claim: string, taskId?: string): Promise<VerificationResult>
+  isEvidenceFresh(evidence: VerificationEvidence): boolean
+}
+```
+
+**Check Types:**
+- `BUILD`: Run build command (e.g., `tsc --noEmit`, `bun run build`)
+- `TEST`: Run test suite (e.g., `bun test`)
+- `LINT`: Run linter (e.g., `eslint`, `biome check`)
+- `FUNCTIONALITY`: Verify feature works as expected (manual)
+- `ARCHITECT`: Get architect approval (opus model verification)
+- `TODO`: Ensure no pending todos in task
+- `ERROR_FREE`: Check logs for errors in last 5 minutes
+
+**Verification Flow:**
+```
+Healing Action Completes
+    ↓
+VerificationEngine.verify()
+    ↓
+Run all required checks (BUILD, TEST, LINT, ERROR_FREE)
+    ↓
+Check evidence freshness (<5 min)
+    ↓
+All required checks pass? ──Yes──> Record success
+    │                              Update circuit breaker
+    No
+    ↓
+Record failure
+Update circuit breaker
+```
+
+**Features:**
+- **Evidence Freshness**: Rejects stale evidence (>5 min old, configurable)
+- **Auto-detection**: Detects build/test/lint commands from `package.json`
+- **Fallback**: Falls back to `tsc --noEmit` if no build script
+- **Timeout Handling**: Configurable per-check timeouts
+- **Error Filtering**: Ignores monitor's own healing messages in logs
+
+**Configuration Example:**
+```typescript
+{
+  verification: {
+    freshnessTTL: 5 * 60 * 1000,  // 5 minutes
+    checks: [
+      { type: 'BUILD', command: 'bun run build', timeout: 120000, required: true },
+      { type: 'TEST', command: 'bun test', timeout: 180000, required: true },
+      { type: 'LINT', command: 'bun run lint', timeout: 60000, required: false },
+      { type: 'ERROR_FREE', required: true }
+    ],
+    requireArchitectApproval: false
+  }
+}
+```
+
+**Integration with AI Monitor:**
+```typescript
+// In AIMonitor.executeAction()
+if (action.type === 'auto-fix') {
+  const result = await this.executor.executeAction(action)
+
+  if (result.success) {
+    // Run verification before claiming success
+    const verificationResult = await this.verificationEngine.verify(
+      `Healing action for ${action.pattern}`,
+      taskId
+    )
+
+    if (verificationResult.passed) {
+      this.circuitBreaker.recordSuccess()
+    } else {
+      // Verification failed - don't claim success
+      this.circuitBreaker.recordFailure()
+    }
+  }
+}
+```
+
+#### 6. Task Recovery (`task-recovery.ts`)
+
+Analyzes early task exits and enhances PRDs automatically.
+
+```typescript
+export async function analyzeEarlyExit(
+  taskId: string,
+  logs: string[],
+  backend: TaskBackend
+): Promise<TaskRecoveryAnalysis>
+
+export async function enhanceTask(
+  analysis: TaskRecoveryAnalysis,
+  backend: TaskBackend
+): Promise<void>
+```
+
+**Exit Reasons Detected:**
+- `vague_prd`: PRD needs more detail
+- `missing_tests`: Test scaffolding needed
+- `missing_context`: File paths/snippets needed
+- `scope_large`: Should split into subtasks
+- `wrong_approach`: Constraints/non-goals needed
+
+**Enhancement Actions:**
+- Add key file paths to PRD
+- Add context snippets
+- Suggest approach hints
+- Define non-goals
+- Create subtasks for large scope
+- Generate test scaffolding
+
+#### 7. Wisdom System (`wisdom.ts`)
+
+Learns from successful and failed healing attempts.
+
+```typescript
+class WisdomSystem {
+  constructor(config: {
+    enabled?: boolean
+    learnFromSuccess?: boolean
+    learnFromFailure?: boolean
+    patternExpiryDays?: number
+  })
+
+  recordSuccess(pattern: ErrorPattern, outcome: string): void
+  recordFailure(pattern: ErrorPattern, error: string): void
+  getLearnedPatterns(): LearnedPattern[]
+  shouldUsePattern(signature: string): boolean
+}
+```
+
+**Features:**
+- Tracks success/failure count per pattern
+- Calculates confidence score (success / total attempts)
+- Expires old patterns (default: 30 days)
+- Persists to `.loopwork/ai-monitor/wisdom.json`
+
+#### 8. Concurrency Manager (`concurrency.ts`)
+
+Rate-limits healing actions by provider and model.
+
+```typescript
+class ConcurrencyManager {
+  constructor(config: {
+    default: number
+    providers: Record<string, number>  // e.g., { claude: 2, gemini: 3 }
+    models: Record<string, number>     // e.g., { 'claude-opus': 1 }
+  })
+
+  async acquire(key: string): Promise<() => void>
+  getAvailableSlots(key: string): number
+}
+```
+
+### Plugin Integration
+
+The AI Monitor implements the `LoopworkPlugin` interface:
+
+```typescript
+class AIMonitor implements LoopworkPlugin {
+  readonly name = 'ai-monitor'
+
+  async onConfigLoad(config: LoopworkConfig): Promise<LoopworkConfig>
+  async onBackendReady(backend: TaskBackend): Promise<void>
+  async onLoopStart(namespace: string): Promise<void>
+  async onLoopEnd(stats: LoopStats): Promise<void>
+  async onTaskStart(context: TaskContext): Promise<void>
+  async onTaskComplete(context: TaskContext, result: PluginTaskResult): Promise<void>
+  async onTaskFailed(context: TaskContext, error: string): Promise<void>
+}
+```
+
+**Lifecycle Integration:**
+- `onConfigLoad`: Set state file path, load existing state
+- `onBackendReady`: Store backend reference for task recovery
+- `onLoopStart`: Start watching log file
+- `onLoopEnd`: Stop watcher, save state
+- `onTaskFailed`: Trigger task recovery analysis
+
+### Configuration
+
+```typescript
+interface AIMonitorConfig {
+  enabled?: boolean                   // Default: true
+  llmCooldown?: number               // Default: 5 minutes
+  llmMaxPerSession?: number          // Default: 10
+  llmModel?: string                  // Default: 'haiku'
+  patternCheckDebounce?: number      // Default: 100ms
+  cacheUnknownErrors?: boolean       // Default: true
+  cacheTTL?: number                  // Default: 24 hours
+
+  circuitBreaker?: {
+    maxFailures?: number             // Default: 3
+    cooldownPeriodMs?: number        // Default: 60000
+    maxHalfOpenAttempts?: number     // Default: 1
+  }
+
+  taskRecovery?: {
+    enabled?: boolean                // Default: true
+    maxLogLines?: number             // Default: 50
+    minFailureCount?: number         // Default: 1
+  }
+
+  verification?: {
+    freshnessTTL?: number            // Default: 300000 (5 min)
+    checks?: VerificationCheck[]     // Check types to run
+    requireArchitectApproval?: boolean
+  }
+
+  wisdom?: {
+    enabled?: boolean                // Default: true
+    learnFromSuccess?: boolean       // Default: true
+    learnFromFailure?: boolean       // Default: true
+    patternExpiryDays?: number       // Default: 30
+  }
+}
+```
+
+### State Persistence
+
+**State File:** `.loopwork/monitor-state.json`
+
+```typescript
+interface MonitorState {
+  llmCallCount: number
+  lastLLMCall: number
+  detectedPatterns: Record<string, number>
+  unknownErrorCache: Set<string>
+  sessionStartTime: number
+  circuitBreakerState: CircuitBreakerState
+  recoveryHistory: Record<string, RecoveryHistoryEntry>
+  recoveryAttempts: number
+  recoverySuccesses: number
+  recoveryFailures: number
+}
+```
+
+### Usage
+
+**Standalone:**
+```bash
+loopwork ai-monitor
+```
+
+**As Plugin:**
+```typescript
+import { compose, defineConfig } from 'loopwork'
+import { withAIMonitor } from 'loopwork/ai-monitor'
+
+export default compose(
+  withAIMonitor({
+    enabled: true,
+    llmCooldown: 5 * 60 * 1000,
+    circuitBreaker: {
+      maxFailures: 3,
+      cooldownPeriodMs: 60000
+    },
+    verification: {
+      freshnessTTL: 5 * 60 * 1000,
+      checks: ['BUILD', 'TEST', 'ERROR_FREE']
+    }
+  })
+)(defineConfig({ cli: 'claude' }))
+```
+
+### Performance Characteristics
+
+**Pattern Matching:**
+- Instant (regex-based, <1ms per line)
+- Debounced to prevent flooding (100ms default)
+- No API calls for known patterns
+
+**LLM Analysis:**
+- Heavily throttled (5 min cooldown)
+- Max 10 calls per session
+- Only for unknown errors
+- Results cached (24h TTL)
+
+**Verification:**
+- Runs after successful healing actions
+- Commands executed with timeout limits
+- Evidence freshness enforced (<5 min)
+- Failed verification triggers circuit breaker
+
+**State Persistence:**
+- Saved after each action
+- Loaded on startup
+- Includes circuit breaker state
+- Recovery history tracked
+
+### Error Handling
+
+1. **Pattern Matching Failures**: Logged, don't crash monitor
+2. **Action Execution Failures**: Recorded in circuit breaker
+3. **Verification Failures**: Mark healing as unsuccessful
+4. **Plugin Errors**: Caught and logged, main loop continues
+5. **LLM API Errors**: Respect rate limits, apply cooldown
+6. **File System Errors**: Log file missing handled gracefully
+
+### Monitoring and Observability
+
+**Stats API:**
+```typescript
+monitor.getStats(): {
+  llmCallCount: number
+  detectedPatterns: Record<string, number>
+  actionHistory: ActionHistoryEntry[]
+  unknownErrorCacheSize: number
+  circuitBreaker: {
+    status: string
+    state: CircuitBreakerState
+    isOpen: boolean
+    cooldownRemaining: number
+  }
+  taskRecovery: {
+    attempts: number
+    successes: number
+    failures: number
+    historySize: number
+  }
+}
+```
+
+**CLI Commands:**
+```bash
+loopwork ai-monitor          # Start monitor in foreground
+loopwork status              # Check circuit breaker status
+cat .loopwork/monitor-state.json  # View persisted state
+```
+
+### Testing
+
+**Unit Tests:** `test/ai-monitor/*.test.ts`
+- Pattern matching: `patterns.test.ts`
+- Circuit breaker: `circuit-breaker.test.ts`
+- Verification engine: `verification.test.ts`
+- Task recovery: `task-recovery.test.ts`
+- Wisdom system: `wisdom.test.ts`
+- Concurrency: `concurrency.test.ts`
+
+**Integration Tests:**
+- `verification-integration.test.ts`: Full verification flow with AI Monitor
+- `00-monitor-unit.test.ts`: Monitor plugin lifecycle
+- `00-monitor-simple.test.ts`: Basic monitoring scenarios
+
+**Test Coverage:**
+- Evidence freshness validation
+- Individual check execution (BUILD, TEST, LINT, ERROR_FREE)
+- Verification result accuracy
+- Command timeout handling
+- Error detection in logs
+- Circuit breaker state transitions
+- Stale evidence rejection
+- Integration with healing actions
+
 ## Backend System
 
 ### TaskBackend Interface
@@ -696,6 +1200,104 @@ ERROR HANDLING:
 | `loopwork init` | Setup wizard | Interactive |
 | `loopwork task-new` | Create new task | Interactive |
 | `loopwork ai-monitor` | Auto-healer | Foreground |
+
+### Process Management Commands
+
+These commands help you manage running loopwork processes:
+
+#### `loopwork status`
+
+Show status of all running loopwork processes.
+
+```bash
+loopwork status
+```
+
+**Output includes:**
+- Running processes with PID, namespace, and start time
+- Log file locations
+- Command arguments used to start each process
+
+#### `loopwork kill`
+
+Kill a running loopwork process (foreground or daemon).
+
+```bash
+# Kill default namespace
+loopwork kill
+
+# Kill specific namespace
+loopwork kill prod
+
+# Kill all running processes
+loopwork kill --all
+```
+
+**Options:**
+| Option | Description |
+|--------|-------------|
+| `[namespace]` | Namespace to kill (default: "default") |
+| `--all` | Kill all running loopwork processes |
+
+**Kill strategy:**
+1. Send SIGTERM (graceful shutdown)
+2. Wait 5 seconds for cleanup
+3. If still running: Send SIGKILL (force kill)
+
+#### `loopwork stop`
+
+Stop a running loopwork daemon (started with `loopwork start -d`).
+
+```bash
+# Stop default namespace daemon
+loopwork stop
+
+# Stop specific namespace daemon
+loopwork stop prod
+
+# Stop all daemons
+loopwork stop --all
+```
+
+**Options:**
+| Option | Description |
+|--------|-------------|
+| `[namespace]` | Namespace to stop (default: "default") |
+| `--all` | Stop all running daemons |
+
+**Difference between `kill` and `stop`:**
+- `kill` - Works on any loopwork process (foreground or daemon)
+- `stop` - Specifically for daemons, updates monitor state cleanly
+
+#### Quick Reference
+
+| Scenario | Command |
+|----------|---------|
+| Check what's running | `loopwork status` |
+| Stop foreground process | `Ctrl+C` |
+| Stop a daemon | `loopwork stop` or `loopwork kill` |
+| Stop specific namespace | `loopwork kill my-namespace` |
+| Emergency stop all | `loopwork kill --all` |
+| View logs after stopping | `loopwork logs [namespace]` |
+
+#### Troubleshooting Orphan Processes
+
+If processes become orphaned (parent died but children still running):
+
+```bash
+# Check for orphan processes
+ps aux | grep -E "loopwork|claude|opencode" | grep -v grep
+
+# Force kill by PID
+kill -9 <PID>
+
+# Or use loopwork's orphan detection
+loopwork kill --all
+```
+
+**State files cleaned up on kill/stop:**
+- `.loopwork/state-{namespace}.lock` - Process lock
+- `.loopwork/monitor-state.json` - Daemon registry (updated)
 
 ## Key Constants
 
