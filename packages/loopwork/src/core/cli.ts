@@ -1,10 +1,63 @@
-import { spawnSync } from 'child_process'
+import { spawnSync, execSync } from 'child_process'
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { logger, StreamLogger } from './utils'
 import type { Config } from './config'
 import { LoopworkError } from './errors'
 import { PROGRESS_UPDATE_INTERVAL_MS, SIGKILL_DELAY_MS } from './constants'
+
+// Minimum available memory (in MB) required to spawn a new CLI process
+const MIN_FREE_MEMORY_MB = 512
+
+/**
+ * Get available memory in MB (platform-aware)
+ *
+ * On macOS, os.freemem() returns only truly "free" pages which is always low
+ * because macOS aggressively caches. We need to calculate available memory
+ * as: free + inactive + purgeable (file cache that can be reclaimed).
+ *
+ * On Linux/Windows, os.freemem() is more accurate.
+ */
+function getAvailableMemoryMB(): number {
+  if (process.platform === 'darwin') {
+    try {
+      // Use vm_stat to get memory info on macOS
+      const vmstat = execSync('vm_stat', { encoding: 'utf-8' })
+      const pageSize = 16384 // Default page size on Apple Silicon, 4096 on Intel
+
+      // Parse vm_stat output
+      const getValue = (key: string): number => {
+        const match = vmstat.match(new RegExp(`${key}:\\s+(\\d+)`))
+        return match ? parseInt(match[1], 10) : 0
+      }
+
+      const freePages = getValue('Pages free')
+      const inactivePages = getValue('Pages inactive')
+      const purgeablePages = getValue('Pages purgeable')
+      const speculativePages = getValue('Pages speculative')
+
+      // Available = free + inactive + purgeable + speculative
+      // These are all pages that can be reclaimed for new processes
+      const availablePages = freePages + inactivePages + purgeablePages + speculativePages
+
+      // Try to detect actual page size
+      let actualPageSize = pageSize
+      const pageSizeMatch = vmstat.match(/page size of (\d+) bytes/)
+      if (pageSizeMatch) {
+        actualPageSize = parseInt(pageSizeMatch[1], 10)
+      }
+
+      return Math.round((availablePages * actualPageSize) / (1024 * 1024))
+    } catch {
+      // Fallback to os.freemem() if vm_stat fails
+      return Math.round(os.freemem() / (1024 * 1024))
+    }
+  }
+
+  // On Linux/Windows, os.freemem() is reasonable
+  return Math.round(os.freemem() / (1024 * 1024))
+}
 import type {
   ModelConfig,
   CliExecutorConfig,
@@ -481,14 +534,25 @@ export class CliExecutor {
     outputFile: string,
     timeoutSecs: number
   ): Promise<{ exitCode: number; timedOut: boolean }> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Check available memory before spawning (platform-aware)
+      const availableMemoryMB = getAvailableMemoryMB()
+      if (availableMemoryMB < MIN_FREE_MEMORY_MB) {
+        const totalMemoryMB = Math.round(os.totalmem() / (1024 * 1024))
+        logger.warn(`Low memory: ${availableMemoryMB}MB available (need ${MIN_FREE_MEMORY_MB}MB). Total: ${totalMemoryMB}MB`)
+        return reject(new LoopworkError(
+          `SPAWN_FAILED: Insufficient memory to spawn CLI process: ${availableMemoryMB}MB available (need ${MIN_FREE_MEMORY_MB}MB minimum)`,
+          ['Wait for other processes to complete or free up memory']
+        ))
+      }
+
       const writeStream = fs.createWriteStream(outputFile)
       let timedOut = false
       const startTime = Date.now()
       const streamLogger = new StreamLogger(options.prefix)
 
       // Spawn via process manager for automatic tracking
-      logger.debug(`Spawning ${command} with spawner: ${this.spawner.name}`)
+      logger.debug(`Spawning ${command} with spawner: ${this.spawner.name} (available memory: ${availableMemoryMB}MB)`)
       const child = this.processManager.spawn(command, args, {
         env: options.env,
       })

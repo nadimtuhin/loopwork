@@ -213,10 +213,14 @@ export class ParallelRunner {
     const color = WORKER_COLORS[workerId % WORKER_COLORS.length]
     const prefix = color(`[W${workerId}]`)
 
-    // Claim a task atomically
+    // Get next task - in dry-run mode, just peek without claiming
     let task: Task | null = null
     try {
-      if (this.backend.claimTask) {
+      if (this.config.dryRun) {
+        // Dry-run: peek at task without marking in-progress
+        task = await this.backend.findNextTask(options)
+      } else if (this.backend.claimTask) {
+        // Normal: claim task atomically (marks in-progress)
         task = await this.backend.claimTask(options)
       } else {
         // Fallback for backends that don't implement claimTask

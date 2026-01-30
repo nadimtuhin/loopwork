@@ -17,20 +17,31 @@ export class OrphanDetector {
   ) {}
 
   /**
-   * Scan for orphan processes using all three detection methods
+   * Scan for orphan processes using detection methods
+   *
+   * Note: We intentionally do NOT scan for "untracked" processes matching patterns
+   * (Method 2 was removed). This caused a critical bug where ANY process matching
+   * patterns like 'claude' or 'opencode' would be killed, including user-started
+   * CLIs that loopwork never spawned.
+   *
+   * We only clean up processes that:
+   * 1. Were tracked by loopwork AND their parent died (dead-parent orphans)
+   * 2. Were tracked by loopwork AND exceeded stale timeout
    */
   async scan(): Promise<OrphanInfo[]> {
     const orphans: OrphanInfo[] = []
 
-    // Method 1: Registry-Parent Check
+    // Method 1: Registry-Parent Check - safe, only kills tracked processes
     const registryOrphans = this.detectDeadParents()
     orphans.push(...registryOrphans)
 
-    // Method 2: Pattern Scan
-    const untrackedOrphans = await this.detectUntrackedProcesses()
-    orphans.push(...untrackedOrphans)
+    // Method 2: Pattern Scan - REMOVED - was killing user's unrelated CLIs!
+    // The old code would scan ALL processes matching 'claude', 'opencode', etc.
+    // and kill them if they weren't in registry. This killed user's own CLIs.
+    // const untrackedOrphans = await this.detectUntrackedProcesses()
+    // orphans.push(...untrackedOrphans)
 
-    // Method 3: Stale Timeout
+    // Method 3: Stale Timeout - safe, only kills tracked processes
     const staleOrphans = this.detectStaleProcesses()
     orphans.push(...staleOrphans)
 
