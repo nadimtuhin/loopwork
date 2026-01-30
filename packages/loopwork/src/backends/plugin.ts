@@ -14,8 +14,9 @@
  */
 
 import type { LoopworkPlugin, LoopworkConfig } from '../contracts'
-import type { Task, Priority, FindTaskOptions, UpdateResult } from './types'
+import type { Task, Priority, FindTaskOptions, UpdateResult, TaskBackend } from './types'
 import { logger } from '../core/utils'
+import { LoopworkError } from '../core/errors'
 
 // ============================================================================
 // Backend Plugin Interface
@@ -70,7 +71,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
   const tasksFile = config.tasksFile || '.specs/tasks/tasks.json'
 
   // Lazy load the adapter
-  let adapter: any = null
+  let adapter: TaskBackend | null = null
 
   const getAdapter = async () => {
     if (!adapter) {
@@ -135,12 +136,30 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
     },
     async createTask(task) {
       const a = await getAdapter()
-      if (!a.createTask) throw new Error('createTask not supported')
+      if (!a.createTask) {
+        throw new LoopworkError(
+          'This backend does not support creating tasks',
+          [
+            'Try using a different backend that supports task creation',
+            'Or manually create tasks in your backend system',
+            'GitHub backend: create issues manually',
+            'JSON backend: edit tasks.json file directly'
+          ]
+        )
+      }
       return a.createTask(task)
     },
     async createSubTask(parentId, task) {
       const a = await getAdapter()
-      if (!a.createSubTask) throw new Error('createSubTask not supported')
+      if (!a.createSubTask) {
+        throw new LoopworkError(
+          'This backend does not support creating sub-tasks',
+          [
+            'Sub-tasks may need to be created manually',
+            'Or use a backend that supports hierarchical tasks'
+          ]
+        )
+      }
       return a.createSubTask(parentId, task)
     },
     async addDependency(taskId, dependsOnId) {
@@ -192,7 +211,7 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
   const repo = config.repo || process.env.GITHUB_REPOSITORY
 
   // Lazy load the adapter
-  let adapter: any = null
+  let adapter: TaskBackend | null = null
 
   const getAdapter = async () => {
     if (!adapter) {
@@ -312,7 +331,18 @@ export function getBackendPlugin(config: LoopworkConfig): BackendPlugin | null {
 export function requireBackend(config: LoopworkConfig): BackendPlugin {
   const backend = getBackendPlugin(config)
   if (!backend) {
-    throw new Error('No backend plugin found. Use withJSONBackend() or withGitHubBackend().')
+    throw new LoopworkError(
+      'No backend plugin found in configuration',
+      [
+        'Add a backend to your loopwork.config.ts:',
+        '  withJSONBackend({ tasksFile: ".specs/tasks/tasks.json" })',
+        '  or',
+        '  withGitHubBackend({ repo: "owner/repo" })',
+        '',
+        'Or run: npx loopwork init'
+      ],
+      'https://github.com/nadimtuhin/loopwork#configuration'
+    )
   }
   return backend
 }

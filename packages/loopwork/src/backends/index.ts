@@ -12,6 +12,7 @@ export { JsonTaskAdapter } from './json'
 import type { TaskBackend, BackendConfig } from './types'
 import { GitHubTaskAdapter } from './github'
 import { JsonTaskAdapter } from './json'
+import { LoopworkError } from '../core/errors'
 
 /**
  * Create a task backend based on configuration
@@ -36,7 +37,16 @@ export function createBackend(config: BackendConfig): TaskBackend {
       return new JsonTaskAdapter(config)
 
     default:
-      throw new Error(`Unknown backend type: ${(config as any).type}`)
+      throw new LoopworkError(
+        `Unknown backend type: "${(config as { type?: string }).type}"`,
+        [
+          'Valid backend types: "json" or "github"',
+          'Check your loopwork.config.ts backend configuration',
+          'Example: backend: { type: "json", tasksFile: "..." }',
+          'Or run: npx loopwork init'
+        ],
+        'https://github.com/nadimtuhin/loopwork#configuration'
+      )
   }
 }
 

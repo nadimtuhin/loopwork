@@ -1,5 +1,8 @@
 import fs from 'fs'
 import path from 'path'
+import { logger } from '../core/utils'
+import { LoopworkError } from '../core/errors'
+import { DEFAULT_LOCK_TIMEOUT_MS, LOCK_STALE_TIMEOUT_MS, LOCK_RETRY_DELAY_MS } from '../core/constants'
 import type {
   TaskBackend,
   Task,
@@ -9,6 +12,21 @@ import type {
   UpdateResult,
   BackendConfig,
 } from './types'
+
+/**
+ * Type guard for Node.js file system errors
+ */
+interface NodeJSError extends Error {
+  code?: string
+}
+
+function isNodeJSError(error: unknown): error is NodeJSError {
+  return error instanceof Error && 'code' in error
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 /**
  * JSON task file schema
@@ -45,8 +63,8 @@ export class JsonTaskAdapter implements TaskBackend {
   private tasksFile: string
   private tasksDir: string
   private lockFile: string
-  private lockTimeout = 5000 // 5 seconds
-  private lockRetryDelay = 100 // 100ms between retries
+  private lockTimeout = DEFAULT_LOCK_TIMEOUT_MS
+  private lockRetryDelay = LOCK_RETRY_DELAY_MS
 
   constructor(config: BackendConfig) {
     this.tasksFile = config.tasksFile || '.specs/tasks/tasks.json'
@@ -65,8 +83,8 @@ export class JsonTaskAdapter implements TaskBackend {
         // Try to create lock file exclusively
         fs.writeFileSync(this.lockFile, String(process.pid), { flag: 'wx' })
         return true
-      } catch (e: any) {
-        if (e.code === 'EEXIST') {
+      } catch (e: unknown) {
+        if (isNodeJSError(e) && e.code === 'EEXIST') {
           // Lock exists, check if stale
           try {
             const lockContent = fs.readFileSync(this.lockFile, 'utf-8')
@@ -74,8 +92,8 @@ export class JsonTaskAdapter implements TaskBackend {
             const lockStat = fs.statSync(this.lockFile)
             const lockAge = Date.now() - lockStat.mtimeMs
 
-            // If lock is older than 30 seconds, consider it stale
-            if (lockAge > 30000) {
+            // If lock is older than LOCK_STALE_TIMEOUT_MS, consider it stale
+            if (lockAge > LOCK_STALE_TIMEOUT_MS) {
               fs.unlinkSync(this.lockFile)
               continue
             }
@@ -88,9 +106,14 @@ export class JsonTaskAdapter implements TaskBackend {
               fs.unlinkSync(this.lockFile)
               continue
             }
-          } catch {
+          } catch (e: unknown) {
             // Error reading lock, try to remove it
-            try { fs.unlinkSync(this.lockFile) } catch {}
+            logger.warn(`Failed to read lock file: ${getErrorMessage(e)}`)
+            try {
+              fs.unlinkSync(this.lockFile)
+            } catch (unlinkError: unknown) {
+              logger.warn(`Failed to remove stale lock file: ${getErrorMessage(unlinkError)}`)
+            }
             continue
           }
 
@@ -116,8 +139,9 @@ export class JsonTaskAdapter implements TaskBackend {
       if (parseInt(content, 10) === process.pid) {
         fs.unlinkSync(this.lockFile)
       }
-    } catch {
-      // Ignore errors during cleanup
+    } catch (e: unknown) {
+      // Log but don't throw during cleanup - lock may have been removed by another process
+      logger.warn(`Failed to release lock file: ${getErrorMessage(e)}`)
     }
   }
 
@@ -127,7 +151,14 @@ export class JsonTaskAdapter implements TaskBackend {
   private async withLock<T>(fn: () => T): Promise<T> {
     const acquired = await this.acquireLock()
     if (!acquired) {
-      throw new Error('Failed to acquire file lock')
+      throw new LoopworkError(
+        'Failed to acquire file lock',
+        [
+          'Another process may be accessing the tasks file',
+          `Check if a stale lock exists: ${this.lockFile}`,
+          'Manually remove the lock file if safe',
+        ]
+      )
     }
 
     try {
@@ -261,8 +292,9 @@ export class JsonTaskAdapter implements TaskBackend {
       const entry = `\n[${timestamp}] FAILED: ${error}\n`
       try {
         fs.appendFileSync(logFile, entry)
-      } catch {
-        // Ignore log write errors
+      } catch (e: unknown) {
+        // Log write failures are non-critical, just warn
+        logger.warn(`Failed to write error log for ${taskId}: ${getErrorMessage(e)}`)
       }
     }
     return result
@@ -296,8 +328,8 @@ export class JsonTaskAdapter implements TaskBackend {
     try {
       fs.appendFileSync(logFile, entry)
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 
@@ -314,8 +346,8 @@ export class JsonTaskAdapter implements TaskBackend {
       JSON.parse(content)
 
       return { ok: true, latencyMs: Date.now() - start }
-    } catch (e: any) {
-      return { ok: false, latencyMs: Date.now() - start, error: e.message }
+    } catch (e: unknown) {
+      return { ok: false, latencyMs: Date.now() - start, error: getErrorMessage(e) }
     }
   }
 
@@ -326,8 +358,16 @@ export class JsonTaskAdapter implements TaskBackend {
       }
       const content = fs.readFileSync(this.tasksFile, 'utf-8')
       return JSON.parse(content)
-    } catch {
-      return null
+    } catch (e: unknown) {
+      logger.error(`Failed to load tasks file ${this.tasksFile}: ${getErrorMessage(e)}`)
+      throw new LoopworkError(
+        `Cannot read or parse tasks file: ${this.tasksFile}`,
+        [
+          'Check that the file exists and contains valid JSON',
+          'Verify file permissions allow reading',
+          'Review the file format matches the expected schema',
+        ]
+      )
     }
   }
 
@@ -336,34 +376,52 @@ export class JsonTaskAdapter implements TaskBackend {
       const content = JSON.stringify(data, null, 2)
       fs.writeFileSync(this.tasksFile, content)
       return true
-    } catch {
-      return false
+    } catch (e: unknown) {
+      logger.error(`Failed to save tasks file ${this.tasksFile}: ${getErrorMessage(e)}`)
+      throw new LoopworkError(
+        `Cannot write to tasks file: ${this.tasksFile}`,
+        [
+          'Check file permissions allow writing',
+          'Verify the directory exists',
+          'Ensure disk space is available',
+        ]
+      )
     }
   }
 
   private async loadFullTask(entry: JsonTaskEntry, data: JsonTasksFile): Promise<Task | null> {
-    // Load PRD from markdown file
     const prdFile = path.join(this.tasksDir, `${entry.id}.md`)
     let description = ''
     let title = entry.id
+    let prdWarning: string | undefined
 
     try {
       if (fs.existsSync(prdFile)) {
         const content = fs.readFileSync(prdFile, 'utf-8')
         description = content
 
-        // Extract title from first heading
         const titleMatch = content.match(/^#\s+(.+)$/m)
         if (titleMatch) {
           title = titleMatch[1]
         }
+
+        if (!content.trim() || content.trim().length < 10) {
+          prdWarning = `PRD file is empty or too short: ${prdFile}`
+        }
+      } else {
+        prdWarning = `PRD file not found: ${prdFile}`
       }
-    } catch {
-      // Use empty description if file not found
+    } catch (e: unknown) {
+      prdWarning = `Error reading PRD file: ${getErrorMessage(e)}`
     }
 
-    // Get feature info
     const featureInfo = entry.feature && data.features?.[entry.feature]
+
+    if (prdWarning) {
+      logger.warn(prdWarning)
+      logger.info('💡 Create or update the PRD file with task requirements')
+      logger.info(`💡 Expected location: ${prdFile}`)
+    }
 
     return {
       id: entry.id,
@@ -377,6 +435,7 @@ export class JsonTaskAdapter implements TaskBackend {
       metadata: {
         prdFile,
         featureName: featureInfo?.name,
+        prdWarning,
       },
     }
   }
@@ -559,8 +618,8 @@ export class JsonTaskAdapter implements TaskBackend {
         this.saveTasksFile(data)
         return { success: true }
       })
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 
@@ -583,8 +642,8 @@ export class JsonTaskAdapter implements TaskBackend {
         this.saveTasksFile(data)
         return { success: true }
       })
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 
@@ -609,8 +668,8 @@ export class JsonTaskAdapter implements TaskBackend {
 
         return { success: false, error: 'Failed to save tasks file' }
       })
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 }

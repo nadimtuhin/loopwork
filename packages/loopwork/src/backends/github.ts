@@ -1,11 +1,13 @@
 import { $ } from 'bun'
 import type { TaskBackend, Task, FindTaskOptions, UpdateResult, BackendConfig } from './types'
 import { LABELS } from '../contracts/task'
+import { GITHUB_RETRY_BASE_DELAY_MS, GITHUB_MAX_RETRIES } from '../core/constants'
 
 /**
  * Patterns for parsing dependencies and parent references from issue body
+ * Enhanced to support GitHub issue references (#123, owner/repo#123)
  */
-const PARENT_PATTERN = /(?:^|\n)\s*(?:Parent|parent):\s*(?:#?(\d+)|([A-Z]+-\d+-\d+[a-z]?))/i
+const PARENT_PATTERN = /(?:^|\n)\s*(?:Parent|parent):\s*(?:#?(\d+)|([A-Z]+-\d+-\d+[a-z]?)|(?:[\w-]+\/[\w-]+)?#(\d+))/i
 const DEPENDS_PATTERN = /(?:^|\n)\s*(?:Depends on|depends on|Dependencies|dependencies):\s*(.+?)(?:\n|$)/i
 
 interface GitHubIssue {
@@ -25,8 +27,8 @@ interface GitHubIssue {
 export class GitHubTaskAdapter implements TaskBackend {
   readonly name = 'github'
   private repo?: string
-  private maxRetries = 3
-  private baseDelayMs = 1000
+  private maxRetries = GITHUB_MAX_RETRIES
+  private baseDelayMs = GITHUB_RETRY_BASE_DELAY_MS
 
   constructor(config: BackendConfig) {
     this.repo = config.repo
@@ -42,8 +44,8 @@ export class GitHubTaskAdapter implements TaskBackend {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         return await fn()
-      } catch (e: any) {
-        lastError = e
+      } catch (e: unknown) {
+        lastError = e instanceof Error ? e : new Error(String(e))
         const isRetryable = this.isRetryableError(e)
         if (!isRetryable || attempt === retries) throw e
         const delay = this.baseDelayMs * Math.pow(2, attempt)
@@ -54,7 +56,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     throw lastError || new Error('Retry failed')
   }
 
-  private isRetryableError(error: any): boolean {
+  private isRetryableError(error: unknown): boolean {
     const message = String(error?.message || error || '').toLowerCase()
     if (message.includes('network') || message.includes('timeout')) return true
     if (message.includes('econnreset') || message.includes('econnrefused')) return true
@@ -129,8 +131,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -144,8 +146,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue close ${issueNumber} ${this.repoFlag()} --comment "${msg}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -161,8 +163,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${commentText}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -177,8 +179,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_PENDING}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -191,8 +193,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${comment}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -201,7 +203,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     try {
       const result = await $`gh auth status`.quiet()
       return { ok: result.exitCode === 0, latencyMs: Date.now() - start }
-    } catch (e: any) {
+    } catch (e: unknown) {
       return { ok: false, latencyMs: Date.now() - start, error: e.message }
     }
   }
@@ -286,8 +288,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --body "${newBody}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -313,8 +315,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --body "${newBody}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -329,10 +331,33 @@ export class GitHubTaskAdapter implements TaskBackend {
     ]
     if (task.feature) labels.push(`feat:${task.feature}`)
 
-    // Add dependencies to body if present
+    // If this is a sub-task, add the sub-task label
+    if (task.parentId) {
+      labels.push(LABELS.SUB_TASK)
+    }
+
+    // Build the issue body with parent and dependencies references
     let body = task.description
+
+    // Add parent reference if present
+    if (task.parentId) {
+      const parentNum = this.extractIssueNumber(task.parentId)
+      if (parentNum) {
+        body = `Parent: #${parentNum}\n\n${body}`
+      } else {
+        // Handle non-numeric parent IDs (like TASK-001-01)
+        body = `Parent: ${task.parentId}\n\n${body}`
+      }
+    }
+
+    // Add dependencies to body if present
     if (task.dependsOn && task.dependsOn.length > 0) {
-      body = `Depends on: ${task.dependsOn.join(', ')}\n\n${body}`
+      const depsRefs = task.dependsOn.map(dep => {
+        const num = this.extractIssueNumber(dep)
+        return num ? `#${num}` : dep
+      })
+      const depsLine = `Depends on: ${depsRefs.join(', ')}`
+      body = task.parentId ? body.replace(task.description, `${depsLine}\n\n${task.description}`) : `${depsLine}\n\n${body}`
     }
 
     const result = await this.withRetry(async () => {
@@ -362,8 +387,8 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${priorityLabel}"`.quiet()
       })
       return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -401,7 +426,16 @@ export class GitHubTaskAdapter implements TaskBackend {
     let parentId: string | undefined
     const parentMatch = body.match(PARENT_PATTERN)
     if (parentMatch) {
-      parentId = parentMatch[1] ? `GH-${parentMatch[1]}` : parentMatch[2]
+      // Group 1: #123 or 123 format
+      // Group 2: TASK-001-01 format
+      // Group 3: owner/repo#123 format
+      if (parentMatch[1]) {
+        parentId = `GH-${parentMatch[1]}`
+      } else if (parentMatch[2]) {
+        parentId = parentMatch[2]
+      } else if (parentMatch[3]) {
+        parentId = `GH-${parentMatch[3]}`
+      }
     }
 
     let dependsOn: string[] | undefined
@@ -409,8 +443,26 @@ export class GitHubTaskAdapter implements TaskBackend {
     if (depsMatch) {
       const depsStr = depsMatch[1]
       dependsOn = depsStr.split(/[,\s]+/).filter(Boolean).map(d => {
+        // Handle various formats:
+        // - #123 -> GH-123
+        // - 123 -> GH-123
+        // - TASK-001-01 -> TASK-001-01
+        // - owner/repo#123 -> GH-123
+
+        // Check for GitHub issue reference format
+        const repoIssueMatch = d.match(/(?:[\w-]+\/[\w-]+)?#(\d+)/)
+        if (repoIssueMatch) {
+          return `GH-${repoIssueMatch[1]}`
+        }
+
+        // Check for plain number
         const num = d.replace('#', '')
-        return /^\d+$/.test(num) ? `GH-${num}` : d
+        if (/^\d+$/.test(num)) {
+          return `GH-${num}`
+        }
+
+        // Otherwise keep as-is (like TASK-001-01)
+        return d
       })
     }
 
