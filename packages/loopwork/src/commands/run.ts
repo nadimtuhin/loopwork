@@ -5,10 +5,10 @@ import { getConfig, type Config } from '../core/config'
 import { StateManager } from '../core/state'
 import { createBackend, type TaskBackend, type Task } from '../backends'
 import { CliExecutor } from '../core/cli'
-import { logger, separator, Banner, ProgressBar, CompletionSummary } from '../core/utils'
+import { logger, separator, Banner, CompletionSummary } from '../core/utils'
 import { plugins, createAIMonitor } from '../plugins'
-import { createCostTrackingPlugin } from '../../../cost-tracking/src/index'
-import { createTelegramHookPlugin } from '../../../telegram/src/notifications'
+import { createCostTrackingPlugin } from '@loopwork-ai/cost-tracking'
+import { createTelegramHookPlugin } from '@loopwork-ai/telegram'
 import type { TaskContext } from '../contracts/plugin'
 import type { ICliExecutor } from '../contracts/executor'
 import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
@@ -207,6 +207,9 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   const isJsonMode = options.json === true
 
+  // Note: Verbosity flags are now handled globally via preAction hook in index.ts
+  // This ensures consistent behavior across all commands
+
   // Set output format on logger if supported
   if (isJsonMode && activeLogger.setOutputFormat) {
     activeLogger.setOutputFormat('json')
@@ -219,6 +222,25 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   const stateManager: IStateManager = new StateManagerClass(config)
   const backend: TaskBackend = makeBackend(config.backend)
   const cliExecutor = new CliExecutorClass(config)
+
+  // Register AI Monitor plugin if --with-ai-monitor flag is set
+  if (options.withAIMonitor || options['with-ai-monitor']) {
+    const aiMonitor = createAIMonitor({
+      enabled: true,
+      llmModel: options.model as string | undefined
+    })
+    activePlugins.register(aiMonitor)
+  }
+
+  // Override dynamicTasks config if --no-dynamic-tasks flag is set
+  if (options.dynamicTasks === false || options['no-dynamic-tasks']) {
+    if (config.dynamicTasks) {
+      config.dynamicTasks = {
+        ...config.dynamicTasks,
+        enabled: false,
+      }
+    }
+  }
 
   // Initialize orphan watch if configured
   let monitor: LoopworkMonitor | null = null
@@ -243,6 +265,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     if (!state) {
       const stateDir = path.resolve(config.projectRoot, '.loopwork')
       handleLoopworkError(new LoopworkError(
+        'ERR_STATE_INVALID',
         'Cannot resume: no saved state found',
         [
           'State is created after your first task execution starts',
@@ -261,6 +284,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   if (!stateManager.acquireLock()) {
     const lockFile = path.resolve(config.projectRoot, '.loopwork', 'loopwork.lock')
     handleLoopworkError(new LoopworkError(
+      'ERR_LOCK_CONFLICT',
       'Failed to acquire lock: another Loopwork instance is running',
       [
         'Wait for the other instance to finish',
@@ -373,9 +397,9 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     activeLogger.raw('')
     const startupBanner = new Banner('Loopwork Starting')
     startupBanner.addRow('Backend', backend.name)
-    if (config.backend.type === 'github') {
+    if (config.backend?.type === 'github') {
       startupBanner.addRow('Repo', config.backend.repo || '(current)')
-    } else {
+    } else if (config.backend?.tasksFile) {
       startupBanner.addRow('Tasks File', config.backend.tasksFile)
     }
     startupBanner.addRow('Feature', config.feature || 'all')
@@ -414,6 +438,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       suggestions.push('Verify network connectivity')
     }
     handleLoopworkError(new LoopworkError(
+      'ERR_BACKEND_INVALID',
       `Failed to count pending tasks: ${error.message}`,
       suggestions
     ))
@@ -467,6 +492,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
     if (consecutiveFailures >= (config.circuitBreakerThreshold ?? 5)) {
       handleLoopworkError(new LoopworkError(
+        'ERR_TASK_INVALID',
         `Circuit breaker activated: ${consecutiveFailures} consecutive task failures`,
         [
           'The circuit breaker stops execution after too many failures to prevent wasting resources',
@@ -506,6 +532,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         suggestions.push(`Check repo format: ${config.backend.repo || '(current repo)'}`)
       }
       handleLoopworkError(new LoopworkError(
+        'ERR_BACKEND_INVALID',
         `Failed to fetch task from backend: ${error.message}`,
         suggestions
       ))
@@ -558,6 +585,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       await backend.markInProgress(task.id)
     } catch (error: unknown) {
       handleLoopworkError(new LoopworkError(
+        'ERR_BACKEND_INVALID',
         `Failed to mark task ${task.id} as in-progress: ${error.message}`,
         [
           'Check file/database permissions for the backend',
@@ -611,6 +639,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         await backend.markCompleted(task.id, comment)
       } catch (error: unknown) {
         handleLoopworkError(new LoopworkError(
+          'ERR_BACKEND_INVALID',
           `Task succeeded but failed to mark as completed in backend: ${error.message}`,
           [
             'The task execution was successful but could not be saved',
@@ -676,6 +705,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           await backend.resetToPending(task.id)
         } catch (error: unknown) {
           handleLoopworkError(new LoopworkError(
+            'ERR_BACKEND_INVALID',
             `Failed to reset task ${task.id} to pending: ${error.message}`,
             [
               'Check backend connectivity and permissions',
@@ -712,6 +742,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           await backend.markFailed(task.id, errorMsg)
         } catch (error: unknown) {
           handleLoopworkError(new LoopworkError(
+            'ERR_BACKEND_INVALID',
             `Task failed and could not be marked as failed in backend: ${error.message}`,
             [
               'The task execution failed multiple times',

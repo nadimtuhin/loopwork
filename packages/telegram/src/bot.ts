@@ -23,6 +23,7 @@ import { createBackend } from '@loopwork-ai/loopwork/backends'
 import type { TaskBackend, Task, BackendConfig } from '@loopwork-ai/loopwork/contracts'
 import { SessionManager, type UserSession } from './session'
 import { IPCHandler } from './ipc-handler'
+import { DailyBriefingManager, type DailyBriefingConfig } from './daily-briefing'
 
 interface TelegramUpdate {
   update_id: number
@@ -83,6 +84,7 @@ export class TelegramTaskBot {
   private enableVoiceNotes: boolean
   private whisperModel: string
   private whisperLanguage?: string
+  private briefingManager?: DailyBriefingManager
 
   constructor(config: {
     botToken?: string
@@ -93,6 +95,7 @@ export class TelegramTaskBot {
     enableVoiceNotes?: boolean
     whisperModel?: string
     whisperLanguage?: string
+    dailyBriefing?: Partial<DailyBriefingConfig>
   } = {}) {
     this.botToken = config.botToken || process.env.TELEGRAM_BOT_TOKEN || ''
     this.allowedChatId = config.chatId || process.env.TELEGRAM_CHAT_ID || ''
@@ -119,6 +122,28 @@ export class TelegramTaskBot {
       tasksFile: '.specs/tasks/tasks.json',
     }
     this.backend = createBackend(backendConfig)
+
+    // Initialize daily briefing if configured
+    if (config.dailyBriefing) {
+      const briefingConfig: DailyBriefingConfig = {
+        enabled: true,
+        sendTime: '09:00',
+        timezone: 'UTC',
+        includeMetrics: true,
+        includeFileChanges: true,
+        model: 'gpt-4o-mini',
+        ...config.dailyBriefing,
+        openaiApiKey: config.dailyBriefing.openaiApiKey || this.whisperApiKey,
+      }
+
+      this.briefingManager = new DailyBriefingManager(briefingConfig, {
+        sendMessage: this.sendMessage.bind(this),
+      })
+
+      if (briefingConfig.enabled) {
+        this.briefingManager.startScheduler()
+      }
+    }
   }
 
   /**
@@ -344,6 +369,9 @@ export class TelegramTaskBot {
 
       case '/input':
         return this.handleInput(parts.slice(1).join(' '))
+
+      case '/briefing':
+        return this.handleBriefing()
 
       case '/help':
       case '/start':
@@ -728,9 +756,27 @@ Example:
     }
   }
 
+  private async handleBriefing(): Promise<string> {
+    if (!this.briefingManager) {
+      return '⚠️ Daily briefing is not configured. Please enable it in bot configuration.'
+    }
+
+    const result = await this.briefingManager.generateAndSendBriefing()
+
+    if (result.success) {
+      return '✅ Daily briefing sent!'
+    }
+
+    return `❌ Failed to send briefing: ${result.error || 'Unknown error'}`
+  }
+
   private handleHelp(): string {
     const voiceNoteInfo = this.enableVoiceNotes
       ? '\n🎤 Send a voice note to create tasks hands-free!'
+      : ''
+
+    const briefingInfo = this.briefingManager
+      ? '\n/briefing - Generate and send daily briefing'
       : ''
 
     return `🤖 <b>Loopwork Teleloop Agent</b>
@@ -739,7 +785,7 @@ Example:
 /run - Start the automation loop
 /stop - Stop the running loop
 /input &lt;text&gt; - Send input to running loop
-/status - Get backend status
+/status - Get backend status${briefingInfo}
 
 <b>Task Management:</b>
 Simply type "Create a task..." to start drafting!${voiceNoteInfo}
@@ -1146,6 +1192,16 @@ Simply type "Create a task..." to start drafting!${voiceNoteInfo}
    */
   stop(): void {
     this.running = false
+    if (this.briefingManager) {
+      this.briefingManager.stopScheduler()
+    }
+  }
+
+  /**
+   * Get the daily briefing manager (for external access)
+   */
+  getBriefingManager(): DailyBriefingManager | undefined {
+    return this.briefingManager
   }
 }
 
@@ -1154,15 +1210,4 @@ function escapeHtml(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-}
-
-// CLI entry point
-if (import.meta.main) {
-  const bot = new TelegramTaskBot()
-  bot.start().catch(console.error)
-
-  process.on('SIGINT', () => {
-    bot.stop()
-    process.exit(0)
-  })
 }
