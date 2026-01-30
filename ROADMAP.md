@@ -75,11 +75,28 @@ export default defineConfig({
 
 **Effort**: Medium | **Impact**: High | **Risk**: Medium
 
+#### 5. **AI Monitor (Meta-Loop Watcher)**
+**Why**: Reduce manual intervention, auto-heal common issues
+- Real-time log watching (event-driven, ~0 CPU when idle)
+- Pattern detection for known errors (PRD not found, rate limits, config errors)
+- Auto-healing actions (create stub PRDs, pause on rate limits)
+- LLM fallback for unknown errors (throttled, max 10 calls/session)
+- Notification hooks (Telegram, Discord)
+
+**Effort**: Medium | **Impact**: High | **Risk**: Low
+
+```bash
+# Usage
+loopwork ai-monitor --watch
+# Or integrated
+loopwork start --with-ai-monitor
+```
+
 ---
 
 ### 🎯 Medium Priority (2-4 Months)
 
-#### 5. **Task Templates**
+#### 6. **Task Templates**
 **Why**: Speed up task creation
 - Pre-defined templates (feature, bug, refactor, etc.)
 - Variable substitution
@@ -93,7 +110,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Low | **Impact**: Medium | **Risk**: Low
 
-#### 6. **Auto-PR Creation & Review Requests**
+#### 7. **Auto-PR Creation & Review Requests**
 **Why**: Complete the automation loop
 - Create GitHub PRs after task completion
 - Auto-assign reviewers based on CODEOWNERS
@@ -102,7 +119,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Medium | **Impact**: Medium | **Risk**: Medium
 
-#### 7. **Analytics & Insights**
+#### 8. **Analytics & Insights**
 **Why**: Data-driven optimization
 - Task completion rates over time
 - Average time per task type
@@ -112,7 +129,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Medium | **Impact**: Medium | **Risk**: Low
 
-#### 8. **Jira Backend**
+#### 9. **Jira Backend**
 **Why**: Enterprise adoption
 - JQL query support
 - Status workflow mappings
@@ -121,7 +138,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: High | **Impact**: Medium | **Risk**: Medium
 
-#### 9. **Slack Integration**
+#### 10. **Slack Integration**
 **Why**: Team visibility
 - Task notifications
 - Slash commands (/loopwork status)
@@ -134,7 +151,7 @@ loopwork create --template bug "Fix login crash"
 
 ### 🚀 Low Priority (4+ Months)
 
-#### 10. **Multi-Project Support**
+#### 11. **Multi-Project Support**
 **Why**: Manage multiple codebases
 - Workspace concept
 - Project switching
@@ -143,7 +160,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: High | **Impact**: Medium | **Risk**: High
 
-#### 11. **Task Scheduling**
+#### 12. **Task Scheduling**
 **Why**: Run tasks at specific times
 - Cron-like syntax
 - Recurring tasks
@@ -152,7 +169,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Medium | **Impact**: Low | **Risk**: Low
 
-#### 12. **Rollback/Undo**
+#### 13. **Rollback/Undo**
 **Why**: Safety net for mistakes
 - Git-based rollback
 - State snapshots
@@ -161,7 +178,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: High | **Impact**: Low | **Risk**: High
 
-#### 13. **Plugin Marketplace**
+#### 14. **Plugin Marketplace**
 **Why**: Community ecosystem
 - NPM-based plugin discovery
 - Plugin registry website
@@ -170,7 +187,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Very High | **Impact**: Medium | **Risk**: Medium
 
-#### 14. **AI Model Comparison**
+#### 15. **AI Model Comparison**
 **Why**: Optimize cost/quality trade-offs
 - A/B testing framework
 - Side-by-side execution
@@ -179,7 +196,7 @@ loopwork create --template bug "Fix login crash"
 
 **Effort**: Medium | **Impact**: Low | **Risk**: Low
 
-#### 15. **Voice/Audio Notifications**
+#### 16. **Voice/Audio Notifications**
 **Why**: Accessibility
 - Text-to-speech for status updates
 - Audio alerts for failures

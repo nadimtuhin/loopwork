@@ -108,7 +108,11 @@ The `CliExecutor` class (`packages/loopwork/src/core/cli.ts`) manages AI CLI exe
 ### State Management
 
 State persistence in `packages/loopwork/src/core/state.ts`:
-- Uses JSON files in `.loopwork-state` (default) or custom path
+- Uses JSON files in `.loopwork/` directory:
+  - State: `.loopwork/state.json`
+  - Lock: `.loopwork/state.lock`
+  - Runs: `.loopwork/runs/`
+  - Monitor: `.loopwork/monitor-state.json`
 - Tracks: current task, iteration count, completed tasks, failed tasks, circuit breaker state
 - File locking prevents concurrent write conflicts (same mechanism as JSON backend)
 - Resume capability: `--resume` flag continues from saved state
@@ -126,7 +130,10 @@ The JSON backend uses filesystem-based locking (`packages/loopwork/src/backends/
 - `loopwork.config.ts` or `loopwork.config.js` - Main config (supports TypeScript or CommonJS)
 - `.specs/tasks/tasks.json` - JSON backend task registry
 - `.specs/tasks/{TASK-ID}.md` - PRD files for each task
-- `.loopwork-state` - Session state for resume functionality
+- `.loopwork/` - State directory containing:
+  - `state.json` - Session state for resume functionality
+  - `runs/` - Historical run logs
+  - `monitor-state.json` - Monitor process state
 
 ## Important Patterns
 
@@ -266,6 +273,27 @@ npm publish
 - Never commit API tokens or credentials
 - Use environment variables for sensitive config
 
+## AI Development Philosophy
+
+1. **Always do TDD**: Write tests before writing implementation code.
+2. **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
+3. **Proactive Task Proposal**: You should be able to propose new tasks when you identify gaps or improvements.
+4. **Task Creation**: You are empowered to create new tasks in the backlog to track necessary work.
+
+## Architecture Documentation
+
+Architecture docs are in `packages/loopwork/docs/`:
+- `ARCHITECTURE.md` - Comprehensive system architecture
+- `cli-invocation-algorithm.md` - CLI model selection and retry logic
+- `orphan-process-management.md` - Orphan process detection and cleanup
+
+**Keep docs in sync**: When making architectural changes, update the relevant docs:
+1. New backends → Update ARCHITECTURE.md (Backend System section)
+2. New plugins → Update ARCHITECTURE.md (Plugin System section)
+3. New CLI commands → Update ARCHITECTURE.md (CLI Commands section)
+4. Changed execution flow → Update cli-invocation-algorithm.md
+5. Process management changes → Update orphan-process-management.md
+
 ## Important Notes
 
 - **Always use Bun, not npm/yarn** - This project is built for Bun
@@ -273,3 +301,4 @@ npm publish
 - **Plugins must be fault-tolerant** - A failing plugin shouldn't crash the loop
 - **CLI paths are auto-detected** - Don't hardcode paths to `claude` or `opencode`
 - **Test timeouts**: Default is 5000ms, increase for integration tests
+- **Update architecture docs** - Keep `packages/loopwork/docs/` in sync with code changes

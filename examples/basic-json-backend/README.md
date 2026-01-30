@@ -12,7 +12,5 @@ Adds two numbers together.
 
 ## Usage
 
-```bash
-bun install
-bun test
-```
+`npm install`
+`npm test`

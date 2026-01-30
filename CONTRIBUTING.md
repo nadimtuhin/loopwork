@@ -174,6 +174,7 @@ We use Bun's built-in test runner. Test files should:
 - Be named `*.test.ts`
 - Be placed in `test/` directories
 - Cover new functionality and edge cases
+- Prefer dependency injection over `mock.module()` to avoid global mock pollution across tests
 
 Example test:
 
