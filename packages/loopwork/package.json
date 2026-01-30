@@ -53,6 +53,9 @@
     "eslint": "^9.39.2",
     "husky": "^9.1.7"
   },
+  "optionalDependencies": {
+    "node-pty": "^1.0.0"
+  },
   "keywords": [
     "ai",
     "automation",

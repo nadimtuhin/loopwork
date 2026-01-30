@@ -32,6 +32,25 @@ interface TelegramUpdate {
     from: { id: number; username?: string; first_name?: string }
     chat: { id: number }
     text?: string
+    caption?: string
+    voice?: {
+      file_id: string
+      duration: number
+      mime_type?: string
+    }
+    audio?: {
+      file_id: string
+      duration: number
+      title?: string
+      mime_type?: string
+    }
+    photo?: Array<{
+      file_id: string
+      file_unique_id: string
+      width: number
+      height: number
+      file_size?: number
+    }>
     date: number
   }
   callback_query?: {
@@ -61,18 +80,32 @@ export class TelegramTaskBot {
   private loopProcess: any = null // Subprocess
   private loopCommand: string[]
   private ipcHandler: IPCHandler
+  private whisperApiKey?: string
+  private enableVoiceNotes: boolean
+  private whisperModel: string
+  private whisperLanguage?: string
 
   constructor(config: {
     botToken?: string
     chatId?: string
     backend?: BackendConfig
     loopCommand?: string[]
+    whisperApiKey?: string
+    enableVoiceNotes?: boolean
+    whisperModel?: string
+    whisperLanguage?: string
   } = {}) {
     this.botToken = config.botToken || process.env.TELEGRAM_BOT_TOKEN || ''
     this.allowedChatId = config.chatId || process.env.TELEGRAM_CHAT_ID || ''
     this.sessionManager = new SessionManager()
     this.loopCommand = config.loopCommand || ['loopwork', 'run']
     this.ipcHandler = new IPCHandler(this)
+
+    // Whisper configuration
+    this.whisperApiKey = config.whisperApiKey || process.env.OPENAI_API_KEY
+    this.enableVoiceNotes = config.enableVoiceNotes ?? (!!this.whisperApiKey)
+    this.whisperModel = config.whisperModel || 'whisper-1'
+    this.whisperLanguage = config.whisperLanguage
 
     if (!this.botToken) {
       throw new Error('TELEGRAM_BOT_TOKEN is required')
@@ -132,11 +165,10 @@ export class TelegramTaskBot {
    * Handle an update
    */
   private async handleUpdate(update: TelegramUpdate): Promise<void> {
-    if (!update.message?.text) return
+    if (!update.message) return
 
     const chatId = update.message.chat.id
     const userId = update.message.from.id
-    const text = update.message.text.trim()
 
     // Security check - only allow configured chat
     if (String(chatId) !== this.allowedChatId) {
@@ -144,6 +176,29 @@ export class TelegramTaskBot {
     }
 
     const session = this.sessionManager.getSession(userId, chatId)
+
+    // Handle voice messages
+    if (update.message.voice && this.enableVoiceNotes) {
+      await this.handleVoiceMessage(session, update.message.voice.file_id, update.message.voice.duration)
+      return
+    }
+
+    // Handle audio messages
+    if (update.message.audio && this.enableVoiceNotes) {
+      await this.handleVoiceMessage(session, update.message.audio.file_id, update.message.audio.duration)
+      return
+    }
+
+    // Handle photo messages
+    if (update.message.photo && update.message.photo.length > 0) {
+      const caption = update.message.caption || ''
+      await this.handlePhotoMessage(session, update.message.photo, caption)
+      return
+    }
+
+    // Text message handling
+    if (!update.message.text) return
+    const text = update.message.text.trim()
 
     // Handle cancel anytime
     if (text.toLowerCase() === '/cancel') {
@@ -661,6 +716,10 @@ Example:
   }
 
   private handleHelp(): string {
+    const voiceNoteInfo = this.enableVoiceNotes
+      ? '\n🎤 Send a voice note to create tasks hands-free!'
+      : ''
+
     return `🤖 <b>Loopwork Teleloop Agent</b>
 
 <b>Loop Control:</b>
@@ -670,7 +729,8 @@ Example:
 /status - Get backend status
 
 <b>Task Management:</b>
-Simply type "Create a task..." to start drafting!
+Simply type "Create a task..." to start drafting!${voiceNoteInfo}
+📸 Send an image to create a bug report with visual context!
 
 <b>Commands:</b>
 /tasks - List pending tasks
@@ -681,6 +741,280 @@ Simply type "Create a task..." to start drafting!
 /priority &lt;id&gt; &lt;high|medium|low&gt; - Set priority
 
 <b>Backend:</b> ${this.backend.name}`
+  }
+
+  /**
+   * Handle voice message
+   */
+  private async handleVoiceMessage(session: UserSession, fileId: string, duration: number): Promise<void> {
+    if (!this.whisperApiKey) {
+      await this.sendMessage('⚠️ Voice notes are not configured. Please set OPENAI_API_KEY.')
+      return
+    }
+
+    if (duration > 300) { // 5 minutes
+      await this.sendMessage('⚠️ Voice note too long. Please keep it under 5 minutes.')
+      return
+    }
+
+    try {
+      await this.sendMessage('🎤 Processing voice note...')
+
+      // Download voice file
+      const filePath = await this.downloadVoiceFile(fileId)
+
+      // Transcribe audio
+      const transcript = await this.transcribeAudio(filePath)
+
+      if (!transcript || transcript.trim().length === 0) {
+        await this.sendMessage('⚠️ Could not transcribe audio. Please try again or speak more clearly.')
+        return
+      }
+
+      // Show transcript to user
+      await this.sendMessage(`🎤 <b>Transcript:</b>\n${escapeHtml(transcript)}`)
+
+      // Parse intent and create task
+      const intent = this.parseTranscriptIntent(transcript)
+
+      // Handle based on current state
+      if (session.state === 'DRAFTING_TASK' && session.draft) {
+        // Append to existing draft description
+        const currentDesc = session.draft.description || ''
+        const newDesc = currentDesc ? `${currentDesc}\n${intent.description}` : intent.description
+
+        this.sessionManager.updateSession(session.userId, {
+          draft: { ...session.draft, description: newDesc }
+        })
+
+        await this.sendMessage('📝 Voice note added to task description.\n\nType "done" when ready to confirm, or send more voice notes to add more details.')
+      } else {
+        // Create new task from voice
+        await this.startTaskDraft(session, intent.title)
+      }
+    } catch (error: any) {
+      console.error('Voice message error:', error)
+      await this.sendMessage(`❌ Failed to process voice note: ${escapeHtml(error.message)}`)
+    }
+  }
+
+  /**
+   * Handle photo message (Vision Bug Reporting)
+   */
+  private async handlePhotoMessage(
+    session: UserSession,
+    photos: Array<{ file_id: string; width: number; height: number; file_size?: number }>,
+    caption: string
+  ): Promise<void> {
+    try {
+      await this.sendMessage('📸 Processing image...')
+
+      // Get the largest photo (last in array)
+      const largestPhoto = photos[photos.length - 1]
+
+      // Download photo file
+      const imagePath = await this.downloadPhotoFile(largestPhoto.file_id)
+
+      // Create task with image reference
+      if (!this.backend.createTask) {
+        await this.sendMessage('❌ This backend does not support task creation')
+        return
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const title = caption ? `Bug Report: ${caption}` : `Bug Report: ${timestamp}`
+      const description = caption
+        ? `${caption}\n\nImage: ${imagePath}`
+        : `Visual bug report\n\nImage: ${imagePath}`
+
+      const task = await this.backend.createTask({
+        title,
+        description,
+        priority: 'medium',
+        feature: 'bug-report',
+        metadata: {
+          imagePath,
+          timestamp,
+          userId: session.userId,
+          username: session.chatId.toString()
+        }
+      })
+
+      await this.sendMessage(
+        `✅ <b>Bug Report Created!</b>\n\n` +
+        `<b>ID:</b> <code>${task.id}</code>\n` +
+        `<b>Title:</b> ${escapeHtml(task.title)}\n` +
+        `<b>Image:</b> ${escapeHtml(imagePath)}\n\n` +
+        `The task is queued for AI analysis.`
+      )
+    } catch (error: any) {
+      console.error('Photo message error:', error)
+      await this.sendMessage(`❌ Failed to process image: ${escapeHtml(error.message)}`)
+    }
+  }
+
+  /**
+   * Download voice file from Telegram
+   */
+  private async downloadVoiceFile(fileId: string): Promise<string> {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+
+    // Get file info
+    const fileInfoUrl = `https://api.telegram.org/bot${this.botToken}/getFile?file_id=${fileId}`
+    const fileInfoResponse = await fetch(fileInfoUrl)
+    const fileInfo = await fileInfoResponse.json() as any
+
+    if (!fileInfo.ok || !fileInfo.result?.file_path) {
+      throw new Error('Failed to get file info from Telegram')
+    }
+
+    const filePath = fileInfo.result.file_path
+    const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${filePath}`
+
+    // Create temp directory
+    const tempDir = path.join(process.cwd(), '.loopwork', 'tmp', 'voice')
+    await fs.mkdir(tempDir, { recursive: true })
+
+    // Download file
+    const localPath = path.join(tempDir, `${fileId}.ogg`)
+    const response = await fetch(fileUrl)
+
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.statusText}`)
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    await fs.writeFile(localPath, buffer)
+
+    return localPath
+  }
+
+  /**
+   * Download photo file from Telegram
+   */
+  private async downloadPhotoFile(fileId: string): Promise<string> {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+
+    // Get file info
+    const fileInfoUrl = `https://api.telegram.org/bot${this.botToken}/getFile?file_id=${fileId}`
+    const fileInfoResponse = await fetch(fileInfoUrl)
+    const fileInfo = await fileInfoResponse.json() as any
+
+    if (!fileInfo.ok || !fileInfo.result?.file_path) {
+      throw new Error('Failed to get file info from Telegram')
+    }
+
+    const filePath = fileInfo.result.file_path
+    const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${filePath}`
+
+    // Create attachments directory
+    const attachmentsDir = path.join(process.cwd(), '.specs', 'attachments')
+    await fs.mkdir(attachmentsDir, { recursive: true })
+
+    // Generate unique filename with timestamp
+    const timestamp = Date.now()
+    const extension = path.extname(filePath) || '.jpg'
+    const localFilename = `${timestamp}-${fileId}${extension}`
+    const localPath = path.join(attachmentsDir, localFilename)
+
+    // Download file
+    const response = await fetch(fileUrl)
+
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.statusText}`)
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    await fs.writeFile(localPath, buffer)
+
+    // Return relative path for storage
+    return `.specs/attachments/${localFilename}`
+  }
+
+  /**
+   * Transcribe audio using OpenAI Whisper API
+   */
+  private async transcribeAudio(filePath: string): Promise<string> {
+    const fs = await import('fs/promises')
+    const path = await import('path')
+
+    const file = await fs.readFile(filePath)
+    const fileName = path.basename(filePath)
+
+    // Create FormData
+    const formData = new FormData()
+    const blob = new Blob([file], { type: 'audio/ogg' })
+    formData.append('file', blob, fileName)
+    formData.append('model', this.whisperModel)
+    if (this.whisperLanguage) {
+      formData.append('language', this.whisperLanguage)
+    }
+
+    // Call Whisper API
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.whisperApiKey}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Whisper API error: ${response.statusText} - ${error}`)
+    }
+
+    const result = await response.json() as { text: string }
+
+    // Clean up temp file
+    try {
+      await fs.unlink(filePath)
+    } catch (e) {
+      console.error('Failed to delete temp file:', e)
+    }
+
+    return result.text.trim()
+  }
+
+  /**
+   * Parse transcript intent for task creation
+   */
+  private parseTranscriptIntent(transcript: string): { title: string; description: string; priority?: 'high' | 'medium' | 'low' } {
+    const text = transcript.trim()
+
+    // Detect priority keywords
+    const urgentRegex = /\b(urgent|asap|critical|high priority|important)\b/i
+    const lowRegex = /\b(low priority|minor|whenever|someday)\b/i
+
+    let priority: 'high' | 'medium' | 'low' | undefined
+    if (urgentRegex.test(text)) {
+      priority = 'high'
+    } else if (lowRegex.test(text)) {
+      priority = 'low'
+    }
+
+    // Remove priority keywords from text
+    let cleanText = text
+      .replace(/\b(urgent|asap|critical|high priority|low priority|minor|important)\b:?\s*/gi, '')
+      .trim()
+
+    // Split into title and description
+    // First sentence is title, rest is description
+    const sentences = cleanText.split(/[.!?]+/)
+    const title = sentences[0].trim() || cleanText
+    const description = sentences.length > 1
+      ? sentences.slice(1).join('. ').trim()
+      : cleanText
+
+    return {
+      title: title.slice(0, 100), // Limit title length
+      description: description || title,
+      priority
+    }
   }
 
   /**
@@ -700,7 +1034,8 @@ Simply type "Create a task..." to start drafting!
         for (const update of updates) {
           this.lastUpdateId = update.update_id
 
-          if (update.message?.text) {
+          // Handle text messages, voice notes, audio files, and photos
+          if (update.message?.text || update.message?.voice || update.message?.audio || update.message?.photo) {
             await this.handleUpdate(update)
           }
         }

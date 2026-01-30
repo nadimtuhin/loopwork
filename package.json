@@ -21,5 +21,11 @@
     "@types/node": "^20.0.0",
     "turbo": "^2.7.6",
     "typescript": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1"
   }
 }

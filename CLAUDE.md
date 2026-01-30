@@ -280,6 +280,63 @@ npm publish
 3. **Proactive Task Proposal**: You should be able to propose new tasks when you identify gaps or improvements.
 4. **Task Creation**: You are empowered to create new tasks in the backlog to track necessary work.
 
+## Integration Testing Rules
+
+These rules prevent bugs where individual components work but fail when wired together.
+
+### 1. Test the Full Data Path
+
+When adding features that involve data flowing through multiple layers:
+- Write unit tests for the new code
+- Write an integration test that verifies the FULL PATH from entry to exit
+- If data passes through A → B → C, test A→C directly, not just A and C separately
+
+**Example (Bug that was caught):** `withCli()` plugin correctly set `cliConfig`, but `getConfig()` forgot to pass it through. Unit tests passed, but integration was broken.
+
+### 2. Test at the Seams
+
+A "seam" is where two components connect. When modifying code:
+1. Identify all seams the change touches
+2. Write at least one test that crosses each seam
+3. Never trust that "if A works and B works, A→B works"
+
+**Key seams in loopwork:**
+- Config file → `loadConfigFile()` → `getConfig()` → `CliExecutor`
+- Backend plugin → `TaskBackend` interface → run command
+- Plugin hooks → Loop execution → Task lifecycle
+
+### 3. Beware Silent Defaults
+
+DANGER: When code has a fallback default, bugs can hide because the system "works" with wrong values.
+
+```typescript
+// This pattern hides bugs:
+cli: options.cli || fileConfig?.cli || 'opencode'
+// If fileConfig.cliConfig.models is lost, system uses 'opencode' default
+// No error thrown, but wrong behavior!
+```
+
+**Rule:** When adding defaults, add a test that FAILS if the primary value is lost.
+
+### 4. New Config Property Checklist
+
+When adding a new config property, verify it appears in ALL these places:
+- [ ] Type/interface definition
+- [ ] `DEFAULT_CONFIG` (if applicable)
+- [ ] Config file loading (`loadConfigFile`)
+- [ ] Config merging (`getConfig`) - **this is where bugs hide!**
+- [ ] Validation (`validateConfig`)
+- [ ] Consumer code (`CliExecutor`, etc.)
+- [ ] Integration test verifying full path
+
+### 5. Property Propagation Grep Check
+
+Before completing config changes, run:
+```bash
+git grep "const config.*=" -- "*.ts" | grep -v test
+```
+This finds all places that build config objects - verify your new property is included in each.
+
 ## Architecture Documentation
 
 Architecture docs are in `packages/loopwork/docs/`:

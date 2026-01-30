@@ -1,6 +1,125 @@
 {
   "tasks": [
     {
+      "id": "PARALLEL-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel Execution: Run 2-3 concurrent workers",
+      "feature": "parallel",
+      "description": "Add parallel task execution to loopwork with 2-3 concurrent workers. Opt-in via --parallel flag, sequential remains default. Uses atomic task claiming to prevent race conditions.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Config → ParallelRunner → Workers → claimTask() → CliExecutor → markCompleted()",
+        "seams": [
+          "config parsing",
+          "task claiming",
+          "worker coordination",
+          "state management"
+        ],
+        "testRequired": "E2E test: --parallel 2 → two workers claim different tasks → both complete without conflicts"
+      }
+    },
+    {
+      "id": "PARALLEL-001a",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Add config types (parallel, parallelFailureMode)",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "description": "Add ParallelFailureMode type ('continue'|'abort-all'), parallel field (number), and parallelFailureMode field to LoopworkConfig. Update DEFAULT_CONFIG with parallel:1, parallelFailureMode:'continue'. Export new type from contracts/index.ts."
+    },
+    {
+      "id": "PARALLEL-001b",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Add --parallel and --sequential CLI flags",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001a"
+      ],
+      "description": "Add parseParallelOption() helper (returns 2 if no value). Add .option('--parallel [count]') and .option('--sequential') to commander. Update Config interface. Add merge logic in getConfig(). Register flags in index.ts run command and RUN_ARGS."
+    },
+    {
+      "id": "PARALLEL-001c",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Add claimTask() to TaskBackend interface",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "description": "Add optional claimTask?(options?: FindTaskOptions): Promise<Task | null> to TaskBackend interface in contracts/backend.ts. Add JSDoc explaining atomic find + mark in-progress behavior."
+    },
+    {
+      "id": "PARALLEL-001d",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Implement claimTask() in JsonTaskAdapter",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001c"
+      ],
+      "description": "Implement claimTask() in backends/json.ts: wrap in withLock(), load tasks file, filter pending by feature/priority/parent/topLevel, sort by priority, filter blocked tasks via areDependenciesMet(), handle startFrom, mark entry as in-progress, save atomically, return full task."
+    },
+    {
+      "id": "PARALLEL-001e",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Create ParallelRunner class",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001d"
+      ],
+      "description": "Create src/core/parallel-runner.ts with: WORKER_COLORS array, WorkerResult/ParallelState/ParallelRunnerOptions/ParallelRunStats interfaces, ParallelRunner class with run() method (worker pool via Promise.allSettled, circuit breaker check), runWorker() method (claim task, create context, call hooks, execute CLI, handle success/failure), abort(), getState(), resetInterruptedTasks(), getStats()."
+    },
+    {
+      "id": "PARALLEL-001f",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Update ICliExecutor interface",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "description": "Add optional taskId parameter to execute() method. Add cleanup(): Promise<void> method for process cleanup on shutdown."
+    },
+    {
+      "id": "PARALLEL-001g",
+      "status": "completed",
+      "priority": "high",
+      "title": "Parallel: Integrate ParallelRunner into run command",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001e",
+        "PARALLEL-001f"
+      ],
+      "description": "In commands/run.ts: import ParallelRunner, add parallel info to startup log, add branch after pendingCount check (if parallel > 1 call runParallel), create runParallel() function with signal handlers, resume support, plugin hooks. Add saveParallelState/loadParallelState/clearParallelState helpers. Update examples in createRunCommand()."
+    },
+    {
+      "id": "PARALLEL-001h",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Parallel: Write unit tests for ParallelRunner",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001e"
+      ],
+      "description": "Create test/parallel-runner.test.ts with: mock task helper, mock backend with claimTask tracking, mock CLI executor with configurable exit codes, mock logger. Test suites: Worker Pool (2), Task Claiming (2), Circuit Breaker (2), Failure Modes (2), Resume (2), Statistics (2), Dry Run (1). Total 13 tests."
+    },
+    {
+      "id": "PARALLEL-001i",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Parallel: Write integration tests",
+      "feature": "parallel",
+      "parentId": "PARALLEL-001",
+      "dependsOn": [
+        "PARALLEL-001g"
+      ],
+      "description": "Create test/integration/parallel.test.ts with: test dir helpers, setupTestTasks (creates tasks.json + PRDs), test CLI executor with tracking. Test suites: Full Stack (3), Failure Handling (2), State Management (2), claimTask Atomicity (1), Task Dependencies (3). Total 11 tests."
+    },
+    {
       "id": "IMPROVE-001",
       "status": "in-progress",
       "priority": "high",
@@ -41,23 +160,52 @@
       "priority": "high",
       "title": "Teleloop: Implement 'Overseer' IPC Communication",
       "feature": "teleloop",
-      "description": "Establish structured IPC channel between bot and loop process to enable interactive approvals (buttons) and structured questions instead of raw stdin/stdout."
+      "description": "Establish structured IPC channel between bot and loop process to enable interactive approvals (buttons) and structured questions instead of raw stdin/stdout.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Telegram bot → IPCHandler.parseOutput() → IPCMessage → handleMessage() → loopwork stdin",
+        "seams": [
+          "stdout parsing",
+          "message routing",
+          "stdin response"
+        ],
+        "testRequired": "Integration test: IPC messages parsed from stdout, button callbacks reach loopwork via stdin, non-IPC logs still display"
+      }
     },
     {
       "id": "TELE-011",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Teleloop: Voice-to-Task (Audio Notes)",
       "feature": "teleloop",
-      "description": "Enable Telegram voice notes support. Transcribe audio using an API (e.g. OpenAI Whisper or Google STT) and parse intent to create tasks."
+      "description": "Enable Telegram voice notes support. Transcribe audio using an API (e.g. OpenAI Whisper or Google STT) and parse intent to create tasks.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Telegram voice → audio download → transcription API → intent parser → task creation",
+        "seams": [
+          "audio extraction",
+          "API call",
+          "task backend"
+        ],
+        "testRequired": "Integration test: voice file → transcribed text → created task in backend"
+      }
     },
     {
       "id": "TELE-012",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Teleloop: 'Vision' Bug Reporting",
       "feature": "teleloop",
-      "description": "Handle image uploads in Telegram. Save image to .specs/attachments and create a task referencing it for multimodal AI analysis."
+      "description": "Handle image uploads in Telegram. Save image to .specs/attachments and create a task referencing it for multimodal AI analysis.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Telegram image → file download → .specs/attachments → task creation with reference",
+        "seams": [
+          "file storage",
+          "task metadata"
+        ],
+        "testRequired": "Integration test: image upload → file saved → task references correct path"
+      }
     },
     {
       "id": "TELE-013",
@@ -65,19 +213,40 @@
       "priority": "low",
       "title": "Teleloop: Smart Daily Briefings",
       "feature": "teleloop",
-      "description": "Generate AI summaries of loop activity (completed tasks, errors, files modified) and send a daily briefing to the user."
+      "description": "Generate AI summaries of loop activity (completed tasks, errors, files modified) and send a daily briefing to the user.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Loop state → activity aggregator → LLM summarizer → Telegram message",
+        "seams": [
+          "state reading",
+          "LLM call",
+          "message sending"
+        ],
+        "testRequired": "Integration test: mock state data → generated summary contains expected info"
+      }
     },
     {
       "id": "AI-MONITOR-001",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "AI Monitor: Intelligent Log Watcher & Auto-Healer",
       "feature": "ai-monitor",
-      "description": "Implement an intelligent meta-monitor that watches loopwork logs in real-time, detects issues (missing PRDs, rate limits, config errors), and automatically takes corrective actions."
+      "description": "Implement an intelligent meta-monitor that watches loopwork logs in real-time, detects issues (missing PRDs, rate limits, config errors), and automatically takes corrective actions.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Log file → LogWatcher → PatternDetector → HealingAction → Verification",
+        "seams": [
+          "file watching",
+          "pattern matching",
+          "action execution",
+          "verification"
+        ],
+        "testRequired": "E2E test: write error to log → monitor detects → action triggered → state updated"
+      }
     },
     {
       "id": "AI-MONITOR-001a",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Core Infrastructure (LogWatcher + PatternDetector)",
       "feature": "ai-monitor",
@@ -85,59 +254,131 @@
     },
     {
       "id": "AI-MONITOR-001b",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "AI Monitor: Concurrency Manager",
       "feature": "ai-monitor",
-      "description": "Implement per-provider/model concurrency limits with key-based queuing. acquire()/release() pattern. Prevents API rate limits."
+      "description": "Implement per-provider/model concurrency limits with key-based queuing. acquire()/release() pattern. Prevents API rate limits.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "HealingAction → ConcurrencyManager.acquire() → execute → release()",
+        "seams": [
+          "acquire/release lifecycle",
+          "queue ordering"
+        ],
+        "testRequired": "Integration test: concurrent healing actions respect limits, queued actions execute in order"
+      }
     },
     {
       "id": "AI-MONITOR-001c",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Circuit Breaker",
       "feature": "ai-monitor",
-      "description": "Implement circuit breaker pattern (closed/open/half-open states). 3 failures → 60s cooldown. Prevents infinite healing loops."
+      "description": "Implement circuit breaker pattern (closed/open/half-open states). 3 failures → 60s cooldown. Prevents infinite healing loops.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Failed action → CircuitBreaker.recordFailure() → state transition → blocked actions",
+        "seams": [
+          "failure counting",
+          "state transitions",
+          "action blocking"
+        ],
+        "testRequired": "Integration test: 3 failures → circuit opens → actions blocked → cooldown → half-open → success → closed"
+      }
     },
     {
       "id": "AI-MONITOR-001d",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Auto-Create PRD Action",
       "feature": "ai-monitor",
-      "description": "When 'PRD file not found' detected, read task metadata from tasks.json and generate stub PRD with title, goal, and placeholder requirements."
+      "description": "When 'PRD file not found' detected, read task metadata from tasks.json and generate stub PRD with title, goal, and placeholder requirements.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Log error detected → read tasks.json → generate PRD → write to .specs/tasks/",
+        "seams": [
+          "error detection",
+          "task lookup",
+          "file writing"
+        ],
+        "testRequired": "Integration test: 'PRD not found' log → PRD file created with correct task metadata"
+      }
     },
     {
       "id": "AI-MONITOR-001e",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "AI Monitor: Task Recovery (Early Exit Enhancement)",
       "feature": "ai-monitor",
-      "description": "Detect early task exits, analyze failure reason, and enhance PRD/docs/tests for retry. Improve task context so loop has better success on next attempt."
+      "description": "Detect early task exits, analyze failure reason, and enhance PRD/docs/tests for retry. Improve task context so loop has better success on next attempt.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Early exit detected → failure analysis → PRD enhancement → task state reset",
+        "seams": [
+          "exit detection",
+          "analysis",
+          "PRD update",
+          "state management"
+        ],
+        "testRequired": "Integration test: task fails early → PRD updated with failure context → task retry-ready"
+      }
     },
     {
       "id": "AI-MONITOR-001f",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "AI Monitor: Verification Engine",
       "feature": "ai-monitor",
-      "description": "Implement verification-before-completion protocol. Require fresh evidence (<5 min). Run BUILD/TEST/LINT checks before claiming healing success."
+      "description": "Implement verification-before-completion protocol. Require fresh evidence (<5 min). Run BUILD/TEST/LINT checks before claiming healing success.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Healing complete → VerificationEngine.verify() → run checks → pass/fail decision",
+        "seams": [
+          "evidence freshness",
+          "check execution",
+          "result aggregation"
+        ],
+        "testRequired": "Integration test: stale evidence rejected, fresh evidence accepted, all checks must pass"
+      }
     },
     {
       "id": "AI-MONITOR-001g",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: Wisdom System (Learn from Healing)",
       "feature": "ai-monitor",
-      "description": "Store learned error patterns in .loopwork/ai-monitor/. Track what fixes work, accumulate wisdom across sessions, expire old patterns after 30 days."
+      "description": "Store learned error patterns in .loopwork/ai-monitor/. Track what fixes work, accumulate wisdom across sessions, expire old patterns after 30 days.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Successful healing → WisdomStore.record() → persist to disk → load on next session",
+        "seams": [
+          "recording",
+          "persistence",
+          "retrieval",
+          "expiration"
+        ],
+        "testRequired": "Integration test: heal error → wisdom saved → restart → wisdom loaded → same error uses learned fix"
+      }
     },
     {
       "id": "AI-MONITOR-001h",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "AI Monitor: LLM Fallback Analyzer",
       "feature": "ai-monitor",
-      "description": "For unknown errors, send to LLM (haiku) for analysis. Throttle to max 10 calls/session, 5-min cooldown. Cache responses for 24h."
+      "description": "For unknown errors, send to LLM (haiku) for analysis. Throttle to max 10 calls/session, 5-min cooldown. Cache responses for 24h.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Unknown error → LLMAnalyzer → API call → cache response → return analysis",
+        "seams": [
+          "throttling",
+          "API call",
+          "caching",
+          "cache retrieval"
+        ],
+        "testRequired": "Integration test: unknown error → LLM called → response cached → same error uses cache"
+      }
     },
     {
       "id": "AI-MONITOR-001i",
@@ -145,15 +386,269 @@
       "priority": "low",
       "title": "AI Monitor: CLI Command (loopwork ai-monitor)",
       "feature": "ai-monitor",
-      "description": "Create 'loopwork ai-monitor --watch' command and '--with-ai-monitor' flag for 'loopwork start'. Add to CLI help and documentation."
+      "description": "Create 'loopwork ai-monitor --watch' command and '--with-ai-monitor' flag for 'loopwork start'. Add to CLI help and documentation.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "CLI args → getConfig() → AIMonitor initialization → monitor running",
+        "seams": [
+          "arg parsing",
+          "config propagation",
+          "monitor startup"
+        ],
+        "testRequired": "Integration test: CLI flag → config includes ai-monitor settings → monitor starts (avoid cliConfig bug pattern!)"
+      }
     },
     {
       "id": "CLI-005",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Fix CLI output streaming - output not showing in real-time",
       "feature": "cli",
-      "description": "CLI output from AI tools (claude, opencode, gemini) is not streaming in real-time. Output should be displayed as it's generated, not buffered until completion. Check StreamLogger class in core/utils.ts and CliExecutor spawn options in core/cli.ts."
+      "description": "Fixed by coordinating StreamLogger output with progress bar via lastOutputTime timestamp. Also fixed cliConfig not being passed through getConfig().",
+      "integrationCheck": {
+        "completed": true,
+        "notes": "Bug found: cliConfig was not passed through getConfig(). Fixed and integration tests added to cli-config.test.ts."
+      }
+    },
+    {
+      "id": "PROC-001",
+      "status": "in-progress",
+      "priority": "high",
+      "title": "Process Management: Robust Child Process Lifecycle & Orphan Cleanup",
+      "feature": "process-management",
+      "description": "Implement robust child process management with proper lifecycle tracking, orphan detection, and cleanup. Use dependency inversion for testability. Parent task for sub-tasks a-f.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "CliExecutor → ProcessManager → spawn/track/kill → OrphanDetector → cleanup",
+        "seams": [
+          "spawn tracking",
+          "lifecycle events",
+          "orphan detection",
+          "cleanup execution"
+        ],
+        "testRequired": "E2E test: start loop → kill parent unexpectedly → orphan detected → cleanup executed"
+      }
+    },
+    {
+      "id": "PROC-001a",
+      "status": "completed",
+      "priority": "high",
+      "title": "Process Management: IProcessManager Interface (Dependency Inversion)",
+      "feature": "process-management",
+      "description": "Define IProcessManager interface with spawn(), kill(), track(), listChildren(), cleanup() methods. CliExecutor depends on interface, not concrete implementation. Enables mocking in tests.",
+      "architecture": {
+        "pattern": "dependency-inversion",
+        "interface": "IProcessManager",
+        "methods": [
+          "spawn(cmd, args, opts): ChildProcess",
+          "kill(pid, signal): boolean",
+          "track(pid, metadata): void",
+          "listChildren(): ProcessInfo[]",
+          "cleanup(): Promise<void>"
+        ],
+        "consumers": [
+          "CliExecutor",
+          "Monitor",
+          "DaemonManager"
+        ]
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "CliExecutor constructor → inject IProcessManager → use interface methods",
+        "seams": [
+          "interface injection",
+          "method delegation"
+        ],
+        "testRequired": "Unit test: CliExecutor with mock IProcessManager verifies all method calls"
+      }
+    },
+    {
+      "id": "PROC-001b",
+      "status": "completed",
+      "priority": "high",
+      "title": "Process Management: ProcessRegistry (Track All Children)",
+      "feature": "process-management",
+      "description": "Implement ProcessRegistry that tracks all spawned child processes with metadata (pid, command, startTime, parentPid, namespace). Persist to .loopwork/processes.json for crash recovery.",
+      "architecture": {
+        "pattern": "registry",
+        "storage": ".loopwork/processes.json",
+        "fields": [
+          "pid",
+          "command",
+          "args",
+          "startTime",
+          "parentPid",
+          "namespace",
+          "status"
+        ]
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "spawn() → registry.add() → persist to disk → registry.list() reads from disk",
+        "seams": [
+          "registration",
+          "persistence",
+          "retrieval"
+        ],
+        "testRequired": "Integration test: spawn process → registry updated → restart app → registry loaded from disk"
+      }
+    },
+    {
+      "id": "PROC-001c",
+      "status": "completed",
+      "priority": "high",
+      "title": "Process Management: OrphanDetector (Find Rogue Processes)",
+      "feature": "process-management",
+      "description": "Implement OrphanDetector that scans for orphaned loopwork processes. Detect: 1) Processes in registry but parent dead, 2) Processes matching loopwork patterns not in registry, 3) Stale processes (running >timeout without activity).",
+      "architecture": {
+        "pattern": "detector",
+        "detectionMethods": [
+          "registry-parent-check",
+          "pattern-scan",
+          "stale-timeout"
+        ],
+        "patterns": [
+          "claude --print",
+          "opencode run",
+          "loopwork"
+        ],
+        "staleTimeout": "2x task timeout"
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "OrphanDetector.scan() → check registry → check running processes → return orphan list",
+        "seams": [
+          "registry check",
+          "process listing",
+          "pattern matching",
+          "staleness check"
+        ],
+        "testRequired": "Integration test: spawn process → kill parent → detector finds orphan"
+      }
+    },
+    {
+      "id": "PROC-001d",
+      "status": "completed",
+      "priority": "high",
+      "title": "Process Management: ProcessCleaner (Kill Orphans Safely)",
+      "feature": "process-management",
+      "description": "Implement ProcessCleaner that safely terminates orphan processes. Use graceful shutdown: SIGTERM → wait 5s → SIGKILL. Log all cleanup actions. Update registry after cleanup.",
+      "architecture": {
+        "pattern": "cleaner",
+        "shutdownSequence": [
+          "SIGTERM",
+          "wait 5000ms",
+          "SIGKILL"
+        ],
+        "logging": "required",
+        "registryUpdate": "required"
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "ProcessCleaner.cleanup(orphans) → SIGTERM → wait → SIGKILL → update registry",
+        "seams": [
+          "signal sending",
+          "wait timeout",
+          "registry update"
+        ],
+        "testRequired": "Integration test: orphan process → cleaner kills → registry updated → process gone"
+      }
+    },
+    {
+      "id": "PROC-001e",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Process Management: Unit Tests (Mocked Dependencies)",
+      "feature": "process-management",
+      "description": "Comprehensive unit tests using mocked IProcessManager. Test: ProcessRegistry CRUD, OrphanDetector logic, ProcessCleaner sequences. No real processes spawned.",
+      "testStrategy": {
+        "type": "unit",
+        "mocking": [
+          "IProcessManager",
+          "fs operations",
+          "child_process"
+        ],
+        "coverage": [
+          "ProcessRegistry",
+          "OrphanDetector",
+          "ProcessCleaner",
+          "CliExecutor integration"
+        ]
+      },
+      "integrationCheck": {
+        "required": false,
+        "notes": "Unit tests use mocks, no real process spawning. Focus on logic correctness."
+      }
+    },
+    {
+      "id": "PROC-001f",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Process Management: Integration Tests (Real Processes)",
+      "feature": "process-management",
+      "description": "Integration tests that spawn real child processes. Test: registry persistence across restarts, orphan detection with real PIDs, cleanup of real processes. Use short-lived test processes.",
+      "testStrategy": {
+        "type": "integration",
+        "realProcesses": true,
+        "testProcess": "sleep or simple script",
+        "cleanup": "afterEach kills all test processes"
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Test spawns real process → registry tracks → test kills parent → orphan detected → cleanup works",
+        "seams": [
+          "real spawn",
+          "real registry",
+          "real detection",
+          "real cleanup"
+        ],
+        "testRequired": "Self-testing: the integration tests ARE the integration check"
+      }
+    },
+    {
+      "id": "PROC-001g",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Process Management: E2E Tests (Full Loop Scenario)",
+      "feature": "process-management",
+      "description": "E2E tests simulating real failure scenarios. Test: 1) Start loopwork → crash parent → orphan cleaned on next start, 2) Multiple namespaces → each cleans own orphans, 3) Timeout scenario → stale process killed.",
+      "testStrategy": {
+        "type": "e2e",
+        "scenarios": [
+          "crash-recovery: start loop → kill -9 parent → restart → orphans cleaned",
+          "namespace-isolation: two namespaces → crash one → only its orphans cleaned",
+          "stale-timeout: process exceeds 2x timeout → detected as stale → killed"
+        ]
+      },
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "Full loopwork start → task execution → simulated crash → restart → verify cleanup",
+        "seams": [
+          "full startup",
+          "task execution",
+          "crash simulation",
+          "recovery"
+        ],
+        "testRequired": "E2E scenarios prove the full system works under failure conditions"
+      }
+    },
+    {
+      "id": "PROC-001h",
+      "status": "pending",
+      "priority": "low",
+      "title": "Process Management: CLI Commands (loopwork processes)",
+      "feature": "process-management",
+      "description": "Add CLI commands for process management: 'loopwork processes list' (show tracked processes), 'loopwork processes clean' (kill orphans), 'loopwork processes clean --force' (kill all). Add --clean-orphans flag to 'loopwork start'.",
+      "integrationCheck": {
+        "required": true,
+        "dataFlow": "CLI args → getConfig() → ProcessManager methods → output results",
+        "seams": [
+          "arg parsing",
+          "config propagation",
+          "command execution"
+        ],
+        "testRequired": "Integration test: CLI commands work and produce expected output (avoid cliConfig bug pattern!)"
+      }
     }
   ]
 }
