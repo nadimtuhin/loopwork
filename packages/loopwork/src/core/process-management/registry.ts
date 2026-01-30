@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import type { ProcessInfo, ProcessMetadata } from '../../contracts/process-manager'
 import { logger } from '../utils'
+import { isProcessAlive } from '../../commands/shared/process-utils'
 
 interface RegistryData {
   version: number
@@ -32,9 +33,9 @@ export class ProcessRegistry {
   add(pid: number, metadata: ProcessMetadata): void {
     this.processes.set(pid, {
       pid,
-      ...metadata,
       status: 'running',
-      parentPid: process.pid
+      parentPid: process.pid,
+      ...metadata
     })
     // Auto-persist after adding
     this.persist().catch(err => {
@@ -201,18 +202,5 @@ export class ProcessRegistry {
     }
 
     throw new Error('Failed to acquire lock after max retries')
-  }
-}
-
-/**
- * Check if a process is alive
- * Uses signal 0 to check existence without actually killing
- */
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0) // Signal 0 checks existence without killing
-    return true
-  } catch {
-    return false
   }
 }

@@ -1,6 +1,7 @@
 import type { OrphanInfo, CleanupResult } from '../../contracts/process-manager'
 import { ProcessRegistry } from './registry'
 import { logger } from '../utils'
+import { isProcessAlive } from '../../commands/shared/process-utils'
 
 /**
  * ProcessCleaner - Graceful process termination with fallback to force kill
@@ -156,19 +157,6 @@ export class ProcessCleaner {
       }
       throw error
     }
-  }
-}
-
-/**
- * Check if a process is alive
- * Uses signal 0 to check existence without actually killing
- */
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0) // Signal 0 checks existence without killing
-    return true
-  } catch {
-    return false
   }
 }
 

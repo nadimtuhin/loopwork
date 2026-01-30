@@ -132,9 +132,9 @@ export function untrackPid(pid: number, projectRoot?: string): void {
 /**
  * Get all tracked PIDs
  */
-export function getTrackedPids(): TrackedPid[] {
-  const projectRoot = process.cwd()
-  const data = readTrackedPids(projectRoot)
+export function getTrackedPids(projectRoot?: string): TrackedPid[] {
+  const root = projectRoot || process.cwd()
+  const data = readTrackedPids(root)
   return data.pids
 }
 

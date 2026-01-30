@@ -2,6 +2,7 @@ import { execSync } from 'child_process'
 import type { ProcessInfo, OrphanInfo } from '../../contracts/process-manager'
 import type { ProcessRegistry } from './registry'
 import { logger } from '../utils'
+import { isProcessAlive } from '../../commands/shared/process-utils'
 
 /**
  * OrphanDetector - Detects orphaned processes using three detection methods:
@@ -62,7 +63,7 @@ export class OrphanDetector {
     const tracked = this.registry.list()
 
     for (const process of tracked) {
-      if (process.parentPid && !this.isProcessAlive(process.parentPid)) {
+      if (process.parentPid && !isProcessAlive(process.parentPid)) {
         orphans.push({
           pid: process.pid,
           reason: 'parent-dead',
@@ -199,17 +200,5 @@ export class OrphanDetector {
     }
 
     return processes
-  }
-
-  /**
-   * Check if a process is alive
-   */
-  private isProcessAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0) // Signal 0 checks existence
-      return true
-    } catch {
-      return false
-    }
   }
 }
