@@ -56,17 +56,21 @@ describe('Task Recovery Plugin', () => {
     })
 
     test('creates auto-recovery preset', () => {
-      const plugin = withAutoRecovery()
+      const wrapper = withAutoRecovery()
+      const config = wrapper({ plugins: [] } as any)
 
-      expect(plugin.name).toBe('task-recovery')
-      expect(plugin.onTaskFailed).toBeDefined()
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
+      expect(config.plugins?.[0]?.onTaskFailed).toBeDefined()
     })
 
     test('creates conservative recovery preset', () => {
-      const plugin = withConservativeRecovery()
+      const wrapper = withConservativeRecovery()
+      const config = wrapper({ plugins: [] } as any)
 
-      expect(plugin.name).toBe('task-recovery')
-      expect(plugin.onTaskFailed).toBeDefined()
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
+      expect(config.plugins?.[0]?.onTaskFailed).toBeDefined()
     })
   })
 

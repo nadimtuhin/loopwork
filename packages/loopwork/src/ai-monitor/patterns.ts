@@ -82,8 +82,7 @@ export class PatternDetector {
         severity: 'MEDIUM',
         autoAction: () => ({
           type: 'enhance-task',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any),
+        } as any), // eslint-disable-line @typescript-eslint/no-explicit-any
       },
       {
         name: 'permission-denied',
