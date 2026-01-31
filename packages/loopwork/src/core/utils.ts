@@ -1,10 +1,11 @@
 import chalk from 'chalk'
 import fs from 'fs'
 import path from 'path'
-import ora, { type Ora } from 'ora'
 import crypto from 'crypto'
 import type { LogLevel } from '../contracts/config'
 import type { OutputFormat, JsonEvent } from '../contracts/output'
+import type { OutputRenderer } from '../output/renderer'
+import { ConsoleRenderer } from '../output/console-renderer'
 
 export function getTimestamp(): string {
   return new Date().toLocaleTimeString('en-US', {
@@ -23,15 +24,6 @@ export function calculateChecksum(data: unknown): string {
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
-let activeSpinner: Ora | null = null
-
-function stopActiveSpinner() {
-  if (activeSpinner) {
-    activeSpinner.stop()
-    activeSpinner = null
-  }
-}
-
 const LOG_LEVELS: Record<LogLevel, number> = {
   trace: -1,
   debug: 0,
@@ -41,11 +33,21 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   silent: 4,
 }
 
+// Initial configuration
+const initialConfig = {
+  mode: 'human' as const,
+  logLevel: 'info' as const,
+}
+
+// Default renderer
+const defaultRenderer = new ConsoleRenderer(initialConfig)
+
 export const logger = {
   logFile: null as string | null,
   logLevel: 'info' as LogLevel,
   lastOutputTime: 0,
   outputFormat: 'human' as OutputFormat,
+  renderer: defaultRenderer as OutputRenderer,
 
   setLogFile: (filePath: string) => {
     logger.logFile = filePath
@@ -57,10 +59,31 @@ export const logger = {
 
   setLogLevel: (level: LogLevel) => {
     logger.logLevel = level
+    logger.renderer.configure({ logLevel: level })
   },
 
   setOutputFormat: (format: OutputFormat) => {
     logger.outputFormat = format
+    logger.renderer.configure({ mode: format === 'json' ? 'json' : 'human' })
+  },
+
+  setRenderer: (renderer: OutputRenderer) => {
+    // Transfer configuration to new renderer
+    renderer.configure({
+      logLevel: logger.logLevel,
+      mode: logger.outputFormat === 'json' ? 'json' : 'human'
+    })
+    
+    // Dispose old renderer if needed
+    if (logger.renderer && logger.renderer !== renderer) {
+      try {
+        logger.renderer.dispose()
+      } catch {
+        // Ignore dispose errors
+      }
+    }
+    
+    logger.renderer = renderer
   },
 
   _shouldLog: (level: LogLevel): boolean => {
@@ -83,145 +106,83 @@ export const logger = {
   },
 
   info: (msg: string) => {
-    if (!logger._shouldLog('info')) return
+    logger.renderer.render({
+      type: 'log',
+      level: 'info',
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('INFO', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.blue('ℹ️ INFO:')} ${msg}\n`)
   },
   success: (msg: string) => {
-    if (!logger._shouldLog('info')) return
+    logger.renderer.render({
+      type: 'log',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      level: 'success' as any, // Custom level supported by ConsoleRenderer
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('SUCCESS', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.green('✅ SUCCESS:')} ${msg}\n`)
   },
   warn: (msg: string) => {
-    if (!logger._shouldLog('warn')) return
+    logger.renderer.render({
+      type: 'log',
+      level: 'warn',
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('WARN', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.yellow('⚠️ WARN:')} ${msg}\n`)
   },
   error: (msg: string) => {
-    if (!logger._shouldLog('error')) return
+    logger.renderer.render({
+      type: 'log',
+      level: 'error',
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('ERROR', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stderr.write(`${chalk.gray(getTimestamp())} ${chalk.red('❌ ERROR:')} ${msg}\n`)
   },
   debug: (msg: string) => {
-    if (!logger._shouldLog('debug')) return
+    logger.renderer.render({
+      type: 'log',
+      level: 'debug',
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('DEBUG', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.cyan('[DEBUG]')} ${msg}\n`)
   },
   trace: (msg: string) => {
-    if (!logger._shouldLog('trace')) return
+    logger.renderer.render({
+      type: 'log',
+      level: 'trace',
+      message: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('TRACE', msg)
-
-    // Suppress console output in JSON mode
-    if (logger.outputFormat === 'json') {
-      return
-    }
-
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(`${chalk.gray(getTimestamp())} ${chalk.dim('[TRACE]')} ${msg}\n`)
   },
   update: (msg: string) => {
-    // Suppress console output in JSON mode or quiet mode
-    if (logger.outputFormat === 'json' || logger.logLevel === 'error') {
-      return
-    }
-
-    if (activeSpinner) {
-      activeSpinner.text = msg
-    } else {
-      const terminalWidth = process.stdout.columns || 120
-      const timestamp = getTimestamp()
-      const prefix = `${chalk.gray(timestamp)} ${chalk.blue('[INFO]')} `
-      const prefixLength = timestamp.length + 1 + '[INFO] '.length
-      const availableWidth = Math.max(10, terminalWidth - prefixLength - 5)
-
-      let displayMsg = msg
-      if (msg.length > availableWidth) {
-        displayMsg = msg.substring(0, availableWidth - 3) + '...'
-      }
-
-      process.stdout.write(`\r\x1b[K${prefix}${displayMsg}`)
-    }
+    logger.renderer.render({
+      type: 'progress:update',
+      message: msg,
+      timestamp: Date.now()
+    })
   },
 
   startSpinner: (msg: string) => {
-    // Suppress spinner in JSON mode or quiet mode
-    if (logger.outputFormat === 'json' || logger.logLevel === 'error') {
-      return
-    }
-
-    if (process.env.LOOPWORK_DEBUG === 'true' || !process.stdout.isTTY) {
-      logger.info(msg)
-      return
-    }
-    if (activeSpinner) {
-      activeSpinner.text = msg
-      return
-    }
-    activeSpinner = ora({
-      text: msg,
-      color: 'blue',
-      spinner: 'dots',
-    }).start()
+    logger.renderer.render({
+      type: 'progress:start',
+      message: msg,
+      timestamp: Date.now()
+    })
   },
 
-  stopSpinner: (msg?: string, symbol?: string) => {
-    // Safely stop spinner even if none was started (JSON mode)
-    if (!activeSpinner) {
-      if (msg && logger.outputFormat !== 'json') {
-        logger.info(msg)
-      }
-      return
-    }
-    if (msg) {
-      activeSpinner.stopAndPersist({
-        symbol: symbol || chalk.green('✓'),
-        text: msg
-      })
-    } else {
-      activeSpinner.stop()
-    }
-    activeSpinner = null
+  stopSpinner: (msg?: string, _symbol?: string) => {
+    logger.renderer.render({
+      type: 'progress:stop',
+      message: msg,
+      timestamp: Date.now(),
+      success: true // Default to success if not specified
+    })
   },
 
   /**
@@ -229,9 +190,11 @@ export const logger = {
    * Use for pre-formatted output from Table, Banner, or other utilities
    */
   raw: (msg: string) => {
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(msg + '\n')
+    logger.renderer.render({
+      type: 'raw',
+      content: msg,
+      timestamp: Date.now()
+    })
     logger._logToFile('RAW', msg)
   },
 
@@ -240,8 +203,12 @@ export const logger = {
    * Used when outputFormat is 'json'
    */
   jsonEvent: (event: JsonEvent) => {
-    stopActiveSpinner()
-    process.stdout.write(JSON.stringify(event) + '\n')
+    logger.renderer.render({
+      type: 'json',
+      eventType: event.type,
+      data: event.data,
+      timestamp: Date.now()
+    })
   },
 }
 
@@ -250,7 +217,9 @@ export async function promptUser(
   defaultValue: string = 'n',
   nonInteractive: boolean = false
 ): Promise<string> {
-  stopActiveSpinner()
+  // Ensure any active spinner is stopped before prompting
+  logger.stopSpinner()
+  
   if (nonInteractive || !process.stdin.isTTY) {
     logger.debug(`Non-interactive mode, using default: ${defaultValue}`)
     return defaultValue
@@ -351,8 +320,10 @@ export class StreamLogger {
       return
     }
 
-    stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
+    // Stop spinner before outputting stream
+    logger.renderer.render({ type: 'progress:stop', timestamp: Date.now() })
+    
+    // Legacy formatting logic retained for backward compatibility via raw output
     const timestamp = chalk.gray(getTimestamp())
     const separator = chalk.gray(' │')
     const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
@@ -370,14 +341,22 @@ export class StreamLogger {
     const wrappedLines = this.wrapText(cleanedLine, contentWidth)
 
     for (let i = 0; i < wrappedLines.length; i++) {
+      let outputLine = ''
       if (i === 0) {
         // First line: show timestamp and prefix
-        process.stdout.write(`${timestamp}${separator}${prefixStr} ${chalk.dim(wrappedLines[i])}\n`)
+        outputLine = `${timestamp}${separator}${prefixStr} ${chalk.dim(wrappedLines[i])}`
       } else {
         // Continuation lines: indent to align with first line content
         const indent = ' '.repeat(12 + 3 + (this.prefix ? this.prefix.length + 3 : 0))
-        process.stdout.write(`${indent} ${chalk.dim(wrappedLines[i])}\n`)
+        outputLine = `${indent} ${chalk.dim(wrappedLines[i])}`
       }
+      
+      // Send as raw output to renderer (which appends newline)
+      logger.renderer.render({
+        type: 'raw',
+        content: outputLine,
+        timestamp: Date.now()
+      })
     }
 
     logger.lastOutputTime = Date.now()
@@ -443,3 +422,29 @@ export class StreamLogger {
 
 // Re-export output utilities for convenience
 export { Table, Banner, ProgressBar, CompletionSummary, separator, supportsEmoji, getEmoji, BOX_CHARS } from './output'
+
+// Import Ink for component rendering
+import { render } from 'ink'
+import { render as renderToString } from 'ink-testing-library'
+
+// Re-export Ink components from their individual files
+export { InkBanner } from '../components/InkBanner'
+export { InkCompletionSummary } from '../components/InkCompletionSummary'
+export { ProgressBar as InkProgressBar } from '../components/ProgressBar'
+export { InkTable } from '../components/InkTable'
+export { InkLog } from '../components/InkLog'
+export { InkSpinner } from '../components/InkSpinner'
+export { InkStream } from '../components/InkStream'
+
+// Helper function to render Ink components interactively (for TTY mode)
+export function renderInkInteractive(element: React.ReactElement): void {
+  render(element)
+}
+
+// Helper function to render Ink components to string (for non-TTY/JSON mode)
+export function renderInk(element: React.ReactElement): string {
+  const { lastFrame, unmount } = renderToString(element)
+  const output = lastFrame() || ''
+  unmount()
+  return output
+}

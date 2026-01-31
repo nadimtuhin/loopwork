@@ -136,6 +136,15 @@ export type { AgentDefinition as SubagentDefinition } from '@loopwork-ai/agents'
 // Export Task type from contracts
 export type { Task } from './contracts'
 
+// Ink-based UI components (recommended for all new code)
+// See packages/loopwork/docs/MIGRATION-OUTPUT.md for migration guide
+export {
+  Banner,
+  ProgressBar,
+  Table,
+  CompletionSummary,
+} from './components'
+
 // Export error handling
 export {
   LoopworkError,
@@ -318,6 +327,23 @@ if (import.meta.main) {
         }
       })
 
+    // Reschedule command
+    program
+      .command('reschedule [id]')
+      .description('Reschedule a completed task to pending')
+      .option('--for <datetime>', 'ISO 8601 datetime to schedule for')
+      .option('--feature <name>', 'Feature name')
+      .option('--all', 'Reschedule all completed tasks')
+      .action(async (id, options) => {
+        try {
+          const { reschedule } = await import('./commands/reschedule')
+          await reschedule(id, options)
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
     // PS command - Docker Compose-style process list
     program
       .command('ps')
@@ -350,6 +376,28 @@ if (import.meta.main) {
             chalk,
             json: options.json,
           })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    program
+      .command('telemetry')
+      .description('View token metrics and error correlation report')
+      .option('--namespace <name>', 'Namespace to view telemetry for', 'default')
+      .option('--output <format>', 'Output format: ink, json, or plain', 'ink')
+      .option('--json', 'Output as JSON (deprecated, use --output json)')
+      .action(async (options) => {
+        try {
+          const { telemetry } = await import('./commands/telemetry')
+          // Normalize --json flag to --output json for backward compatibility
+          const telemetryOptions = {
+            ...options,
+            namespace: options.namespace,
+            output: options.output || (options.json ? 'json' : undefined),
+          }
+          await telemetry(telemetryOptions)
         } catch (err) {
           handleError(err)
           process.exit(1)
@@ -741,6 +789,54 @@ if (import.meta.main) {
             task: options.task,
             json: options.json,
           })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Deadletter command with subcommands
+    const deadletterCmd = program
+      .command('deadletter <subcommand> [id]')
+      .alias('dlq')
+      .description('Manage quarantined tasks (Dead Letter Queue)')
+
+    deadletterCmd
+      .command('list')
+      .description('List all quarantined tasks')
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
+        try {
+          const { list } = await import('./commands/deadletter')
+          await list({
+            json: options.json,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    deadletterCmd
+      .command('retry <id>')
+      .description('Move a quarantined task back to pending')
+      .action(async (id) => {
+        try {
+          const { retry } = await import('./commands/deadletter')
+          await retry(id)
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    deadletterCmd
+      .command('clear <id>')
+      .description('Mark a quarantined task as failed and clear from DLQ')
+      .action(async (id) => {
+        try {
+          const { clear } = await import('./commands/deadletter')
+          await clear(id)
         } catch (err) {
           handleError(err)
           process.exit(1)

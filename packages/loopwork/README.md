@@ -116,6 +116,30 @@ export default compose(
 )(defineConfig({ cli: 'opencode' }))
 ```
 
+### Capability-Based Configuration
+
+Instead of specifying models directly, you can use capability levels or roles:
+
+```typescript
+import { compose, defineConfig, withModels } from 'loopwork'
+import { ModelPresets } from 'loopwork/plugins'
+
+export default compose(
+  withModels({
+    models: [
+      // Use capability levels
+      ModelPresets.capabilityHigh(),   // Maps to best model (Opus)
+      ModelPresets.capabilityMedium(), // Maps to balanced model (Sonnet)
+      ModelPresets.capabilityLow(),    // Maps to fast model (Haiku)
+    ],
+    // Or use roles
+    fallbackModels: [
+      ModelPresets.roleArchitect(),    // High capability
+    ]
+  })
+)(defineConfig({ cli: 'claude' }))
+```
+
 ### From Scratch
 
 Use the interactive init command to set up a new project:
@@ -286,6 +310,181 @@ EVERHOUR_API_KEY=...
 # Todoist
 TODOIST_API_TOKEN=...
 TODOIST_PROJECT_ID=...
+```
+
+### Config Hot Reload
+
+Loopwork supports hot reload of your configuration file, allowing you to change settings without restarting the process.
+
+#### How It Works
+
+When hot reload is enabled, Loopwork watches your `loopwork.config.ts` or `loopwork.config.js` file for changes. When you save changes to the config file:
+
+1. The file watcher detects the change
+2. Config is reloaded from the file (module cache is cleared)
+3. New config is validated against the config schema
+4. If valid, the new config is applied and a `config-reloaded` event is emitted
+5. If invalid, the old config is kept and an error is logged
+
+#### Enabling Hot Reload
+
+You can enable hot reload in two ways:
+
+**Option 1: CLI Flag**
+```bash
+loopwork start --hot-reload
+```
+
+**Option 2: Environment Variable**
+```bash
+export LOOPWORK_HOT_RELOAD=true
+loopwork start
+```
+
+#### Usage Examples
+
+**Development Workflow**
+```bash
+# Start loopwork with hot reload enabled
+loopwork start --hot-reload
+
+# In another terminal, edit your config
+nano loopwork.config.ts
+
+# Save the file - Loopwork will automatically reload the new config
+```
+
+**Daemon Mode with Hot Reload**
+```bash
+# Start daemon with hot reload
+loopwork start -d --hot-reload --namespace prod
+
+# Edit config file
+nano loopwork.config.ts
+
+# Changes are applied automatically without restarting the daemon
+```
+
+**Environment Variable for Always-On**
+```bash
+# Add to your shell profile (.bashrc, .zshrc, etc.)
+export LOOPWORK_HOT_RELOAD=true
+
+# Now every loopwork start will have hot reload enabled
+loopwork start
+```
+
+#### What Changes Are Hot-Reloaded?
+
+When you edit your config file, these changes are picked up:
+
+- ✅ `cli` - Switch AI tools (claude, opencode, gemini)
+- ✅ `maxIterations` - Adjust iteration limit
+- ✅ `timeout` - Change task timeout
+- ✅ `namespace` - Update namespace
+- ✅ Plugin configurations - Update plugin settings
+
+**Changes that require restart:**
+- ❌ Adding new plugins (won't be registered)
+- ❌ Changing backend type (won't reconnect)
+- ❌ CLI arguments passed at start time
+
+#### Event-Based Monitoring
+
+Plugins and custom code can listen to config reload events:
+
+```typescript
+import { getConfigHotReloadManager } from 'loopwork'
+
+// Get the hot reload manager
+const manager = getConfigHotReloadManager()
+
+// Register a listener
+manager.onReload((event) => {
+  console.log('Config reloaded!', {
+    timestamp: event.timestamp,
+    configPath: event.configPath,
+    newConfig: event.config
+  })
+})
+
+// Later, remove the listener
+manager.offReload(callback)
+```
+
+**Event Type:**
+```typescript
+interface ConfigReloadEvent {
+  timestamp: Date      // When the config was reloaded
+  configPath: string   // Path to the config file
+  config: Config       // The new configuration object
+}
+```
+
+#### Error Handling
+
+Hot reload includes built-in error handling:
+
+- **Invalid config syntax** - Old config is kept, error is logged
+- **Invalid config values** - Validation fails, old config is preserved
+- **File not found** - Hot reload doesn't start, warning is logged
+- **Watcher errors** - Logged but don't crash the process
+
+**Example of graceful degradation:**
+```bash
+# Start with valid config
+loopwork start --hot-reload
+
+# Config has maxIterations: 50
+
+# Edit file to have invalid value (negative number)
+echo "maxIterations: -5" >> loopwork.config.ts
+
+# Hot reload detects error, logs it, keeps old config
+# Your loopwork process continues with maxIterations: 50
+```
+
+#### Best Practices
+
+1. **Test config changes** - Validate your config before applying to production
+2. **Monitor logs** - Watch for hot reload success/failure messages
+3. **Use in development** - Great for iterative config tuning
+4. **Be cautious in production** - Consider restart for major config changes
+5. **Know the limits** - Some changes (new plugins, backend type) require restart
+
+#### Troubleshooting
+
+**Hot reload not starting**
+```bash
+# Check if config file exists
+ls loopwork.config.ts
+
+# Check if hot reload flag is set
+loopwork start --hot-reload --debug
+# Look for: "Config hot reload enabled: /path/to/config"
+```
+
+**Changes not applying**
+```bash
+# Check file watcher is running
+loopwork logs --follow | grep "Config file changed"
+
+# Validate new config syntax
+bun -c loopwork.config.ts
+
+# Check for validation errors
+loopwork logs | grep -i "reload"
+```
+
+**Watcher errors**
+```bash
+# Check file permissions
+ls -la loopwork.config.ts
+
+# Ensure file is readable and writable
+chmod 644 loopwork.config.ts
+
+# If on Windows, check file is not locked by another process
 ```
 
 ## Plugin Development Guide
@@ -889,6 +1088,37 @@ Loopwork provides a comprehensive CLI for task automation and daemon management.
 | `loopwork restart` | Restart a daemon with saved arguments |
 | `loopwork status` | Check running processes and namespaces |
 | `loopwork dashboard` | Launch interactive TUI dashboard |
+| `loopwork reschedule` | Reschedule completed tasks to pending |
+| `loopwork task-new` | Create a new task in the backlog |
+
+### Task Management
+
+Loopwork provides commands to manage your task backlog directly from the CLI.
+
+#### Rescheduling Tasks
+
+If you need to re-run completed tasks (e.g., after updating requirements or fixing bugs), use the `reschedule` command:
+
+```bash
+# Reschedule a specific task
+loopwork reschedule TASK-001
+
+# Reschedule all completed tasks
+loopwork reschedule --all
+
+# Reschedule all tasks for a specific feature
+loopwork reschedule --feature auth
+
+# Schedule for a specific time (ISO 8601)
+loopwork reschedule TASK-001 --for 2025-02-01T12:00:00Z
+```
+
+#### Creating Tasks
+
+```bash
+# Create a new task
+loopwork task-new --title "Fix login bug" --priority high --feature auth
+```
 
 ### Initialize a Project
 
@@ -2124,6 +2354,160 @@ bun test test/backends.test.ts
 # With coverage
 bun test --coverage
 ```
+
+## Output System
+
+Loopwork provides a flexible output system with multiple rendering modes to suit different environments and use cases.
+
+### Output Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `ink` | React-based TUI with rich interactive display | Interactive terminal sessions |
+| `human` | Console output with colors and formatting | Development and debugging |
+| `json` | Structured JSON events for parsing | CI/CD pipelines and automation |
+| `silent` | Suppress all output | Headless environments |
+
+### Configuring Output Mode
+
+```typescript
+import { defineConfig, compose } from 'loopwork'
+
+export default compose(
+  // ... other plugins
+)(defineConfig({
+  // Output mode: 'ink' | 'json' | 'silent' | 'human'
+  outputMode: 'ink',
+  
+  // Minimum log level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+  logLevel: 'info',
+  
+  // Enable/disable colors
+  useColor: true,
+  
+  // Force TTY mode (auto-detected by default)
+  useTty: true,
+}))
+```
+
+### Ink TUI Mode
+
+The Ink renderer provides a rich terminal user interface with:
+
+- **Real-time task progress** with animated progress bars
+- **Live log streaming** with color-coded levels
+- **Task statistics** showing completed/failed counts
+- **Keyboard shortcuts** (press `q` to quit, `v` to toggle logs)
+
+**Requirements:**
+- Interactive terminal (TTY)
+- Terminal emulator with Unicode support
+- Minimum 80x24 terminal size
+
+**Example output:**
+```
+╔══════════════════════════════════════════╗
+║           LOOPWORK DASHBOARD             ║
+║  Namespace: default    Elapsed: 2m 30s   ║
+╠══════════════════════════════════════════╣
+║ Status                                     ║
+║   ✓ 5   │ ✗ 1   │ Total: 6               ║
+║   [████████████████████░░░░░░░] 83%      ║
+╠══════════════════════════════════════════╣
+║ Current Task                              ║
+║   TASK-005                                ║
+║   Implementing user authentication...     ║
+║   ⏱ 45s                                  ║
+╠══════════════════════════════════════════╣
+║ Logs (Press 'v' to toggle)               ║
+║ 10:30:00 INFO: Task TASK-005 started     ║
+║ 10:30:15 INFO: Creating auth module      ║
+║ 10:30:45 INFO: Adding JWT validation     ║
+╚══════════════════════════════════════════╝
+Press 'q' to quit | 'v' toggle logs
+```
+
+### JSON Mode
+
+JSON mode outputs newline-delimited JSON events for programmatic consumption:
+
+```json
+{"type":"loop:start","namespace":"default","taskCount":5}
+{"type":"task:start","taskId":"TASK-001","title":"First task"}
+{"type":"task:complete","taskId":"TASK-001","duration":1500}
+{"type":"loop:end","namespace":"default","completed":5,"failed":0}
+```
+
+**Use cases:**
+- Parsing by external tools
+- CI/CD pipeline integration
+- Log aggregation systems
+- Automated testing and verification
+
+### Human Mode
+
+Human mode provides colored console output optimized for readability:
+
+```
+10:30:00 ℹ️ INFO: Starting loop in namespace 'default'
+10:30:01 ℹ️ INFO: Task TASK-001 started
+10:30:15 ⚠️ WARN: Rate limit approaching
+10:30:30 ✅ SUCCESS: Task TASK-001 completed in 29s
+```
+
+### TTY Detection
+
+Loopwork automatically detects terminal capabilities:
+
+- **TTY available**: Uses Ink renderer with full TUI
+- **No TTY**: Falls back to human-readable console output
+- **Force TTY**: Set `useTty: true` in config to override auto-detection
+
+### Event System
+
+The output system is event-driven with 16 event types:
+
+| Category | Events |
+|----------|--------|
+| **Loop** | `loop:start`, `loop:end`, `loop:iteration` |
+| **Task** | `task:start`, `task:complete`, `task:failed` |
+| **CLI** | `cli:start`, `cli:output`, `cli:complete`, `cli:error` |
+| **Log** | `log` (trace, debug, info, warn, error) |
+| **Progress** | `progress:start`, `progress:update`, `progress:stop` |
+| **Raw** | `raw`, `json` |
+
+### Custom Renderers
+
+Implement custom output renderers by extending `BaseRenderer`:
+
+```typescript
+import { BaseRenderer, type OutputEvent } from 'loopwork/output'
+
+export class MyCustomRenderer extends BaseRenderer {
+  readonly name = 'custom'
+  readonly isSupported = true
+
+  render(event: OutputEvent): void {
+    // Handle each event type
+    switch (event.type) {
+      case 'log':
+        this.handleLog(event)
+        break
+      case 'task:start':
+        this.handleTaskStart(event)
+        break
+      // ... handle other events
+    }
+  }
+}
+```
+
+### Performance Considerations
+
+- **Ink mode**: Higher memory usage due to React component tree
+- **JSON mode**: Lowest overhead, ideal for high-throughput scenarios
+- **Log filtering**: Use `logLevel` to suppress verbose output
+- **Buffer limits**: Ink renderer keeps last 100 log entries
 
 ## Architecture
 
