@@ -21,7 +21,7 @@ import { LoopworkError } from '../core/errors'
 interface DecomposeOptions {
   feature?: string
   parent?: string
-  priority?: 'high' | 'medium' | 'low'
+  priority?: 'high' | 'medium' | 'low' | 'background'
   cli?: string
   model?: string
   dryRun?: boolean
@@ -33,7 +33,7 @@ interface GeneratedTask {
   id: string
   title: string
   description: string
-  priority: 'high' | 'medium' | 'low'
+  priority: 'high' | 'medium' | 'low' | 'background'
   dependsOn?: string[]
 }
 
@@ -45,7 +45,7 @@ const DECOMPOSE_PROMPT = `You are a task decomposition expert. Given a user's re
 3. Tasks should be ordered by dependency (earlier tasks first)
 4. Use clear, imperative titles (e.g., "Create user model", "Add authentication middleware")
 5. Include enough detail in descriptions for implementation
-6. Mark the first foundational task as "high" priority, others as "medium" or "low"
+6. Mark the first foundational task as "high" priority, others as "medium", "low", or "background" (for non-essential tasks)
 
 ## Output Format:
 Return ONLY valid JSON (no markdown, no explanation) in this exact format:

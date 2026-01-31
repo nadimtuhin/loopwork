@@ -16,7 +16,7 @@ import {
 } from './shared/process-utils'
 
 // Dependency injection interface for testing
-export interface StartDeps {
+export interface UpDeps {
   MonitorClass?: typeof LoopworkMonitor
   findProjectRoot?: typeof defaultFindProjectRoot
   saveRestartArgs?: typeof saveRestartArgs
@@ -26,7 +26,7 @@ export interface StartDeps {
   process?: NodeJS.Process
 }
 
-function resolveDeps(deps: StartDeps = {}) {
+function resolveDeps(deps: UpDeps = {}) {
   return {
     MonitorClass: deps.MonitorClass ?? LoopworkMonitor,
     findProjectRoot: deps.findProjectRoot ?? defaultFindProjectRoot,
@@ -38,9 +38,12 @@ function resolveDeps(deps: StartDeps = {}) {
   }
 }
 
-export interface StartOptions {
+export interface UpOptions {
   namespace?: string
-  daemon?: boolean
+  /** Detached mode - run in background like Docker Compose -d */
+  detach?: boolean
+  detached?: boolean
+  d?: boolean
   tail?: boolean
   follow?: boolean
   lines?: number
@@ -60,12 +63,16 @@ export interface StartOptions {
   debug?: boolean
   config?: string
   checkpoint?: string
+  resume?: boolean
   withAIMonitor?: boolean
   'with-ai-monitor'?: boolean
   dynamicTasks?: boolean
   'no-dynamic-tasks'?: boolean
   reducedFunctionality?: boolean
   flag?: string[]
+  parallel?: number | boolean
+  sequential?: boolean
+  json?: boolean
 }
 
 export interface RunCommandOptions {
@@ -83,26 +90,32 @@ export interface RunCommandOptions {
   debug?: boolean
   config?: string
   checkpoint?: string
+  resume?: boolean
   withAIMonitor?: boolean
   dynamicTasks?: boolean
   reducedFunctionality?: boolean
   flag?: string[]
+  parallel?: number | boolean
+  sequential?: boolean
+  json?: boolean
   [key: string]: unknown
 }
 
 /**
- * Start command - runs loopwork with optional daemon mode
+ * Up command - Docker Compose-style unified interface
  *
- * Foreground mode: Runs directly in terminal (default)
- * Daemon mode (-d): Runs in background, logs to file
+ * Foreground mode (default): Runs directly in terminal
+ * Detached mode (-d): Runs in background
  *
- * Supports all run command options plus daemon-specific options.
+ * This is the primary command for starting Loopwork.
+ * Think of it like `docker compose up` vs `docker compose up -d`
  */
-export async function start(options: StartOptions = {}, deps: StartDeps = {}): Promise<void> {
+export async function up(options: UpOptions = {}, deps: UpDeps = {}): Promise<void> {
   const { findProjectRoot, runCommand, logger } = resolveDeps(deps)
   const projectRoot = findProjectRoot()
   const namespace = options.namespace || 'default'
   const shouldCleanOrphans = options.cleanOrphans || options['clean-orphans']
+  const isDetached = options.detach || options.detached || options.d
 
   // Clean orphans before starting if requested
   if (shouldCleanOrphans) {
@@ -119,8 +132,8 @@ export async function start(options: StartOptions = {}, deps: StartDeps = {}): P
   // Build args to pass through to the run command
   const passThoughArgs = buildPassThroughArgs(options)
 
-  if (options.daemon) {
-    await startDaemon(projectRoot, namespace, passThoughArgs, options, deps)
+  if (isDetached) {
+    await startDetached(projectRoot, namespace, passThoughArgs, options, deps)
   } else {
     // Run in foreground - delegate to run command
     if (runCommand) {
@@ -133,14 +146,14 @@ export async function start(options: StartOptions = {}, deps: StartDeps = {}): P
 }
 
 /**
- * Start loopwork as a background daemon
+ * Start loopwork in detached (background) mode
  */
-async function startDaemon(
+async function startDetached(
   projectRoot: string,
   namespace: string,
   args: string[],
-  options: StartOptions,
-  deps: StartDeps = {}
+  options: UpOptions,
+  deps: UpDeps = {}
 ): Promise<void> {
   const { MonitorClass, saveRestartArgs, logger, handleError, process: proc } = resolveDeps(deps)
   const monitor = new MonitorClass(projectRoot)
@@ -154,14 +167,14 @@ async function startDaemon(
       'ERR_PROCESS_SPAWN',
       `Namespace '${namespace}' is already running (PID: ${existing.pid})`,
       [
-        `Use 'loopwork stop ${namespace}' to stop it first`,
+        `Use 'loopwork down ${namespace}' to stop it first`,
         `Or use 'loopwork logs ${namespace}' to view logs`,
         'Use a different namespace with --namespace <name>'
       ]
     )
   }
 
-  logger.info(`Starting loopwork daemon in namespace '${namespace}'...`)
+  logger.info(`Starting loopwork in detached mode (namespace: '${namespace}')...`)
 
   // Save restart args for potential restart
   saveRestartArgs(projectRoot, namespace, args)
@@ -169,23 +182,29 @@ async function startDaemon(
   const result = await monitor.start(namespace, args)
 
   if (result.success) {
-    logger.success(`Daemon started (PID: ${result.pid})`)
+    logger.success(`Loopwork is up and running in detached mode`)
+    logger.raw('')
+    logger.info(`  PID:       ${result.pid}`)
+    logger.info(`  Namespace: ${namespace}`)
+    if (result.sessionId) {
+      logger.info(`  Session:   ${result.sessionId}`)
+    }
     logger.raw('')
     logger.info('Useful commands:')
-    logger.info(`  View logs:    loopwork logs ${namespace}`)
-    logger.info(`  Tail logs:    loopwork logs ${namespace} --follow`)
-    logger.info(`  Status:       loopwork status`)
-    logger.info(`  Stop:         loopwork stop ${namespace}`)
+    logger.info(`  ${chalk.cyan('loopwork logs ' + namespace)}       View logs`)
+    logger.info(`  ${chalk.cyan('loopwork logs ' + namespace + ' -f')}    Follow logs`)
+    logger.info(`  ${chalk.cyan('loopwork ps')}                  Show running processes`)
+    logger.info(`  ${chalk.cyan('loopwork down ' + namespace)}      Stop this process`)
     logger.raw('')
 
     // Optionally tail logs after starting
     if (options.tail || options.follow) {
-      await tailDaemonLogs(projectRoot, namespace, options.lines || 20)
+      await tailDetachedLogs(projectRoot, namespace, options.lines || 20)
     }
   } else {
     handleError(new LoopworkError(
       'ERR_MONITOR_START',
-      `Failed to start daemon: ${result.error}`,
+      `Failed to start in detached mode: ${result.error}`,
       [
         'Check if another process is using the same port',
         'Verify you have permissions to create files in the project directory',
@@ -198,9 +217,9 @@ async function startDaemon(
 }
 
 /**
- * Tail daemon logs in real-time
+ * Tail detached logs in real-time
  */
-async function tailDaemonLogs(
+async function tailDetachedLogs(
   projectRoot: string,
   namespace: string,
   initialLines: number = 20
@@ -282,7 +301,7 @@ async function tailDaemonLogs(
 /**
  * Build args array to pass through to monitor/run
  */
-function buildPassThroughArgs(options: StartOptions): string[] {
+function buildPassThroughArgs(options: UpOptions): string[] {
   const args: string[] = []
 
   if (options.feature) args.push('--feature', options.feature)
@@ -298,9 +317,19 @@ function buildPassThroughArgs(options: StartOptions): string[] {
   if (options.debug) args.push('--debug')
   if (options.config) args.push('--config', options.config)
   if (options.checkpoint) args.push('--checkpoint', options.checkpoint)
+  if (options.resume) args.push('--resume')
   if (options.withAIMonitor || options['with-ai-monitor']) args.push('--with-ai-monitor')
   if (options.reducedFunctionality) args.push('--reduced-functionality')
-  
+  if (options.parallel) {
+    if (typeof options.parallel === 'number') {
+      args.push('--parallel', String(options.parallel))
+    } else {
+      args.push('--parallel')
+    }
+  }
+  if (options.sequential) args.push('--sequential')
+  if (options.json) args.push('--json')
+
   if (options.flag && Array.isArray(options.flag)) {
     options.flag.forEach(f => args.push('--flag', f))
   }
@@ -311,7 +340,7 @@ function buildPassThroughArgs(options: StartOptions): string[] {
 /**
  * Build options object for run command
  */
-function buildRunOptions(options: StartOptions): RunCommandOptions {
+function buildRunOptions(options: UpOptions): RunCommandOptions {
   const runOptions: RunCommandOptions = {}
 
   if (options.namespace) runOptions.namespace = options.namespace
@@ -328,36 +357,40 @@ function buildRunOptions(options: StartOptions): RunCommandOptions {
   if (options.debug) runOptions.debug = options.debug
   if (options.config) runOptions.config = options.config
   if (options.checkpoint) runOptions.checkpoint = options.checkpoint
+  if (options.resume) runOptions.resume = options.resume
   if (options.withAIMonitor || options['with-ai-monitor']) runOptions.withAIMonitor = true
   if (options.dynamicTasks === false || options['no-dynamic-tasks']) runOptions.dynamicTasks = false
   if (options.reducedFunctionality) runOptions.reducedFunctionality = true
   if (options.flag) runOptions.flag = options.flag
+  if (options.parallel) runOptions.parallel = options.parallel
+  if (options.sequential) runOptions.sequential = options.sequential
+  if (options.json) runOptions.json = options.json
 
   return runOptions
 }
 
 /**
- * Create the start command configuration for CLI registration
+ * Create the up command configuration for CLI registration
  */
-export function createStartCommand() {
+export function createUpCommand() {
   return {
-    name: 'start',
-    description: 'Start Loopwork with optional daemon mode',
+    name: 'up',
+    description: 'Start Loopwork (Docker Compose-style)',
     usage: '[options]',
     examples: [
-      { command: 'loopwork start', description: 'Start in foreground (default)' },
-      { command: 'loopwork start -d', description: 'Start in background daemon mode' },
-      { command: 'loopwork start -d --namespace prod', description: 'Start daemon with custom namespace' },
-      { command: 'loopwork start -d --tail', description: 'Start daemon and tail logs' },
-      { command: 'loopwork start --feature auth --resume', description: 'Resume auth tasks in foreground' },
-      { command: 'loopwork start --checkpoint <id>', description: 'Resume from a specific checkpoint' },
+      { command: 'loopwork up', description: 'Start in foreground (attached)' },
+      { command: 'loopwork up -d', description: 'Start in background (detached)' },
+      { command: 'loopwork up -d --namespace prod', description: 'Start with custom namespace' },
+      { command: 'loopwork up -d --tail', description: 'Start and follow logs' },
+      { command: 'loopwork up --resume', description: 'Resume from saved state' },
+      { command: 'loopwork up --feature auth', description: 'Process only auth-tagged tasks' },
+      { command: 'loopwork up --parallel 3', description: 'Run with 3 parallel workers' },
     ],
     seeAlso: [
-      'loopwork logs      View logs for a namespace',
-      'loopwork kill      Stop a running daemon',
-      'loopwork restart   Restart with saved arguments',
-      'loopwork status    Check running processes',
+      'loopwork down      Stop running processes',
+      'loopwork ps        List running processes',
+      'loopwork logs      View logs',
     ],
-    handler: start,
+    handler: up,
   }
 }
