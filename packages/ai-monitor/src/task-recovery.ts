@@ -390,7 +390,7 @@ export async function enhanceTask(
     }
   }
 
-  logger.success(`Task ${taskId} enhanced successfully`)
+  logger.success?.(`Task ${taskId} enhanced successfully`)
 }
 
 /**

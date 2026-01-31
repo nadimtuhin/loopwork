@@ -23,6 +23,7 @@ describe('Verification Integration', () => {
 
     // Create mock backend
     mockBackend = {
+      name: 'mock-backend',
       async findNextTask() {
         return null
       },
@@ -32,14 +33,30 @@ describe('Verification Integration', () => {
           title: 'Test Task',
           description: 'Test description',
           status: 'pending',
-          priority: 'high',
-          createdAt: new Date(),
-          updatedAt: new Date()
+          priority: 'high'
         }
       },
-      async markInProgress() {},
-      async markCompleted() {},
-      async markFailed() {},
+      async listPendingTasks() {
+        return []
+      },
+      async countPending() {
+        return 0
+      },
+      async markInProgress() {
+        return { success: true }
+      },
+      async markCompleted() {
+        return { success: true }
+      },
+      async markFailed() {
+        return { success: true }
+      },
+      async markQuarantined() {
+        return { success: true }
+      },
+      async restoreFromQuarantine() {
+        return { success: true }
+      },
       async createSubTask() {
         return {
           id: 'sub-1',
@@ -54,7 +71,6 @@ describe('Verification Integration', () => {
       async getSubTasks() {
         return []
       },
-      async setPriority() {},
       async getDependencies() {
         return []
       },
@@ -64,7 +80,7 @@ describe('Verification Integration', () => {
       async areDependenciesMet() {
         return true
       }
-    }
+    } as unknown as TaskBackend
   })
 
   afterEach(() => {
@@ -88,6 +104,7 @@ describe('Verification Integration', () => {
 
       // Create config
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -106,7 +123,7 @@ describe('Verification Integration', () => {
       // Initialize monitor
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       // Call lifecycle hooks
@@ -134,6 +151,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(logFile, 'INFO: All good\n')
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -163,7 +181,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -183,6 +201,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -200,7 +219,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -221,6 +240,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -238,7 +258,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -258,6 +278,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -275,7 +296,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification,
+        verification: config.verification as any,
         circuitBreaker: {
           maxFailures: 3,
           cooldownPeriodMs: 60000
@@ -298,6 +319,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -315,7 +337,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification,
+        verification: config.verification as any,
         circuitBreaker: {
           maxFailures: 1, // Very low threshold for testing
           cooldownPeriodMs: 60000
@@ -341,6 +363,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -358,7 +381,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -377,6 +400,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -394,7 +418,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -409,6 +433,7 @@ describe('Verification Integration', () => {
   describe('Error Handling', () => {
     test('handles missing commands gracefully', async () => {
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -426,7 +451,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -437,6 +462,7 @@ describe('Verification Integration', () => {
 
     test('handles command timeout', async () => {
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -454,7 +480,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)
@@ -473,6 +499,7 @@ describe('Verification Integration', () => {
       fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson))
 
       const config: LoopworkConfig = {
+        backend: null as any,
         cli: 'claude',
         projectRoot: tempDir,
         verification: {
@@ -490,7 +517,7 @@ describe('Verification Integration', () => {
 
       const monitor = new AIMonitor({
         enabled: true,
-        verification: config.verification
+        verification: config.verification as any
       })
 
       await monitor.onConfigLoad(config)

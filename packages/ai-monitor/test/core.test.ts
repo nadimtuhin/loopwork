@@ -312,6 +312,7 @@ describe('AIMonitor Integration', () => {
 
     const config: LoopworkConfig = {
       projectRoot: TEST_DIR,
+      backend: null as any,
       cli: 'claude',
       maxIterations: 10
     }
@@ -328,6 +329,7 @@ describe('AIMonitor Integration', () => {
 
     const config: LoopworkConfig = {
       projectRoot: TEST_DIR,
+      backend: null as any,
       cli: 'claude',
       maxIterations: 10
     }

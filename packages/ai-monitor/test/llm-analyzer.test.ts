@@ -278,7 +278,9 @@ describe('LLM Analyzer - Throttling', () => {
     const result = shouldThrottleLLM(throttleState)
 
     expect(result.throttled).toBe(true)
-    expect(result.reason).toContain('max 10 calls per session')
+    if (result.throttled) {
+      expect(result.reason).toContain('max 10 calls per session')
+    }
   })
 
   test('should allow calls below max limit', async () => {
@@ -305,7 +307,9 @@ describe('LLM Analyzer - Throttling', () => {
     const result = shouldThrottleLLM(throttleState)
 
     expect(result.throttled).toBe(true)
-    expect(result.reason).toContain('cooldown')
+    if (result.throttled) {
+      expect(result.reason).toContain('cooldown')
+    }
   })
 
   test('should allow calls after cooldown period expires', async () => {

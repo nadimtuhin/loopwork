@@ -136,8 +136,8 @@ export class LogWatcher extends EventEmitter {
       end: currentSize
     })
 
-    stream.on('data', (chunk: Buffer) => {
-      this.buffer += chunk.toString('utf8')
+    stream.on('data', (chunk: string | Buffer) => {
+      this.buffer += (typeof chunk === 'string' ? chunk : chunk.toString('utf8'))
       this.processBuffer()
     })
 

@@ -83,33 +83,33 @@ function showStatus(options: AIMonitorOptions): void {
     process.exit(0)
   }
 
-  logger.raw('')
-  logger.raw(chalk.bold('AI Monitor Status'))
-  logger.raw(chalk.gray('─'.repeat(50)))
-  logger.raw('')
+  logger.raw?.('')
+  logger.raw?.(chalk.bold('AI Monitor Status'))
+  logger.raw?.(chalk.gray('─'.repeat(50)))
+  logger.raw?.('')
 
-  logger.raw(`${chalk.bold('Circuit Breaker:')} ${formatCircuitBreakerStatus(state)}`)
-  logger.raw(`${chalk.bold('LLM Calls:')} ${state.llmCallCount || 0}/${state.llmMaxPerSession || 'unlimited'}`)
-  logger.raw(`${chalk.bold('Last LLM Call:')} ${state.lastLLMCall ? new Date(state.lastLLMCall).toLocaleString() : 'Never'}`)
+  logger.raw?.(`${chalk.bold('Circuit Breaker:')} ${formatCircuitBreakerStatus(state)}`)
+  logger.raw?.(`${chalk.bold('LLM Calls:')} ${state.llmCallCount || 0}/${state.llmMaxPerSession || 'unlimited'}`)
+  logger.raw?.(`${chalk.bold('Last LLM Call:')} ${(state.lastLLMCall as any) ? new Date(state.lastLLMCall as any).toLocaleString() : 'Never'}`)
 
   if (state.detectedPatterns) {
-    logger.raw(`${chalk.bold('Detected Patterns:')} ${Object.keys(state.detectedPatterns).length}`)
+    logger.raw?.(`${chalk.bold('Detected Patterns:')} ${Object.keys(state.detectedPatterns).length}`)
     Object.entries(state.detectedPatterns).forEach(([pattern, count]) => {
-      logger.raw(`  - ${pattern}: ${count}`)
+      logger.raw?.(`  - ${pattern}: ${count}`)
     })
   }
 
   if (state.taskRecovery) {
-    logger.raw('')
-    logger.raw(`${chalk.bold('Task Recovery:')}`)
-    logger.raw(`  - Attempts: ${state.taskRecovery.attempts || 0}`)
-    logger.raw(`  - Successes: ${state.taskRecovery.successes || 0}`)
-    logger.raw(`  - Failures: ${state.taskRecovery.failures || 0}`)
+    logger.raw?.('')
+    logger.raw?.(`${chalk.bold('Task Recovery:')}`)
+    logger.raw?.(`  - Attempts: ${(state.taskRecovery as any).attempts || 0}`)
+    logger.raw?.(`  - Successes: ${(state.taskRecovery as any).successes || 0}`)
+    logger.raw?.(`  - Failures: ${(state.taskRecovery as any).failures || 0}`)
   }
 
-  logger.raw('')
-  logger.raw(chalk.gray('─'.repeat(50)))
-  logger.raw('')
+  logger.raw?.('')
+  logger.raw?.(chalk.gray('─'.repeat(50)))
+  logger.raw?.('')
 
   process.exit(0)
 }
@@ -153,12 +153,16 @@ export async function aiMonitor(options: AIMonitorOptions) {
   const monitor = createAIMonitor({
     enabled: true,
     llmModel: options.model
+  }) as any
+
+  await monitor.onConfigLoad({
+    projectRoot,
+    backend: null as any,
+    cli: 'claude',
+    maxIterations: 100
   })
 
-  await (monitor as { onConfigLoad: (config: { projectRoot: string }) => Promise<void> }).onConfigLoad({ projectRoot })
-
-  ;(monitor as { logFile: string; namespace: string }).logFile = logFile
-  ;(monitor as { logFile: string; namespace: string }).namespace = namespace
+  monitor.setLogFile(logFile, namespace)
 
   logger.info(`AI Monitor watching: ${logFile}`)
 
@@ -166,14 +170,14 @@ export async function aiMonitor(options: AIMonitorOptions) {
     logger.info(chalk.yellow('DRY RUN MODE: Detection only, no healing actions will be executed'))
   }
 
-  await (monitor as { startWatching: () => Promise<void> }).startWatching()
+  await monitor.startWatching()
 
   if (options.watch || options.dryRun) {
     logger.info('Press Ctrl+C to stop monitoring')
 
     process.on('SIGINT', () => {
       logger.info('AI Monitor stopping...')
-      ;(monitor as { stopWatching: () => void }).stopWatching()
+      monitor.stopWatching()
       process.exit(0)
     })
 

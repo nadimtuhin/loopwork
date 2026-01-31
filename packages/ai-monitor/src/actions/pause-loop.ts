@@ -179,7 +179,7 @@ export function resumeLoop(): void {
   clearPauseState()
 
   const pausedDuration = Math.round((Date.now() - state.pausedAt) / 1000)
-  logger.success(`Loop resumed after ${pausedDuration} seconds`)
+  logger.success?.(`Loop resumed after ${pausedDuration} seconds`)
 }
 
 /**
@@ -190,7 +190,7 @@ export async function waitForPauseCompletion(checkInterval: number = 1000): Prom
     const remaining = getRemainingPauseTime()
     const remainingSec = Math.ceil(remaining / 1000)
 
-    logger.update(`Loop paused, resuming in ${remainingSec}s...`)
+    logger.update?.(`Loop paused, resuming in ${remainingSec}s...`)
 
     await new Promise(resolve => setTimeout(resolve, checkInterval))
   }

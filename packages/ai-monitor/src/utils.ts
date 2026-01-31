@@ -13,6 +13,7 @@ export interface Logger {
   error: (message: string) => void
   success?: (message: string) => void
   update?: (message: string) => void
+  raw?: (message: string) => void
   logFile?: string
 }
 
@@ -26,7 +27,8 @@ function createConsoleLogger(): Logger {
     warn: (msg: string) => console.warn(`[WARN] ${msg}`),
     error: (msg: string) => console.error(`[ERROR] ${msg}`),
     success: (msg: string) => console.log(`[SUCCESS] ${msg}`),
-    update: (msg: string) => console.log(msg)
+    update: (msg: string) => console.log(msg),
+    raw: (msg: string) => console.log(msg)
   }
 }
 
@@ -42,7 +44,7 @@ export function getLogger(): Logger {
     // Try to import from loopwork package (will be available as peer dep)
     const loopwork = require('@loopwork-ai/loopwork')
     if (loopwork.logger) {
-      _logger = loopwork.logger
+      _logger = loopwork.logger as Logger
       return _logger
     }
   } catch {

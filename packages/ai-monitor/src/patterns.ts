@@ -2,6 +2,8 @@
  * Pattern Registry - Known error pattern matchers
  */
 
+import type { MonitorAction } from './types'
+
 export type PatternSeverity = 'INFO' | 'WARN' | 'ERROR' | 'HIGH'
 
 export interface PatternMatch {
@@ -15,7 +17,10 @@ export interface ErrorPattern {
   name: string
   regex: RegExp
   severity: PatternSeverity
+  action: MonitorAction
   extractContext?: (match: RegExpMatchArray) => Record<string, string>
+  category?: string
+  description?: string
 }
 
 /**
@@ -26,18 +31,21 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     name: 'prd-not-found',
     regex: /PRD file not found:?\s*(.+)/i,
     severity: 'WARN',
+    action: { type: 'notify' },
     extractContext: (match) => ({ path: match[1]?.trim() || '' })
   },
   {
     name: 'rate-limit',
     regex: /rate limit|429|too many requests/i,
     severity: 'HIGH',
+    action: { type: 'pause', duration: 60000 },
     extractContext: () => ({})
   },
   {
     name: 'env-var-required',
     regex: /(\w+)\s+is required|environment variable\s+(\w+)\s+not found/i,
     severity: 'ERROR',
+    action: { type: 'notify' },
     extractContext: (match) => ({
       envVar: match[1] || match[2] || 'unknown'
     })
@@ -46,48 +54,56 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     name: 'task-failed',
     regex: /task failed|execution failed|error executing task/i,
     severity: 'HIGH',
+    action: { type: 'analyze' },
     extractContext: () => ({})
   },
   {
     name: 'timeout',
     regex: /timeout exceeded|timed out|execution timeout/i,
     severity: 'WARN',
+    action: { type: 'notify' },
     extractContext: () => ({})
   },
   {
     name: 'no-pending-tasks',
     regex: /no pending tasks|all tasks completed/i,
     severity: 'INFO',
+    action: { type: 'notify' },
     extractContext: () => ({})
   },
   {
     name: 'file-not-found',
     regex: /(?:file|path)\s+(?:not found|does not exist):\s*(.+)/i,
     severity: 'ERROR',
+    action: { type: 'notify' },
     extractContext: (match) => ({ path: match[1]?.trim() || '' })
   },
   {
     name: 'permission-denied',
     regex: /permission denied|EACCES|EPERM/i,
     severity: 'ERROR',
+    action: { type: 'notify' },
     extractContext: () => ({})
   },
   {
     name: 'network-error',
     regex: /network error|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/i,
     severity: 'WARN',
+    action: { type: 'pause', duration: 5000 },
     extractContext: () => ({})
   },
   {
     name: 'plugin-error',
     regex: /plugin\s+(\w+)\s+(?:failed|error)/i,
     severity: 'WARN',
+    action: { type: 'notify' },
     extractContext: (match) => ({ plugin: match[1] || 'unknown' })
   },
   {
     name: 'circuit-breaker',
     regex: /circuit breaker|max retries exceeded|too many failures/i,
     severity: 'HIGH',
+    action: { type: 'pause', duration: 30000 },
     extractContext: () => ({})
   }
 ]

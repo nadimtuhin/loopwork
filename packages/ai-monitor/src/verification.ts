@@ -265,7 +265,7 @@ export class VerificationEngine {
     }
 
     if (passed) {
-      logger.success(`VerificationEngine: All checks passed for "${claim}"`)
+      logger.success?.(`VerificationEngine: All checks passed for "${claim}"`)
     } else {
       logger.warn(`VerificationEngine: Failed checks: ${failedChecks.join(', ')}`)
     }

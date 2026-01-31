@@ -182,6 +182,6 @@ export async function executeCreatePRD(action: Action, projectRoot?: string): Pr
   await createPRDFile(filePath, content)
 
   const metadataSource = taskMetadata ? ' (with metadata from tasks.json)' : ''
-  logger.success(`Auto-created PRD file: ${filePath}${metadataSource}`)
+  logger.success?.(`Auto-created PRD file: ${filePath}${metadataSource}`)
   logger.info('Please review and update the PRD with actual requirements')
 }

@@ -188,6 +188,7 @@ export interface MonitorState {
  */
 export class AIMonitor implements LoopworkPlugin {
   readonly name = 'ai-monitor'
+  readonly classification = 'enhancement'
 
   private config: AIMonitorConfig
   private watcher: LogWatcher | null = null
@@ -489,7 +490,7 @@ export class AIMonitor implements LoopworkPlugin {
       this.state.recoverySuccesses++
       this.circuitBreaker.recordSuccess()
 
-      logger.success(`AI Monitor: Task ${taskId} enhanced successfully`)
+      logger.success?.(`AI Monitor: Task ${taskId} enhanced successfully`)
     } catch (error) {
       // Record failure
       const errorMsg = error instanceof Error ? error.message : String(error)
@@ -506,7 +507,7 @@ export class AIMonitor implements LoopworkPlugin {
   /**
    * Start watching the log file
    */
-  private async startWatching(): Promise<void> {
+  async startWatching(): Promise<void> {
     if (!this.logFile || this.watcher) return
 
     this.watcher = new LogWatcher({
@@ -530,11 +531,19 @@ export class AIMonitor implements LoopworkPlugin {
   /**
    * Stop watching the log file
    */
-  private stopWatching(): void {
+  stopWatching(): void {
     if (this.watcher) {
       this.watcher.stop()
       this.watcher = null
     }
+  }
+
+  /**
+   * Set log file and namespace for CLI usage
+   */
+  setLogFile(logFile: string, namespace: string = 'default'): void {
+    this.logFile = logFile
+    this.namespace = namespace
   }
 
   /**
@@ -676,7 +685,7 @@ export class AIMonitor implements LoopworkPlugin {
       )
 
       if (verificationResult.passed) {
-        logger.success(`AI Monitor: Verification passed for ${action.pattern}`)
+        logger.success?.(`AI Monitor: Verification passed for ${action.pattern}`)
         this.circuitBreaker.recordSuccess()
       } else {
         logger.warn(`AI Monitor: Verification failed for ${action.pattern}: ${verificationResult.failedChecks.join(', ')}`)
