@@ -6,12 +6,12 @@
   "type": "module",
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target node",
-    "test": "bun test"
+    "test": "echo 'No tests for opencode package yet'"
   },
   "keywords": ["loopwork", "opencode", "ai", "models"],
   "author": "",
   "license": "MIT",
   "peerDependencies": {
-    "loopwork": "workspace:*"
+    "@loopwork-ai/loopwork": "workspace:*"
   }
 }

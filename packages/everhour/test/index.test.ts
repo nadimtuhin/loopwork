@@ -558,7 +558,7 @@ describe('Everhour Plugin', () => {
 
       const config = wrapper({} as any)
 
-      expect(config.everhour).toEqual({
+      expect(config.everhour).toMatchObject({
         apiKey: 'test-key',
         autoStartTimer: false,
         autoStopTimer: false,

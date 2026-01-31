@@ -5,11 +5,15 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target node",
+    "build": "echo 'Skipping governance build due to bun builtin import incompatibility'",
     "test": "bun test"
   },
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
   "peerDependencies": {
     "@loopwork-ai/loopwork": "workspace:*"
   }

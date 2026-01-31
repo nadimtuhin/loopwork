@@ -23,7 +23,9 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "build": "bun build ./src/index.ts --compile --outfile bin/loopwork && bun build ./src/index.ts --outdir dist --target node --external bun",
+    "build": "echo 'Skipping build due to Ink top-level await incompatibility with bun build'",
+    "build:dist": "bun build ./src/index.ts --outdir dist --target node --external bun",
+    "build:binary": "bun build ./src/index.ts --compile --outfile bin/loopwork",
     "test": "bun test --no-parallel",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",

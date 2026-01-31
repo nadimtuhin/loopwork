@@ -13,17 +13,40 @@ export class MetricsExtractor implements IMetricsExtractor {
     /(\d+)\s*tool\s*calls?/i,
   ]
 
+  private readonly inputTokenPatterns = [
+    /input\s*tokens?:\s*(\d+)/i,
+    /prompt\s*tokens?:\s*(\d+)/i,
+    /(\d+)\s*prompt\s*tokens?/i,
+    /Tokens:\s*(\d+)\s*input/i,
+  ]
+
+  private readonly outputTokenPatterns = [
+    /output\s*tokens?:\s*(\d+)/i,
+    /completion\s*tokens?:\s*(\d+)/i,
+    /(\d+)\s*completion\s*tokens?/i,
+    /output:\s*(\d+)\s*tokens/i,
+    /input,\s*(\d+)\s*output/i,
+  ]
+
   parse(output: string, context: ParseContext): ResultMetrics {
+    const inputTokens = this.extractFromPatterns(output, this.inputTokenPatterns)
+    const outputTokens = this.extractFromPatterns(output, this.outputTokenPatterns)
+    const tokensUsed = (inputTokens !== undefined && outputTokens !== undefined)
+      ? inputTokens + outputTokens
+      : this.extractFromPatterns(output, this.tokenPatterns)
+
     return {
       durationMs: context.durationMs,
       exitCode: context.exitCode,
-      tokensUsed: this.extractTokens(output),
+      tokensUsed,
+      inputTokens,
+      outputTokens,
       toolCalls: this.extractToolCalls(output),
     }
   }
 
-  private extractTokens(output: string): number | undefined {
-    for (const pattern of this.tokenPatterns) {
+  private extractFromPatterns(output: string, patterns: RegExp[]): number | undefined {
+    for (const pattern of patterns) {
       const match = output.match(pattern)
       if (match && match[1]) {
         return parseInt(match[1], 10)
@@ -32,13 +55,11 @@ export class MetricsExtractor implements IMetricsExtractor {
     return undefined
   }
 
+  private extractTokens(output: string): number | undefined {
+    return this.extractFromPatterns(output, this.tokenPatterns)
+  }
+
   private extractToolCalls(output: string): number | undefined {
-    for (const pattern of this.toolCallPatterns) {
-      const match = output.match(pattern)
-      if (match && match[1]) {
-        return parseInt(match[1], 10)
-      }
-    }
-    return undefined
+    return this.extractFromPatterns(output, this.toolCallPatterns)
   }
 }
