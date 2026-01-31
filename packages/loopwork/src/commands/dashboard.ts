@@ -106,7 +106,7 @@ export async function dashboard(
         },
         getNamespaces: async () => {
           const { namespaces } = monitor.getStatus()
-          return namespaces
+          return namespaces.map(ns => ns.name)
         },
       })
     } catch (tuiError: unknown) {

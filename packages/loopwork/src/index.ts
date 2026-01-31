@@ -498,6 +498,73 @@ if (import.meta.main) {
         }
       })
 
+    // Up command (Docker Compose-style)
+    program
+      .command('up')
+      .description('Start Loopwork (Docker Compose-style)')
+      .option('-d, --detach', 'Run in background (detached mode)')
+      .option('--tail, --follow', 'Follow logs after starting in detached mode')
+      .option('--lines <number>', 'Number of initial log lines to show when tailing', '20')
+      .option('--clean-orphans', 'Clean up orphan processes before starting')
+      .option('--namespace <name>', 'Namespace for the loop', 'default')
+      .option('--backend <type>', 'Task backend: github or json')
+      .option('--repo <owner/repo>', 'GitHub repository')
+      .option('--tasks-file <path>', 'Path to tasks.json file')
+      .option('--feature <name>', 'Filter by feature label')
+      .option('--max-iterations <number>', 'Maximum iterations')
+      .option('--timeout <seconds>', 'Timeout per task in seconds')
+      .option('--cli <name>', 'CLI to use (opencode, claude, gemini)')
+      .option('--model <id>', 'Specific model ID')
+      .option('--resume', 'Resume from last saved state')
+      .option('--dry-run', 'Show what would be done without executing')
+      .option('-y, --yes', 'Non-interactive mode')
+      .option('--debug', 'Enable debug logging')
+      .option('--config <path>', 'Path to config file')
+      .option('--checkpoint <path>', 'Checkpoint file path')
+      .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
+      .option('--no-dynamic-tasks', 'Disable dynamic task creation')
+      .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
+      .option('--sequential', 'Force sequential execution (parallel=1)')
+      .option('--json', 'Output as newline-delimited JSON events')
+      .action(async (options) => {
+        try {
+          const { up } = await import('./commands/up')
+          await up({
+            ...options,
+            lines: parseInt(options.lines, 10) || 20,
+            maxIterations: options.maxIterations ? parseInt(options.maxIterations, 10) : undefined,
+            timeout: options.timeout ? parseInt(options.timeout, 10) : undefined,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Down command (Docker Compose-style)
+    program
+      .command('down [namespace]')
+      .description('Stop running Loopwork processes (Docker Compose-style)')
+      .option('--all', 'Stop all running processes')
+      .option('--force', 'Force stop (SIGKILL instead of SIGTERM)')
+      .option('--timeout <seconds>', 'Timeout in seconds for graceful shutdown')
+      .option('-v, --volumes', 'Remove session data (like docker compose down --volumes)')
+      .action(async (namespace, options) => {
+        try {
+          const { down } = await import('./commands/down')
+          await down({
+            namespace,
+            all: options.all,
+            force: options.force,
+            timeout: options.timeout ? parseInt(options.timeout, 10) : undefined,
+            volumes: options.volumes,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
     program
       .command('ai-monitor')
       .description('Intelligent log watcher and auto-healer')
