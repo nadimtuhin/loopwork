@@ -3,20 +3,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "noEmit": true,
-    "declaration": false,
-    "declarationMap": false,
-    "paths": {
-      "@loopwork-ai/loopwork": ["../loopwork/dist/index.d.ts"],
-      "@loopwork-ai/loopwork/*": ["../loopwork/dist/*"]
-    }
+    "noEmit": true
   },
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
-    "dist",
-    "../ai-monitor/**/*",
-    "../telegram/**/*",
-    "../loopwork/src/**/*"
+    "dist"
   ]
 }

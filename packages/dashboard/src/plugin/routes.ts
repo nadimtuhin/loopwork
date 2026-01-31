@@ -95,6 +95,66 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
       })
     }
 
+    if (url.pathname === '/api/v1/control/start' && req.method === 'POST') {
+      try {
+        server.startLoop()
+        return new Response(JSON.stringify({ success: true, message: 'Loop started' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/v1/control/stop' && req.method === 'POST') {
+      try {
+        server.stopLoop()
+        return new Response(JSON.stringify({ success: true, message: 'Loop stopped' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/v1/control/pause' && req.method === 'POST') {
+      try {
+        server.pauseLoop()
+        return new Response(JSON.stringify({ success: true, message: 'Loop paused' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (url.pathname === '/api/v1/status' && req.method === 'GET') {
+      try {
+        const status = server.getLoopStatus()
+        return new Response(JSON.stringify(status), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
     if (url.pathname === '/api/tasks' && req.method === 'GET') {
       try {
         if (!server.backend) {
@@ -105,10 +165,10 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
         }
 
         const tasks = await server.backend.listPendingTasks()
-        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+        const completedTasks = server.backend.listCompletedTasks
           ? await server.backend.listCompletedTasks()
           : []
-        const failedTasks = typeof server.backend.listFailedTasks === 'function'
+        const failedTasks = server.backend.listFailedTasks
           ? await server.backend.listFailedTasks()
           : []
 
@@ -184,7 +244,7 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
           })
         }
 
-        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+        const completedTasks = server.backend.listCompletedTasks
           ? await server.backend.listCompletedTasks()
           : []
 
@@ -233,10 +293,10 @@ export function createRoutes(broadcaster: DashboardBroadcaster, server: Dashboar
         }
 
         const pendingTasks = await server.backend.listPendingTasks()
-        const completedTasks = typeof server.backend.listCompletedTasks === 'function'
+        const completedTasks = server.backend.listCompletedTasks
           ? await server.backend.listCompletedTasks()
           : []
-        const failedTasks = typeof server.backend.listFailedTasks === 'function'
+        const failedTasks = server.backend.listFailedTasks
           ? await server.backend.listFailedTasks()
           : []
 

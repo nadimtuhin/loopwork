@@ -1,4 +1,22 @@
-import type { PluginTask, PluginTaskResult, LoopStats } from '@loopwork-ai/loopwork/contracts'
+// Minimal types to avoid cross-package import issues
+interface PluginTask {
+  id: string
+  title: string
+  status: string
+  [key: string]: any
+}
+
+interface PluginTaskResult {
+  success: boolean
+  output?: string
+  [key: string]: any
+}
+
+interface LoopStats {
+  completed: number
+  failed: number
+  [key: string]: any
+}
 
 export interface DashboardConfig {
   port?: number
@@ -77,4 +95,20 @@ export interface TaskStatsResponse {
   completed: number
   failed: number
   successRate: number
+}
+
+export type LoopState = 'running' | 'paused' | 'stopped'
+
+export interface LoopStatusResponse {
+  state: LoopState
+  isRunning: boolean
+  isPaused: boolean
+  uptime?: number
+  startedAt?: string
+  metrics?: {
+    tasksCompleted: number
+    tasksFailed: number
+    iterations: number
+    successRate: number
+  }
 }
