@@ -3,7 +3,21 @@
     {
       "id": "TASK-001",
       "status": "pending",
-      "priority": "high"
+      "priority": "high",
+      "timestamps": {
+        "createdAt": "2026-01-31T16:40:30.296Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T16:40:30.296Z",
+          "type": "status_change",
+          "message": "Status changed from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        }
+      ]
     },
     {
       "id": "TASK-002",

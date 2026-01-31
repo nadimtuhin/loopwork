@@ -1,0 +1,47 @@
+{
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Design session tracking data model and storage schema",
+      "description": "Design comprehensive data model for tracking session metrics including: execution timeline, model usage (which models, token counts, costs), CLI invocations (claude/opencode/gemini usage), worker information (parallel execution metrics), task outcomes (success/failure rates, retry counts), and fun statistics (longest task, most common error, etc). Define storage schema (likely JSON in .loopwork/ directory) with fields for session start/end times, total duration, model breakdown, CLI breakdown, worker pool metrics, task statistics, and metadata. Consider backward compatibility with existing state files.",
+      "priority": "high",
+      "dependsOn": []
+    },
+    {
+      "id": "TASK-002",
+      "title": "Implement session metrics collector in core execution loop",
+      "description": "Add session tracking hooks to the main execution loop (packages/loopwork/src/index.ts and src/core/cli.ts). Capture: model selection events (primary/fallback), CLI execution start/end with timing, worker spawn/completion events, task status transitions (pending→in-progress→completed/failed), token usage from AI responses, and error patterns. Store data in new SessionMetrics class with methods like trackModelUsage(), trackCliInvocation(), trackTaskOutcome(). Integrate with existing StateManager to persist metrics alongside session state in .loopwork/session-metrics.json.",
+      "priority": "medium",
+      "dependsOn": ["TASK-001"]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Create session summary generator with statistics engine",
+      "description": "Build SessionSummaryGenerator class that analyzes collected metrics and generates comprehensive summary including: total execution time (formatted as hours:minutes:seconds), model usage breakdown (Sonnet X tokens/$Y, Opus X tokens/$Y, etc), CLI usage stats (claude: X invocations/Y minutes, opencode: X/Y), worker metrics (max concurrent: N, total parallel time saved), task statistics (completed: X, failed: Y, retry count, failure rate), and fun facts (longest task with duration, most retried task, most common error pattern, busiest hour, cost per completed task). Include utilities for formatting costs, durations, and percentages.",
+      "priority": "medium",
+      "dependsOn": ["TASK-002"]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Add session summary output to CLI completion flow",
+      "description": "Integrate session summary into the main CLI completion flow. When execution loop completes (successful or interrupted), automatically generate and display summary using CompletionSummary Ink component or new SessionSummary component. Show summary after final task completion banner. Include options: --summary flag to show summary on demand, --summary-file to export to markdown/JSON, --no-summary to skip display. Respect existing output formatting preferences (minimal/verbose modes). Add summary to .loopwork/runs/ historical logs alongside existing run metadata.",
+      "priority": "medium",
+      "dependsOn": ["TASK-003"]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Implement fun statistics and insights generator",
+      "description": "Create FunInsightsGenerator that analyzes session data for interesting patterns: longest running task with humorous commentary, most frequently retried task, error pattern clustering (group similar errors), time-of-day productivity (busiest execution hour), cost efficiency metrics (cheapest successful task, most expensive failure), model reliability stats (which model had best success rate), CLI preference patterns, worker utilization efficiency. Format as entertaining yet informative messages (e.g., 'Your most stubborn task: AUTH-003a (5 retries, 47 minutes)' or 'You saved 2.3 hours with parallel execution!'). Include emoji indicators for visual appeal.",
+      "priority": "low",
+      "dependsOn": ["TASK-003"]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Add tests and documentation for session summary feature",
+      "description": "Write comprehensive tests: unit tests for SessionMetrics collection, SessionSummaryGenerator calculations, and metrics formatting; integration tests for end-to-end session tracking through complete loop execution; mock tests for various scenarios (all success, mixed success/failure, timeout cases, multi-worker scenarios). Add documentation to packages/loopwork/docs/ explaining session metrics schema, how to access historical summaries, summary output format, and how plugins can contribute custom metrics. Update ARCHITECTURE.md with session tracking system description. Add examples to README showing typical summary output.",
+      "priority": "medium",
+      "dependsOn": ["TASK-004", "TASK-005"]
+    }
+  ],
+  "feature": "session-summary"
+}
