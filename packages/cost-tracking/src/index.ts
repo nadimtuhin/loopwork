@@ -343,6 +343,7 @@ export function withCostTracking(options: CostTrackingConfig = {}): ConfigWrappe
     costTracking: {
       enabled: true,
       defaultModel: 'claude-3.5-sonnet',
+      classification: 'enhancement',
       ...options,
     },
   })
@@ -357,6 +358,7 @@ export function createCostTrackingPlugin(
 
   return {
     name: 'cost-tracking',
+    classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
       // Track task start time (stored in tracker)

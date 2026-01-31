@@ -3,6 +3,7 @@ import type {
   TaskBackend,
   Task,
   Priority,
+  TaskStatus,
   FindTaskOptions,
   UpdateResult,
   PingResult,
@@ -47,16 +48,39 @@ export class TodoistTaskBackend implements TaskBackend {
       case 'medium':
         return 3
       case 'low':
+      case 'background':
+      default:
         return 2
     }
   }
 
   private toLoopworkTask(t: TodoistTask): Task {
+    let status: TaskStatus = t.is_completed ? 'completed' : 'pending'
+    let failedAt: string | undefined
+
+    if (!t.is_completed) {
+      if (t.labels.includes('loopwork:in-progress')) {
+        status = 'in-progress'
+      } else if (t.labels.some(l => l.startsWith('loopwork:failed'))) {
+        status = 'failed'
+        // Try to parse timestamp from label like loopwork:failed:2026-01-31T11-00-00Z
+        const failedLabel = t.labels.find(l => l.startsWith('loopwork:failed:'))
+        if (failedLabel) {
+          const ts = failedLabel.replace('loopwork:failed:', '').replace(/-/g, ':')
+          if (!isNaN(Date.parse(ts))) {
+            failedAt = ts
+          }
+        }
+      } else if (t.labels.includes('loopwork:quarantined')) {
+        status = 'quarantined'
+      }
+    }
+
     return {
       id: t.id,
       title: t.content,
       description: t.description || '',
-      status: t.is_completed ? 'completed' : 'pending',
+      status,
       priority: this.mapPriority(t.priority),
       parentId: t.parent_id,
       metadata: {
@@ -64,6 +88,10 @@ export class TodoistTaskBackend implements TaskBackend {
         labels: t.labels,
         projectId: t.project_id,
       },
+      timestamps: {
+        createdAt: t.created_at,
+        failedAt,
+      }
     }
   }
 
@@ -93,23 +121,35 @@ export class TodoistTaskBackend implements TaskBackend {
         .map((t) => this.toLoopworkTask(t))
 
       if (options?.feature) {
-        tasks = tasks.filter((t) => 
+        tasks = tasks.filter((t: Task) => 
           (t.metadata?.labels as string[])?.includes(`feature:${options.feature}`)
         )
       }
 
       if (options?.priority) {
-        tasks = tasks.filter((t) => t.priority === options.priority)
+        tasks = tasks.filter((t: Task) => t.priority === options.priority)
       }
 
       if (options?.parentId) {
-        tasks = tasks.filter((t) => t.parentId === options.parentId)
+        tasks = tasks.filter((t: Task) => t.parentId === options.parentId)
       } else if (options?.topLevelOnly) {
-        tasks = tasks.filter((t) => !t.parentId)
+        tasks = tasks.filter((t: Task) => !t.parentId)
       }
 
-      const priorityOrder = { high: 0, medium: 1, low: 2 }
-      tasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+      // Handle retry cooldown for failed tasks
+      tasks = tasks.filter((t: Task) => {
+        if (t.status === 'pending') return true
+        if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+          const failedAt = t.timestamps?.failedAt
+          if (!failedAt) return false // Cannot verify cooldown without timestamp
+          const elapsed = Date.now() - new Date(failedAt).getTime()
+          return elapsed > options.retryCooldown
+        }
+        return false
+      })
+
+      const priorityOrder = { high: 0, medium: 1, low: 2, background: 3 }
+      tasks.sort((a, b) => (priorityOrder as any)[a.priority] - (priorityOrder as any)[b.priority])
 
       return tasks
     } catch (e: any) {
@@ -127,7 +167,8 @@ export class TodoistTaskBackend implements TaskBackend {
     try {
       // Todoist doesn't have an in-progress state, use a label
       const task = await this.client.getTask(taskId)
-      const labels = [...(task.labels || []), 'loopwork:in-progress']
+      const labels = task.labels.filter(l => !l.startsWith('loopwork:'))
+      labels.push('loopwork:in-progress')
       await this.client.updateTask(taskId, { labels })
       return { success: true }
     } catch (e: any) {
@@ -151,8 +192,22 @@ export class TodoistTaskBackend implements TaskBackend {
     try {
       await this.client.addComment(taskId, `❌ Task failed: ${error}`)
       const task = await this.client.getTask(taskId)
-      const labels = task.labels.filter(l => l !== 'loopwork:in-progress')
-      labels.push('loopwork:failed')
+      const now = new Date().toISOString().replace(/:/g, '-')
+      const labels = task.labels.filter(l => !l.startsWith('loopwork:'))
+      labels.push(`loopwork:failed:${now}`)
+      await this.client.updateTask(taskId, { labels })
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  }
+
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    try {
+      await this.client.addComment(taskId, `⚠️ Task quarantined: ${reason}`)
+      const task = await this.client.getTask(taskId)
+      const labels = task.labels.filter(l => !l.startsWith('loopwork:'))
+      labels.push('loopwork:quarantined')
       await this.client.updateTask(taskId, { labels })
       return { success: true }
     } catch (e: any) {

@@ -110,6 +110,8 @@ export function withAsana(config: AsanaConfig = {}): ConfigWrapper {
       workspaceId: config.workspaceId,
       autoCreate: config.autoCreate ?? false,
       syncStatus: config.syncStatus ?? true,
+      classification: 'enhancement',
+      requiresNetwork: true,
     },
   })
 }
@@ -131,6 +133,7 @@ export function createAsanaPlugin(config: AsanaConfig = {}): LoopworkPlugin {
   if (!accessToken || !projectId) {
     return {
       name: 'asana',
+      classification: 'enhancement',
       onConfigLoad: (cfg) => {
         console.warn('Asana plugin: Missing ASANA_ACCESS_TOKEN or ASANA_PROJECT_ID')
         return cfg
@@ -142,6 +145,7 @@ export function createAsanaPlugin(config: AsanaConfig = {}): LoopworkPlugin {
 
   return {
     name: 'asana',
+    classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
       const asanaGid = getAsanaGid(context.task)

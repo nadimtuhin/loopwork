@@ -182,6 +182,8 @@ export function withEverhour(config: EverhourConfig = {}): ConfigWrapper {
       autoStopTimer: config.autoStopTimer ?? true,
       projectId: config.projectId,
       dailyLimit: config.dailyLimit ?? 8,
+      classification: 'enhancement',
+      requiresNetwork: true,
     },
   })
 }
@@ -216,6 +218,7 @@ export function createEverhourPlugin(config: EverhourConfig = {}): LoopworkPlugi
   if (!apiKey) {
     return {
       name: 'everhour',
+      classification: 'enhancement',
       onConfigLoad: (cfg) => {
         console.warn('Everhour plugin: Missing EVERHOUR_API_KEY')
         return cfg
@@ -227,6 +230,7 @@ export function createEverhourPlugin(config: EverhourConfig = {}): LoopworkPlugi
 
   return {
     name: 'everhour',
+    classification: 'enhancement',
 
     async onLoopStart() {
       // Check daily limit at start

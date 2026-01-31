@@ -14,6 +14,8 @@ export function withTelegram(options: TelegramConfig = {}): ConfigWrapper {
     telegram: {
       notifications: true,
       silent: false,
+      classification: 'enhancement',
+      requiresNetwork: true,
       ...options,
       botToken: options.botToken || process.env.TELEGRAM_BOT_TOKEN,
       chatId: options.chatId || process.env.TELEGRAM_CHAT_ID,

@@ -147,6 +147,7 @@ export function createTelegramHookPlugin(config?: Partial<TelegramConfig>): Loop
 
   return {
     name: 'telegram-hooks',
+    classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
       if (!telegram.isConfigured()) return

@@ -541,6 +541,7 @@ export function createDailyBriefingPlugin(
 
   return {
     name: 'telegram-daily-briefing',
+    classification: 'enhancement',
     manager,
 
     async onTaskComplete(context: TaskContext, result: PluginTaskResult) {

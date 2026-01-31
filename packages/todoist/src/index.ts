@@ -30,6 +30,7 @@ export interface TodoistTask {
   parent_id?: string
   priority: number
   labels: string[]
+  created_at: string
 }
 
 interface TodoistComment {
@@ -180,6 +181,8 @@ export function withTodoist(config: TodoistConfig = {}): ConfigWrapper {
       projectId: config.projectId || process.env.TODOIST_PROJECT_ID,
       syncStatus: config.syncStatus ?? true,
       addComments: config.addComments ?? true,
+      classification: 'enhancement',
+      requiresNetwork: true,
     },
   })
 }
@@ -201,6 +204,7 @@ export function createTodoistPlugin(config: TodoistConfig = {}): LoopworkPlugin 
   if (!apiToken) {
     return {
       name: 'todoist',
+      classification: 'enhancement',
       onConfigLoad: (cfg) => {
         console.warn('Todoist plugin: Missing TODOIST_API_TOKEN')
         return cfg
@@ -212,6 +216,7 @@ export function createTodoistPlugin(config: TodoistConfig = {}): LoopworkPlugin 
 
   return {
     name: 'todoist',
+    classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
       const todoistId = getTodoistId(context.task)

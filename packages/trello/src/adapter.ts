@@ -79,19 +79,35 @@ export class TrelloTaskAdapter implements TaskBackend {
 
   async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
     await this.ensureLists();
-    const listId = this.getListId('pending');
-    const cards = await this.client.getCardsInList(listId);
+    const pendingListId = this.getListId('pending');
+    const failedListId = this.getListId('failed');
+
+    const [pendingCards, failedCards] = await Promise.all([
+      this.client.getCardsInList(pendingListId),
+      this.client.getCardsInList(failedListId)
+    ]);
     
-    const sortedCards = [...cards].sort((a, b) => (a as any).pos - (b as any).pos);
+    const allCards = [...pendingCards, ...failedCards].sort((a, b) => (a as any).pos - (b as any).pos);
     
-    let tasks = await Promise.all(sortedCards.map(card => this.adaptCard(card)));
+    let tasks = await Promise.all(allCards.map(card => this.adaptCard(card)));
 
     if (options?.feature) {
-      tasks = tasks.filter(t => t.feature === options.feature);
+      tasks = tasks.filter((t: Task) => t.feature === options.feature);
     }
     if (options?.priority) {
-      tasks = tasks.filter(t => t.priority === options.priority);
+      tasks = tasks.filter((t: Task) => t.priority === options.priority);
     }
+
+    tasks = tasks.filter((t: Task) => {
+      if (t.status === 'pending') return true;
+      if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+        const failedAt = t.timestamps?.failedAt;
+        if (!failedAt) return false;
+        const elapsed = Date.now() - new Date(failedAt).getTime();
+        return elapsed > options.retryCooldown;
+      }
+      return false;
+    });
 
     return tasks;
   }
@@ -201,6 +217,10 @@ export class TrelloTaskAdapter implements TaskBackend {
       priority,
       feature,
       metadata: { url: card.url, labels: card.labels.map(l => l.name) },
+      timestamps: {
+        createdAt: new Date(parseInt(card.id.substring(0, 8), 16) * 1000).toISOString(),
+        failedAt: status === 'failed' ? card.dateLastActivity : undefined,
+      }
     };
   }
 }

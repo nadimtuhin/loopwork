@@ -194,6 +194,8 @@ export function withDiscord(config: DiscordConfig = {}): ConfigWrapper {
       notifyOnFail: config.notifyOnFail ?? true,
       notifyOnLoopEnd: config.notifyOnLoopEnd ?? true,
       mentionOnFail: config.mentionOnFail,
+      classification: 'enhancement',
+      requiresNetwork: true,
     },
   })
 }
@@ -211,6 +213,7 @@ export function createDiscordPlugin(config: DiscordConfig = {}): LoopworkPlugin 
   if (!webhookUrl) {
     return {
       name: 'discord',
+      classification: 'enhancement',
       onConfigLoad: (cfg) => {
         console.warn('Discord plugin: Missing DISCORD_WEBHOOK_URL')
         return cfg
@@ -225,6 +228,7 @@ export function createDiscordPlugin(config: DiscordConfig = {}): LoopworkPlugin 
 
   return {
     name: 'discord',
+    classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
       if (!notifyOnStart) return

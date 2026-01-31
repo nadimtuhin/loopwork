@@ -14,6 +14,9 @@ import { NotionBackendConfig } from './types'
 export class NotionTaskAdapter implements BackendPlugin {
   readonly name = 'notion-backend'
   readonly backendType = 'notion'
+  readonly classification = 'enhancement'
+  readonly requiresNetwork = true
+  readonly essential = true
   private client: NotionClient
   private config: NotionBackendConfig
 
@@ -23,35 +26,7 @@ export class NotionTaskAdapter implements BackendPlugin {
   }
 
   async findNextTask(options?: FindTaskOptions): Promise<Task | null> {
-    const statusProp = this.config.properties?.status || 'Status'
-    const pendingValue = this.config.statusValues?.pending || 'Pending'
-    const priorityProp = this.config.properties?.priority || 'Priority'
-
-    const response = await this.client.queryTasks({
-      status: {
-        property: statusProp,
-        value: pendingValue,
-      },
-      sortByPriority: {
-        property: priorityProp,
-        direction: 'descending',
-      },
-    })
-
-    if (!response || response.results.length === 0) {
-      return null
-    }
-
-    let tasks = response.results.map((page: any) => this.mapNotionPageToTask(page))
-
-    if (options?.feature) {
-      tasks = tasks.filter((t) => t.feature === options.feature)
-    }
-
-    if (options?.parentId) {
-      tasks = tasks.filter((t) => t.parentId === options.parentId)
-    }
-
+    const tasks = await this.listPendingTasks(options)
     return tasks[0] || null
   }
 
@@ -64,9 +39,10 @@ export class NotionTaskAdapter implements BackendPlugin {
   async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
     const statusProp = this.config.properties?.status || 'Status'
     const pendingValue = this.config.statusValues?.pending || 'Pending'
+    const failedValue = this.config.statusValues?.failed || 'Failed'
     const priorityProp = this.config.properties?.priority || 'Priority'
 
-    const response = await this.client.queryTasks({
+    const pendingResponse = await this.client.queryTasks({
       status: {
         property: statusProp,
         value: pendingValue,
@@ -77,13 +53,43 @@ export class NotionTaskAdapter implements BackendPlugin {
       },
     })
 
-    if (!response) return []
+    const failedResponse = await this.client.queryTasks({
+      status: {
+        property: statusProp,
+        value: failedValue,
+      },
+      sortByPriority: {
+        property: priorityProp,
+        direction: 'descending',
+      },
+    })
 
-    let tasks = response.results.map((page: any) => this.mapNotionPageToTask(page))
+    const pendingResults = pendingResponse?.results || []
+    const failedResults = failedResponse?.results || []
+    
+    let tasks = [
+      ...pendingResults.map((page: any) => this.mapNotionPageToTask(page)),
+      ...failedResults.map((page: any) => this.mapNotionPageToTask(page))
+    ]
 
     if (options?.feature) {
       tasks = tasks.filter((t) => t.feature === options.feature)
     }
+
+    if (options?.parentId) {
+      tasks = tasks.filter((t) => t.parentId === options.parentId)
+    }
+
+    tasks = tasks.filter(t => {
+      if (t.status === 'pending') return true
+      if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+        const failedAt = t.timestamps?.failedAt
+        if (!failedAt) return false
+        const elapsed = Date.now() - new Date(failedAt).getTime()
+        return elapsed > options.retryCooldown
+      }
+      return false
+    })
 
     return tasks
   }
@@ -151,8 +157,8 @@ export class NotionTaskAdapter implements BackendPlugin {
     const task = await this.getTask(taskId)
     if (!task || !task.dependsOn || task.dependsOn.length === 0) return []
     
-    const deps = await Promise.all(task.dependsOn.map(id => this.getTask(id)))
-    return deps.filter((t): t is Task => t !== null)
+    const deps = await Promise.all(task.dependsOn.map((id: string) => this.getTask(id)))
+    return deps.filter((t: Task | null): t is Task => t !== null)
   }
 
   async getDependents(taskId: string): Promise<Task[]> {
@@ -204,11 +210,14 @@ export class NotionTaskAdapter implements BackendPlugin {
     const parentIdProp = props[config.parentId || 'Parent']
     const dependsOnProp = props[config.dependsOn || 'Depends On']
 
+    const status = this.mapNotionStatusToTaskStatus(this.getStatus(statusProp))
+    const lastEditedTime = page.last_edited_time
+
     return {
       id: page.id,
       title: this.getRichText(titleProp) || 'Untitled',
       description: this.getRichText(descriptionProp) || '',
-      status: this.mapNotionStatusToTaskStatus(this.getStatus(statusProp)),
+      status,
       priority: this.mapNotionPriorityToTaskPriority(this.getSelect(priorityProp)),
       feature: this.getSelect(featureProp) || this.getRichText(featureProp),
       parentId: this.getRelation(parentIdProp)?.[0],
@@ -216,6 +225,10 @@ export class NotionTaskAdapter implements BackendPlugin {
       metadata: {
         notionUrl: page.url,
       },
+      timestamps: {
+        createdAt: page.created_time,
+        failedAt: status === 'failed' ? lastEditedTime : undefined,
+      }
     }
   }
 
