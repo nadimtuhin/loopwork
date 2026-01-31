@@ -87,11 +87,13 @@ export async function dashboard(
       const monitor = new LoopworkMonitor(projectRoot)
       
       // Initialize backend to get task stats
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let backend: any = null
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { backend: initializedBackend } = await getBackendAndConfig(options as any)
         backend = initializedBackend
-      } catch (err) {
+      } catch {
         // If backend fails to initialize, continue without task stats to show process status
       }
 
@@ -124,11 +126,17 @@ export async function dashboard(
 
           // Fetch pending tasks from backend if available
           let pendingCount = 0
-          const pendingTasksList: any[] = []
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let pendingTasksList: any[] = []
           if (backend) {
             try {
               pendingCount = await backend.countPending()
-            } catch (err) {
+              // Fetch a small list of pending tasks for display
+              pendingTasksList = await backend.listPendingTasks({ 
+                priority: undefined, // undefined to get default sorting
+                limit: 5 // We only show top 3-5 anyway
+              })
+            } catch {
               // Ignore backend errors during refresh
             }
           }

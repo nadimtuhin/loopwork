@@ -16,7 +16,14 @@
 import React, { useState, useEffect } from 'react'
 import { render, Box, Text, useApp, useInput } from 'ink'
 import { ProgressBar as InkProgressBar } from '../components/ProgressBar'
-import type { LoopworkPlugin, PluginTask } from './loopwork-config-types'
+import type { LoopworkPlugin } from '../contracts/plugin'
+
+interface DashboardTask {
+  id: string
+  title: string
+  status?: string
+  priority?: string
+}
 
 interface TaskEvent {
   id: string
@@ -29,8 +36,8 @@ interface TaskEvent {
 
 interface DashboardState {
   namespace: string
-  currentTask: PluginTask | null
-  pendingTasks: unknown[]
+  currentTask: DashboardTask | null
+  pendingTasks: DashboardTask[]
   taskStartTime: number | null
   completed: number
   failed: number
@@ -79,7 +86,7 @@ function Header({ namespace }: { namespace: string }) {
   )
 }
 
-function CurrentTask({ task, startTime }: { task: PluginTask | null; startTime: number | null }) {
+function CurrentTask({ task, startTime }: { task: DashboardTask | null; startTime: number | null }) {
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
@@ -117,7 +124,7 @@ function CurrentTask({ task, startTime }: { task: PluginTask | null; startTime: 
   )
 }
 
-function PendingTasks({ tasks, total }: { tasks: unknown[]; total: number }) {
+export function PendingTasks({ tasks, total }: { tasks: DashboardTask[]; total: number }) {
   if (total === 0) return null
 
   return (
@@ -126,7 +133,7 @@ function PendingTasks({ tasks, total }: { tasks: unknown[]; total: number }) {
       {tasks.length > 0 ? (
         // Render detailed list if available
         <Box flexDirection="column">
-          {tasks.slice(0, 3).map((t: any, i) => (
+          {tasks.slice(0, 3).map((t, i) => (
             <Text key={i} color="gray">  ○ {t.id}: {t.title}</Text>
           ))}
           {tasks.length > 3 && <Text color="gray">  ... and {tasks.length - 3} more</Text>}
@@ -303,23 +310,24 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
       })
     },
 
-    onTaskStart(task) {
+    onTaskStart(context) {
       updateState({
-        currentTask: task,
+        currentTask: { id: context.task.id, title: context.task.title },
         taskStartTime: Date.now(),
       })
 
       const events = [...dashboardState.recentEvents]
       events.push({
-        id: task.id,
-        title: task.title,
+        id: context.task.id,
+        title: context.task.title,
         status: 'started',
         timestamp: new Date(),
       })
       updateState({ recentEvents: events.slice(-10) })
     },
 
-    onTaskComplete(task, result) {
+    onTaskComplete(context, result) {
+      const { task } = context
       const events = [...dashboardState.recentEvents]
       const idx = events.findIndex((e) => e.id === task.id && e.status === 'started')
       if (idx >= 0) {
