@@ -129,7 +129,7 @@ export async function dashboard(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let pendingTasksList: any[] = []
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let currentTaskFromBackend: any = null
+          let currentTasksFromBackend: any[] = []
 
           if (backend) {
             try {
@@ -141,39 +141,39 @@ export async function dashboard(
               })
 
               // Check for in-progress tasks in backend
-              const inProgressTasks = await backend.listTasks({ status: 'in-progress' })
-              if (inProgressTasks.length > 0) {
-                currentTaskFromBackend = inProgressTasks[0]
-              }
+              currentTasksFromBackend = await backend.listTasks({ status: 'in-progress' })
             } catch {
               // Ignore backend errors during refresh
             }
           }
 
           // Combine monitor info (PID) and backend info (Task ID)
-          let displayTask = null
-          if (running.length > 0) {
-             displayTask = { 
-               id: `PID-${running[0].pid}`, 
-               title: `Running in ${running[0].namespace}` 
-             }
+          let displayTasks: Array<{ id: string; title: string; startedAt?: Date }> = []
+          
+          // First, use detailed backend tasks if available
+          if (currentTasksFromBackend.length > 0) {
+             displayTasks = currentTasksFromBackend.map((t: any) => ({
+               id: t.id,
+               title: t.title,
+               startedAt: t.timestamps?.startedAt ? new Date(t.timestamps.startedAt) : undefined
+             }))
           } 
-          // Prefer backend task info if available because it's more descriptive (has Task ID and Title)
-          if (currentTaskFromBackend) {
-             displayTask = { 
-               id: currentTaskFromBackend.id, 
-               title: currentTaskFromBackend.title,
-               startedAt: currentTaskFromBackend.timestamps?.startedAt ? new Date(currentTaskFromBackend.timestamps.startedAt) : undefined
-             }
+          // If no backend tasks but monitors are running, use PID info as fallback
+          else if (running.length > 0) {
+             displayTasks = running.map(p => ({
+               id: `PID-${p.pid}`, 
+               title: `Running in ${p.namespace}`,
+               startedAt: new Date(p.startedAt)
+             }))
           }
 
           return {
-            currentTask: displayTask,
+            currentTasks: displayTasks,
             pendingTasks: pendingTasksList,
             completedTasks,
             failedTasks,
             stats: {
-              total: completedTasks.length + failedTasks.length + pendingCount + (displayTask ? 1 : 0),
+              total: completedTasks.length + failedTasks.length + pendingCount + displayTasks.length,
               pending: pendingCount,
               completed: completedTasks.length,
               failed: failedTasks.length,

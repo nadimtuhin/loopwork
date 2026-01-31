@@ -23,6 +23,7 @@ interface DashboardTask {
   title: string
   status?: string
   priority?: string
+  startedAt?: Date
 }
 
 interface TaskEvent {
@@ -36,9 +37,8 @@ interface TaskEvent {
 
 interface DashboardState {
   namespace: string
-  currentTask: DashboardTask | null
+  currentTasks: DashboardTask[]
   pendingTasks: DashboardTask[]
-  taskStartTime: number | null
   completed: number
   failed: number
   total: number
@@ -49,9 +49,8 @@ interface DashboardState {
 
 let dashboardState: DashboardState = {
   namespace: 'default',
-  currentTask: null,
+  currentTasks: [],
   pendingTasks: [],
-  taskStartTime: null,
   completed: 0,
   failed: 0,
   total: 0,
@@ -86,23 +85,37 @@ function Header({ namespace }: { namespace: string }) {
   )
 }
 
-function CurrentTask({ task, startTime }: { task: DashboardTask | null; startTime: number | null }) {
-  const [elapsed, setElapsed] = useState(0)
+function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
+  // Timer component for individual tasks
+  const TaskTimer = ({ startTime }: { startTime?: Date }) => {
+    const [elapsed, setElapsed] = useState(0)
 
-  useEffect(() => {
-    if (!startTime) {
-      setElapsed(0)
-      return
-    }
+    useEffect(() => {
+      if (!startTime) {
+        setElapsed(0)
+        return
+      }
 
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000))
-    }, 1000)
+      const start = new Date(startTime).getTime()
+      if (isNaN(start)) {
+        setElapsed(0)
+        return
+      }
 
-    return () => clearInterval(interval)
-  }, [startTime])
+      // Initial set
+      setElapsed(Math.floor((Date.now() - start) / 1000))
 
-  if (!task) {
+      const interval = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - start) / 1000))
+      }, 1000)
+
+      return () => clearInterval(interval)
+    }, [startTime])
+
+    return <Text color="yellow">  ⏱ {formatTime(elapsed)}</Text>
+  }
+
+  if (tasks.length === 0) {
     return (
       <Box marginY={1}>
         <Text color="gray">⏳ Waiting for next task...</Text>
@@ -112,14 +125,19 @@ function CurrentTask({ task, startTime }: { task: DashboardTask | null; startTim
 
   return (
     <Box flexDirection="column" marginY={1}>
-      <Box>
-        <Text color="cyan">{'▶ '}</Text>
-        <Text bold>{task.id}</Text>
-        <Text color="gray">: {task.title.slice(0, 50)}</Text>
-      </Box>
-      <Box>
-        <Text color="yellow">  ⏱ {formatTime(elapsed)}</Text>
-      </Box>
+      <Text bold color="white">Ongoing:</Text>
+      {tasks.map((task) => (
+        <Box key={task.id} flexDirection="column" marginLeft={1} marginBottom={1}>
+          <Box>
+            <Text color="cyan">{'▶ '}</Text>
+            <Text bold>{task.id}</Text>
+            <Text color="gray">: {task.title.slice(0, 50)}</Text>
+          </Box>
+          <Box>
+            <TaskTimer startTime={task.startedAt} />
+          </Box>
+        </Box>
+      ))}
     </Box>
   )
 }
@@ -249,7 +267,7 @@ function Dashboard() {
         <ElapsedTime startTime={state.loopStartTime} />
       </Box>
 
-      <CurrentTask task={state.currentTask} startTime={state.taskStartTime} />
+      <CurrentTasks tasks={state.currentTasks} />
 
       <Stats completed={state.completed} failed={state.failed} total={state.total} />
 
@@ -311,9 +329,15 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
     },
 
     onTaskStart(context) {
+      const task: DashboardTask = {
+        id: context.task.id,
+        title: context.task.title,
+        status: 'in-progress',
+        startedAt: new Date()
+      }
+      
       updateState({
-        currentTask: { id: context.task.id, title: context.task.title },
-        taskStartTime: Date.now(),
+        currentTasks: [...dashboardState.currentTasks, task]
       })
 
       const events = [...dashboardState.recentEvents]
@@ -339,8 +363,7 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
       }
 
       updateState({
-        currentTask: null,
-        taskStartTime: null,
+        currentTasks: dashboardState.currentTasks.filter(t => t.id !== task.id),
         completed: dashboardState.completed + 1,
         recentEvents: events.slice(-10),
       })
@@ -359,8 +382,7 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
       }
 
       updateState({
-        currentTask: null,
-        taskStartTime: null,
+        currentTasks: dashboardState.currentTasks.filter(t => t.id !== task.id),
         failed: dashboardState.failed + 1,
         recentEvents: events.slice(-10),
       })
@@ -369,8 +391,7 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
     onLoopEnd() {
       updateState({
         isRunning: false,
-        currentTask: null,
-        taskStartTime: null,
+        currentTasks: [],
       })
     },
   }
@@ -398,7 +419,7 @@ export async function startInkTui(options: {
   watch?: boolean
   directMode?: boolean
   getState?: () => Promise<{
-    currentTask: { id: string; title: string; startedAt?: Date } | null
+    currentTasks: Array<{ id: string; title: string; startedAt?: Date }>
     pendingTasks: unknown[]
     completedTasks: Array<{ id: string; title: string }>
     failedTasks: Array<{ id: string; title: string }>
@@ -425,13 +446,13 @@ export async function startInkTui(options: {
   if (options.getState) {
     const state = await options.getState()
     updateState({
-      currentTask: state.currentTask ? {
-        id: state.currentTask.id,
-        title: state.currentTask.title,
+      currentTasks: state.currentTasks.map(t => ({
+        id: t.id,
+        title: t.title,
         status: 'in-progress',
         priority: 'medium',
-      } : null,
-      taskStartTime: state.currentTask?.startedAt ? state.currentTask.startedAt.getTime() : null,
+        startedAt: t.startedAt,
+      })),
       pendingTasks: state.pendingTasks as any,
       completed: state.stats.completed,
       failed: state.stats.failed,
@@ -455,14 +476,14 @@ export async function startInkTui(options: {
     interval = setInterval(async () => {
       const state = await options.getState!()
       updateState({
-        currentTask: state.currentTask ? {
-          id: state.currentTask.id,
-          title: state.currentTask.title,
+        currentTasks: state.currentTasks.map(t => ({
+          id: t.id,
+          title: t.title,
           status: 'in-progress',
           priority: 'medium',
-        } : null,
-        taskStartTime: state.currentTask?.startedAt ? state.currentTask.startedAt.getTime() : null,
-        pendingTasks: state.pendingTasks as any,
+          startedAt: t.startedAt,
+        })),
+        pendingTasks: state.pendingTasks as any, // eslint-disable-line @typescript-eslint/no-explicit-any
         completed: state.stats.completed,
         failed: state.stats.failed,
         total: state.stats.total,

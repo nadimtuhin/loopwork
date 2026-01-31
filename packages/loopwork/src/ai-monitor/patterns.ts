@@ -1,5 +1,5 @@
 import { logger } from '../core/utils'
-import type { ErrorPattern, PatternMatch, Severity } from './types'
+import type { ErrorPattern, PatternMatch, MonitorAction } from './types'
 
 /**
  * PatternDetector - Detects known error patterns in log lines
@@ -44,7 +44,7 @@ export class PatternDetector {
         name: 'env-var-required',
         pattern: /(\w+) is required/i,
         severity: 'ERROR',
-        autoAction: (match) => ({
+        autoAction: (_match) => ({
           type: 'skip',
           target: 'plugin',
         }),
@@ -82,7 +82,7 @@ export class PatternDetector {
         severity: 'MEDIUM',
         autoAction: () => ({
           type: 'enhance-task',
-        }),
+        } as any),
       },
       {
         name: 'permission-denied',
@@ -234,6 +234,7 @@ Please review and update with proper task description before execution.
 
         if (fs.existsSync(tasksJsonPath)) {
           const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf-8'))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const taskEntry = tasksData.tasks.find((t: any) => t.id === taskId)
           if (taskEntry && !taskEntry.description) {
             taskEntry.description = prdContent
@@ -245,7 +246,7 @@ Please review and update with proper task description before execution.
         logger.warn(`PRD already exists: ${prdPath}`)
       }
     } catch (error) {
-      logger.error(`Failed to create PRD for ${taskId}:`, error)
+      logger.error(`Failed to create PRD for ${taskId}: ${error}`)
     }
   }
 }
