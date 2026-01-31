@@ -207,6 +207,20 @@ export interface LoopworkConfig {
    */
   orphanWatch?: OrphanWatchConfig
 
+  /**
+   * Retry budget configuration
+   */
+  retryBudget?: {
+    enabled?: boolean
+    maxRetries?: number
+    windowMs?: number
+  }
+
+  /**
+   * Checkpoint configuration
+   */
+  checkpoint?: import('../core/checkpoint-integrator').CheckpointConfig
+
   [key: string]: unknown
 }
 

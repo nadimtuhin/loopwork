@@ -163,6 +163,16 @@ export {
   STATE_WATCH_PATTERNS,
 } from './core/loopwork-state'
 
+// Export process management
+export {
+  ProcessManager,
+  createProcessManager,
+  MockProcessManager,
+  ProcessRegistry,
+  OrphanDetector,
+  ProcessCleaner,
+} from './core/process-management'
+
 // Legacy exports for backward compatibility (deprecated)
 export {
   LOOPWORK_STATE_DIR,

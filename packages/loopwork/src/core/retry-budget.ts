@@ -1,52 +1,49 @@
 /**
  * Retry Budget Management
  *
- * Manages retry budgets for task execution
+ * Tracks retry consumption over a rolling window to prevent runaway costs
  */
 
 export interface RetryBudgetConfig {
   maxRetries: number
-  resetPeriodMs: number
+  windowMs: number
+  enabled?: boolean
 }
 
 export class RetryBudget {
-  private retries: Map<string, number> = new Map()
-  private lastReset: number = Date.now()
-  private config: RetryBudgetConfig
+  private retryTimestamps: number[] = []
+  private maxRetries: number
+  private windowMs: number
 
-  constructor(config: Partial<RetryBudgetConfig> = {}) {
-    this.config = {
-      maxRetries: config.maxRetries ?? 3,
-      resetPeriodMs: config.resetPeriodMs ?? 60000 // 1 minute
+  constructor(maxRetries: number = 50, windowMs: number = 3600000) {
+    this.maxRetries = maxRetries
+    this.windowMs = windowMs
+  }
+
+  hasBudget(): boolean {
+    this.cleanup()
+    return this.retryTimestamps.length < this.maxRetries
+  }
+
+  consume(): void {
+    this.retryTimestamps.push(Date.now())
+  }
+
+  getConfig(): { maxRetries: number; windowMs: number } {
+    return {
+      maxRetries: this.maxRetries,
+      windowMs: this.windowMs
     }
   }
 
-  canRetry(taskId: string): boolean {
-    this.checkReset()
-    const currentRetries = this.retries.get(taskId) ?? 0
-    return currentRetries < this.config.maxRetries
+  private cleanup(): void {
+    const now = Date.now()
+    const windowStart = now - this.windowMs
+    this.retryTimestamps = this.retryTimestamps.filter(t => t > windowStart)
   }
 
-  recordRetry(taskId: string): void {
-    this.checkReset()
-    const currentRetries = this.retries.get(taskId) ?? 0
-    this.retries.set(taskId, currentRetries + 1)
-  }
-
-  reset(): void {
-    this.retries.clear()
-    this.lastReset = Date.now()
-  }
-
-  private checkReset(): void {
-    if (Date.now() - this.lastReset > this.config.resetPeriodMs) {
-      this.reset()
-    }
-  }
-
-  getRetryCount(taskId: string): number {
-    return this.retries.get(taskId) ?? 0
+  getUsage(): number {
+    this.cleanup()
+    return this.retryTimestamps.length
   }
 }
-
-export const retryBudget = new RetryBudget()

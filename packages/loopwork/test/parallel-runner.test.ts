@@ -582,6 +582,9 @@ describe('ParallelRunner', () => {
           fs.writeFileSync(outputFile, `Error: ${errorMessage}`)
           return 1
         },
+        async executeTask(task: Task, prompt: string, outputFile: string, timeout: number): Promise<number> {
+          return this.execute(prompt, outputFile, timeout, task.id)
+        },
         killCurrent(): void {},
         resetFallback(): void {},
         async cleanup(): Promise<void> {},
@@ -760,6 +763,9 @@ describe('ParallelRunner', () => {
 
           fs.writeFileSync(outputFile, `Success for ${taskId}`)
           return 0
+        },
+        async executeTask(task: Task, prompt: string, outputFile: string, timeout: number): Promise<number> {
+          return this.execute(prompt, outputFile, timeout, task.id)
         },
         killCurrent(): void {},
         resetFallback(): void {},

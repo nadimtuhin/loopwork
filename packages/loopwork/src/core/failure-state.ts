@@ -28,6 +28,10 @@ export class FailureStateManager {
     return this.failures.get(taskId)
   }
 
+  getFailureCount(taskId: string): number {
+    return this.failures.get(taskId)?.retryCount ?? 0
+  }
+
   clearFailure(taskId: string): void {
     this.failures.delete(taskId)
   }

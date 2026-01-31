@@ -578,7 +578,7 @@ export class ParallelRunner {
         const currentRetries = this.retryCount.get(task.id) || 0
 
         // Check if error is retryable
-        if (!isRetryableError(taskError)) {
+        if (!isRetryableError(taskError, retryPolicy)) {
           this.logger.error(`${prefix} Task ${task.id} failed with non-retryable error`)
           const errorMsg = `Non-retryable error\n\nSession: ${this.config.sessionId}\nIteration: ${this.iterationCount}${outputContent ? `\n\nOutput: ${outputContent}` : ''}`
           await this.recordTaskFailure(task, errorMsg)
@@ -621,9 +621,6 @@ export class ParallelRunner {
 
           return { workerId, taskId: task.id, success: false, error: errorMsg, duration }
         }
-
-        // Get retry policy for this task
-        const retryPolicy = getRetryPolicy(task, this.config)
 
         // Check if max retries exceeded
         if (currentRetries >= retryPolicy.maxRetries) {
@@ -740,7 +737,7 @@ export class ParallelRunner {
         this.retryCount.set(task.id, currentRetries + 1)
         await this.backend.resetToPending(task.id)
         this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
-        return { workerId, taskId: task.id, success: false, error: 'Task failed, scheduled for retry after backoff' }
+        return { workerId, taskId: task.id, success: false, error: taskError.message }
       }
     } catch (error) {
       if (this.debugger) {
@@ -748,7 +745,7 @@ export class ParallelRunner {
           type: 'ERROR',
           taskId: task.id,
           timestamp: Date.now(),
-          error
+          error: error as any
         })
       }
       // Execution error - reset task to pending
@@ -840,8 +837,8 @@ export class ParallelRunner {
    */
   private categorizeFailure(error: string): FailureCategory {
     const lowerError = error.toLowerCase()
-
     if (lowerError.includes('rate limit') ||
+
         lowerError.includes('429') ||
         lowerError.includes('too many requests') ||
         lowerError.includes('overloaded')) {
@@ -997,7 +994,7 @@ export class ParallelRunner {
    * Record task failure and handle auto-quarantine logic
    */
   private async recordTaskFailure(task: Task, errorMsg: string): Promise<void> {
-    failureState.recordFailure(task.id)
+    failureState.recordFailure(task.id, errorMsg)
     const failureCount = failureState.getFailureCount(task.id)
     const threshold = this.config.quarantineThreshold ?? 3
 

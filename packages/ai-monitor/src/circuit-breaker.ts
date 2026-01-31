@@ -32,10 +32,11 @@ export class CircuitBreaker {
     }
   }
 
-  /**
-   * Check if a request is allowed through the circuit breaker
-   */
-  canProceed(): boolean {
+   /**
+    * Check if healing is allowed through the circuit breaker
+    * PRD-specified API name
+    */
+  canHeal(): boolean {
     const now = Date.now()
 
     switch (this.state.state) {
@@ -70,6 +71,13 @@ export class CircuitBreaker {
       default:
         return false
     }
+  }
+
+  /**
+   * Alias for canHeal() for backward compatibility
+   */
+  canProceed(): boolean {
+    return this.canHeal()
   }
 
   /**

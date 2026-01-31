@@ -50,7 +50,7 @@ export interface DynamicTasksOptions {
  * )(defineConfig({ cli: 'claude' }))
  * ```
  */
-export function withDynamicTasks( _options: DynamicTasksOptions = {}): ConfigWrapper {
+export function withDynamicTasks(options: DynamicTasksOptions = {}): ConfigWrapper {
   return (config) => ({
     ...config,
     dynamicTasks: {
@@ -58,8 +58,7 @@ export function withDynamicTasks( _options: DynamicTasksOptions = {}): ConfigWra
       createSubTasks: options.createSubTasks ?? true,
       maxTasksPerExecution: options.maxTasksPerExecution ?? 5,
       autoApprove: options.autoApprove ?? true,
-      logCreatedTasks: options.logCreatedTasks ?? true,
-      classification: 'enhancement'
+      logCreatedTasks: options.logCreatedTasks ?? true
     }
   })
 }

@@ -70,6 +70,8 @@ export interface Config extends LoopworkConfig {
   parallelFailureMode: ParallelFailureMode
   logLevel: LogLevel
   flags?: FeatureFlags
+  quarantineThreshold?: number
+  retryCooldown?: number
 }
 
 /**

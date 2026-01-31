@@ -34,11 +34,18 @@ export function isRetryableError(error: Error | string, policy: RetryPolicy = DE
   return retryableErrors.some(pattern => errorMsg.includes(pattern))
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function getRetryPolicy(name?: string): RetryPolicy {
-  // For now, just return the default policy
-  // This can be extended to support named policies from a registry
-  return DEFAULT_RETRY_POLICY
+export function getRetryPolicy(task?: any, config?: any): RetryPolicy {
+  // Priority: Task metadata > Config > Default
+  const maxRetries = task?.metadata?.maxRetries ?? config?.maxRetries ?? DEFAULT_RETRY_POLICY.maxRetries
+  const initialDelay = task?.metadata?.retryDelay ?? config?.retryDelay ?? config?.taskDelay ?? DEFAULT_RETRY_POLICY.initialDelay
+  const maxDelay = task?.metadata?.maxRetryDelay ?? config?.maxRetryDelay ?? DEFAULT_RETRY_POLICY.maxDelay
+  
+  return {
+    ...DEFAULT_RETRY_POLICY,
+    maxRetries: Number(maxRetries),
+    initialDelay: Number(initialDelay),
+    maxDelay: Number(maxDelay),
+  }
 }
 
 export function calculateBackoff(attempt: number, policy: RetryPolicy = DEFAULT_RETRY_POLICY): number {

@@ -4,34 +4,39 @@
  * Integrates checkpoint functionality into parallel execution
  */
 
-export interface Checkpoint {
-  id: string
-  timestamp: number
-  data: unknown
+export interface CheckpointConfig {
+  enabled?: boolean
+  interval?: number
+  skipOnTaskComplete?: boolean
+  skipOnCliExecution?: boolean
+  cliCheckpointIntervalSecs?: number
 }
 
 export class CheckpointIntegrator {
-  private checkpoints: Map<string, Checkpoint> = new Map()
+  private iteration: number = 0
+  private config: CheckpointConfig
+  private projectRoot: string
 
-  saveCheckpoint(id: string, data: unknown): void {
-    this.checkpoints.set(id, {
-      id,
-      timestamp: Date.now(),
-      data
-    })
+  constructor(config: CheckpointConfig = {}, projectRoot: string = process.cwd()) {
+    this.config = config
+    this.projectRoot = projectRoot
   }
 
-  loadCheckpoint(id: string): Checkpoint | undefined {
-    return this.checkpoints.get(id)
+  shouldCheckpoint(iteration: number): boolean {
+    if (!this.config.enabled) return false
+    const interval = this.config.interval ?? 5
+    return iteration > 0 && iteration % interval === 0
   }
 
-  deleteCheckpoint(id: string): void {
-    this.checkpoints.delete(id)
+  async checkpoint(data: any): Promise<void> {
+    // Implementation would save to disk
   }
 
-  clear(): void {
-    this.checkpoints.clear()
+  incrementIteration(): void {
+    this.iteration++
+  }
+
+  getIteration(): number {
+    return this.iteration
   }
 }
-
-export const checkpointIntegrator = new CheckpointIntegrator()
