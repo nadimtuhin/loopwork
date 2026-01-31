@@ -1,0 +1,25 @@
+Starting task execution...
+
+Implemented partial solution.
+Modified some files but encountered issues.
+
+Warning: Some tests are skipped.
+Warning: Deprecated API usage detected.
+
+```json:follow-up-tasks
+[
+  {
+    "title": "Complete remaining implementation",
+    "description": "Finish the unhandled edge cases",
+    "priority": 2
+  },
+  {
+    "title": "Update deprecated API calls",
+    "description": "Replace deprecated methods with new alternatives",
+    "priority": 3
+  }
+]
+```
+
+Tokens used: 1800
+Tool calls: 5
