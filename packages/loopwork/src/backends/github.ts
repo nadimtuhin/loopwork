@@ -35,7 +35,7 @@ export class GitHubTaskAdapter implements TaskBackend {
   private baseDelayMs = GITHUB_RETRY_BASE_DELAY_MS
 
   constructor(config: BackendConfig) {
-    this.repo = config.repo
+    this.repo = (config as any).repo
   }
 
   private repoFlag(): string {

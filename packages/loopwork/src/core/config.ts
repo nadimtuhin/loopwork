@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import type { LoopworkConfig, ParallelFailureMode, LogLevel, FeatureFlags } from '../contracts'
 import { DEFAULT_CONFIG } from '../contracts'
-import type { BackendConfig } from '../contracts/backend'
+import { warnIfLooseBackendConfig, type BackendConfig, type JsonBackendConfig, type GithubBackendConfig } from '../contracts/backend'
 import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
 import { logger } from './utils'
 import { LoopworkError } from './errors'
@@ -80,16 +80,6 @@ function hasStringProperty<K extends string>(
   return typeof obj === 'object' && obj !== null && key in obj
 }
 
-export interface JsonBackendConfig extends BackendConfig {
-  type: 'json'
-  tasksFile: string
-  tasksDir?: string
-}
-
-export interface GithubBackendConfig extends BackendConfig {
-  type: 'github'
-}
-
 export function isBackendConfig(config: unknown): config is BackendConfig {
   return typeof config === 'object' && 
          config !== null && 
@@ -131,6 +121,9 @@ export function validateBackendConfig(config: unknown): void {
       ]
     )
   }
+
+  // Issue warning for loose configurations
+  warnIfLooseBackendConfig(config as BackendConfig)
 }
 
 /**
@@ -597,23 +590,23 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
   const backendType = options.backend ||
     process.env.LOOPWORK_BACKEND ||
     fileConfig?.backend?.type ||
-    detectBackendType(projectRoot, options.tasksFile || fileConfig?.backend?.tasksFile)
+    detectBackendType(projectRoot, options.tasksFile || (fileConfig?.backend as any)?.tasksFile)
 
   const backend: BackendConfig = backendType === 'json'
     ? {
         type: 'json',
         tasksFile: options.tasksFile ||
-          fileConfig?.backend?.tasksFile ||
+          (fileConfig?.backend as any)?.tasksFile ||
           path.join(projectRoot, '.specs/tasks/tasks.json'),
         tasksDir: path.dirname(
           options.tasksFile ||
-          fileConfig?.backend?.tasksFile ||
+          (fileConfig?.backend as any)?.tasksFile ||
           path.join(projectRoot, '.specs/tasks/tasks.json')
         ),
       }
     : {
         type: 'github',
-        repo: options.repo || fileConfig?.backend?.repo,
+        repo: options.repo || (fileConfig?.backend as any)?.repo,
       }
 
   // Determine parallel setting: --sequential forces 1, --parallel [N] sets workers
@@ -640,7 +633,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
 
   const config: Config = {
     ...DEFAULT_CONFIG,
-    repo: options.repo || fileConfig?.backend?.repo,
+    repo: options.repo || (fileConfig?.backend as any)?.repo,
     feature: options.feature || fileConfig?.feature,
     defaultPriority: options.defaultPriority ?? fileConfig?.defaultPriority,
     startTask: options.task,

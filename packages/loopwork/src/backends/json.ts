@@ -73,8 +73,8 @@ export class JsonTaskAdapter implements TaskBackend {
   private lockRetryDelay = LOCK_RETRY_DELAY_MS
 
   constructor(config: BackendConfig) {
-    this.tasksFile = config.tasksFile || '.specs/tasks/tasks.json'
-    this.tasksDir = config.tasksDir || path.dirname(this.tasksFile)
+    this.tasksFile = (config as any).tasksFile || '.specs/tasks/tasks.json'
+    this.tasksDir = (config as any).tasksDir || path.dirname(this.tasksFile)
     this.lockFile = `${this.tasksFile}.lock`
   }
 

@@ -221,14 +221,53 @@ export type BackendConfig =
   | JsonBackendConfig 
   | GithubBackendConfig 
   | FallbackBackendConfig
-  | {
-      // Loose type for backward compatibility and other backends
-      type: string
-      repo?: string
-      tasksFile?: string
-      tasksDir?: string
-      flags?: Record<string, boolean>
-    }
+  | LooseBackendConfig
+
+/**
+ * Loose backend configuration for backward compatibility.
+ * @deprecated Use JsonBackendConfig, GithubBackendConfig, or FallbackBackendConfig instead.
+ */
+export interface LooseBackendConfig {
+  /** Backend type identifier */
+  type: string
+  /** GitHub repository (for GitHub backend) */
+  repo?: string
+  /** Tasks file path (for JSON backend) */
+  tasksFile?: string
+  /** Tasks directory (for JSON backend) */
+  tasksDir?: string
+  /** Feature flags */
+  flags?: Record<string, boolean>
+  /** Catch-all for other backend-specific options */
+  [key: string]: unknown
+}
+
+let warnedLooseBackend = false
+
+/**
+ * Warns if the backend configuration is using the loose type instead of a specialized one.
+ * Only warns once per runtime.
+ * 
+ * @param config - The backend configuration to check
+ */
+export function warnIfLooseBackendConfig(config: BackendConfig): void {
+  if (warnedLooseBackend) return
+
+  const isSpecialized = 
+    config.type === 'json' || 
+    config.type === 'github' || 
+    config.type === 'fallback'
+
+  if (!isSpecialized) {
+    console.warn(
+      '\x1b[33m%s\x1b[0m',
+      `[DEPRECATION WARNING] Using loose BackendConfig (type: "${config.type}"). ` +
+      'In a future version, backends will require specific types like JsonBackendConfig or GithubBackendConfig. ' +
+      'Please update your configuration for better type safety and future compatibility.'
+    )
+    warnedLooseBackend = true
+  }
+}
 
 /**
  * Factory function type for creating backends
