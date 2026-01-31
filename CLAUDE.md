@@ -291,6 +291,30 @@ Use the logger from `packages/loopwork/src/core/utils.ts`:
 - Adds color-coded prefixes for multi-CLI execution
 - Call `flush()` on completion to output remaining buffer
 
+### Output System (Ink-based Terminal UI)
+
+Loopwork now provides an Ink-based TUI (Terminal User Interface) system for rich, interactive output. The legacy string-based output utilities in `src/core/output.ts` are deprecated.
+
+**New Ink Components:**
+- `Banner` - Bordered announcement boxes with key-value rows
+- `ProgressBar` - Deterministic progress bars and indeterminate spinners
+- `Table` - Unicode box-drawing tables with alignment
+- `CompletionSummary` - Task completion statistics and next steps
+
+**Usage:**
+```typescript
+import { Banner, ProgressBar, Table, CompletionSummary } from 'loopwork/components'
+
+// Use in React/Ink context
+<Banner title="Task Complete" rows={[{key: 'Duration', value: '5m'}]} />
+<ProgressBar current={75} total={100} width={30} />
+```
+
+**Migration:**
+- Legacy output in `src/core/output.ts` is deprecated
+- See `packages/loopwork/docs/MIGRATION-OUTPUT.md` for migration guide
+- Use Ink components for all new code
+
 ## Common Development Tasks
 
 ### Adding a New Backend
@@ -349,6 +373,27 @@ npm publish
 - Never commit API tokens or credentials
 - Use environment variables for sensitive config
 
+## Architectural Guidelines & AI Safety
+
+### 1. Monorepo Dependency Rules (CRITICAL)
+- **No Circular Dependencies**: 
+  - Core packages (`packages/loopwork`) must NEVER import from plugins or higher-level packages.
+  - Plugins must import from `@loopwork-ai/loopwork` (which points to core), NEVER the other way around.
+  - Shared types/interfaces should live in a dependency-free package if needed by both (e.g. `@loopwork-ai/contracts`).
+- **Strict Layering**:
+  - `contracts` -> `core` -> `plugins` -> `implementations`
+  - Breaking this causes Segfaults (0x18) in Bun due to memory corruption during module loading.
+
+### 2. TypeScript & Bun Safety
+- **Type Exports**: Always use `export type { ... }` when re-exporting interfaces.
+  - Wrong: `export { MyInterface } ...` -> Fails at runtime in Bun (Value not found).
+  - Right: `export type { MyInterface } ...` -> Correctly erased at runtime.
+- **Verbatim Module Syntax**: Respect `verbatimModuleSyntax: true`.
+
+### 3. Verification Protocol
+- **Always Build**: AI tasks are not complete until `bun run build` passes.
+- **Check Cycles**: If you modify exports/imports, verify graph integrity.
+
 ## AI Development Philosophy
 
 ### Core Principles
@@ -374,6 +419,15 @@ npm publish
    - Feed each sub-task to a subagent with clear inputs/outputs
    - Aggregate results and verify integration
    - Never give subagents large, ambiguous tasks
+
+9. **Node.js Built-ins in Bun**: When using Node.js built-in modules (`events`, `stream`, `util`, `path`, etc.), you MUST install them as explicit dependencies:
+   ```bash
+   bun install events  # NOT just import { EventEmitter } from 'events'
+   ```
+   - In Node.js, built-ins are available without installation
+   - In Bun, they are NOT - they must be added to `package.json` dependencies
+   - Common modules to watch for: `events`, `stream`, `util`, `buffer`, `crypto`, `os`, `vm`
+   - Always verify with `ls node_modules/<module-name>` after import fails
 
 ### Task Management
 
