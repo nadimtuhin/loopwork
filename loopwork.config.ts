@@ -153,24 +153,23 @@ export default compose(
   }),
 
   // Smart Test Tasks - Automatically create test tasks for new features
-  // withSmartTestTasks({
-  //   enabled: true,
-  //   autoCreate: false,  // Suggest but don't auto-create (requires approval)
-  //   maxSuggestions: 3,  // Max 3 test task suggestions per completed task
-  //   minConfidence: 70,  // Only suggest tests with 70%+ confidence
-  //   cli: 'opencode',    // Use free OpenCode models for analysis
-  //   model: 'openrouter/meta-llama/llama-3.3-70b-instruct:free',  // Free model for test suggestions
-  // }),
+  withSmartTestTasks({
+    enabled: true,
+    autoCreate: false,  // Suggest but don't auto-create (requires approval)
+    maxSuggestions: 3,  // Max 3 test task suggestions per completed task
+    minConfidence: 70,  // Only suggest tests with 70%+ confidence
+    cli: 'opencode',    // Use free OpenCode models for analysis
+    model: 'zai-coding-plan/glm-4.7',  // GLM 4.7 for analysis
+  }),
 
   // Task Recovery - AI-powered failure analysis and recovery
-  // withTaskRecovery({
-  //   enabled: true,
-  //   autoRecover: true,          // Automatically attempt recovery on failures
-  //   maxRecoveryAttempts: 3,     // Max recovery attempts per task
-  //   analysisModel: 'claude',    // Use Claude for failure analysis (better reasoning)
-  //   analysisModelId: 'haiku',   // Use Haiku (cheaper for analysis)
-  //   cooldownMs: 60000,          // Wait 60s between recovery attempts
-  // }),
+  withTaskRecovery({
+    enabled: true,
+    autoRecover: true,          // Automatically attempt recovery on failures
+    maxRetries: 3,              // Max recovery attempts per task
+    cli: 'opencode',            // Use OpenCode CLI
+    model: 'zai-coding-plan/glm-4.7',   // Use GLM 4.7 for failure analysis
+  }),
 
   // Documentation Plugin - Auto-update CHANGELOG.md after each task
   // For advanced options (AI-powered, README updates), see: documentation-plugins-examples.md
@@ -222,5 +221,5 @@ export default compose(
     maxRetries: 5,
     taskDelay: 2000,
     retryDelay: 3000,
-  }),
+  } as any),
 );

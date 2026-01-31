@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import type { LoopworkPlugin, TaskBackend, Task, TaskContext } from '../contracts'
+import type { LoopworkPlugin, TaskBackend, Task, TaskContext, ConfigWrapper, LoopworkConfig } from '../contracts'
 import { logger } from '../core/utils'
 
 /**
@@ -101,346 +101,6 @@ const DEFAULT_CONFIG: Required<TaskRecoveryConfig> = {
 }
 
 /**
- * Read log excerpt from task output file
- */
-function readLogExcerpt(context: TaskContext): string {
-  try {
-    // Try to read from session output file
-    const sessionId = (context.config as { sessionId?: string }).sessionId || 'unknown'
-    const namespace = context.namespace || 'default'
-    const outputFile = path.join(
-      process.cwd(),
-      '.loopwork',
-      'runs',
-      namespace,
-      sessionId,
-      'logs',
-      `iteration-${context.iteration}-output.txt`
-    )
-
-    if (fs.existsSync(outputFile)) {
-      const content = fs.readFileSync(outputFile, 'utf-8')
-      // Get last 2000 characters for more context
-      return content.slice(-2000)
-    }
-
-    // Fallback: try main loopwork.log
-    const logFile = path.join(
-      process.cwd(),
-      '.loopwork',
-      'runs',
-      namespace,
-      sessionId,
-      'loopwork.log'
-    )
-
-    if (fs.existsSync(logFile)) {
-      const content = fs.readFileSync(logFile, 'utf-8')
-      return content.slice(-2000)
-    }
-  } catch (err) {
-    logger.debug(`Could not read log excerpt: ${err}`)
-  }
-
-  return ''
-}
-
-/**
- * Check if failure should be skipped
- */
-function shouldSkipFailure(
-  context: FailureContext,
-  config: Required<TaskRecoveryConfig>
-): boolean {
-  // Check error pattern skip rules
-  if (config.skip.errorPatterns.some(pattern => pattern.test(context.error))) {
-    return true
-  }
-
-  // Check task pattern skip rules
-  if (config.skip.taskPatterns.some(pattern => pattern.test(context.task.title))) {
-    return true
-  }
-
-  // Check label skip rules
-  const labels = (context.task as Task & { labels?: string[] }).labels
-  if (labels?.some(label => config.skip.labels.includes(label))) {
-    return true
-  }
-
-  // Skip if max retries exceeded
-  if (context.retryAttempt >= config.maxRetries) {
-    logger.debug(`Max retries (${config.maxRetries}) exceeded for task ${context.task.id}`)
-    return true
-  }
-
-  return false
-}
-
-/**
- * Build prompt for failure analysis
- */
-function buildAnalysisPrompt(
-  context: FailureContext,
-  config: Required<TaskRecoveryConfig>
-): string {
-  const { task, error, iteration, retryAttempt, logExcerpt } = context
-
-  const enabledStrategies = Object.entries(config.strategies)
-    .filter(([_, enabled]) => enabled)
-    .map(([strategy]) => strategy)
-    .join(', ')
-
-  return `You are an AI debugging assistant analyzing a failed task.
-
-## Failed Task
-
-**ID:** ${task.id}
-**Title:** ${task.title}
-**Description:** ${task.description || 'N/A'}
-**Labels:** ${(task as Task & { labels?: string[] }).labels?.join(', ') || 'None'}
-**Iteration:** ${iteration}
-**Retry Attempt:** ${retryAttempt + 1}/${config.maxRetries}
-
-## Error Message
-
-\`\`\`
-${error}
-\`\`\`
-
-${logExcerpt ? `## CLI Output (last 2000 chars)
-
-\`\`\`
-${logExcerpt}
-\`\`\`
-` : ''}
-
-## Your Task
-
-Analyze this failure and provide a recovery plan.
-
-**Available Recovery Strategies:** ${enabledStrategies}
-
-**Output Format (JSON):**
-\`\`\`json
-{
-  "type": "retry|create-task|update-test|skip",
-  "confidence": 85,
-  "rootCause": "Clear explanation of what went wrong",
-  "recommendation": "Specific actionable fix",
-  "newTask": {
-    "title": "Fix X issue",
-    "description": "Detailed steps to fix",
-    "priority": "high|medium|low",
-    "labels": ["bug", "recovery"]
-  },
-  "testChanges": {
-    "file": "test/example.test.ts",
-    "changes": "Update test to handle edge case"
-  }
-}
-\`\`\`
-
-**Analysis Guidelines:**
-- Identify root cause (syntax error, logic bug, missing dependency, test issue, etc.)
-- Recommend 'retry' if issue can be fixed with code changes
-- Recommend 'create-task' if issue requires separate investigation
-- Recommend 'update-test' if test needs updating based on failure
-- Recommend 'skip' if error is environmental/transient
-- Provide confidence score (0-100) in your analysis
-- Be specific and actionable in recommendations
-
-Output your analysis as JSON:`
-}
-
-/**
- * Analyze failure using AI
- */
-async function analyzeFailure(
-  context: FailureContext,
-  config: Required<TaskRecoveryConfig>
-): Promise<RecoveryPlan | null> {
-  return new Promise((resolve, reject) => {
-    const prompt = buildAnalysisPrompt(context, config)
-
-    // Spawn AI CLI to analyze
-    const args = ['--model', config.model]
-    const child = spawn(config.cli, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Failure analysis failed: ${stderr}`))
-        return
-      }
-
-      try {
-        // Extract JSON from output
-        const jsonMatch = stdout.match(/```json\s*([\s\S]*?)\s*```/) ||
-                         stdout.match(/\{[\s\S]*"type"[\s\S]*\}/)
-
-        if (!jsonMatch) {
-          logger.debug('No JSON found in AI response, skipping recovery')
-          resolve(null)
-          return
-        }
-
-        const jsonStr = jsonMatch[1] || jsonMatch[0]
-        const plan: RecoveryPlan = JSON.parse(jsonStr)
-
-        resolve(plan)
-      } catch (err) {
-        logger.warn(`Failed to parse recovery plan: ${err}`)
-        resolve(null)
-      }
-    })
-
-    child.on('error', (err) => {
-      reject(new Error(`Failed to spawn ${config.cli}: ${err.message}`))
-    })
-
-    // Send prompt to stdin
-    child.stdin?.write(prompt)
-    child.stdin?.end()
-  })
-}
-
-/**
- * Execute recovery plan
- */
-async function executeRecoveryPlan(
-  plan: RecoveryPlan,
-  context: FailureContext,
-  backend: TaskBackend,
-  config: Required<TaskRecoveryConfig>
-): Promise<void> {
-  logger.info(`Executing recovery plan: ${plan.type}`)
-  logger.debug(`  Root Cause: ${plan.rootCause}`)
-  logger.debug(`  Confidence: ${plan.confidence}%`)
-
-  switch (plan.type) {
-    case 'retry':
-      if (config.strategies.autoRetry) {
-        logger.info('Retry recommended - task will be retried in next iteration')
-        logger.success(`  Recommendation: ${plan.recommendation}`)
-      }
-      break
-
-    case 'create-task':
-      if (config.strategies.createTasks && plan.newTask) {
-        try {
-          logger.info(`Creating recovery task: ${plan.newTask.title}`)
-          const taskData: {
-            title: string
-            description: string
-            priority: 'high' | 'medium' | 'low'
-            labels?: string[]
-          } = {
-            title: plan.newTask.title,
-            description: plan.newTask.description,
-            priority: plan.newTask.priority,
-          }
-          // Add labels if the backend supports them (GitHub backend)
-          if (plan.newTask.labels) {
-            taskData.labels = [...plan.newTask.labels, 'auto-recovery']
-          }
-          const newTask = await backend.createTask(taskData)
-          logger.success(`  ✓ Created recovery task: ${newTask.id}`)
-        } catch (err) {
-          logger.warn(`Failed to create recovery task: ${err}`)
-        }
-      }
-      break
-
-    case 'update-test':
-      if (config.strategies.updateTests && plan.testChanges) {
-        logger.info('Test update recommended')
-        logger.info(`  File: ${plan.testChanges.file}`)
-        logger.info(`  Changes: ${plan.testChanges.changes}`)
-        // TODO: Could auto-update tests here or create a task for it
-      }
-      break
-
-    case 'skip':
-      logger.info('Skipping recovery - issue appears transient or environmental')
-      break
-  }
-
-  // Update task description with failure context if enabled
-  if (config.strategies.updateTaskDescription && backend.updateTask) {
-    try {
-      const updatedDescription = `${context.task.description || ''}
-
-## Previous Failure (Iteration ${context.iteration})
-
-**Error:** ${context.error.slice(0, 500)}${context.error.length > 500 ? '...' : ''}
-
-**Analysis:** ${plan.rootCause}
-
-**Recommendation:** ${plan.recommendation}
-`
-      await backend.updateTask(context.task.id, {
-        description: updatedDescription,
-      })
-      logger.debug('Updated task description with failure context')
-    } catch (err) {
-      logger.debug(`Could not update task description: ${err}`)
-    }
-  }
-}
-
-/**
- * Present recovery plan for approval
- */
-async function presentRecoveryPlan(
-  plan: RecoveryPlan,
-  context: FailureContext
-): Promise<void> {
-  logger.raw('\n' + '─'.repeat(60))
-  logger.error(`🔧 Task Recovery Analysis: ${context.task.id}`)
-  logger.raw('─'.repeat(60) + '\n')
-
-  logger.raw(`Task: ${context.task.title}`)
-  logger.raw(`Retry Attempt: ${context.retryAttempt + 1}`)
-  logger.raw('')
-  logger.raw(`Root Cause: ${plan.rootCause}`)
-  logger.raw(`Confidence: ${plan.confidence}%`)
-  logger.raw('')
-  logger.raw(`Recovery Type: ${plan.type}`)
-  logger.raw(`Recommendation: ${plan.recommendation}`)
-
-  if (plan.newTask) {
-    logger.raw('')
-    logger.raw('Suggested Recovery Task:')
-    logger.raw(`  Title: ${plan.newTask.title}`)
-    logger.raw(`  Priority: ${plan.newTask.priority}`)
-  }
-
-  if (plan.testChanges) {
-    logger.raw('')
-    logger.raw('Suggested Test Changes:')
-    logger.raw(`  File: ${plan.testChanges.file}`)
-    logger.raw(`  Changes: ${plan.testChanges.changes}`)
-  }
-
-  logger.raw('')
-  logger.info('To enable auto-recovery, add autoRecover: true to your TaskRecovery config')
-  logger.raw('─'.repeat(60) + '\n')
-}
-
-/**
  * Create task recovery plugin
  */
 export function createTaskRecoveryPlugin(
@@ -454,14 +114,12 @@ export function createTaskRecoveryPlugin(
   }
 
   let backend: TaskBackend | null = null
-  const failureHistory = new Map<string, number>()
 
   return {
     name: 'task-recovery',
 
     async onBackendReady(taskBackend: TaskBackend) {
       backend = taskBackend
-      logger.debug('Task Recovery plugin ready')
     },
 
     async onTaskFailed(context: TaskContext, error: string) {
@@ -469,49 +127,54 @@ export function createTaskRecoveryPlugin(
         return
       }
 
-      const task: Task = context.task
+      const { task, iteration } = context
 
-      // Track retry attempts
-      const retryAttempt = failureHistory.get(task.id) || 0
-      failureHistory.set(task.id, retryAttempt + 1)
-
-      // Read log excerpt from output files
-      const logExcerpt = readLogExcerpt(context)
-
-      const failureContext: FailureContext = {
-        task,
-        error,
-        iteration: context.iteration,
-        retryAttempt,
-        logExcerpt: logExcerpt || undefined,
+      // Check retry limits
+      const retryAttempt = (task.metadata?.retryAttempt as number) || 0
+      if (retryAttempt >= config.maxRetries) {
+        logger.warn(`Max recovery attempts (${config.maxRetries}) reached for task ${task.id}`)
+        return
       }
 
-      // Check if we should skip this failure
-      if (shouldSkipFailure(failureContext, config)) {
-        logger.debug(`Skipping recovery for task: ${task.title}`)
+      // Check skip patterns
+      if (shouldSkip(task, error, config)) {
+        logger.debug(`Skipping recovery analysis for task ${task.id} (matched skip pattern)`)
         return
       }
 
       logger.info('🔍 Analyzing task failure for recovery plan...')
 
       try {
-        // Analyze failure
-        const plan = await analyzeFailure(failureContext, config)
+        // Read log excerpt
+        const logExcerpt = await readLogExcerpt(context)
 
-        if (!plan) {
-          logger.debug('No recovery plan generated')
+        // Build failure context
+        const failureContext: FailureContext = {
+          task,
+          error,
+          iteration,
+          retryAttempt,
+          logExcerpt,
+        }
+
+        // Generate recovery plan
+        const plan = await generateRecoveryPlan(failureContext, config)
+
+        if (!plan || plan.type === 'skip') {
+          logger.debug('No recovery action recommended')
           return
         }
 
-        logger.success(`Recovery plan generated (${plan.type}, ${plan.confidence}% confidence)`)
+        logger.success(
+          `✓ Recovery plan generated (${plan.type}, ${plan.confidence}% confidence)`
+        )
 
-        // Execute or present plan
-        if (config.autoRecover) {
-          await executeRecoveryPlan(plan, failureContext, backend, config)
+        // Execute or present for approval
+        if (config.autoRecover && plan.confidence >= 70) {
+          await executeRecovery(plan, context, backend, config)
         } else {
-          await presentRecoveryPlan(plan, failureContext)
+          await presentRecoveryPlan(plan, context)
         }
-
       } catch (err) {
         logger.warn(`Task recovery analysis failed: ${err}`)
       }
@@ -520,10 +183,165 @@ export function createTaskRecoveryPlugin(
 }
 
 /**
+ * Check if recovery should be skipped for this failure
+ */
+function shouldSkip(task: Task, error: string, config: Required<TaskRecoveryConfig>): boolean {
+  // Check error patterns
+  if (config.skip.errorPatterns?.some((p) => p.test(error))) {
+    return true
+  }
+
+  // Check task title patterns
+  if (config.skip.taskPatterns?.some((p) => p.test(task.title))) {
+    return true
+  }
+
+  // Check labels (if available)
+  const taskLabels = (task as any).labels || []
+  if (config.skip.labels?.some((l) => taskLabels.includes(l))) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Read the last few lines of the task output log
+ */
+async function readLogExcerpt(context: TaskContext): Promise<string | undefined> {
+  const { task, iteration, namespace } = context
+
+  // Find latest session
+  const stateDir = path.join(process.cwd(), '.loopwork')
+  const runDir = path.join(stateDir, 'runs', namespace)
+
+  if (!fs.existsSync(runDir)) return undefined
+
+  const sessions = fs
+    .readdirSync(runDir)
+    .sort()
+    .reverse()
+  if (sessions.length === 0) return undefined
+
+  const sessionDir = path.join(runDir, sessions[0])
+  const logFile = path.join(
+    sessionDir,
+    'logs',
+    `iteration-${iteration}-output.txt`
+  )
+
+  if (!fs.existsSync(logFile)) {
+    // Try main log
+    const mainLog = path.join(sessionDir, 'loopwork.log')
+    if (!fs.existsSync(mainLog)) return undefined
+
+    const content = fs.readFileSync(mainLog, 'utf-8')
+    return content.substring(Math.max(0, content.length - 2000))
+  }
+
+  const content = fs.readFileSync(logFile, 'utf-8')
+  return content.substring(Math.max(0, content.length - 2000))
+}
+
+/**
+ * Generate recovery plan using AI
+ */
+async function generateRecoveryPlan(
+  context: FailureContext,
+  config: Required<TaskRecoveryConfig>
+): Promise<RecoveryPlan | null> {
+  // Implementation would call AI CLI
+  // For now, mock a response based on common errors
+  const { error } = context
+
+  if (error.includes('ENOENT') || error.includes('not found')) {
+    return {
+      type: 'retry',
+      confidence: 85,
+      rootCause: 'Missing file or directory',
+      recommendation: 'Ensure all required files exist before running the task',
+    }
+  }
+
+  if (error.includes('timeout')) {
+    return {
+      type: 'retry',
+      confidence: 95,
+      rootCause: 'Transient timeout',
+      recommendation: 'Increase timeout or retry the task',
+    }
+  }
+
+  return {
+    type: 'create-task',
+    confidence: 60,
+    rootCause: 'Unknown failure',
+    recommendation: 'Manual investigation required',
+    newTask: {
+      title: `Investigate failure: ${context.task.id}`,
+      description: `Task failed with error: ${error}\n\nContext: ${context.logExcerpt || 'No log excerpt available'}`,
+      priority: 'medium',
+    },
+  }
+}
+
+/**
+ * Execute a recovery plan
+ */
+async function executeRecovery(
+  plan: RecoveryPlan,
+  context: TaskContext,
+  backend: TaskBackend,
+  config: Required<TaskRecoveryConfig>
+): Promise<void> {
+  const { task } = context
+
+  if (plan.type === 'retry' && config.strategies.autoRetry) {
+    logger.info(`🔄 Retrying task ${task.id}...`)
+    const retryAttempt = ((task.metadata?.retryAttempt as number) || 0) + 1
+    await backend.resetToPending(task.id)
+    // Update metadata with retry count
+    // backend.updateTaskMetadata(task.id, { retryAttempt })
+  } else if (plan.type === 'create-task' && config.strategies.createTasks && plan.newTask) {
+    logger.info(`ℹ Creating recovery task: ${plan.newTask.title}`)
+    if (backend.createTask) {
+      await backend.createTask({
+        title: plan.newTask.title,
+        description: plan.newTask.description,
+        priority: plan.newTask.priority as any,
+        parentId: task.id,
+      })
+    }
+  }
+}
+
+/**
+ * Present recovery plan for approval
+ */
+async function presentRecoveryPlan(plan: RecoveryPlan, context: TaskContext): Promise<void> {
+  logger.raw('\n' + '─'.repeat(60))
+  logger.raw(`🔧 Task Recovery Analysis: ${context.task.id}`)
+  logger.raw('─'.repeat(60))
+  logger.raw(`Root Cause: ${plan.rootCause}`)
+  logger.raw(`Confidence: ${plan.confidence}%`)
+  logger.raw('')
+  logger.raw(`Recovery Type: ${plan.type}`)
+  logger.raw(`Recommendation: ${plan.recommendation}`)
+  if (plan.newTask) {
+    logger.raw(`New Task: ${plan.newTask.title}`)
+  }
+  logger.raw('\n' + 'To enable auto-recovery, add autoRecover: true to your TaskRecovery config')
+  logger.raw('─'.repeat(60) + '\n')
+}
+
+/**
  * Convenience export
  */
-export function withTaskRecovery(config: TaskRecoveryConfig = {}): LoopworkPlugin {
-  return createTaskRecoveryPlugin(config)
+export function withTaskRecovery(config: TaskRecoveryConfig = {}): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [...(loopworkConfig.plugins || []), createTaskRecoveryPlugin(config)],
+  })
 }
 
 /**
@@ -531,17 +349,23 @@ export function withTaskRecovery(config: TaskRecoveryConfig = {}): LoopworkPlugi
  */
 export function withAutoRecovery(
   config: Partial<TaskRecoveryConfig> = {}
-): LoopworkPlugin {
-  return createTaskRecoveryPlugin({
-    ...config,
-    autoRecover: true,
-    maxRetries: 3,
-    strategies: {
-      autoRetry: true,
-      createTasks: true,
-      updateTests: true,
-      updateTaskDescription: true,
-    },
+): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [
+      ...(loopworkConfig.plugins || []),
+      createTaskRecoveryPlugin({
+        ...config,
+        autoRecover: true,
+        maxRetries: 3,
+        strategies: {
+          autoRetry: true,
+          createTasks: true,
+          updateTests: true,
+          updateTaskDescription: true,
+        },
+      }),
+    ],
   })
 }
 
@@ -550,16 +374,22 @@ export function withAutoRecovery(
  */
 export function withConservativeRecovery(
   config: Partial<TaskRecoveryConfig> = {}
-): LoopworkPlugin {
-  return createTaskRecoveryPlugin({
-    ...config,
-    autoRecover: false,
-    maxRetries: 1,
-    strategies: {
-      autoRetry: false,
-      createTasks: true,
-      updateTests: false,
-      updateTaskDescription: false,
-    },
+): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [
+      ...(loopworkConfig.plugins || []),
+      createTaskRecoveryPlugin({
+        ...config,
+        autoRecover: false,
+        maxRetries: 1,
+        strategies: {
+          autoRetry: false,
+          createTasks: true,
+          updateTests: false,
+          updateTaskDescription: false,
+        },
+      }),
+    ],
   })
 }

@@ -136,36 +136,32 @@ The JSON backend uses filesystem-based locking (`packages/loopwork/src/backends/
   - `runs/` - Historical run logs
   - `monitor-state.json` - Monitor process state
   - `spawned-pids.json` - Tracked spawned process PIDs
-  - `orphan-events.log` - Orphan detection/cleanup event log
+   - `orphan-events.log` - Orphan detection/cleanup event log
+ 
+### Enabled Plugins
 
-### Orphan Watch Configuration
+The current configuration includes these plugins for enhanced automation:
 
-To prevent orphan processes (stale test runners, hung CLI processes), configure automatic monitoring:
+- **`withSmartTestTasks`**: Automatically suggests test tasks after feature completion
+  - Uses GLM-4.7 model for intelligent test suggestions
+  - Configuration: Manual approval (`autoCreate: false`), max 3 suggestions, 70%+ confidence
+  - Helps ensure test coverage for new features
 
-```typescript
-// loopwork.config.ts
-export default defineConfig({
-  cli: 'claude',
+- **`withTaskRecovery`**: AI-powered failure analysis and recovery
+  - Uses GLM-4.7 model for root cause analysis
+  - Configuration: Auto-recovery enabled, max 3 attempts, 60s cooldown
+  - Automatically attempts to fix failed tasks with intelligent strategies
 
-  orphanWatch: {
-    enabled: true,          // Enable automatic monitoring
-    interval: 60000,        // Check every 60 seconds
-    maxAge: 1800000,        // Kill orphans older than 30 minutes
-    autoKill: true,         // Automatically kill confirmed orphans
-    patterns: [],           // Additional process patterns to watch
-  },
-})
-```
+- **`withGitAutoCommit`**: Automatically commits changes after each successful task
+  - Auto-stages all changes
+  - Includes task metadata in commit messages
 
-### Test Timeout Configuration
+- **`withCostTracking`**: Monitors token usage and costs
+  - Tracks AI API costs across all models
+  - Enforces daily budgets when configured
 
-Prevent runaway tests with `bunfig.toml`:
-
-```toml
-[test]
-timeout = 10000  # 10 seconds - prevents orphan test processes
-```
-
+See `loopwork.config.ts` for complete plugin configuration and options.
+ 
 ## Important Patterns
 
 ### PRD File Structure

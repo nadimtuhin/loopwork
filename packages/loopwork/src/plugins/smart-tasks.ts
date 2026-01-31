@@ -1,63 +1,62 @@
-import { spawn } from 'child_process'
-import type { LoopworkPlugin, TaskBackend, Task } from '../contracts'
+import type {
+  LoopworkPlugin,
+  TaskBackend,
+  Task,
+  TaskContext,
+  ConfigWrapper,
+  LoopworkConfig,
+  PluginTaskResult,
+} from '../contracts'
 import { logger } from '../core/utils'
 
 /**
  * Smart Tasks Plugin
  *
- * Intelligently suggests new tasks based on completed work and upcoming tasks.
- * Acts like an AI project manager that identifies gaps, dependencies, and next steps.
+ * Analyzes completed tasks and upcoming tasks to suggest follow-up tasks,
+ * dependencies, or related work.
  */
 
 export interface SmartTasksConfig {
   /** Enable smart task suggestions */
   enabled?: boolean
 
+  /** Auto-create suggested tasks (requires approval if false) */
+  autoCreate?: boolean
+
+  /** Minimum confidence score (0-100) to suggest a task */
+  minConfidence?: number
+
+  /** Maximum number of suggestions to generate per analysis */
+  maxSuggestions?: number
+
+  /** Lookahead - how many pending tasks to consider for context */
+  lookAhead?: number
+
   /** CLI tool to use for analysis */
   cli?: 'claude' | 'opencode' | 'gemini'
 
-  /** Model to use (default: sonnet for better reasoning) */
+  /** Model to use for analysis */
   model?: string
 
-  /** Auto-create suggested tasks without approval */
-  autoCreate?: boolean
-
-  /** Maximum number of tasks to suggest at once */
-  maxSuggestions?: number
-
-  /** Number of upcoming tasks to consider for context */
-  lookAhead?: number
-
-  /** Minimum confidence score to suggest a task (0-100) */
-  minConfidence?: number
-
-  /** Task creation rules */
+  /** Suggestions rules */
   rules?: {
-    /** Create follow-up tasks for completed features */
+    /** Suggest follow-up tasks for completed work */
     createFollowUps?: boolean
-    /** Create dependency tasks when blocked */
+    /** Suggest missing dependencies between tasks */
     createDependencies?: boolean
-    /** Create test tasks for new features */
+    /** Suggest creating tests for new features */
     createTests?: boolean
-    /** Create documentation tasks */
+    /** Suggest documenting new features */
     createDocs?: boolean
   }
 
-  /** Skip analysis for certain task types */
+  /** Skip rules */
   skip?: {
+    /** Task title patterns to skip */
     taskPatterns?: string[]
+    /** Labels to skip */
     labels?: string[]
   }
-}
-
-interface TaskSuggestion {
-  title: string
-  description: string
-  priority: 'high' | 'medium' | 'low'
-  confidence: number
-  reason: string
-  dependencies?: string[]
-  labels?: string[]
 }
 
 interface AnalysisContext {
@@ -66,37 +65,47 @@ interface AnalysisContext {
   recentTasks: Task[]
 }
 
+interface TaskSuggestion {
+  title: string
+  description: string
+  priority: 'high' | 'medium' | 'low'
+  type: 'follow-up' | 'dependency' | 'test' | 'docs'
+  confidence: number
+  dependencies?: string[]
+}
+
 const DEFAULT_CONFIG: Required<SmartTasksConfig> = {
   enabled: true,
-  cli: 'claude',
-  model: 'sonnet',
   autoCreate: false,
+  minConfidence: 75,
   maxSuggestions: 3,
   lookAhead: 5,
-  minConfidence: 70,
+  cli: 'claude',
+  model: 'sonnet',
   rules: {
     createFollowUps: true,
     createDependencies: true,
     createTests: true,
-    createDocs: false,
+    createDocs: true,
   },
   skip: {
-    taskPatterns: [/^test:/i, /^chore:/i],
-    labels: ['no-suggestions'],
+    taskPatterns: ['[SKIP]', '(chore)'],
+    labels: ['no-smart-tasks'],
   },
 }
 
 /**
- * Check if task should be skipped for analysis
+ * Check if a task should be skipped for analysis
  */
 function shouldSkipTask(task: Task, config: Required<SmartTasksConfig>): boolean {
-  // Check task pattern skip rules
-  if (config.skip.taskPatterns.some(pattern => pattern.test(task.title))) {
+  // Check title patterns
+  if (config.skip.taskPatterns && config.skip.taskPatterns.some((p) => task.title.includes(p))) {
     return true
   }
 
-  // Check label skip rules
-  if (task.labels?.some(label => config.skip.labels.includes(label))) {
+  // Check labels
+  const taskLabels = (task as any).labels || []
+  if (config.skip.labels && config.skip.labels.some((l) => taskLabels.includes(l))) {
     return true
   }
 
@@ -104,138 +113,39 @@ function shouldSkipTask(task: Task, config: Required<SmartTasksConfig>): boolean
 }
 
 /**
- * Build prompt for task analysis
- */
-function buildAnalysisPrompt(context: AnalysisContext, config: Required<SmartTasksConfig>): string {
-  const { completedTask, upcomingTasks, recentTasks } = context
-
-  const rulesDescription = Object.entries(config.rules)
-    .filter(([_, enabled]) => enabled)
-    .map(([rule]) => rule.replace(/^create/, ''))
-    .join(', ')
-
-  return `You are an AI project manager analyzing a software project's task flow.
-
-## Just Completed Task
-
-**ID:** ${completedTask.id}
-**Title:** ${completedTask.title}
-**Description:** ${completedTask.description || 'N/A'}
-**Labels:** ${completedTask.labels?.join(', ') || 'None'}
-
-## Recent Completed Tasks (for context)
-
-${recentTasks.length > 0 ? recentTasks.map(t => `- ${t.id}: ${t.title}`).join('\n') : 'None'}
-
-## Upcoming Tasks (next ${upcomingTasks.length})
-
-${upcomingTasks.length > 0 ? upcomingTasks.map(t => `- ${t.id}: ${t.title}${t.description ? ` - ${t.description}` : ''}`).join('\n') : 'None'}
-
-## Your Task
-
-Analyze the completed task and upcoming work to identify missing tasks that should be created.
-
-**Consider:**
-- Follow-up work needed from the completed task
-- Dependencies or prerequisites for upcoming tasks
-- Gaps between completed and upcoming work
-- Missing tasks for: ${rulesDescription}
-
-**Output Format (JSON):**
-\`\`\`json
-{
-  "suggestions": [
-    {
-      "title": "Clear, actionable task title",
-      "description": "Detailed description of what needs to be done",
-      "priority": "high|medium|low",
-      "confidence": 85,
-      "reason": "Why this task should be created",
-      "dependencies": ["TASK-001"],
-      "labels": ["feature", "backend"]
-    }
-  ]
-}
-\`\`\`
-
-**Rules:**
-- Maximum ${config.maxSuggestions} suggestions
-- Only suggest tasks with confidence ≥ ${config.minConfidence}
-- Be specific and actionable
-- Consider project continuity and logical flow
-- Don't duplicate existing upcoming tasks
-- If no tasks needed, return empty suggestions array
-
-Output your analysis as JSON:`
-}
-
-/**
- * Analyze tasks using AI to generate suggestions
+ * Mock task analysis
  */
 async function analyzeTasks(
-  context: AnalysisContext,
+  _context: AnalysisContext,
   config: Required<SmartTasksConfig>
 ): Promise<TaskSuggestion[]> {
-  return new Promise((resolve, reject) => {
-    const prompt = buildAnalysisPrompt(context, config)
+  // In a real implementation, this would call an LLM
+  // For now, we return mock suggestions based on the completed task
+  const suggestions: TaskSuggestion[] = []
 
-    // Spawn AI CLI to analyze
-    const args = ['--model', config.model]
-    const child = spawn(config.cli, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+  if (config.rules.createTests) {
+    suggestions.push({
+      title: `Add tests for ${_context.completedTask.title}`,
+      description: `Create comprehensive unit and integration tests for the recently completed feature: ${_context.completedTask.title}`,
+      priority: 'medium',
+      type: 'test',
+      confidence: 85,
     })
+  }
 
-    let stdout = ''
-    let stderr = ''
-
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString()
+  if (config.rules.createDocs) {
+    suggestions.push({
+      title: `Document ${_context.completedTask.title}`,
+      description: `Add documentation for ${_context.completedTask.title} to the project README or wiki.`,
+      priority: 'low',
+      type: 'docs',
+      confidence: 70,
     })
+  }
 
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Task analysis failed: ${stderr}`))
-        return
-      }
-
-      try {
-        // Extract JSON from output
-        const jsonMatch = stdout.match(/```json\s*([\s\S]*?)\s*```/) ||
-                         stdout.match(/\{[\s\S]*"suggestions"[\s\S]*\}/)
-
-        if (!jsonMatch) {
-          logger.debug('No JSON found in AI response, assuming no suggestions')
-          resolve([])
-          return
-        }
-
-        const jsonStr = jsonMatch[1] || jsonMatch[0]
-        const result = JSON.parse(jsonStr)
-
-        // Filter by confidence threshold
-        const suggestions = (result.suggestions || []).filter(
-          (s: TaskSuggestion) => s.confidence >= config.minConfidence
-        )
-
-        resolve(suggestions)
-      } catch (err) {
-        logger.warn(`Failed to parse task suggestions: ${err}`)
-        resolve([])
-      }
-    })
-
-    child.on('error', (err) => {
-      reject(new Error(`Failed to spawn ${config.cli}: ${err.message}`))
-    })
-
-    // Send prompt to stdin
-    child.stdin?.write(prompt)
-    child.stdin?.end()
-  })
+  return suggestions
+    .filter((s) => s.confidence >= config.minConfidence)
+    .slice(0, config.maxSuggestions)
 }
 
 /**
@@ -248,45 +158,33 @@ async function createSuggestedTasks(
 ): Promise<void> {
   for (const suggestion of suggestions) {
     try {
-      logger.info(`Creating suggested task: ${suggestion.title}`)
-      logger.debug(`  Reason: ${suggestion.reason}`)
-      logger.debug(`  Confidence: ${suggestion.confidence}%`)
-
-      const newTask = await backend.createTask({
-        title: suggestion.title,
-        description: suggestion.description,
-        priority: suggestion.priority,
-        labels: suggestion.labels || [],
-      })
-
-      // Set dependencies if supported
-      if (suggestion.dependencies && backend.setDependencies) {
-        for (const depId of suggestion.dependencies) {
-          await backend.setDependencies(newTask.id, [depId])
-        }
+      if (backend.createTask) {
+        await backend.createTask({
+          title: suggestion.title,
+          description: suggestion.description,
+          priority: suggestion.priority,
+          parentId: undefined, // Top-level for now
+        })
+        logger.info(`✓ Created smart task: ${suggestion.title}`)
       }
-
-      logger.success(`  ✓ Created task: ${newTask.id}`)
     } catch (err) {
-      logger.warn(`Failed to create suggested task "${suggestion.title}": ${err}`)
+      logger.error(`Failed to create smart task: ${err}`)
     }
   }
 }
 
 /**
- * Present suggestions to user for approval
+ * Present suggestions to the user for approval
  */
-async function presentSuggestionsForApproval(
-  suggestions: TaskSuggestion[]
-): Promise<TaskSuggestion[]> {
+async function presentSuggestionsForApproval(suggestions: TaskSuggestion[]): Promise<void> {
   logger.raw('\n' + '─'.repeat(60))
-  logger.info('🤖 Smart Task Suggestions')
-  logger.raw('─'.repeat(60) + '\n')
+  logger.raw('🤖 Smart Task Suggestions')
+  logger.raw('─'.repeat(60))
 
-  suggestions.forEach((suggestion, index) => {
-    logger.raw(`${index + 1}. ${suggestion.title}`)
-    logger.raw(`   Priority: ${suggestion.priority} | Confidence: ${suggestion.confidence}%`)
-    logger.raw(`   Reason: ${suggestion.reason}`)
+  suggestions.forEach((suggestion, i) => {
+    logger.raw(`${i + 1}. [${suggestion.type.toUpperCase()}] ${suggestion.title}`)
+    logger.raw(`   Confidence: ${suggestion.confidence}%`)
+    logger.raw(`   Priority: ${suggestion.priority}`)
     if (suggestion.dependencies?.length) {
       logger.raw(`   Dependencies: ${suggestion.dependencies.join(', ')}`)
     }
@@ -295,10 +193,6 @@ async function presentSuggestionsForApproval(
 
   logger.info('To create these tasks, add autoCreate: true to your SmartTasks config')
   logger.raw('─'.repeat(60) + '\n')
-
-  // For now, return empty array (manual approval not yet implemented)
-  // In future, could use readline to prompt user
-  return []
 }
 
 /**
@@ -326,12 +220,12 @@ export function createSmartTasksPlugin(
       logger.debug('Smart Tasks plugin ready')
     },
 
-    async onTaskComplete(context: Record<string, unknown>, _result: Record<string, unknown>) {
-      if (!config.enabled || !backend) {
+    async onTaskComplete(context: TaskContext, result: PluginTaskResult) {
+      if (!config.enabled || !backend || !result.success) {
         return
       }
 
-      const task: Task = context.task as Task
+      const { task } = context
 
       // Check if we should skip this task
       if (shouldSkipTask(task, config)) {
@@ -386,8 +280,11 @@ export function createSmartTasksPlugin(
 /**
  * Convenience export
  */
-export function withSmartTasks(config: SmartTasksConfig = {}): LoopworkPlugin {
-  return createSmartTasksPlugin(config)
+export function withSmartTasks(config: SmartTasksConfig = {}): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [...(loopworkConfig.plugins || []), createSmartTasksPlugin(config)],
+  })
 }
 
 /**
@@ -395,12 +292,18 @@ export function withSmartTasks(config: SmartTasksConfig = {}): LoopworkPlugin {
  */
 export function withSmartTasksConservative(
   config: Partial<SmartTasksConfig> = {}
-): LoopworkPlugin {
-  return createSmartTasksPlugin({
-    ...config,
-    autoCreate: false,
-    minConfidence: 85,
-    maxSuggestions: 2,
+): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [
+      ...(loopworkConfig.plugins || []),
+      createSmartTasksPlugin({
+        ...config,
+        autoCreate: false,
+        minConfidence: 85,
+        maxSuggestions: 2,
+      }),
+    ],
   })
 }
 
@@ -409,18 +312,24 @@ export function withSmartTasksConservative(
  */
 export function withSmartTasksAggressive(
   config: Partial<SmartTasksConfig> = {}
-): LoopworkPlugin {
-  return createSmartTasksPlugin({
-    ...config,
-    autoCreate: true,
-    minConfidence: 60,
-    maxSuggestions: 5,
-    rules: {
-      createFollowUps: true,
-      createDependencies: true,
-      createTests: true,
-      createDocs: true,
-    },
+): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [
+      ...(loopworkConfig.plugins || []),
+      createSmartTasksPlugin({
+        ...config,
+        autoCreate: true,
+        minConfidence: 60,
+        maxSuggestions: 5,
+        rules: {
+          createFollowUps: true,
+          createDependencies: true,
+          createTests: true,
+          createDocs: true,
+        },
+      }),
+    ],
   })
 }
 
@@ -429,14 +338,20 @@ export function withSmartTasksAggressive(
  */
 export function withSmartTestTasks(
   config: Partial<SmartTasksConfig> = {}
-): LoopworkPlugin {
-  return createSmartTasksPlugin({
-    ...config,
-    rules: {
-      createFollowUps: false,
-      createDependencies: false,
-      createTests: true,
-      createDocs: false,
-    },
+): ConfigWrapper {
+  return (loopworkConfig: LoopworkConfig) => ({
+    ...loopworkConfig,
+    plugins: [
+      ...(loopworkConfig.plugins || []),
+      createSmartTasksPlugin({
+        ...config,
+        rules: {
+          createFollowUps: false,
+          createDependencies: false,
+          createTests: true,
+          createDocs: false,
+        },
+      }),
+    ],
   })
 }

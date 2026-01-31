@@ -4,7 +4,7 @@
  * Automatically creates git commits after each task completion
  */
 
-import type { LoopworkPlugin, TaskContext, PluginTaskResult } from '../contracts/plugin'
+import type { LoopworkPlugin, TaskContext, PluginTaskResult, ConfigWrapper, LoopworkConfig } from '../contracts'
 import { logger } from '../core/utils'
 import { execSync } from 'child_process'
 
@@ -98,30 +98,31 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
           // Clean up task state
           taskFileStates.delete(context.task.id)
         } else {
-          // scope === 'all' - Add all changed files if enabled
+          // Default: add all changes if requested
           if (addAll) {
-            execSync('git add -A', { stdio: 'pipe' })
+            try {
+              execSync('git add .', { stdio: 'pipe' })
+            } catch (error) {
+              logger.warn(`Failed to stage changes: ${error}`)
+            }
           }
         }
 
-        // Check again after add
-        if (skipIfNoChanges && !hasStagedChanges()) {
-          logger.debug('No staged changes to commit, skipping')
-          return
+        // Create commit
+        const message = generateCommitMessage(context, coAuthor)
+        const escapedMessage = escapeCommitMessage(message)
+
+        try {
+          execSync(`git commit -m "${escapedMessage}"`, { stdio: 'pipe' })
+          logger.info(`Auto-committed changes for task ${context.task.id}`)
+        } catch (error) {
+          // Git commit fails if no changes staged (even if hasChanges was true due to untracked files)
+          logger.debug(`Git commit failed: ${error}`)
         }
-
-        // Create commit message
-        const commitMessage = generateCommitMessage(context, coAuthor)
-
-        // Create the commit
-        execSync(`git commit -m "${escapeCommitMessage(commitMessage)}"`, { stdio: 'pipe' })
-
-        logger.success(`✓ Auto-committed task ${context.task.id}`)
       } catch (error) {
-        // Don't fail the task if git commit fails
-        logger.warn(`Git auto-commit failed: ${error}`)
+        logger.error(`Git auto-commit failed: ${error}`)
       }
-    },
+    }
   }
 }
 
@@ -130,7 +131,7 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
  */
 function isGitRepo(): boolean {
   try {
-    execSync('git rev-parse --git-dir', { stdio: 'pipe' })
+    execSync('git rev-parse --is-inside-work-tree', { stdio: 'pipe' })
     return true
   } catch {
     return false
@@ -138,35 +139,23 @@ function isGitRepo(): boolean {
 }
 
 /**
- * Check if there are any changes
+ * Check if there are any changes (including untracked files)
  */
 function hasChanges(): boolean {
   try {
-    const status = execSync('git status --porcelain', { encoding: 'utf-8' })
-    return status.trim().length > 0
+    const status = execSync('git status --porcelain', { stdio: 'pipe' }).toString().trim()
+    return status.length > 0
   } catch {
     return false
   }
 }
 
 /**
- * Check if there are staged changes
- */
-function hasStagedChanges(): boolean {
-  try {
-    const diff = execSync('git diff --cached --name-only', { encoding: 'utf-8' })
-    return diff.trim().length > 0
-  } catch {
-    return false
-  }
-}
-
-/**
- * Get all changed files (both staged and unstaged)
+ * Get list of currently changed/untracked files
  */
 function getChangedFiles(): Set<string> {
   try {
-    const status = execSync('git status --porcelain', { encoding: 'utf-8' })
+    const status = execSync('git status --porcelain', { stdio: 'pipe' }).toString()
     const files = status
       .split('\n')
       .filter((line) => line.trim())
@@ -245,10 +234,9 @@ function escapeCommitMessage(message: string): string {
 /**
  * Config wrapper for Git auto-commit
  */
-export function withGitAutoCommit(options: GitAutoCommitOptions = {}) {
-  return (config: Record<string, unknown>) => ({
+export function withGitAutoCommit(options: GitAutoCommitOptions = {}): ConfigWrapper {
+  return (config: LoopworkConfig) => ({
     ...config,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    plugins: [...((config.plugins as any[]) || []), createGitAutoCommitPlugin(options)],
+    plugins: [...(config.plugins || []), createGitAutoCommitPlugin(options)],
   })
 }
