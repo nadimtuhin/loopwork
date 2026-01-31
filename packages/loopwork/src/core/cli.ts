@@ -500,10 +500,11 @@ export class CliExecutor {
     const poolName = this.getPoolForTask(taskId, priority, feature)
     logger.info(`[Pool:${poolName}] Assigned for task ${taskId || 'unknown'}`)
 
-    // Acquire slot from appropriate pool with timeout
+    // Acquire slot from appropriate pool
+    let slotPid: number
     try {
-      await this.poolManager.acquire(poolName, timeoutSecs * 1000)
-      logger.debug(`[Pool:${poolName}] Slot acquired for task ${taskId || 'unknown'}`)
+      slotPid = await this.poolManager.acquire(poolName)
+      logger.debug(`[Pool:${poolName}] Slot acquired (PID: ${slotPid}) for task ${taskId || 'unknown'}`)
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error(`[Pool:${poolName}] Failed to acquire slot: ${error.message}`)
       throw new LoopworkError(
@@ -807,9 +808,8 @@ export class CliExecutor {
         logger.info(`[Pool:${poolName}] Utilization: ${stats.active}/${stats.limit} active, ${stats.queued} queued`)
       }
 
-      // Release slot back to pool
-      this.poolManager.release(poolName)
-      logger.debug(`[Pool:${poolName}] Slot released for task ${taskId || 'unknown'}`)
+      await this.poolManager.release(slotPid)
+      logger.debug(`[Pool:${poolName}] Slot released (PID: ${slotPid}) for task ${taskId || 'unknown'}`)
     }
   }
 

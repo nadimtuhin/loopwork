@@ -20,9 +20,10 @@ export interface ProcessInfo {
 
 export interface PoolStats {
   name: string
-  activeWorkers: number
-  idleWorkers: number
-  totalWorkers: number
+  active: number
+  idle: number
+  limit: number
+  queued: number
 }
 
 export class WorkerPoolManager {
@@ -50,14 +51,24 @@ export class WorkerPoolManager {
     this.trackedProcesses.delete(pid)
   }
 
-  getStats(): PoolStats[] {
-    // Stub: return empty stats
-    return Object.keys(this.config.pools).map(name => ({
-      name,
-      activeWorkers: 0,
-      idleWorkers: 0,
-      totalWorkers: 0,
-    }))
+  getStats(): Record<string, PoolStats> {
+    const stats: Record<string, PoolStats> = {}
+    
+    for (const poolName of Object.keys(this.config.pools)) {
+      const poolConfig = this.config.pools[poolName]
+      const activeProcesses = Array.from(this.trackedProcesses.values())
+        .filter(p => p.poolName === poolName)
+      
+      stats[poolName] = {
+        name: poolName,
+        active: activeProcesses.length,
+        idle: 0,
+        limit: poolConfig.maxWorkers,
+        queued: 0,
+      }
+    }
+    
+    return stats
   }
 
   getPoolConfig(poolName?: string): WorkerPoolConfig['pools'][string] {
