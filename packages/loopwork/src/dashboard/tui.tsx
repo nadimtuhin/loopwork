@@ -218,8 +218,12 @@ function Dashboard() {
     return subscribe(setState)
   }, [])
 
-  useInput((input) => {
-    if (input === 'q') {
+  useInput((input, key) => {
+    if (input === 'q' || input === 'Q') {
+      exit()
+    }
+    // Handle Ctrl+C
+    if (key.ctrl && input === 'c') {
       exit()
     }
   })
@@ -267,10 +271,18 @@ function formatTimestamp(date: Date): string {
 
 /**
  * Render the dashboard (standalone mode)
+ * Returns a Promise that resolves when the dashboard is closed
  */
-export function renderDashboard() {
-  const { unmount } = render(<Dashboard />)
-  return { unmount }
+export function renderDashboard(): Promise<void> {
+  return new Promise((resolve) => {
+    const { unmount, waitUntilExit } = render(<Dashboard />)
+
+    // Wait for the app to exit (when user presses 'q')
+    waitUntilExit().then(() => {
+      unmount()
+      resolve()
+    })
+  })
 }
 
 /**
@@ -435,8 +447,9 @@ export async function startInkTui(options: {
   }
 
   // If watch mode, set up periodic updates
+  let interval: NodeJS.Timeout | undefined
   if (options.watch && options.getState) {
-    const interval = setInterval(async () => {
+    interval = setInterval(async () => {
       const state = await options.getState!()
       updateState({
         currentTask: state.currentTask ? {
@@ -454,14 +467,21 @@ export async function startInkTui(options: {
         })),
       })
     }, 1000)
-
-    // Clean up on exit
-    process.on('SIGINT', () => {
-      clearInterval(interval)
-      process.exit(0)
-    })
   }
 
-  // Render the dashboard
-  renderDashboard()
+  // Clean up on Ctrl+C
+  const handleSigInt = () => {
+    if (interval) clearInterval(interval)
+    process.exit(0)
+  }
+  process.on('SIGINT', handleSigInt)
+
+  // Render the dashboard and wait for it to exit
+  try {
+    await renderDashboard()
+  } finally {
+    // Clean up interval and signal handler when dashboard exits
+    if (interval) clearInterval(interval)
+    process.off('SIGINT', handleSigInt)
+  }
 }
