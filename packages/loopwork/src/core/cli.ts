@@ -879,7 +879,7 @@ export class CliExecutor {
         }
 
         // Track in worker pool for resource monitoring
-        this.poolManager.trackProcess(options.poolName || 'medium', child.pid)
+        this.poolManager.trackProcess(child.pid, options.poolName || 'medium', options.taskId, options.workerId)
       }
 
       const progressInterval = setInterval(() => {
@@ -962,7 +962,7 @@ export class CliExecutor {
 
         const pid = child.pid
         if (pid) {
-          this.poolManager.untrackProcess(options.poolName || 'medium', pid)
+          this.poolManager.untrackProcess(pid)
         }
 
         const exhaustionReason = pid ? this.resourceExhaustedPids.get(pid) : undefined
