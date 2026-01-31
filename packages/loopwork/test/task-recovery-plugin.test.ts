@@ -461,28 +461,33 @@ describe('Task Recovery Plugin', () => {
 
   describe('Preset Configurations', () => {
     test('auto-recovery preset enables all strategies', () => {
-      const plugin = withAutoRecovery()
-      expect(plugin.name).toBe('task-recovery')
+      const wrapper = withAutoRecovery()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
     })
 
     test('auto-recovery preset sets higher max retries', () => {
-      const plugin = withAutoRecovery()
-      expect(plugin.name).toBe('task-recovery')
+      const wrapper = withAutoRecovery()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
     })
 
     test('conservative preset has manual approval', () => {
-      const plugin = withConservativeRecovery()
-      expect(plugin.name).toBe('task-recovery')
+      const wrapper = withConservativeRecovery()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
     })
 
     test('conservative preset has lower max retries', () => {
-      const plugin = withConservativeRecovery()
-      expect(plugin.name).toBe('task-recovery')
+      const wrapper = withConservativeRecovery()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
     })
 
     test('conservative preset limits strategies', () => {
-      const plugin = withConservativeRecovery()
-      expect(plugin.name).toBe('task-recovery')
+      const wrapper = withConservativeRecovery()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('task-recovery')
     })
   })
 
