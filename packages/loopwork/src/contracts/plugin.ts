@@ -204,8 +204,20 @@ export interface LoopworkPlugin {
   /** Called when AI tools are invoked */
   onToolCall?: (event: ToolCallEvent) => void | Promise<void>
 
-  /** Called when AI agent produces output text */
   onAgentResponse?: (event: AgentResponseEvent) => void | Promise<void>
+
+  onCliResult?: (event: CliResultEvent) => void | Promise<void>
+}
+
+export interface CliResultEvent {
+  taskId?: string
+  model: string
+  cli: string
+  exitCode: number
+  durationMs: number
+  output: string
+  timedOut: boolean
+  iteration?: number
 }
 
 /**

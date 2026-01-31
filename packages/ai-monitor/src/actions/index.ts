@@ -8,8 +8,9 @@ import { executeCreatePRD } from './create-prd'
 import { executePauseLoop } from './pause-loop'
 import { executeNotify } from './notify'
 import { executeAnalyze } from './analyze'
+import type { HealingCategory } from '../types'
 
-export type ActionType = 'auto-fix' | 'pause' | 'skip' | 'notify' | 'analyze'
+export type ActionType = 'auto-fix' | 'pause' | 'skip' | 'notify' | 'analyze' | 'enhance-task'
 
 export interface MonitorAction {
   type: ActionType
@@ -45,7 +46,14 @@ export interface AnalyzeAction extends MonitorAction {
   prompt: string
 }
 
-export type Action = AutoFixAction | PauseAction | SkipAction | NotifyAction | AnalyzeAction
+export interface EnhanceTaskAction extends MonitorAction {
+  type: 'enhance-task'
+  target: 'prd' | 'tests' | 'docs'
+  taskId: string
+  enhancementType: 'vague_prd' | 'missing_tests' | 'missing_context' | 'scope_large' | 'wrong_approach'
+}
+
+export type Action = AutoFixAction | PauseAction | SkipAction | NotifyAction | AnalyzeAction | EnhanceTaskAction
 
 /**
  * Action result with status and metadata
@@ -89,8 +97,17 @@ export class ActionExecutor {
   private anthropicApiKey?: string
   private projectRoot?: string
   private throttleState: ThrottleState
+  private healingCategories: Record<string, HealingCategory>
 
-  constructor(config?: { namespace?: string; llmModel?: string; anthropicApiKey?: string; projectRoot?: string; llmCooldown?: number; llmMaxPerSession?: number }) {
+  constructor(config?: {
+    namespace?: string
+    llmModel?: string
+    anthropicApiKey?: string
+    projectRoot?: string
+    llmCooldown?: number
+    llmMaxPerSession?: number
+    healingCategories?: Record<string, HealingCategory>
+  }) {
     this.namespace = config?.namespace
     this.llmModel = config?.llmModel || 'haiku'
     this.anthropicApiKey = config?.anthropicApiKey
@@ -98,9 +115,10 @@ export class ActionExecutor {
     this.throttleState = {
       llmCallCount: 0,
       lastLLMCall: 0,
-      llmCooldown: config?.llmCooldown ?? 5 * 60 * 1000, // 5 minutes default
+      llmCooldown: config?.llmCooldown ?? 5 * 60 * 1000,
       llmMaxPerSession: config?.llmMaxPerSession ?? 10
     }
+    this.healingCategories = config?.healingCategories || {}
   }
 
   /**
@@ -123,6 +141,8 @@ export class ActionExecutor {
    * @returns Action to execute or null if no action needed
    */
   determineAction(match: PatternMatch): Action | null {
+    const category = this.healingCategories[match.pattern]
+
     switch (match.pattern) {
       case 'prd-not-found':
         return {
@@ -145,7 +165,7 @@ export class ActionExecutor {
           pattern: match.pattern,
           context: match.context,
           reason: 'Rate limit detected',
-          duration: 60 * 1000 // 60 seconds
+          duration: 60 * 1000
         } as PauseAction
 
       case 'env-var-required':
@@ -159,6 +179,14 @@ export class ActionExecutor {
 
       case 'task-failed':
       case 'circuit-breaker':
+        if (category) {
+          return {
+            type: 'analyze',
+            pattern: match.pattern,
+            context: match.context,
+            prompt: `Analyze ${match.pattern}: ${match.rawLine}. Use agent: ${category.agent}, model: ${category.model}`
+          } as AnalyzeAction
+        }
         return {
           type: 'notify',
           pattern: match.pattern,
@@ -180,6 +208,14 @@ export class ActionExecutor {
       case 'permission-denied':
       case 'network-error':
       case 'plugin-error':
+        if (category) {
+          return {
+            type: 'analyze',
+            pattern: match.pattern,
+            context: match.context,
+            prompt: `Fix ${match.pattern}: ${match.rawLine}`
+          } as AnalyzeAction
+        }
         return {
           type: 'notify',
           pattern: match.pattern,
@@ -189,10 +225,9 @@ export class ActionExecutor {
         } as NotifyAction
 
       case 'no-pending-tasks':
-        return null // Clean exit, no action needed
+        return null
 
       default:
-        // Unknown pattern - trigger LLM analysis
         return {
           type: 'analyze',
           pattern: match.pattern,
@@ -301,7 +336,8 @@ export class ActionExecutor {
         'pause': 0,
         'skip': 0,
         'notify': 0,
-        'analyze': 0
+        'analyze': 0,
+        'enhance-task': 0
       },
       actionsByPattern: {}
     }

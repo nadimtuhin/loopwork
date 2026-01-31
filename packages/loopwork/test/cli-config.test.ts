@@ -256,7 +256,7 @@ describe('createModel helper', () => {
 describe('ModelPresets', () => {
   test('claudeSonnet preset', () => {
     const model = ModelPresets.claudeSonnet()
-    expect(model.name).toBe('claude-sonnet')
+    expect(model.name).toBe('claude-code-sonnet')
     expect(model.cli).toBe('claude')
     expect(model.model).toBe('sonnet')
     expect(model.timeout).toBe(300)
@@ -265,7 +265,7 @@ describe('ModelPresets', () => {
 
   test('claudeOpus preset', () => {
     const model = ModelPresets.claudeOpus()
-    expect(model.name).toBe('claude-opus')
+    expect(model.name).toBe('claude-code-opus')
     expect(model.cli).toBe('claude')
     expect(model.model).toBe('opus')
     expect(model.timeout).toBe(900)
@@ -274,7 +274,7 @@ describe('ModelPresets', () => {
 
   test('claudeHaiku preset', () => {
     const model = ModelPresets.claudeHaiku()
-    expect(model.name).toBe('claude-haiku')
+    expect(model.name).toBe('claude-code-haiku')
     expect(model.cli).toBe('claude')
     expect(model.model).toBe('haiku')
     expect(model.timeout).toBe(120)
@@ -283,7 +283,7 @@ describe('ModelPresets', () => {
 
   test('geminiFlash preset', () => {
     const model = ModelPresets.geminiFlash()
-    expect(model.name).toBe('gemini-flash')
+    expect(model.name).toBe('opencode-gemini-flash')
     expect(model.cli).toBe('opencode')
     expect(model.timeout).toBe(180)
     expect(model.costWeight).toBe(15)
@@ -291,7 +291,7 @@ describe('ModelPresets', () => {
 
   test('geminiPro preset', () => {
     const model = ModelPresets.geminiPro()
-    expect(model.name).toBe('gemini-pro')
+    expect(model.name).toBe('opencode-gemini-pro-low')
     expect(model.cli).toBe('opencode')
     expect(model.timeout).toBe(600)
     expect(model.costWeight).toBe(60)
@@ -301,7 +301,7 @@ describe('ModelPresets', () => {
     const model = ModelPresets.claudeSonnet({ timeout: 600, costWeight: 50 })
     expect(model.timeout).toBe(600)
     expect(model.costWeight).toBe(50)
-    expect(model.name).toBe('claude-sonnet') // unchanged
+    expect(model.name).toBe('claude-code-sonnet') // unchanged
   })
 })
 
@@ -343,7 +343,7 @@ describe('compose with CLI plugins', () => {
     }))
 
     expect(config.cliConfig?.models).toHaveLength(1)
-    expect(config.cliConfig?.models?.[0].name).toBe('claude-sonnet')
+    expect(config.cliConfig?.models?.[0].name).toBe('claude-code-sonnet')
     expect(config.cliConfig?.fallbackModels).toHaveLength(1)
     expect(config.cliConfig?.retry?.exponentialBackoff).toBe(true)
     expect(config.cliConfig?.cliPaths?.claude).toBe('/custom/claude')
@@ -497,12 +497,12 @@ describe('cliConfig Integration - REGRESSION TEST', () => {
     // Verify all cliConfig properties are present
     expect(userConfig.cliConfig?.models).toBeDefined()
     expect(userConfig.cliConfig?.models).toHaveLength(2)
-    expect(userConfig.cliConfig?.models?.[0].name).toBe('claude-sonnet')
-    expect(userConfig.cliConfig?.models?.[1].name).toBe('claude-haiku')
+    expect(userConfig.cliConfig?.models?.[0].name).toBe('claude-code-sonnet')
+    expect(userConfig.cliConfig?.models?.[1].name).toBe('claude-code-haiku')
 
     expect(userConfig.cliConfig?.fallbackModels).toBeDefined()
     expect(userConfig.cliConfig?.fallbackModels).toHaveLength(1)
-    expect(userConfig.cliConfig?.fallbackModels?.[0].name).toBe('claude-opus')
+    expect(userConfig.cliConfig?.fallbackModels?.[0].name).toBe('claude-code-opus')
 
     expect(userConfig.cliConfig?.selectionStrategy).toBe('priority')
 
@@ -529,7 +529,7 @@ describe('cliConfig Integration - REGRESSION TEST', () => {
     }))
 
     expect(config.cliConfig?.models).toHaveLength(1)
-    expect(config.cliConfig?.models?.[0].name).toBe('claude-haiku')
+    expect(config.cliConfig?.models?.[0].name).toBe('claude-code-haiku')
     expect(config.cliConfig?.selectionStrategy).toBe('cost-aware')
   })
 

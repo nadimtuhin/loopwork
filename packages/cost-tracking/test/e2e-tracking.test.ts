@@ -358,10 +358,18 @@ Result: {"input_tokens": 2000, "output_tokens": 1500, "status": "success"}
     test('plugin captures tokens from CLI output on task complete', async () => {
       const plugin = createCostTrackingPlugin(testDir, 'plugin-test', 'claude-3.5-sonnet')
 
-      const context = createMockContext('TASK-001')
-      const result = createMockResult(45, 'Tokens: 2500 input, 1200 output')
+      const event = {
+        taskId: 'TASK-001',
+        model: 'claude-3.5-sonnet',
+        output: 'Tokens: 2500 input, 1200 output',
+        exitCode: 0,
+        durationMs: 45000,
+        iteration: 1,
+        command: 'claude',
+        args: []
+      }
 
-      await plugin.onTaskComplete?.(context, result)
+      await plugin.onCliResult?.(event)
 
       // Verify token was recorded
       const pluginTracker = new CostTracker(testDir, 'plugin-test')
@@ -376,14 +384,26 @@ Result: {"input_tokens": 2000, "output_tokens": 1500, "status": "success"}
       const plugin = createCostTrackingPlugin(testDir, 'summary-test', 'claude-3-haiku')
 
       // Add some tasks
-      await plugin.onTaskComplete?.(
-        createMockContext('TASK-1'),
-        createMockResult(30, 'Tokens: 1000 input, 500 output')
-      )
-      await plugin.onTaskComplete?.(
-        createMockContext('TASK-2'),
-        createMockResult(20, 'Tokens: 800 input, 400 output')
-      )
+      await plugin.onCliResult?.({
+        taskId: 'TASK-1',
+        model: 'claude-3.5-sonnet',
+        output: 'Tokens: 1000 input, 500 output',
+        exitCode: 0,
+        durationMs: 30000,
+        iteration: 1,
+        command: 'claude',
+        args: []
+      })
+      await plugin.onCliResult?.({
+        taskId: 'TASK-2',
+        model: 'claude-3.5-sonnet',
+        output: 'Tokens: 800 input, 400 output',
+        exitCode: 0,
+        durationMs: 20000,
+        iteration: 1,
+        command: 'claude',
+        args: []
+      })
 
       // Should not throw when showing summary
       await expect(
@@ -402,37 +422,68 @@ Result: {"input_tokens": 2000, "output_tokens": 1500, "status": "success"}
     test('plugin handles missing token data gracefully', async () => {
       const plugin = createCostTrackingPlugin(testDir, 'no-tokens', 'claude-3.5-sonnet')
 
-      const context = createMockContext('TASK-001')
-      const result = createMockResult(30, 'Task completed with no token info')
+      const event = {
+        taskId: 'TASK-001',
+        model: 'claude-3.5-sonnet',
+        output: 'Task completed with no token info',
+        exitCode: 0,
+        durationMs: 30000,
+        iteration: 1,
+        command: 'claude',
+        args: []
+      }
 
-      await plugin.onTaskComplete?.(context, result)
+      await plugin.onCliResult?.(event)
 
       const pluginTracker = new CostTracker(testDir, 'no-tokens')
       const summary = pluginTracker.getTodaySummary()
 
-      expect(summary.taskCount).toBe(0) // No entry created
+      // It should NOT record if no tokens found AND exit code is 0 (success)
+      // Wait, let's check onCliResult logic:
+      // if (usage || event.exitCode !== 0) { record }
+      // usage is null. exitCode is 0. So it should NOT record.
+      
+      expect(summary.taskCount).toBe(0) 
     })
 
     test('plugin handles multiple CLI formats', async () => {
       const plugin = createCostTrackingPlugin(testDir, 'multi-cli', 'gpt-4o')
 
       // Claude format
-      await plugin.onTaskComplete?.(
-        createMockContext('TASK-1'),
-        createMockResult(20, 'Tokens: 1000 input, 500 output')
-      )
+      await plugin.onCliResult?.({
+        taskId: 'TASK-1',
+        model: 'claude-3.5-sonnet',
+        output: 'Tokens: 1000 input, 500 output',
+        exitCode: 0,
+        durationMs: 20000,
+        iteration: 1,
+        command: 'claude',
+        args: []
+      })
 
       // OpenCode format
-      await plugin.onTaskComplete?.(
-        createMockContext('TASK-2'),
-        createMockResult(30, 'Usage: 800 prompt tokens, 400 completion tokens')
-      )
+      await plugin.onCliResult?.({
+        taskId: 'TASK-2',
+        model: 'gpt-4o',
+        output: 'Usage: 800 prompt tokens, 400 completion tokens',
+        exitCode: 0,
+        durationMs: 30000,
+        iteration: 1,
+        command: 'opencode',
+        args: []
+      })
 
       // Generic format
-      await plugin.onTaskComplete?.(
-        createMockContext('TASK-3'),
-        createMockResult(25, 'input_tokens: 1200, output_tokens: 600')
-      )
+      await plugin.onCliResult?.({
+        taskId: 'TASK-3',
+        model: 'gpt-4o',
+        output: 'input_tokens: 1200, output_tokens: 600',
+        exitCode: 0,
+        durationMs: 25000,
+        iteration: 1,
+        command: 'generic',
+        args: []
+      })
 
       const pluginTracker = new CostTracker(testDir, 'multi-cli')
       const summary = pluginTracker.getTodaySummary()

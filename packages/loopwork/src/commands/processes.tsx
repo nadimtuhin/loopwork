@@ -1,5 +1,6 @@
+import React from 'react'
 import { LoopworkMonitor } from '../monitor'
-import { logger, Table } from '../core/utils'
+import { logger, InkTable, renderInk } from '../core/utils'
 import { findProjectRoot, formatUptime } from './shared/process-utils'
 import { detectOrphans } from '../core/orphan-detector'
 import { OrphanKiller } from '../core/orphan-killer'
@@ -81,26 +82,25 @@ export async function list(options: ProcessesListOptions = {}, deps: ProcessesDe
 
   activeLogger.info(`Loopwork Processes (${filtered.length} running)\n`)
 
-  const table = new Table(
-    ['Namespace', 'PID', 'Uptime', 'Started At'],
-    [
-      { width: 20, align: 'left' },
-      { width: 8, align: 'right' },
-      { width: 12, align: 'right' },
-      { width: 19, align: 'left' },
-    ]
+  const tableOutput = renderInk(
+    <InkTable
+      headers={['Namespace', 'PID', 'Uptime', 'Started At']}
+      columnConfigs={[
+        { width: 20, align: 'left' },
+        { width: 8, align: 'right' },
+        { width: 12, align: 'right' },
+        { width: 19, align: 'left' },
+      ]}
+      rows={filtered.map(proc => [
+        proc.namespace,
+        proc.pid.toString(),
+        formatUptime(proc.startedAt),
+        new Date(proc.startedAt).toISOString().slice(0, 19)
+      ])}
+    />
   )
 
-  for (const proc of filtered) {
-    const namespace = proc.namespace
-    const pid = proc.pid.toString()
-    const uptime = formatUptime(proc.startedAt)
-    const startedAt = new Date(proc.startedAt).toISOString().slice(0, 19)
-
-    table.addRow([namespace, pid, uptime, startedAt])
-  }
-
-  activeLogger.raw(table.render())
+  activeLogger.raw(tableOutput)
   activeLogger.raw('')
 }
 
@@ -185,33 +185,37 @@ export async function clean(options: ProcessesCleanOptions = {}, deps: Processes
     dryRun: options.dryRun,
   })
 
-  const table = new Table(['PID', 'Command', 'Age', 'Status', 'Action'], [
-    { width: 5, align: 'right' },
-    { width: 39, align: 'left' },
-    { width: 6, align: 'right' },
-    { width: 10, align: 'left' },
-    { width: 9, align: 'left' },
-  ])
+  const tableOutput = renderInk(
+    <InkTable
+      headers={['PID', 'Command', 'Age', 'Status', 'Action']}
+      columnConfigs={[
+        { width: 5, align: 'right' },
+        { width: 39, align: 'left' },
+        { width: 6, align: 'right' },
+        { width: 10, align: 'left' },
+        { width: 9, align: 'left' },
+      ]}
+      rows={orphans.map(orphan => {
+        let action: string
+        if (result.killed.includes(orphan.pid)) {
+          action = options.dryRun ? 'would kill' : 'killed'
+        } else if (result.skipped.includes(orphan.pid)) {
+          action = 'skipped'
+        } else {
+          action = 'failed'
+        }
+        return [
+          orphan.pid.toString(),
+          orphan.command.substring(0, 39),
+          formatAge(orphan.age),
+          orphan.classification,
+          action
+        ]
+      })}
+    />
+  )
 
-  for (const orphan of orphans) {
-    const pid = orphan.pid.toString()
-    const command = orphan.command.substring(0, 39)
-    const age = formatAge(orphan.age)
-    const status = orphan.classification
-
-    let action: string
-    if (result.killed.includes(orphan.pid)) {
-      action = options.dryRun ? 'would kill' : 'killed'
-    } else if (result.skipped.includes(orphan.pid)) {
-      action = 'skipped'
-    } else {
-      action = 'failed'
-    }
-
-    table.addRow([pid, command, age, status, action])
-  }
-
-  activeLogger.raw(table.render())
+  activeLogger.raw(tableOutput)
 
   // Summary
   activeLogger.raw('')

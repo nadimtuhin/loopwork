@@ -105,6 +105,20 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     severity: 'HIGH',
     action: { type: 'pause', duration: 30000 },
     extractContext: () => ({})
+  },
+  {
+    name: 'vague-prd',
+    regex: /unclear requirements|need more detail|can you clarify|what should i|repeated questions/i,
+    severity: 'WARN',
+    action: { type: 'analyze' },
+    extractContext: () => ({})
+  },
+  {
+    name: 'missing-context',
+    regex: /cannot find|where is|file not found|which directory|path to/i,
+    severity: 'WARN',
+    action: { type: 'analyze' },
+    extractContext: () => ({})
   }
 ]
 

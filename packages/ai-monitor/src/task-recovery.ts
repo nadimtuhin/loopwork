@@ -13,7 +13,8 @@ import type { TaskBackend } from '@loopwork-ai/loopwork/contracts'
 import type {
   ExitReason,
   TaskRecoveryAnalysis,
-  TaskEnhancement
+  TaskEnhancement,
+  RecoveryStrategy
 } from './types'
 
 /**
@@ -341,14 +342,21 @@ export async function analyzeEarlyExit(
     relevantFiles
   )
 
-  // 6. Extract evidence from logs
-  const evidence = logs.slice(-20) // Last 20 log lines as evidence
+  let strategy: RecoveryStrategy = 'context-truncation'
+  if (exitReason === 'wrong_approach') {
+    strategy = 'model-fallback'
+  } else if (exitReason === 'scope_large') {
+    strategy = 'task-restart'
+  }
+
+  const evidence = logs.slice(-20)
 
   return {
     taskId,
     exitReason,
     evidence,
     enhancement,
+    strategy,
     timestamp: new Date()
   }
 }
@@ -390,7 +398,27 @@ export async function enhanceTask(
     }
   }
 
+  if (analysis.strategy === 'context-truncation') {
+    await truncateContext(taskId, projectRoot)
+  }
+
   logger.success?.(`Task ${taskId} enhanced successfully`)
+}
+
+async function truncateContext(taskId: string, projectRoot?: string): Promise<void> {
+  const prdPath = getPRDPath(taskId, projectRoot)
+  if (!fs.existsSync(prdPath)) return
+
+  let content = fs.readFileSync(prdPath, 'utf-8')
+  if (!content.includes('## Concise Goal')) {
+    const goalMatch = content.match(/## Goal\n([\s\S]+?)(?=\n##|$)/)
+    if (goalMatch && goalMatch[1].length > 500) {
+      const conciseGoal = goalMatch[1].substring(0, 300) + '... [Truncated for context efficiency]'
+      content = content.replace(goalMatch[0], `## Goal\n${goalMatch[1]}\n\n## Concise Goal\n${conciseGoal}`)
+      fs.writeFileSync(prdPath, content)
+      logger.debug(`Truncated context for ${taskId}`)
+    }
+  }
 }
 
 /**

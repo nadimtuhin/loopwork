@@ -15,23 +15,31 @@ export class GovernanceError extends Error {
 
 export interface PolicyRule {
   name: string
-  description: string
-  enabled: boolean
+  description?: string
+  priority?: number
+  condition?: (context: unknown) => boolean | Promise<boolean>
 }
 
 export interface PolicyAction {
   type: string
-  params?: Record<string, unknown>
+  payload?: Record<string, unknown>
+  [key: string]: unknown
 }
 
 export interface PolicyResult {
   allowed: boolean
   reason?: string
+  modifications?: Record<string, unknown>
+}
+
+export type PolicyRules = {
+  maxConcurrentTasks?: number
+  allowedClis?: string[]
 }
 
 export interface GovernanceConfig {
   enabled?: boolean
-  rules?: PolicyRule[]
+  rules?: PolicyRules
 }
 
 export class PolicyEngine {
@@ -42,20 +50,14 @@ export class PolicyEngine {
   }
 
   evaluate(action: PolicyAction): PolicyResult {
-    // Default: allow all actions
     return { allowed: true }
   }
-}
-
-export type PolicyRules = {
-  maxConcurrentTasks?: number
-  allowedClis?: string[]
 }
 
 export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkPlugin {
   return {
     name: 'governance',
-    essential: false,
+    classification: 'enhancement',
   }
 }
 
@@ -65,3 +67,20 @@ export function withGovernance(config: GovernanceConfig = {}): ConfigWrapper {
     plugins: [...(baseConfig.plugins || []), createGovernancePlugin(config)],
   })
 }
+
+export { 
+  createAuditLoggingPlugin, 
+  withAuditLogging, 
+  type AuditConfig, 
+  type AuditEvent, 
+  AuditLogManager 
+} from './audit-logging'
+
+export { 
+  createAuditQueryManager, 
+  queryAuditLogs, 
+  exportAuditLogs, 
+  type AuditQuery, 
+  type AuditExportOptions, 
+  type AuditReport 
+} from './audit-query'

@@ -41,6 +41,7 @@ export interface Task {
   dependsOn?: string[]
   metadata?: Record<string, unknown>
   failureCount?: number
+  scheduledFor?: string | null
   timestamps?: TaskTimestamps
   events?: TaskEvent[]
 }

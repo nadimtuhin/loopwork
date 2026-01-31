@@ -134,3 +134,44 @@ Default pools configured in `CliExecutor`:
 ## Source Code
 
 See `packages/loopwork/src/core/cli.ts` and `packages/loopwork/src/core/isolation/WorkerPoolManager.ts` for implementation.
+
+## Using Presets
+
+Instead of manually configuring model pools, you can use `ModelPresets` and `RetryPresets` for common configurations.
+
+### Model Presets
+
+Available via `ModelPresets` object:
+
+| Preset | Description | Model |
+|--------|-------------|-------|
+| `claudeSonnet` | Balanced | Claude 3.5 Sonnet |
+| `claudeOpus` | High Capability | Claude 3 Opus |
+| `claudeHaiku` | Fast/Cheap | Claude 3 Haiku |
+| `geminiFlash` | Fast | Gemini 1.5 Flash |
+| `geminiPro` | Capable | Gemini 1.5 Pro |
+
+### Capability Levels
+
+Abstracted capability levels that map to best available models:
+
+- `capabilityHigh()`: Maps to Opus
+- `capabilityMedium()`: Maps to Sonnet
+- `capabilityLow()`: Maps to Haiku
+
+### Roles
+
+Role-based configuration for semantic clarity:
+
+- `roleArchitect()`: High capability (Opus)
+- `roleEngineer()`: Medium capability (Sonnet)
+- `roleJunior()`: Low capability (Haiku)
+
+### Retry Presets
+
+Available via `RetryPresets` object:
+
+- `default()`: Fixed 60s wait on rate limit, no exponential backoff.
+- `aggressive()`: Exponential backoff, retries same model up to 3 times.
+- `gentle()`: Long 120s wait on rate limit, no retries on same model.
+

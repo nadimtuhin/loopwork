@@ -1,6 +1,7 @@
+import React from 'react'
 import chalk from 'chalk'
 import { LoopworkMonitor } from '../monitor'
-import { logger, Table, separator } from '../core/utils'
+import { logger, InkTable, separator, renderInk } from '../core/utils'
 import { LoopworkError, handleError } from '../core/errors'
 import {
   findLatestSession,
@@ -181,40 +182,45 @@ export async function monitorStatus(deps: MonitorDeps = {}): Promise<void> {
   } else {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold(`Running (${running.length}):`))
-    const table = new Table(['Namespace', 'PID', 'Uptime', 'Log File'], [
-      { align: 'left' },
-      { align: 'right' },
-      { align: 'right' },
-      { align: 'left' },
-    ])
-
-    for (const proc of running) {
-      const uptime = formatUptime(proc.startedAt)
-      table.addRow([
-        chalk.bold(proc.namespace),
-        proc.pid.toString(),
-        uptime,
-        proc.logFile,
-      ])
-    }
-    activeLogger.raw(table.render())
+    const tableOutput = renderInk(
+      <InkTable
+        headers={['Namespace', 'PID', 'Uptime', 'Log File']}
+        columnConfigs={[
+          { align: 'left' },
+          { align: 'right' },
+          { align: 'right' },
+          { align: 'left' },
+        ]}
+        rows={running.map(proc => [
+          chalk.bold(proc.namespace),
+          proc.pid.toString(),
+          formatUptime(proc.startedAt),
+          proc.logFile,
+        ])}
+      />
+    )
+    activeLogger.raw(tableOutput)
   }
 
   if (namespaces.length > 0) {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold('All Namespaces:'))
-    const table = new Table(['', 'Namespace', 'Last Run'], [
-      { align: 'center' },
-      { align: 'left' },
-      { align: 'left' },
-    ])
-
-    for (const ns of namespaces) {
-      const icon = ns.status === 'running' ? chalk.green('\u25cf') : chalk.gray('\u25cb')
-      const lastRunDisplay = ns.lastRun ? chalk.gray(ns.lastRun) : chalk.gray('-')
-      table.addRow([icon, ns.name, lastRunDisplay])
-    }
-    activeLogger.raw(table.render())
+    const tableOutput = renderInk(
+      <InkTable
+        headers={['', 'Namespace', 'Last Run']}
+        columnConfigs={[
+          { align: 'center' },
+          { align: 'left' },
+          { align: 'left' },
+        ]}
+        rows={namespaces.map(ns => [
+          ns.status === 'running' ? chalk.green('\u25cf') : chalk.gray('\u25cb'),
+          ns.name,
+          ns.lastRun ? chalk.gray(ns.lastRun) : chalk.gray('-'),
+        ])}
+      />
+    )
+    activeLogger.raw(tableOutput)
   }
 
   activeLogger.raw('')

@@ -26,6 +26,11 @@ export interface TaskSuggestion {
 export interface ResultMetrics {
   durationMs: number
   tokensUsed?: number
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
   toolCalls?: number
   exitCode: number
+  error?: string
 }

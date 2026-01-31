@@ -50,6 +50,7 @@ export interface TaskRecoveryAnalysis {
   exitReason: ExitReason
   evidence: string[]           // Log lines that indicate the reason
   enhancement: TaskEnhancement
+  strategy?: RecoveryStrategy
   timestamp: Date
 }
 
@@ -106,6 +107,8 @@ export interface HealingCategory {
 }
 
 export interface AIMonitorConfig {
+  enabled: boolean
+
   // Concurrency (from oh-my-opencode)
   concurrency: ConcurrencyConfig
 
@@ -122,7 +125,7 @@ export interface AIMonitorConfig {
   // Verification (from oh-my-claudecode)
   verification: {
     freshnessTTL: number       // Default: 300000 (5 minutes)
-    checks: string[]           // ['BUILD', 'TEST', 'LINT']
+    checks: any[]
     requireArchitectApproval: boolean
   }
 
@@ -173,6 +176,13 @@ export interface AIMonitorConfig {
   stateDir: string             // Default: '.loopwork/ai-monitor'
 }
 
+export interface RecoveryHistoryEntry {
+  taskId: string
+  exitReason: string
+  timestamp: number
+  success: boolean
+}
+
 export interface MonitorState {
   sessionId: string
   startTime: Date
@@ -183,7 +193,13 @@ export interface MonitorState {
   totalFailures: number
   circuitBreaker: CircuitBreakerState
   llmCallsCount: number
-  knownErrors: Map<string, number>  // Error signature -> count
+  lastLLMCall: number
+  detectedPatterns: Record<string, number>
+  unknownErrorCache: Set<string>
+  recoveryHistory: Record<string, RecoveryHistoryEntry>
+  recoveryAttempts: number
+  recoverySuccesses: number
+  recoveryFailures: number
 }
 
 export interface LearnedPattern {

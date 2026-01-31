@@ -672,6 +672,11 @@ Example:
         stdin: 'pipe',
         stdout: 'pipe',
         stderr: 'pipe',
+        env: {
+          ...process.env,
+          LOOPWORK_IPC: 'true',
+          LOOPWORK_NON_INTERACTIVE: 'false', // Ensure it doesn't auto-confirm
+        },
         onExit: (proc, exitCode, signalCode, error) => {
           this.loopProcess = null
           this.sendMessage(`🏁 Loop finished (Exit code: ${exitCode})`)

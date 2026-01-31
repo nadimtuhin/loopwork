@@ -1,7 +1,8 @@
 /**
- * SIMPLE Loopwork Configuration
+ * DEVELOPMENT Loopwork Configuration
  *
- * This is a clean, minimal config with working OpenCode models.
+ * This config is used for development and testing in the monorepo.
+ * For production projects, run `loopwork init` to generate a fresh config.
  *
  * 📚 Documentation:
  * - OpenCode models: opencode-models-reference.md
@@ -34,13 +35,13 @@ export default compose(
       // createModel({ name: "deepseek-r1", cli: "opencode", model: "openrouter/deepseek/deepseek-r1:free", timeout: 600, costWeight: 5 }),
 
       // Best for coding
-      // createModel({ name: "qwen3-coder", cli: "opencode", model: "openrouter/qwen/qwen3-coder:free", timeout: 300, costWeight: 5 }),
+      // createModel({ name: "qwen3-coder", cli: "opencode", model: "openrouter/qwen/qwen3-coder:free", timeout: 600, costWeight: 5 }),
 
       // Best balanced free model
       // createModel({ name: "llama-3.3-70b", cli: "opencode", model: "openrouter/meta-llama/llama-3.3-70b-instruct:free", timeout: 600, costWeight: 5 }),
 
       // Good for general tasks
-      // createModel({ name: "gemma-3-27b", cli: "opencode", model: "openrouter/google/gemma-3-27b-it:free", timeout: 300, costWeight: 5 }),
+      // createModel({ name: "gemma-3-27b", cli: "opencode", model: "openrouter/google/gemma-3-27b-it:free", timeout: 600, costWeight: 5 }),
 
       // Additional free models
       // createModel({ name: "mistral-7b", cli: "opencode", model: "openrouter/mistralai/mistral-7b-instruct:free", timeout: 180, costWeight: 5 }),
@@ -71,7 +72,7 @@ export default compose(
         name: "glm-4.7-flash",
         cli: "opencode",
         model: "zai-coding-plan/glm-4.7-flash",
-        timeout: 300,
+        timeout: 600,
         costWeight: 12,
       }),
       createModel({
@@ -83,8 +84,8 @@ export default compose(
       }),
       // === PAID MODELS (costWeight: 10-30) - Used After Free ===
       // Fast & cheap
-      // ModelPresets.claudeHaiku({ timeout: 300, costWeight: 10 }),
-      ModelPresets.geminiFlash({ timeout: 300, costWeight: 15 }),
+      ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
+      ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
 
       // Minimax Coding Plan Models - Specialized for coding
       createModel({
@@ -94,6 +95,7 @@ export default compose(
         timeout: 600,
         costWeight: 20,
       }),
+      /*
 
       // Other Chinese AI Models
       createModel({
@@ -119,23 +121,24 @@ export default compose(
         timeout: 120,
         costWeight: 12,
       }),
+      */
 
       // Balanced
-      ModelPresets.opencodeGeminiProLow({ timeout: 300, costWeight: 25 }),
-      // ModelPresets.claudeSonnet({ timeout: 300, costWeight: 30 }),
+      ModelPresets.opencodeGeminiProLow({ timeout: 600, costWeight: 25 }),
+      // ModelPresets.claudeSonnet({ timeout: 600, costWeight: 30 }),
 
       // Uncomment for more premium models:
       // createModel({ name: "antigravity-gemini-3-flash", cli: "opencode", model: "google/antigravity-gemini-3-flash", timeout: 180, costWeight: 15 }),
-      // createModel({ name: "antigravity-claude-sonnet-4-5", cli: "opencode", model: "google/antigravity-claude-sonnet-4-5", timeout: 300, costWeight: 30 }),
+      // createModel({ name: "antigravity-claude-sonnet-4-5", cli: "opencode", model: "google/antigravity-claude-sonnet-4-5", timeout: 600, costWeight: 30 }),
     ],
     fallbackModels: [
       // Premium models for complex tasks
-      // ModelPresets.claudeHaiku({ timeout: 300, costWeight: 10 }),
-      ModelPresets.geminiFlash({ timeout: 300, costWeight: 15 }),
+      // ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
+      ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
       ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
       // createModel({ name: "claude-opus", cli: "claude", model: "opus", timeout: 900, costWeight: 100 }),
     ],
-    selectionStrategy: "cost-aware", // Uses cheapest (lowest costWeight) first!
+    selectionStrategy: "round-robin", // Uses cheapest (lowest costWeight) first!
   }),
 
   // Track costs
@@ -155,20 +158,20 @@ export default compose(
   // Smart Test Tasks - Automatically create test tasks for new features
   withSmartTestTasks({
     enabled: true,
-    autoCreate: false,  // Suggest but don't auto-create (requires approval)
-    maxSuggestions: 3,  // Max 3 test task suggestions per completed task
-    minConfidence: 70,  // Only suggest tests with 70%+ confidence
-    cli: 'opencode',    // Use free OpenCode models for analysis
-    model: 'zai-coding-plan/glm-4.7',  // GLM 4.7 for analysis
+    autoCreate: false, // Suggest but don't auto-create (requires approval)
+    maxSuggestions: 3, // Max 3 test task suggestions per completed task
+    minConfidence: 70, // Only suggest tests with 70%+ confidence
+    cli: "opencode", // Use free OpenCode models for analysis
+    model: "zai-coding-plan/glm-4.7", // GLM 4.7 for analysis
   }),
 
   // Task Recovery - AI-powered failure analysis and recovery
   withTaskRecovery({
     enabled: true,
-    autoRecover: true,          // Automatically attempt recovery on failures
-    maxRetries: 3,              // Max recovery attempts per task
-    cli: 'opencode',            // Use OpenCode CLI
-    model: 'zai-coding-plan/glm-4.7',   // Use GLM 4.7 for failure analysis
+    autoRecover: true, // Automatically attempt recovery on failures
+    maxRetries: 3, // Max recovery attempts per task
+    cli: "opencode", // Use OpenCode CLI
+    model: "zai-coding-plan/glm-4.7", // Use GLM 4.7 for failure analysis
   }),
 
   // Documentation Plugin - Auto-update CHANGELOG.md after each task
@@ -212,7 +215,7 @@ export default compose(
   }),
 )(
   defineConfig({
-    parallel: 5,
+    parallel: 10,
     maxIterations: 500,
     timeout: 600,
     namespace: "default",
@@ -220,6 +223,6 @@ export default compose(
     debug: true,
     maxRetries: 5,
     taskDelay: 2000,
-    retryDelay: 3000,
+    retryDelay: 6000,
   } as any),
 );

@@ -1,4 +1,5 @@
-import { logger, Table, CompletionSummary } from '../core/utils'
+import React from 'react'
+import { logger, InkTable, InkCompletionSummary, renderInk } from '../core/utils'
 import { LoopworkMonitor } from '../monitor'
 import { findProjectRoot } from './shared/process-utils'
 import { LoopworkError } from '../core/errors'
@@ -118,43 +119,40 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       dryRun: options.dryRun,
     })
 
-    const table = new Table(['PID', 'Command', 'Age', 'Status', 'Action'], [
-      { width: 5, align: 'right' },
-      { width: 39, align: 'left' },
-      { width: 6, align: 'right' },
-      { width: 10, align: 'left' },
-      { width: 9, align: 'left' },
-    ])
+    const tableOutput = renderInk(
+      <InkTable
+        headers={['PID', 'Command', 'Age', 'Status', 'Action']}
+        columnConfigs={[
+          { width: 5, align: 'right' },
+          { width: 39, align: 'left' },
+          { width: 6, align: 'right' },
+          { width: 10, align: 'left' },
+          { width: 9, align: 'left' },
+        ]}
+        rows={orphans.map(orphan => {
+          let action: string
+          if (result.killed.includes(orphan.pid)) {
+            action = options.dryRun ? 'would kill' : 'killed'
+          } else if (result.skipped.includes(orphan.pid)) {
+            action = 'skipped'
+          } else {
+            action = 'failed'
+          }
+          return [
+            orphan.pid.toString(),
+            orphan.command.substring(0, 39),
+            formatAge(orphan.age),
+            orphan.classification,
+            action
+          ]
+        })}
+      />
+    )
 
-    for (const orphan of orphans) {
-      const pid = orphan.pid.toString()
-      const command = orphan.command.substring(0, 39)
-      const age = formatAge(orphan.age)
-      const status = orphan.classification
-
-      let action: string
-      if (result.killed.includes(orphan.pid)) {
-        action = options.dryRun ? 'would kill' : 'killed'
-      } else if (result.skipped.includes(orphan.pid)) {
-        action = 'skipped'
-      } else {
-        action = 'failed'
-      }
-
-      table.addRow([pid, command, age, status, action])
-    }
-
-    activeLogger.raw(table.render())
+    activeLogger.raw(tableOutput)
 
     // Summary using CompletionSummary
     const suspectedCount = orphans.filter(o => o.classification === 'suspected').length
-
-    const completionSummary = new CompletionSummary('Orphan Cleanup Summary')
-    completionSummary.setStats({
-      completed: result.killed.length,
-      failed: result.failed.length,
-      skipped: result.skipped.length
-    })
 
     const nextSteps: string[] = []
     if (options.dryRun) {
@@ -163,12 +161,21 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
     if (suspectedCount > 0 && !options.force && !options.dryRun) {
       nextSteps.push(`Use --force to also kill ${suspectedCount} suspected orphan(s)`)
     }
-    if (nextSteps.length > 0) {
-      completionSummary.addNextSteps(nextSteps)
-    }
+
+    const summaryOutput = renderInk(
+      <InkCompletionSummary
+        title="Orphan Cleanup Summary"
+        stats={{
+          completed: result.killed.length,
+          failed: result.failed.length,
+          skipped: result.skipped.length
+        }}
+        nextSteps={nextSteps}
+      />
+    )
 
     activeLogger.raw('')
-    activeLogger.raw(completionSummary.render())
+    activeLogger.raw(summaryOutput)
     activeLogger.raw('')
 
     return

@@ -57,19 +57,43 @@ export { withSafety } from './safety'
 export { withFeatureFlags } from './feature-flags'
 export { withAgents } from './agents'
 export { createGitAutoCommitPlugin, withGitAutoCommit } from './git-autocommit'
-export { createControlApi, withControlApi } from '@loopwork-ai/control-api'
+// export { createControlApi, withControlApi } from '@loopwork-ai/control-api'
 export {
   createGovernancePlugin,
   withGovernance,
   GovernanceError,
   PolicyEngine,
 } from '@loopwork-ai/governance'
+
 export type {
-  GovernanceConfig,
   PolicyRule,
   PolicyAction,
   PolicyResult,
+  GovernanceConfig,
   PolicyRules,
+} from '@loopwork-ai/governance'
+
+export {
+  createAuditLoggingPlugin,
+  withAuditLogging,
+  AuditLogManager,
+} from '@loopwork-ai/governance'
+
+export type {
+  AuditConfig,
+  AuditEvent,
+} from '@loopwork-ai/governance'
+
+export {
+  createAuditQueryManager,
+  queryAuditLogs,
+  exportAuditLogs,
+} from '@loopwork-ai/governance'
+
+export type {
+  AuditQuery,
+  AuditExportOptions,
+  AuditReport,
 } from '@loopwork-ai/governance'
 
 export type { IPCMessage, IPCEventType, IPCPluginOptions } from './ipc'

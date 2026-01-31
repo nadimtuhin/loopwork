@@ -398,7 +398,7 @@ export async function startInkTui(options: {
   watch?: boolean
   directMode?: boolean
   getState?: () => Promise<{
-    currentTask: { id: string; title: string } | null
+    currentTask: { id: string; title: string; startedAt?: Date } | null
     pendingTasks: unknown[]
     completedTasks: Array<{ id: string; title: string }>
     failedTasks: Array<{ id: string; title: string }>

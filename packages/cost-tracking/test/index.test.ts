@@ -76,11 +76,15 @@ describe('Cost Tracking - Formatting Utilities', () => {
     test('formats basic summary without cache tokens', () => {
       const summary = {
         taskCount: 5,
+        successCount: 5,
+        failureCount: 0,
         totalInputTokens: 12345,
         totalOutputTokens: 6789,
         totalCacheReadTokens: 0,
         totalCacheWriteTokens: 0,
         totalCost: 0.05678,
+        avgTokensPerSecond: 0,
+        avgCostPerTask: 0.011356,
         entries: [],
       }
 
@@ -90,17 +94,22 @@ describe('Cost Tracking - Formatting Utilities', () => {
       expect(formatted).toContain('Input tokens: 12.3K')
       expect(formatted).toContain('Output tokens: 6.8K')
       expect(formatted).toContain('Total cost: $0.057')
+      expect(formatted).toContain('Avg: $0.011/task')
       expect(formatted).not.toContain('Cache')
     })
 
     test('includes cache tokens when present', () => {
       const summary = {
         taskCount: 3,
+        successCount: 3,
+        failureCount: 0,
         totalInputTokens: 10_000,
         totalOutputTokens: 5_000,
         totalCacheReadTokens: 2_000,
         totalCacheWriteTokens: 1_000,
         totalCost: 0.0234,
+        avgTokensPerSecond: 0,
+        avgCostPerTask: 0.0078,
         entries: [],
       }
 
@@ -113,11 +122,15 @@ describe('Cost Tracking - Formatting Utilities', () => {
     test('handles large token counts', () => {
       const summary = {
         taskCount: 100,
+        successCount: 100,
+        failureCount: 0,
         totalInputTokens: 5_000_000,
         totalOutputTokens: 2_500_000,
         totalCacheReadTokens: 0,
         totalCacheWriteTokens: 0,
         totalCost: 75.50,
+        avgTokensPerSecond: 0,
+        avgCostPerTask: 0.755,
         entries: [],
       }
 
@@ -131,11 +144,15 @@ describe('Cost Tracking - Formatting Utilities', () => {
     test('handles zero values', () => {
       const summary = {
         taskCount: 0,
+        successCount: 0,
+        failureCount: 0,
         totalInputTokens: 0,
         totalOutputTokens: 0,
         totalCacheReadTokens: 0,
         totalCacheWriteTokens: 0,
         totalCost: 0,
+        avgTokensPerSecond: 0,
+        avgCostPerTask: 0,
         entries: [],
       }
 

@@ -28,6 +28,7 @@ export type {
   StepEvent,
   ToolCallEvent,
   AgentResponseEvent,
+  CliResultEvent,
 } from './plugin'
 
 // Capability types
@@ -53,13 +54,11 @@ export type {
 export type {
   LoopworkConfig,
   LogLevel,
+  OutputMode,
   ParallelFailureMode,
   OrphanWatchConfig,
   FeatureFlags,
   DynamicTasksConfig,
-  RollbackConfig,
-  ChaosConfig,
-  AgentDefinition,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
 
@@ -108,7 +107,13 @@ export type {
 } from './output'
 
 // Safety types
-export type { SafetyConfig } from './safety'
+export type {
+  SafetyConfig,
+  RiskAssessment,
+  ConfirmationRequest,
+  ConfirmationResult,
+  SafetyCheckContext
+} from './safety'
 export { RiskLevel, DEFAULT_SAFETY_CONFIG } from './safety'
 
 // Embedding types

@@ -145,6 +145,161 @@ interface LoopworkConfig {
 }
 ```
 
+### Config Hot Reload
+
+**File:** `src/core/config.ts` (lines 750-908)
+
+Config hot reload allows Loopwork to detect and reload configuration changes without restarting the process.
+
+**Architecture:**
+
+```
+getConfig() called with hotReload=true
+    ↓
+ConfigHotReloadManager.start(configPath, config)
+    ↓
+chokidar.watch() starts watching config file
+    ↓
+[Config file modified]
+    ↓
+Watcher detects change
+    ↓
+reloadConfig() - Clear module cache, re-import
+    ↓
+validateConfig() - Validate new config
+    ↓
+If valid → Update currentConfig, emit 'config-reloaded' event
+If invalid → Keep old config, log error
+```
+
+**Key Components:**
+
+| Component | Purpose |
+|-----------|---------|
+| `ConfigHotReloadManager` | Singleton that manages config file watching |
+| `chokidar` | File watcher library (detects config changes) |
+| `EventEmitter` | Emits config-reloaded events to listeners |
+| `reloadConfig()` | Clears module cache and re-imports config |
+| `validateConfig()` | Ensures new config meets schema requirements |
+
+**Public API:**
+
+```typescript
+class ConfigHotReloadManager {
+  // Start watching config file
+  start(configPath: string, initialConfig: Config): void
+
+  // Stop watching
+  async stop(): Promise<void>
+
+  // Get current config
+  getCurrentConfig(): Config | null
+
+  // Register event listener
+  onReload(callback: (event: ConfigReloadEvent) => void): void
+
+  // Remove event listener
+  offReload(callback: (event: ConfigReloadEvent) => void): void
+
+  // Check if watcher is active
+  isWatching(): boolean
+}
+
+// Get singleton instance
+function getConfigHotReloadManager(): ConfigHotReloadManager
+
+// Reset for testing
+function resetConfigHotReloadManager(): void
+```
+
+**Event Type:**
+
+```typescript
+export interface ConfigReloadEvent {
+  timestamp: Date      // When the config was reloaded
+  configPath: string   // Path to the config file that changed
+  config: Config       // The new configuration object
+}
+```
+
+**How It Works:**
+
+1. **Initialization** - When `getConfig()` is called with `hotReload=true`:
+   - Gets singleton `ConfigHotReloadManager` instance
+   - Calls `manager.start(configPath, config)`
+   - Config file is added to watcher with `chokidar.watch()`
+
+2. **Watching** - The watcher monitors the config file:
+   - Uses `chokidar` for cross-platform file watching
+   - Config: `ignoreInitial: true`, `awaitWriteFinish` with 100ms stability threshold
+   - Emits `change` events when file is modified
+
+3. **Reloading** - On file change:
+   - Clears module cache: `delete require.cache[require.resolve(configPath)]`
+   - Re-imports config module: `await import(resolvedPath)`
+   - Merges with CLI options and environment variables
+   - Validates with `validateConfig()`
+   - Updates `currentConfig` if valid, otherwise keeps old config
+
+4. **Event Emission** - After successful reload:
+   - Emits `config-reloaded` event with timestamp and new config
+   - Listeners registered via `onReload()` receive the event
+   - Plugins or custom code can react to config changes
+
+**Error Handling:**
+
+- **Invalid config syntax** - Module import fails, old config is preserved
+- **Invalid config values** - Validation fails, error is logged, old config kept
+- **File not found** - Watcher doesn't start, warning is logged
+- **Watcher errors** - Errors are logged but don't crash the process
+
+**Usage Example:**
+
+```typescript
+import { getConfigHotReloadManager, type ConfigReloadEvent } from 'loopwork'
+
+// Enable hot reload when loading config
+const config = await getConfig({
+  hotReload: true  // Enable file watching
+})
+
+// Listen to config reload events
+const manager = getConfigHotReloadManager()
+
+manager.onReload((event: ConfigReloadEvent) => {
+  console.log('Config reloaded!', {
+    timestamp: event.timestamp,
+    configPath: event.configPath,
+    newConfig: event.config
+  })
+
+  // Example: Restart services that depend on config
+  if (event.config.cli !== previousCli) {
+    restartCLIProcess()
+  }
+})
+
+// Later, cleanup
+manager.offReload(callback)
+```
+
+**Integration Points:**
+
+| Location | Integration |
+|----------|-------------|
+| `getConfig()` (line 675) | Checks for `hotReload` flag and starts watcher |
+| CLI flag `--hot-reload` | Enables hot reload via command line |
+| Environment var `LOOPWORK_HOT_RELOAD` | Enables hot reload via environment |
+| Plugin system | Plugins can listen to reload events via manager |
+
+**Design Decisions:**
+
+1. **Singleton Pattern** - Only one watcher instance per process, prevents duplicate watchers
+2. **Graceful Degradation** - Invalid configs don't crash the process
+3. **Module Cache Clearing** - Required for ES modules to reload dynamically
+4. **Stability Threshold** - 100ms prevents multiple reloads from single save
+5. **Event-Driven** - Allows external code to react to config changes
+
 ## Plugin System
 
 ### LoopworkPlugin Interface
@@ -1014,6 +1169,62 @@ Depends on: #100, #101
 - Label-based status tracking
 - Relationship tracking via comment metadata
 
+## Output System Design
+
+The Loopwork output system is built on an event-driven architecture that decouples task execution from display logic. This enables multiple rendering modes (TUI, JSON, human-readable) and allows plugins to tap into the output stream.
+
+### Core Components
+
+1.  **OutputEvents**: Typed interfaces for every lifecycle event (task start, CLI output, log message, etc.).
+2.  **OutputRenderer**: Interface for objects that transform events into visual or programmatic output.
+3.  **BaseRenderer**: Abstract base class providing common functionality like subscriber management and log level filtering.
+4.  **InkRenderer**: React-based TUI implementation using the Ink library for rich terminal experiences.
+
+### Event Propagation Flow
+
+```
+Task Loop / CLI Executor
+    ↓
+logger.info() / logger.error() / cli.output()
+    ↓
+emitOutputEvent(type, data)
+    ↓
+Renderer.renderEvent(event)
+    ├─ Check Log Level (shouldLog)
+    ├─ Renderer.render(event) (Concrete implementation)
+    └─ notifySubscribers(event)
+```
+
+### Custom Renderers
+
+Developers can create custom renderers by extending `BaseRenderer`. This is useful for:
+- Exporting logs to external services (Datadog, Sentry)
+- Creating custom web-based dashboards
+- Specialized CI/CD reporting
+
+```typescript
+import { BaseRenderer, type OutputEvent } from 'loopwork/output'
+
+export class SlackRenderer extends BaseRenderer {
+  readonly name = 'slack'
+  readonly isSupported = true
+
+  render(event: OutputEvent): void {
+    if (event.type === 'task:failed') {
+      sendToSlack(`Task ${event.taskId} failed: ${event.error}`)
+    }
+  }
+}
+```
+
+### Performance & Reliability
+
+- **Buffering**: The Ink renderer keeps a rolling buffer of the last 100 log entries to prevent memory bloat.
+- **TTY Fallback**: Loopwork automatically detects TTY support. If unavailable, it falls back from `ink` to `human` mode.
+- **Async Execution**: Subscriber notifications are wrapped in try-catch blocks to ensure that a failing subscriber never crashes the main automation loop.
+
+**File:** `src/core/cli.ts`
+
 ## CLI Execution Engine
 
 **File:** `src/core/cli.ts`
@@ -1112,6 +1323,245 @@ If still running: Send SIGKILL (force kill)
     ↓
 Try next model
 ```
+
+## Output System
+
+**Directory:** `src/output/`
+
+The output system provides a flexible, event-driven rendering architecture with multiple output modes for different environments.
+
+### Architecture Overview
+
+```
+src/output/
+├── contracts.ts       # Event type definitions and interfaces
+├── renderer.ts        # Base renderer abstract class
+├── ink-renderer.tsx   # React-based TUI renderer (Ink)
+├── console-renderer.ts # Fallback console renderer (ora spinners)
+├── InkApp.tsx         # Main Ink application component
+└── index.ts           # Public exports
+```
+
+### Event System
+
+The output system uses an event-driven architecture with 16 event types:
+
+**Event Types:**
+
+| Category | Events | Description |
+|----------|--------|-------------|
+| **Loop** | `loop:start`, `loop:end`, `loop:iteration` | Loop lifecycle |
+| **Task** | `task:start`, `task:complete`, `task:failed` | Task lifecycle |
+| **CLI** | `cli:start`, `cli:output`, `cli:complete`, `cli:error` | CLI subprocess |
+| **Log** | `log` | General logging with levels |
+| **Progress** | `progress:start`, `progress:update`, `progress:stop` | Progress indication |
+| **Raw** | `raw`, `json` | Raw output and JSON events |
+
+**Event Interface:**
+```typescript
+interface BaseOutputEvent {
+  timestamp: number
+  type: string
+}
+
+interface LogEvent extends BaseOutputEvent {
+  type: 'log'
+  level: LogLevel
+  message: string
+  metadata?: Record<string, unknown>
+}
+```
+
+### Renderer Architecture
+
+**BaseRenderer Class:**
+
+```typescript
+abstract class BaseRenderer implements OutputRenderer {
+  abstract readonly name: string
+  abstract readonly isSupported: boolean
+
+  protected config: OutputConfig
+  protected subscribers: Set<OutputEventSubscriber> = new Set()
+  protected disposed = false
+
+  abstract render(event: OutputEvent): void
+
+  renderEvent(event: OutputEvent): void {
+    if (this.disposed) return
+    this.render(event)
+    this.notifySubscribers(event)
+  }
+
+  subscribe(subscriber: OutputEventSubscriber): () => void {
+    this.subscribers.add(subscriber)
+    return () => this.subscribers.delete(subscriber)
+  }
+
+  configure(config: Partial<OutputConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+
+  dispose(): void {
+    this.disposed = true
+    this.subscribers.clear()
+  }
+}
+```
+
+### Output Modes
+
+| Mode | Renderer | Features |
+|------|----------|----------|
+| `ink` | `InkRenderer` | React TUI, animated progress, color output |
+| `human` | `ConsoleRenderer` | Colored console, ora spinners |
+| `json` | `ConsoleRenderer` | Structured JSON for parsing |
+| `silent` | `ConsoleRenderer` | Suppress output |
+
+### Ink Renderer
+
+The Ink renderer uses React and Ink to create a rich terminal UI:
+
+**Features:**
+- Real-time task progress display
+- Animated progress bars
+- Color-coded log levels
+- Task statistics (completed/failed)
+- Keyboard shortcuts (`q` to quit, `v` to toggle logs)
+
+**State Management:**
+```typescript
+interface InkAppState {
+  logs: LogLine[]
+  currentTask: TaskInfo | null
+  tasks: TaskInfo[]
+  stats: { completed: number; failed: number; total: number }
+  loopStartTime: number | null
+  progressMessage: string | null
+  progressPercent: number | null
+  namespace: string
+  iteration: number
+  maxIterations: number
+}
+```
+
+**Global State Pattern:**
+```typescript
+// Global state singleton for Ink components
+let globalState: InkAppState = {
+  logs: [],
+  currentTask: null,
+  tasks: [],
+  stats: { completed: 0, failed: 0, total: 0 },
+  // ...
+}
+
+function updateState(updates: Partial<InkAppState>) {
+  globalState = { ...globalState, ...updates }
+  stateListeners.forEach((fn) => fn(globalState))
+}
+```
+
+### TTY Detection
+
+The output system automatically detects terminal capabilities:
+
+```typescript
+class InkRenderer extends BaseRenderer {
+  readonly isSupported: boolean
+
+  constructor(config: OutputConfig) {
+    super(config)
+    this.isSupported = process.stdout.isTTY || false
+  }
+}
+```
+
+**Behavior:**
+- **TTY available**: Uses Ink renderer with full TUI
+- **No TTY**: Falls back to ConsoleRenderer
+- **Override**: `useTty: false` in config forces non-TTY mode
+
+### Component Library
+
+**Ink Components** (`src/components/`):
+
+| Component | Purpose |
+|-----------|---------|
+| `InkBanner` | Section headers with borders |
+| `InkTable` | Data tables with alignment |
+| `InkProgressBar` | Progress visualization |
+| `InkSpinner` | Loading indicators |
+| `InkStream` | CLI subprocess output |
+| `InkLog` | Log entries with colors |
+| `InkCompletionSummary` | Task completion statistics |
+
+**Example:**
+```typescript
+import { InkBanner, InkTable } from 'loopwork/components'
+
+<InkBanner
+  title="Build Complete"
+  rows={[{ key: 'Duration', value: '5m 30s' }]}
+/>
+
+<InkTable
+  headers={['Task', 'Status']}
+  rows={[['TASK-001', 'Complete']]}
+/>
+```
+
+### Configuration
+
+```typescript
+interface OutputConfig {
+  mode: OutputMode
+  logLevel: LogLevel
+  useColor?: boolean
+  useTty?: boolean
+  jsonPretty?: boolean
+}
+```
+
+### Custom Renderers
+
+Implement custom renderers by extending `BaseRenderer`:
+
+```typescript
+import { BaseRenderer, type OutputEvent } from 'loopwork/output'
+
+export class MyRenderer extends BaseRenderer {
+  readonly name = 'my-renderer'
+  readonly isSupported = true
+
+  render(event: OutputEvent): void {
+    switch (event.type) {
+      case 'log':
+        this.handleLog(event)
+        break
+      // Handle other event types
+    }
+  }
+
+  private handleLog(event: LogEvent): void {
+    // Custom log handling
+  }
+}
+```
+
+### Performance Considerations
+
+| Mode | Memory | CPU | Use Case |
+|------|--------|-----|----------|
+| Ink | Higher | Medium | Interactive terminals |
+| Human | Low | Low | Development/debugging |
+| JSON | Lowest | Lowest | CI/CD, parsing |
+| Silent | None | None | Headless execution |
+
+**Optimization:**
+- Ink renderer keeps last 100 log entries
+- Log level filtering reduces output volume
+- Subscribers are notified asynchronously
 
 ## State Management
 

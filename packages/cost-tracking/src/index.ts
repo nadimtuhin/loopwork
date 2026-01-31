@@ -6,7 +6,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
+import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper, TaskContext, PluginTaskResult, CliResultEvent } from '@loopwork-ai/loopwork/contracts'
 
 export interface CostTrackingConfig {
   enabled?: boolean
@@ -71,6 +71,10 @@ export interface UsageEntry {
   cost: number
   timestamp: Date
   duration?: number // in seconds
+  status?: 'success' | 'failed'
+  error?: string
+  iteration?: number
+  namespace?: string
 }
 
 export interface UsageSummary {
@@ -80,11 +84,29 @@ export interface UsageSummary {
   totalCacheWriteTokens: number
   totalCost: number
   taskCount: number
+  successCount: number
+  failureCount: number
+  avgTokensPerSecond: number
+  avgCostPerTask: number
   entries: UsageEntry[]
 }
 
 export interface DailySummary extends UsageSummary {
   date: string // YYYY-MM-DD
+}
+
+export interface ErrorGroup {
+  message: string
+  count: number
+  lastOccurred: Date
+  examples: { taskId: string; timestamp: Date }[]
+}
+
+export interface TelemetryReport {
+  summary: UsageSummary
+  byModel: Record<string, UsageSummary>
+  recentFailures: UsageEntry[]
+  errorCorrelation: ErrorGroup[]
 }
 
 // ============================================================================
@@ -126,7 +148,15 @@ export class CostTracker {
   /**
    * Record token usage for a task
    */
-  record(taskId: string, model: string, usage: TokenUsage, duration?: number): UsageEntry {
+  record(
+    taskId: string,
+    model: string,
+    usage: TokenUsage,
+    duration?: number,
+    status: 'success' | 'failed' = 'success',
+    error?: string,
+    iteration?: number
+  ): UsageEntry {
     const cost = this.calculateCost(model, usage)
 
     const entry: UsageEntry = {
@@ -136,6 +166,10 @@ export class CostTracker {
       cost,
       timestamp: new Date(),
       duration,
+      status,
+      error,
+      iteration,
+      namespace: this.namespace,
     }
 
     this.entries.push(entry)
@@ -282,8 +316,62 @@ export class CostTracker {
     this.save()
   }
 
+  getTelemetryReport(): TelemetryReport {
+    const summary = this.summarize(this.entries)
+    const byModel: Record<string, UsageSummary> = {}
+    
+    const models = Array.from(new Set(this.entries.map(e => e.model)))
+    for (const model of models) {
+      byModel[model] = this.summarize(this.entries.filter(e => e.model === model))
+    }
+
+    const recentFailures = this.entries
+      .filter(e => e.status === 'failed')
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 10)
+
+    const errorCorrelation = this.correlateErrors(this.entries.filter(e => e.status === 'failed'))
+
+    return {
+      summary,
+      byModel,
+      recentFailures,
+      errorCorrelation,
+    }
+  }
+
+  private correlateErrors(failures: UsageEntry[]): ErrorGroup[] {
+    const groups: Record<string, ErrorGroup> = {}
+
+    for (const failure of failures) {
+      if (!failure.error) continue
+
+      // Simple correlation by error message (first 50 chars)
+      const key = failure.error.split('\n')[0].substring(0, 50).trim()
+      
+      if (!groups[key]) {
+        groups[key] = {
+          message: key,
+          count: 0,
+          lastOccurred: failure.timestamp,
+          examples: []
+        }
+      }
+
+      groups[key].count++
+      if (failure.timestamp > groups[key].lastOccurred) {
+        groups[key].lastOccurred = failure.timestamp
+      }
+      if (groups[key].examples.length < 3) {
+        groups[key].examples.push({ taskId: failure.taskId, timestamp: failure.timestamp })
+      }
+    }
+
+    return Object.values(groups).sort((a, b) => b.count - a.count)
+  }
+
   private summarize(entries: UsageEntry[]): UsageSummary {
-    return entries.reduce(
+    const summary = entries.reduce(
       (acc, entry) => ({
         totalInputTokens: acc.totalInputTokens + entry.usage.inputTokens,
         totalOutputTokens: acc.totalOutputTokens + entry.usage.outputTokens,
@@ -291,6 +379,10 @@ export class CostTracker {
         totalCacheWriteTokens: acc.totalCacheWriteTokens + (entry.usage.cacheWriteTokens || 0),
         totalCost: acc.totalCost + entry.cost,
         taskCount: acc.taskCount + 1,
+        successCount: acc.successCount + (entry.status === 'success' || !entry.status ? 1 : 0),
+        failureCount: acc.failureCount + (entry.status === 'failed' ? 1 : 0),
+        avgTokensPerSecond: 0, // Calculated after reduce
+        avgCostPerTask: 0,     // Calculated after reduce
         entries: [...acc.entries, entry],
       }),
       {
@@ -300,9 +392,34 @@ export class CostTracker {
         totalCacheWriteTokens: 0,
         totalCost: 0,
         taskCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        avgTokensPerSecond: 0,
+        avgCostPerTask: 0,
         entries: [] as UsageEntry[],
       }
     )
+
+    // Calculate averages
+    if (summary.taskCount > 0) {
+      summary.avgCostPerTask = summary.totalCost / summary.taskCount
+    }
+
+    // Calculate tokens per second (if duration is available)
+    let totalDuration = 0
+    let totalTokens = 0
+    for (const entry of entries) {
+      if (entry.duration && entry.duration > 0) {
+        totalDuration += entry.duration
+        totalTokens += (entry.usage.inputTokens + entry.usage.outputTokens)
+      }
+    }
+    
+    if (totalDuration > 0) {
+      summary.avgTokensPerSecond = totalTokens / totalDuration
+    }
+
+    return summary
   }
 
   private load(): void {
@@ -365,18 +482,32 @@ export function createCostTrackingPlugin(
     },
 
     async onTaskComplete(context: TaskContext, result: PluginTaskResult) {
-      const output = result.output || ''
-      const usage = tracker.parseUsageFromOutput(output)
+    },
 
-      if (usage) {
-        tracker.record(context.task.id, defaultModel, usage, result.duration)
+    async onTaskFailed(context: TaskContext, error: string) {
+    },
+
+    async onCliResult(event: CliResultEvent) {
+      const usage = tracker.parseUsageFromOutput(event.output)
+      const status = event.exitCode === 0 ? 'success' : 'failed'
+      
+      if (usage || event.exitCode !== 0) {
+        tracker.record(
+          event.taskId || 'unknown',
+          event.model,
+          usage || { inputTokens: 0, outputTokens: 0 },
+          event.durationMs / 1000,
+          status,
+          event.exitCode !== 0 ? event.output.slice(-500) : undefined,
+          event.iteration
+        )
       }
     },
 
     async onLoopEnd(stats: LoopStats) {
       const summary = tracker.getTodaySummary()
-      console.log(`\n📊 Cost Summary for today:`)
-      console.log(`   Tasks: ${summary.taskCount}`)
+      console.log(`\n📊 Cost and Performance Summary for today:`)
+      console.log(`   Tasks: ${summary.taskCount} (${summary.successCount} success, ${summary.failureCount} failed)`)
       console.log(`   Tokens: ${summary.totalInputTokens.toLocaleString()} in / ${summary.totalOutputTokens.toLocaleString()} out`)
       console.log(`   Cost: $${summary.totalCost.toFixed(4)}`)
     },
@@ -407,11 +538,13 @@ export function formatTokens(tokens: number): string {
 }
 
 export function formatUsageSummary(summary: UsageSummary): string {
+  const successRate = summary.taskCount > 0 ? (summary.successCount / summary.taskCount) * 100 : 0
   const lines = [
-    `Tasks: ${summary.taskCount}`,
+    `Tasks: ${summary.taskCount} (${summary.successCount} success, ${summary.failureCount} failed, ${successRate.toFixed(1)}% success rate)`,
     `Input tokens: ${formatTokens(summary.totalInputTokens)}`,
     `Output tokens: ${formatTokens(summary.totalOutputTokens)}`,
-    `Total cost: ${formatCost(summary.totalCost)}`,
+    `Total cost: ${formatCost(summary.totalCost)} (Avg: ${formatCost(summary.avgCostPerTask)}/task)`,
+    `Speed: ${summary.avgTokensPerSecond.toFixed(1)} tokens/sec`,
   ]
 
   if (summary.totalCacheReadTokens > 0) {
@@ -421,5 +554,41 @@ export function formatUsageSummary(summary: UsageSummary): string {
     lines.push(`Cache write: ${formatTokens(summary.totalCacheWriteTokens)}`)
   }
 
+  return lines.join('\n')
+}
+
+export function formatTelemetryReport(report: TelemetryReport): string {
+  const lines: string[] = []
+  lines.push('📊 Telemetry & Token Metrics Report')
+  lines.push('==================================')
+  lines.push('')
+  lines.push('Overall Summary:')
+  lines.push(formatUsageSummary(report.summary))
+  lines.push('')
+  
+  lines.push('Breakdown by Model:')
+  for (const [model, stats] of Object.entries(report.byModel)) {
+    const successRate = stats.taskCount > 0 ? (stats.successCount / stats.taskCount) * 100 : 0
+    lines.push(`- ${model}: ${stats.taskCount} calls, ${successRate.toFixed(1)}% success, ${formatCost(stats.totalCost)} total`)
+  }
+  
+  if (report.recentFailures.length > 0) {
+    lines.push('')
+    lines.push('Recent Failures:')
+    for (const failure of report.recentFailures) {
+      lines.push(`- [${failure.timestamp.toISOString()}] ${failure.taskId} (${failure.model}):`)
+      lines.push(`  Error: ${failure.error?.split('\n')[0].substring(0, 100)}...`)
+    }
+  }
+
+  if (report.errorCorrelation && report.errorCorrelation.length > 0) {
+    lines.push('')
+    lines.push('Error Correlation (Top Issues):')
+    for (const group of report.errorCorrelation) {
+      lines.push(`- "${group.message}..." (${group.count} occurrences)`)
+      lines.push(`  Last seen: ${group.lastOccurred.toISOString()}`)
+    }
+  }
+  
   return lines.join('\n')
 }

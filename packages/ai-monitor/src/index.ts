@@ -7,6 +7,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import { EventEmitter } from 'events'
 import type { LoopworkPlugin, TaskContext, PluginTaskResult, LoopStats } from '@loopwork-ai/loopwork/contracts'
 import type { LoopworkConfig } from '@loopwork-ai/loopwork/contracts'
 import type { TaskBackend } from '@loopwork-ai/loopwork/contracts'
@@ -16,30 +17,15 @@ import { matchPattern, getPatternByName } from './patterns'
 import { ActionExecutor, type Action } from './actions'
 import { CircuitBreaker } from './circuit-breaker'
 import { analyzeEarlyExit, enhanceTask } from './task-recovery'
-import { VerificationEngine, type VerificationEngineConfig } from './verification'
-import { WisdomSystem, type WisdomConfig } from './wisdom'
-
-// Import LoopworkState from @loopwork-ai/loopwork if available, otherwise use fallback
-let LoopworkState: any
-
-// Fallback: create a minimal compatible implementation
-class FallbackLoopworkState {
-  paths: any
-  constructor(options?: { projectRoot?: string } | string) {
-    const projectRoot = typeof options === 'string' ? options : options?.projectRoot || process.cwd()
-    const stateDir = path.join(projectRoot, '.loopwork')
-    this.paths = {
-      aiMonitor: () => path.join(stateDir, 'monitor-state.json')
-    }
-  }
-}
-
-try {
-  const loopwork = require('@loopwork-ai/loopwork')
-  LoopworkState = loopwork.LoopworkState || FallbackLoopworkState
-} catch {
-  LoopworkState = FallbackLoopworkState
-}
+import { VerificationEngine } from './verification'
+import { WisdomSystem } from './wisdom'
+import { ConcurrencyManager } from './concurrency'
+import type {
+  AIMonitorConfig,
+  MonitorState,
+  RecoveryHistoryEntry,
+  MonitorTimeouts
+} from './types'
 
 // Export task recovery functions
 export {
@@ -137,47 +123,24 @@ export {
 // Export types
 export type * from './types'
 
-export interface AIMonitorConfig {
-  enabled?: boolean
-  llmCooldown?: number
-  llmMaxPerSession?: number
-  llmModel?: string
-  anthropicApiKey?: string
-  patternCheckDebounce?: number
-  cacheUnknownErrors?: boolean
-  cacheTTL?: number
-  circuitBreaker?: {
-    maxFailures?: number
-    cooldownPeriodMs?: number
-    maxHalfOpenAttempts?: number
+let LoopworkState: any
+
+class FallbackLoopworkState {
+  paths: any
+  constructor(options?: { projectRoot?: string } | string) {
+    const projectRoot = typeof options === 'string' ? options : options?.projectRoot || process.cwd()
+    const stateDir = path.join(projectRoot, '.loopwork')
+    this.paths = {
+      aiMonitor: () => path.join(stateDir, 'monitor-state.json')
+    }
   }
-  taskRecovery?: {
-    enabled?: boolean
-    maxLogLines?: number
-    minFailureCount?: number
-  }
-  verification?: VerificationEngineConfig
-  wisdom?: WisdomConfig
 }
 
-export interface RecoveryHistoryEntry {
-  taskId: string
-  exitReason: string
-  timestamp: number
-  success: boolean
-}
-
-export interface MonitorState {
-  llmCallCount: number
-  lastLLMCall: number
-  detectedPatterns: Record<string, number>
-  unknownErrorCache: Set<string>
-  sessionStartTime: number
-  circuitBreakerState?: import('./types').CircuitBreakerState
-  recoveryHistory: Record<string, RecoveryHistoryEntry>
-  recoveryAttempts: number
-  recoverySuccesses: number
-  recoveryFailures: number
+try {
+  const loopwork = require('@loopwork-ai/loopwork')
+  LoopworkState = loopwork.LoopworkState || FallbackLoopworkState
+} catch {
+  LoopworkState = FallbackLoopworkState
 }
 
 /**
@@ -186,7 +149,65 @@ export interface MonitorState {
  * Implements LoopworkPlugin interface to integrate with the main loop.
  * Uses lifecycle hooks to capture events and monitor execution.
  */
-export class AIMonitor implements LoopworkPlugin {
+const DEFAULT_MONITOR_CONFIG: AIMonitorConfig = {
+  enabled: true,
+  concurrency: {
+    default: 3,
+    providers: { claude: 2, gemini: 3 },
+    models: { 'claude-opus': 1 }
+  },
+  timeouts: {
+    staleDetectionMs: 180000,
+    maxLifetimeMs: 1800000,
+    healthCheckIntervalMs: 5000
+  },
+  circuitBreaker: {
+    maxFailures: 3,
+    cooldownPeriodMs: 60000,
+    halfOpenAttempts: 1
+  },
+  verification: {
+    freshnessTTL: 300000,
+    checks: ['BUILD', 'TEST', 'LINT'],
+    requireArchitectApproval: false
+  },
+  healingCategories: {
+    'prd-not-found': { agent: 'executor-low', model: 'haiku', temperature: 0.1, maxAttempts: 2 },
+    'syntax-error': { agent: 'executor-low', model: 'haiku', temperature: 0.1, maxAttempts: 2 },
+    'type-error': { agent: 'executor', model: 'sonnet', temperature: 0.2, maxAttempts: 3 },
+    'test-failure': { agent: 'executor', model: 'sonnet', temperature: 0.2, maxAttempts: 3 },
+    'complex-debug': { agent: 'architect', model: 'opus', temperature: 0.3, maxAttempts: 1 }
+  },
+  recovery: {
+    strategies: ['context-truncation', 'model-fallback', 'task-restart'],
+    maxRetries: 3,
+    backoffMs: 1000
+  },
+  wisdom: {
+    enabled: true,
+    learnFromSuccess: true,
+    learnFromFailure: true,
+    patternExpiryDays: 30
+  },
+  llm: {
+    cooldownMs: 300000,
+    maxPerSession: 10,
+    model: 'haiku'
+  },
+  patternCheckDebounce: 100,
+  cache: {
+    enabled: true,
+    ttlMs: 86400000
+  },
+  monitoring: {
+    eventDriven: true,
+    polling: true,
+    pollingIntervalMs: 2000
+  },
+  stateDir: '.loopwork/ai-monitor'
+}
+
+export class AIMonitor extends EventEmitter implements LoopworkPlugin {
   readonly name = 'ai-monitor'
   readonly classification = 'enhancement'
 
@@ -196,56 +217,68 @@ export class AIMonitor implements LoopworkPlugin {
   private circuitBreaker: CircuitBreaker
   private verificationEngine: VerificationEngine
   private wisdomSystem: WisdomSystem
+  private concurrencyManager: ConcurrencyManager
   private state: MonitorState
   private stateFile: string
   private logFile: string | null = null
   private namespace: string = 'default'
   private backend: TaskBackend | null = null
   private projectRoot: string = process.cwd()
+  private healthCheckTimer: NodeJS.Timeout | null = null
+  private lifetimeTimer: NodeJS.Timeout | null = null
 
-  constructor(config: AIMonitorConfig = {}) {
+  static readonly ERROR_DETECTED = 'error-detected'
+  static readonly HEALING_STARTED = 'healing-started'
+  static readonly HEALING_COMPLETED = 'healing-completed'
+
+  constructor(config: Partial<AIMonitorConfig> = {}) {
+    super()
     this.config = {
-      enabled: config.enabled ?? true,
-      llmCooldown: config.llmCooldown ?? 5 * 60 * 1000, // 5 minutes
-      llmMaxPerSession: config.llmMaxPerSession ?? 10,
-      llmModel: config.llmModel ?? 'haiku',
-      patternCheckDebounce: config.patternCheckDebounce ?? 100,
-      cacheUnknownErrors: config.cacheUnknownErrors ?? true,
-      cacheTTL: config.cacheTTL ?? 24 * 60 * 60 * 1000, // 24 hours
-      circuitBreaker: {
-        maxFailures: config.circuitBreaker?.maxFailures ?? 3,
-        cooldownPeriodMs: config.circuitBreaker?.cooldownPeriodMs ?? 60000,
-        maxHalfOpenAttempts: config.circuitBreaker?.maxHalfOpenAttempts ?? 1
-      },
-      taskRecovery: {
-        enabled: config.taskRecovery?.enabled ?? true,
-        maxLogLines: config.taskRecovery?.maxLogLines ?? 50,
-        minFailureCount: config.taskRecovery?.minFailureCount ?? 1
-      }
+      ...DEFAULT_MONITOR_CONFIG,
+      ...config,
+      enabled: config.enabled ?? DEFAULT_MONITOR_CONFIG.enabled,
+      concurrency: { ...DEFAULT_MONITOR_CONFIG.concurrency, ...config.concurrency },
+      timeouts: { ...DEFAULT_MONITOR_CONFIG.timeouts, ...config.timeouts },
+      circuitBreaker: { ...DEFAULT_MONITOR_CONFIG.circuitBreaker, ...config.circuitBreaker },
+      verification: { ...DEFAULT_MONITOR_CONFIG.verification, ...config.verification },
+      healingCategories: { ...DEFAULT_MONITOR_CONFIG.healingCategories, ...config.healingCategories },
+      recovery: { ...DEFAULT_MONITOR_CONFIG.recovery, ...config.recovery },
+      wisdom: { ...DEFAULT_MONITOR_CONFIG.wisdom, ...config.wisdom },
+      llm: { ...DEFAULT_MONITOR_CONFIG.llm, ...config.llm },
+      cache: { ...DEFAULT_MONITOR_CONFIG.cache, ...config.cache },
+      monitoring: { ...DEFAULT_MONITOR_CONFIG.monitoring, ...config.monitoring }
     }
 
     this.executor = new ActionExecutor({
-      llmModel: this.config.llmModel,
-      anthropicApiKey: this.config.anthropicApiKey,
-      projectRoot: this.projectRoot
+      namespace: this.namespace,
+      llmModel: this.config.llm.model,
+      projectRoot: this.projectRoot,
+      llmCooldown: this.config.llm.cooldownMs,
+      llmMaxPerSession: this.config.llm.maxPerSession,
+      healingCategories: this.config.healingCategories
     })
     this.circuitBreaker = new CircuitBreaker(this.config.circuitBreaker)
     this.verificationEngine = new VerificationEngine(this.config.verification)
     this.wisdomSystem = new WisdomSystem(this.config.wisdom)
-    this.stateFile = '' // Will be set in onConfigLoad
+    this.concurrencyManager = new ConcurrencyManager(this.config.concurrency)
+    this.stateFile = ''
     this.state = this.initializeState()
   }
 
-  /**
-   * Initialize monitor state
-   */
   private initializeState(): MonitorState {
     return {
-      llmCallCount: 0,
+      sessionId: `session-${Date.now()}`,
+      startTime: new Date(),
+      lastActivity: new Date(),
+      isActive: true,
+      consecutiveFailures: 0,
+      totalHeals: 0,
+      totalFailures: 0,
+      circuitBreaker: this.circuitBreaker.getState(),
+      llmCallsCount: 0,
       lastLLMCall: 0,
       detectedPatterns: {},
       unknownErrorCache: new Set<string>(),
-      sessionStartTime: Date.now(),
       recoveryHistory: {},
       recoveryAttempts: 0,
       recoverySuccesses: 0,
@@ -253,9 +286,6 @@ export class AIMonitor implements LoopworkPlugin {
     }
   }
 
-  /**
-   * Load state from disk if exists
-   */
   private loadState(): void {
     if (!fs.existsSync(this.stateFile)) {
       return
@@ -265,7 +295,10 @@ export class AIMonitor implements LoopworkPlugin {
       const data = fs.readFileSync(this.stateFile, 'utf8')
       const loaded = JSON.parse(data)
 
-      this.state.llmCallCount = loaded.llmCallCount || 0
+      this.state.sessionId = loaded.sessionId || this.state.sessionId
+      this.state.startTime = loaded.startTime ? new Date(loaded.startTime) : this.state.startTime
+      this.state.lastActivity = loaded.lastActivity ? new Date(loaded.lastActivity) : this.state.lastActivity
+      this.state.llmCallsCount = loaded.llmCallsCount || 0
       this.state.lastLLMCall = loaded.lastLLMCall || 0
       this.state.detectedPatterns = loaded.detectedPatterns || {}
       this.state.unknownErrorCache = new Set(loaded.unknownErrorCache || [])
@@ -274,9 +307,8 @@ export class AIMonitor implements LoopworkPlugin {
       this.state.recoverySuccesses = loaded.recoverySuccesses || 0
       this.state.recoveryFailures = loaded.recoveryFailures || 0
 
-      // Load circuit breaker state if available
-      if (loaded.circuitBreakerState) {
-        this.circuitBreaker.loadState(loaded.circuitBreakerState)
+      if (loaded.circuitBreaker) {
+        this.circuitBreaker.loadState(loaded.circuitBreaker)
       }
 
       logger.debug(`AI Monitor state loaded from ${this.stateFile}`)
@@ -285,21 +317,14 @@ export class AIMonitor implements LoopworkPlugin {
     }
   }
 
-  /**
-   * Save state to disk
-   */
   private saveState(): void {
     try {
       const data = {
-        llmCallCount: this.state.llmCallCount,
-        lastLLMCall: this.state.lastLLMCall,
-        detectedPatterns: this.state.detectedPatterns,
+        ...this.state,
+        startTime: this.state.startTime.toISOString(),
+        lastActivity: this.state.lastActivity.toISOString(),
         unknownErrorCache: Array.from(this.state.unknownErrorCache),
-        circuitBreakerState: this.circuitBreaker.getState(),
-        recoveryHistory: this.state.recoveryHistory,
-        recoveryAttempts: this.state.recoveryAttempts,
-        recoverySuccesses: this.state.recoverySuccesses,
-        recoveryFailures: this.state.recoveryFailures,
+        circuitBreaker: this.circuitBreaker.getState(),
         savedAt: new Date().toISOString()
       }
 
@@ -315,113 +340,107 @@ export class AIMonitor implements LoopworkPlugin {
     }
   }
 
-  /**
-   * Plugin lifecycle: Called when config is loaded
-   */
   async onConfigLoad(config: LoopworkConfig): Promise<LoopworkConfig> {
     if (!this.config.enabled) {
-      logger.debug('AI Monitor disabled via config')
       return config
     }
 
-    // Set state file path using LoopworkState
     const projectRoot = (config.projectRoot as string) || process.cwd()
     this.projectRoot = projectRoot
     const loopworkState = new LoopworkState({ projectRoot })
     this.stateFile = loopworkState.paths.aiMonitor()
 
-    // Load existing state
     this.loadState()
 
     logger.debug('AI Monitor initialized')
     return config
   }
 
-  /**
-   * Plugin lifecycle: Called when backend is initialized
-   */
   async onBackendReady(backend: TaskBackend): Promise<void> {
     if (!this.config.enabled) return
-
     this.backend = backend
-    logger.debug('AI Monitor: backend ready')
   }
 
-  /**
-   * Plugin lifecycle: Called when loop starts
-   */
   async onLoopStart(namespace: string): Promise<void> {
     if (!this.config.enabled) return
 
     this.namespace = namespace
+    this.state.isActive = true
+    this.state.lastActivity = new Date()
 
-    // Update executor with namespace
     this.executor = new ActionExecutor({
       namespace: this.namespace,
-      llmModel: this.config.llmModel,
-      anthropicApiKey: this.config.anthropicApiKey,
-      projectRoot: this.projectRoot
+      llmModel: this.config.llm.model,
+      projectRoot: this.projectRoot,
+      llmCooldown: this.config.llm.cooldownMs,
+      llmMaxPerSession: this.config.llm.maxPerSession,
+      healingCategories: this.config.healingCategories
     })
 
-    // Determine log file path from logger
     if (logger.logFile) {
       this.logFile = logger.logFile
-      logger.debug(`AI Monitor watching log file: ${this.logFile}`)
-
-      // Start watching the log file
       await this.startWatching()
-    } else {
-      logger.warn('AI Monitor: No log file configured, monitoring disabled')
     }
+
+    this.startOrchestrator()
   }
 
-  /**
-   * Plugin lifecycle: Called when loop ends
-   */
   async onLoopEnd(_stats: LoopStats): Promise<void> {
     if (!this.config.enabled) return
 
+    this.stopOrchestrator()
     this.stopWatching()
+    this.state.isActive = false
     this.saveState()
-
-    logger.debug(`AI Monitor session ended: ${this.state.llmCallCount} LLM calls, ${Object.keys(this.state.detectedPatterns).length} unique patterns detected`)
   }
 
-  /**
-   * Plugin lifecycle: Called when task starts
-   */
   async onTaskStart(context: TaskContext): Promise<void> {
     if (!this.config.enabled) return
-
-    logger.debug(`AI Monitor tracking task: ${context.task.id}`)
+    this.state.lastActivity = new Date()
   }
 
-  /**
-   * Plugin lifecycle: Called when task completes
-   */
   async onTaskComplete(context: TaskContext, result: PluginTaskResult): Promise<void> {
     if (!this.config.enabled) return
-
-    logger.debug(`AI Monitor: Task ${context.task.id} completed in ${result.duration}ms`)
+    this.state.lastActivity = new Date()
   }
 
-  /**
-   * Plugin lifecycle: Called when task fails
-   */
   async onTaskFailed(context: TaskContext, error: string): Promise<void> {
     if (!this.config.enabled) return
+    this.state.lastActivity = new Date()
 
-    logger.debug(`AI Monitor: Task ${context.task.id} failed: ${error}`)
-
-    // Trigger task recovery if enabled
-    if (this.config.taskRecovery?.enabled && this.backend) {
+    if (this.config.recovery.maxRetries > 0 && this.backend) {
       await this.recoverTask(context.task.id)
     }
   }
 
-  /**
-   * Get recent log lines from the log file
-   */
+  private startOrchestrator(): void {
+    this.healthCheckTimer = setInterval(() => this.checkHealth(), this.config.timeouts.healthCheckIntervalMs)
+    this.lifetimeTimer = setInterval(() => this.checkLifetime(), 60000)
+  }
+
+  private stopOrchestrator(): void {
+    if (this.healthCheckTimer) clearInterval(this.healthCheckTimer)
+    if (this.lifetimeTimer) clearInterval(this.lifetimeTimer)
+  }
+
+  private checkHealth(): void {
+    const inactiveMs = Date.now() - this.state.lastActivity.getTime()
+    if (inactiveMs > this.config.timeouts.staleDetectionMs) {
+      logger.warn(`AI Monitor: Stale monitor detected (${Math.round(inactiveMs / 1000)}s inactive)`)
+      this.emit('stale', { inactiveMs })
+    }
+  }
+
+  private checkLifetime(): void {
+    const lifetimeMs = Date.now() - this.state.startTime.getTime()
+    if (lifetimeMs > this.config.timeouts.maxLifetimeMs) {
+      logger.error(`AI Monitor: Max lifetime reached (${Math.round(lifetimeMs / 60000)} minutes)`)
+      this.emit('max-lifetime', { lifetimeMs })
+      this.stopWatching()
+      this.state.isActive = false
+    }
+  }
+
   private async getRecentLogs(maxLines: number = 50): Promise<string[]> {
     if (!this.logFile || !fs.existsSync(this.logFile)) {
       return []
@@ -432,55 +451,26 @@ export class AIMonitor implements LoopworkPlugin {
       const lines = content.split('\n').filter(line => line.trim())
       return lines.slice(-maxLines)
     } catch (error) {
-      logger.debug(`Failed to read log file: ${error instanceof Error ? error.message : String(error)}`)
       return []
     }
   }
 
-  /**
-   * Attempt to recover a failed task by analyzing logs and enhancing task context
-   */
   private async recoverTask(taskId: string): Promise<void> {
-    // Check circuit breaker first
-    if (!this.circuitBreaker.canProceed()) {
-      logger.debug(`AI Monitor: Skipping task recovery (circuit breaker is ${this.circuitBreaker.getStatus()})`)
-      return
-    }
-
-    // Check if backend is available
-    if (!this.backend) {
-      logger.debug('AI Monitor: Backend not available, skipping task recovery')
-      return
-    }
+    if (!this.circuitBreaker.canProceed() || !this.backend) return
 
     try {
-      // Collect recent logs
-      const maxLogLines = this.config.taskRecovery?.maxLogLines ?? 50
-      const logs = await this.getRecentLogs(maxLogLines)
+      const logs = await this.getRecentLogs(this.config.recovery.maxRetries * 20)
+      if (logs.length === 0) return
 
-      if (logs.length === 0) {
-        logger.debug('AI Monitor: No logs available for recovery analysis')
-        return
-      }
-
-      // Analyze the failure
-      logger.debug(`AI Monitor: Analyzing failure for task ${taskId}`)
       this.state.recoveryAttempts++
-
       const analysis = await analyzeEarlyExit(taskId, logs, this.backend, this.projectRoot)
 
-      // Check if we've already enhanced for this reason
       const historyKey = `${taskId}:${analysis.exitReason}`
-      if (this.state.recoveryHistory[historyKey]) {
-        logger.debug(`AI Monitor: Task ${taskId} already enhanced for ${analysis.exitReason}, skipping`)
-        return
-      }
+      if (this.state.recoveryHistory[historyKey]) return
 
-      // Apply enhancements
-      logger.info(`AI Monitor: Enhancing task ${taskId} for retry (reason: ${analysis.exitReason})`)
+      logger.info(`AI Monitor: Enhancing task ${taskId} for retry (reason: ${analysis.exitReason}, strategy: ${analysis.strategy})`)
       await enhanceTask(analysis, this.backend, this.projectRoot)
 
-      // Record success
       this.state.recoveryHistory[historyKey] = {
         taskId,
         exitReason: analysis.exitReason,
@@ -489,38 +479,29 @@ export class AIMonitor implements LoopworkPlugin {
       }
       this.state.recoverySuccesses++
       this.circuitBreaker.recordSuccess()
-
-      logger.success?.(`AI Monitor: Task ${taskId} enhanced successfully`)
     } catch (error) {
-      // Record failure
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      logger.warn(`AI Monitor: Task recovery failed for ${taskId}: ${errorMsg}`)
-
       this.state.recoveryFailures++
       this.circuitBreaker.recordFailure()
     } finally {
-      // Save state after recovery attempt
       this.saveState()
     }
   }
 
-  /**
-   * Start watching the log file
-   */
   async startWatching(): Promise<void> {
     if (!this.logFile || this.watcher) return
 
     this.watcher = new LogWatcher({
       logFile: this.logFile,
-      debounceMs: this.config.patternCheckDebounce
+      debounceMs: this.config.patternCheckDebounce,
+      pollIntervalMs: this.config.monitoring.pollingIntervalMs,
+      usePolling: this.config.monitoring.polling
     })
 
-    // Handle new log lines
     this.watcher.on('line', (logLine: LogLine) => {
+      this.state.lastActivity = new Date()
       this.handleLogLine(logLine)
     })
 
-    // Handle watcher errors
     this.watcher.on('error', (error: Error) => {
       logger.error(`AI Monitor watcher error: ${error.message}`)
     })
@@ -528,9 +509,6 @@ export class AIMonitor implements LoopworkPlugin {
     await this.watcher.start()
   }
 
-  /**
-   * Stop watching the log file
-   */
   stopWatching(): void {
     if (this.watcher) {
       this.watcher.stop()
@@ -538,172 +516,125 @@ export class AIMonitor implements LoopworkPlugin {
     }
   }
 
-  /**
-   * Set log file and namespace for CLI usage
-   */
-  setLogFile(logFile: string, namespace: string = 'default'): void {
-    this.logFile = logFile
-    this.namespace = namespace
-  }
-
-  /**
-   * Handle a new log line
-   */
   private async handleLogLine(logLine: LogLine): Promise<void> {
-    // Check circuit breaker before processing
-    if (!this.circuitBreaker.canProceed()) {
-      logger.debug(`AI Monitor: circuit breaker is open, skipping action (${this.circuitBreaker.getStatus()})`)
-      return
-    }
+    if (!this.circuitBreaker.canProceed()) return
 
     const match = matchPattern(logLine.line)
 
     if (!match) {
-      // Unknown pattern - could trigger LLM analysis with throttling
       if (this.shouldAnalyzeUnknownError(logLine.line)) {
         await this.analyzeUnknownError(logLine.line)
       }
       return
     }
 
-    // Track pattern detection
     this.state.detectedPatterns[match.pattern] = (this.state.detectedPatterns[match.pattern] || 0) + 1
 
-    logger.debug(`AI Monitor detected: ${match.pattern} (severity: ${match.severity})`)
+    this.emit(AIMonitor.ERROR_DETECTED, {
+      pattern: match.pattern,
+      severity: match.severity,
+      context: match.context,
+      rawLine: logLine.line,
+      timestamp: logLine.timestamp
+    })
 
-    // Determine and execute action
     const action = this.executor.determineAction(match)
     if (action) {
       await this.executeAction(action)
     }
   }
 
-  /**
-   * Check if an unknown error should be analyzed
-   */
   private shouldAnalyzeUnknownError(line: string): boolean {
-    // Only analyze lines that look like errors
-    if (!line.match(/error|failed|exception|critical/i)) {
-      return false
-    }
+    if (!line.match(/error|failed|exception|critical/i)) return false
+    if (this.config.cache.enabled && this.state.unknownErrorCache.has(line)) return false
+    if (this.state.llmCallsCount >= this.config.llm.maxPerSession) return false
 
-    // Check cache
-    if (this.config.cacheUnknownErrors && this.state.unknownErrorCache.has(line)) {
-      logger.debug('AI Monitor: Using cached error analysis (skipping LLM call)')
-      return false
-    }
-
-    // Check LLM call limits
-    if (this.state.llmCallCount >= (this.config.llmMaxPerSession || 10)) {
-      logger.warn(`AI Monitor: LLM call limit reached (${this.state.llmCallCount}/${this.config.llmMaxPerSession} calls used)`)
-      return false
-    }
-
-    // Check cooldown
     const timeSinceLastCall = Date.now() - this.state.lastLLMCall
-    if (timeSinceLastCall < (this.config.llmCooldown || 0)) {
-      const remainingSeconds = Math.ceil((this.config.llmCooldown! - timeSinceLastCall) / 1000)
-      logger.warn(`AI Monitor: LLM cooldown active (${remainingSeconds}s remaining)`)
-      return false
-    }
+    if (timeSinceLastCall < this.config.llm.cooldownMs) return false
 
     return true
   }
 
-  /**
-   * Analyze unknown error using LLM
-   */
   private async analyzeUnknownError(line: string): Promise<void> {
-    logger.info(`AI Monitor: Analyzing unknown error with LLM (${this.state.llmCallCount + 1}/${this.config.llmMaxPerSession})`)
+    const key = `llm:${this.config.llm.model}`
+    try {
+      await this.concurrencyManager.acquire(key, 30000)
+      
+      this.state.llmCallsCount++
+      this.state.lastLLMCall = Date.now()
+      if (this.config.cache.enabled) {
+        this.state.unknownErrorCache.add(line)
+      }
 
-    // Update state
-    this.state.llmCallCount++
-    this.state.lastLLMCall = Date.now()
-    if (this.config.cacheUnknownErrors) {
-      this.state.unknownErrorCache.add(line)
+      const action: Action = {
+        type: 'analyze',
+        pattern: 'unknown-error',
+        context: { rawLine: line },
+        prompt: line
+      }
+
+      await this.executeAction(action)
+    } catch (error) {
+      logger.debug(`LLM concurrency error: ${error}`)
+    } finally {
+      this.concurrencyManager.release(key)
     }
-
-    const action: Action = {
-      type: 'analyze',
-      pattern: 'unknown-error',
-      context: { rawLine: line },
-      prompt: line
-    }
-
-    await this.executeAction(action)
   }
 
-  /**
-   * Execute an action
-   */
   private async executeAction(action: Action): Promise<void> {
-    logger.debug(`AI Monitor executing action: ${action.type} for pattern ${action.pattern}`)
+    this.emit(AIMonitor.HEALING_STARTED, {
+      actionType: action.type,
+      pattern: action.pattern,
+      timestamp: new Date()
+    })
 
     const result = await this.executor.executeAction(action)
     const errorPattern = getPatternByName(action.pattern)
 
+    let success = false
     if (result.success) {
-      logger.debug(`AI Monitor action completed: ${action.type}`)
-
-      // Record successful healing in wisdom system
-      if (errorPattern) {
-        this.wisdomSystem.recordSuccess(errorPattern, `${action.type} action succeeded`)
-      }
-
-      // Run verification for auto-fix actions
+      if (errorPattern) this.wisdomSystem.recordSuccess(errorPattern, `${action.type} action succeeded`)
       if (action.type === 'auto-fix') {
         await this.verifyHealingAction(action)
       } else {
         this.circuitBreaker.recordSuccess()
       }
+      success = true
     } else {
-      logger.warn(`AI Monitor action failed: ${result.error}`)
-
-      // Record failed healing in wisdom system
-      if (errorPattern) {
-        this.wisdomSystem.recordFailure(errorPattern, result.error || 'Unknown error')
-      }
-
+      if (errorPattern) this.wisdomSystem.recordFailure(errorPattern, result.error || 'Unknown error')
       this.circuitBreaker.recordFailure()
     }
 
-    // Save state after each action to persist circuit breaker state
+    this.emit(AIMonitor.HEALING_COMPLETED, {
+      actionType: action.type,
+      pattern: action.pattern,
+      success,
+      error: result.error || null,
+      timestamp: new Date()
+    })
+
     this.saveState()
   }
 
-  /**
-   * Verify healing action success using verification engine
-   */
   private async verifyHealingAction(action: Action): Promise<void> {
     try {
-      logger.debug(`AI Monitor: Verifying healing action for pattern ${action.pattern}`)
-
-      // Run verification checks
       const verificationResult = await this.verificationEngine.verify(
-        `Healing action for ${action.pattern}`,
-        undefined // taskId not available here
+        `Healing action for ${action.pattern}`
       )
 
       if (verificationResult.passed) {
-        logger.success?.(`AI Monitor: Verification passed for ${action.pattern}`)
         this.circuitBreaker.recordSuccess()
       } else {
-        logger.warn(`AI Monitor: Verification failed for ${action.pattern}: ${verificationResult.failedChecks.join(', ')}`)
         this.circuitBreaker.recordFailure()
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      logger.warn(`AI Monitor: Verification error for ${action.pattern}: ${errorMsg}`)
       this.circuitBreaker.recordFailure()
     }
   }
 
-  /**
-   * Get monitor statistics
-   */
   getStats() {
     return {
-      llmCallCount: this.state.llmCallCount,
+      llmCallCount: this.state.llmCallsCount,
       detectedPatterns: { ...this.state.detectedPatterns },
       actionHistory: this.executor.getHistory(),
       unknownErrorCacheSize: this.state.unknownErrorCache.size,
@@ -718,13 +649,11 @@ export class AIMonitor implements LoopworkPlugin {
         successes: this.state.recoverySuccesses,
         failures: this.state.recoveryFailures,
         historySize: Object.keys(this.state.recoveryHistory).length
-      }
+      },
+      concurrency: this.concurrencyManager.getStats()
     }
   }
 
-  /**
-   * Manually reset the circuit breaker
-   */
   resetCircuitBreaker(): void {
     this.circuitBreaker.reset()
     this.saveState()

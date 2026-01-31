@@ -197,4 +197,8 @@ export class FallbackTaskBackend implements TaskBackend {
     }
     return this.primaryBackend.removeDependency(taskId, dependsOnId)
   }
+
+  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    return this.primaryBackend.rescheduleCompleted(taskId, scheduledFor)
+  }
 }

@@ -1,5 +1,6 @@
+import React from 'react'
 import chalk from 'chalk'
-import { logger, separator, Banner } from '../core/utils'
+import { logger, separator, InkBanner, renderInk } from '../core/utils'
 import { LoopworkMonitor } from '../monitor'
 import { LoopworkError, handleError } from '../core/errors'
 import {
@@ -124,11 +125,17 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
       // Use running process log file
       logFile = proc.logFile
       if (!isJsonMode) {
-        const banner = new Banner('Session Info')
-        banner.addRow('Namespace', `${ns} (running)`)
-        banner.addRow('Uptime', formatUptime(proc.startedAt))
-        banner.addRow('Log', logFile)
-        activeLogger.raw(banner.render())
+        const bannerOutput = renderInk(
+          <InkBanner
+            title="Session Info"
+            rows={[
+              { key: 'Namespace', value: `${ns} (running)` },
+              { key: 'Uptime', value: formatUptime(proc.startedAt) },
+              { key: 'Log', value: logFile },
+            ]}
+          />
+        )
+        activeLogger.raw(bannerOutput)
         activeLogger.raw(separator('light'))
       }
     } else {
@@ -158,13 +165,17 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
         sessionPath = session.fullPath
         logFile = logUtils.getMainLogFile(session.fullPath)
         if (!isJsonMode) {
-          const banner = new Banner('Session Info')
-          banner.addRow('Namespace', `${ns} ${proc ? '(running)' : '(stopped)'}`)
-          banner.addRow('Session', session.timestamp)
+          const rows = [
+            { key: 'Namespace', value: `${ns} ${proc ? '(running)' : '(stopped)'}` },
+            { key: 'Session', value: session.timestamp },
+          ]
           if (logFile) {
-            banner.addRow('Log', logFile)
+            rows.push({ key: 'Log', value: logFile })
           }
-          activeLogger.raw(banner.render())
+          const bannerOutput = renderInk(
+            <InkBanner title="Session Info" rows={rows} />
+          )
+          activeLogger.raw(bannerOutput)
           activeLogger.raw(separator('light'))
         }
       }

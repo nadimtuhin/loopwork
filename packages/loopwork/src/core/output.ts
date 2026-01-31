@@ -1,13 +1,17 @@
 /**
  * Unified Output Utilities Module
  *
+ * @deprecated This legacy output system is being replaced by Ink-based React components.
+ * See `packages/loopwork/src/components/` for the new implementation.
+ * Migration guide: `packages/loopwork/docs/MIGRATION-OUTPUT.md`
+ *
  * Provides consistent, well-formatted output components:
  * - Table: Unicode box-drawing tables with flexible columns
  * - Separator: Standardized horizontal dividers
  * - Banner: Startup/completion announcement boxes
  * - Emoji fallback: Terminal capability detection
  *
- * All utilities work with the existing logger and follow the project's
+ * All utilities work with existing logger and follow the project's
  * chalk color scheme and terminal width awareness patterns.
  */
 
@@ -99,6 +103,10 @@ interface ColumnConfig {
 
 /**
  * Table class with Unicode box-drawing support
+ *
+ * @deprecated Use `InkTable` from `./components/Table.tsx` instead.
+ * Migration: Import `{ Table } from 'loopwork/components' and use as a React component.
+ * Will be removed in v5.0.0
  *
  * @example
  * const table = new Table(['Name', 'Status', 'Time'])
@@ -263,6 +271,10 @@ export function separator(type: SeparatorType = 'light', width?: number): string
 /**
  * Banner component for startup/completion messages
  *
+ * @deprecated Use `Banner` from `./components/Banner.tsx` instead.
+ * Migration: Import `{ Banner } from 'loopwork/components' and use as a React component.
+ * Will be removed in v5.0.0
+ *
  * Creates a visually distinct box with title and optional key-value pairs.
  *
  * @example
@@ -347,6 +359,10 @@ export class Banner {
 
 /**
  * Progress bar for tracking task/operation progress
+ *
+ * @deprecated Use `ProgressBar` from `./components/ProgressBar.tsx` instead.
+ * Migration: Import `{ ProgressBar } from 'loopwork/components' and use as a React component.
+ * Will be removed in v5.0.0
  *
  * Features:
  * - Deterministic mode: tracks current/total progress with percentage
@@ -476,6 +492,10 @@ export class ProgressBar {
 /**
  * Completion summary for displaying task results
  *
+ * @deprecated Use `CompletionSummary` from `./components/CompletionSummary.tsx` instead.
+ * Migration: Import `{ CompletionSummary } from 'loopwork/components' and use as a React component.
+ * Will be removed in v5.0.0
+ *
  * Features:
  * - Stats display (completed/failed/skipped counts)
  * - Duration display
@@ -484,7 +504,7 @@ export class ProgressBar {
  *
  * @example
  * const summary = new CompletionSummary('Build Complete')
- * summary.setStats({ completed: 10, failed: 0, skipped: 2 })
+ * summary.setStats({ completed: 10, failed: 0, skipped:2 })
  * summary.setDuration(1800000) // 30 minutes in ms
  * summary.addNextStep('Run tests with `bun test`')
  * console.log(summary.render())

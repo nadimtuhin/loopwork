@@ -97,7 +97,7 @@ function emitIPC(
  * )(defineConfig({ ... }))
  * ```
  */
-export function createIPCPlugin( _options: IPCPluginOptions = {}): LoopworkPlugin {
+export function createIPCPlugin(options: IPCPluginOptions = {}): LoopworkPlugin {
   const {
     enabled = true,
     filter,
@@ -160,6 +160,46 @@ export function createIPCPlugin( _options: IPCPluginOptions = {}): LoopworkPlugi
         iteration,
         error
       }, filter, writeFn)
+    },
+
+    async onStep(event) {
+      if (!enabled) return
+
+      // Emit progress updates for certain steps
+      if (event.stepId.includes('progress') || event.stepId.includes('spawn')) {
+        emitIPC('progress_update', {
+          stepId: event.stepId,
+          description: event.description,
+          phase: event.phase,
+          durationMs: event.durationMs,
+          ...event.context
+        }, filter, writeFn)
+      }
+    },
+
+    capabilities: {
+      promptInjection: `
+# Inter-Process Communication (IPC)
+You can ask structured questions to the user via Telegram/IPC.
+To do this, you MUST output a JSON block with the following format:
+
+__IPC_START__
+{
+  "type": "ipc",
+  "event": "question",
+  "data": {
+    "question": "Your question here?",
+    "options": [
+      {"id": "opt1", "label": "Option A"},
+      {"id": "opt2", "label": "Option B"}
+    ],
+    "timeout": 60
+  }
+}
+__IPC_END__
+
+After outputting this, wait for the response on standard input.
+`
     }
   }
 }

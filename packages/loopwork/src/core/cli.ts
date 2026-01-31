@@ -70,6 +70,7 @@ import type {
   StepEvent,
   ToolCallEvent,
   AgentResponseEvent,
+  CliResultEvent,
 } from '../contracts/plugin'
 import { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG } from '../contracts/cli'
 import { ModelSelector, calculateBackoffDelay } from './model-selector'
@@ -652,7 +653,23 @@ export class CliExecutor {
         )
         const spawnDuration = Date.now() - startTime
 
-        // Emit step event: spawn end
+        let fullOutput = ''
+        try {
+          if (fs.existsSync(outputFile)) {
+            fullOutput = fs.readFileSync(outputFile, 'utf-8')
+          }
+        } catch {}
+
+        await plugins.runHook('onCliResult', {
+          taskId,
+          model: displayName,
+          cli: modelConfig.cli,
+          exitCode: result.exitCode,
+          durationMs: spawnDuration,
+          output: fullOutput,
+          timedOut: result.timedOut,
+        } as CliResultEvent)
+
         await plugins.runHook('onStep', {
           stepId: 'cli_spawn_end',
           description: `CLI process execution completed for ${displayName}`,

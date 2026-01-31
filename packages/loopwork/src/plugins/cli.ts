@@ -307,6 +307,57 @@ export const ModelPresets = {
     costWeight: 60,
     ...overrides,
   }),
+
+  /**
+   * High capability model (Architect/Lead)
+   * Best for: Complex reasoning, architecture, deep debugging
+   */
+  capabilityHigh: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.claudeOpus(overrides),
+    displayName: 'High Capability (Opus)',
+  }),
+
+  /**
+   * Medium capability model (Senior Engineer)
+   * Best for: Implementation, refactoring, standard tasks
+   */
+  capabilityMedium: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.claudeSonnet(overrides),
+    displayName: 'Medium Capability (Sonnet)',
+  }),
+
+  /**
+   * Low capability model (Junior Engineer)
+   * Best for: Simple fixes, docs, small changes
+   */
+  capabilityLow: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.claudeHaiku(overrides),
+    displayName: 'Low Capability (Haiku)',
+  }),
+
+  /**
+   * Role: Architect (High Capability)
+   */
+  roleArchitect: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.capabilityHigh(overrides),
+    displayName: 'Role: Architect',
+  }),
+
+  /**
+   * Role: Senior Engineer (Medium Capability)
+   */
+  roleEngineer: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.capabilityMedium(overrides),
+    displayName: 'Role: Senior Engineer',
+  }),
+
+  /**
+   * Role: Junior Engineer (Low Capability)
+   */
+  roleJunior: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    ...ModelPresets.capabilityLow(overrides),
+    displayName: 'Role: Junior Engineer',
+  }),
 }
 
 /**

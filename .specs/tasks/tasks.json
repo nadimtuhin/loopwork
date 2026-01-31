@@ -744,7 +744,7 @@
     },
     {
       "id": "AI-MONITOR-001b",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Concurrency Manager",
       "feature": "ai-monitor",
@@ -778,12 +778,23 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "timestamp": "2026-01-31T22:26:57.408Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 9)\n\nSession: loopwork-default-2026-01-31T22-03-30-46989\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-01-31T22:03:31.294Z",
-        "startedAt": "2026-01-31T22:03:31.294Z"
-      }
+        "startedAt": "2026-01-31T22:03:31.294Z",
+        "completedAt": "2026-01-31T22:26:57.408Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "AI-MONITOR-001c",

@@ -316,53 +316,7 @@ async function analyzeLLM(errorMessage: string, model: string = 'haiku', apiKey?
     return analyzeWithAnthropic(errorMessage, model, apiKey)
   }
 
-  // Fallback to opencode CLI
-  const opencode = findOpencode()
-  if (!opencode) {
-    logger.debug('Opencode not found, falling back to pattern-based analysis')
-    return patternBasedAnalysis(errorMessage)
-  }
-
-  logger.debug(`Analyzing error with LLM via opencode (model: ${model})`)
-
-  const prompt = `Analyze this loopwork error log entry and suggest a fix:
-${errorMessage}
-
-Return your analysis in this JSON format ONLY:
-{
-  "rootCause": "Short description of the root cause",
-  "suggestedFixes": ["fix 1", "fix 2", "fix 3"],
-  "confidence": 0.8
-}
-
-Where confidence is a number between 0 and 1 indicating how confident you are in the analysis.`
-
-  const fullModel = model === 'haiku' ? 'google/antigravity-claude-3-haiku' : model
-
-  try {
-    const result = spawnSync(opencode, ['run', '--model', fullModel, prompt], {
-      encoding: 'utf-8',
-      env: { ...process.env, OPENCODE_PERMISSION: '{"*":"allow"}' },
-      timeout: 5000 // 5 second timeout to prevent hanging
-    })
-
-    if (result.status === 0 && result.stdout) {
-      const jsonMatch = result.stdout.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        return {
-          rootCause: parsed.rootCause || 'Unknown error',
-          suggestedFixes: Array.isArray(parsed.suggestedFixes) ? parsed.suggestedFixes : ['Manual investigation required'],
-          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
-          timestamp: new Date(),
-          cached: false
-        }
-      }
-    }
-  } catch (error) {
-    logger.debug(`LLM analysis failed: ${error}`)
-  }
-
+  // No API key - use fast pattern-based analysis (synchronous, no CLI delays)
   return patternBasedAnalysis(errorMessage)
 }
 

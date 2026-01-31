@@ -13,6 +13,15 @@ import type { TaskAnalyzer } from './analysis'
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
 
 /**
+ * Output mode for controlling how output is rendered
+ * - 'human': Human-readable formatted output (default)
+ * - 'ink': React-based TUI output using Ink
+ * - 'json': Structured JSON output for programmatic consumption
+ * - 'silent': No output except errors
+ */
+export type OutputMode = 'human' | 'ink' | 'json' | 'silent'
+
+/**
  * Failure mode for parallel execution
  * - 'continue': Keep running other workers on task failure
  * - 'abort-all': Stop all workers when any task fails
@@ -143,6 +152,15 @@ export interface LoopworkConfig {
   debug?: boolean
   logLevel?: LogLevel
 
+  /**
+   * Output mode for controlling how output is rendered
+   * - 'human': Human-readable formatted output (default)
+   * - 'ink': React-based TUI output using Ink
+   * - 'json': Structured JSON output for programmatic consumption
+   * - 'silent': No output except errors
+   */
+  outputMode?: OutputMode
+
   // Parallel execution settings
   /**
    * Number of parallel workers (1 = sequential mode)
@@ -204,6 +222,7 @@ export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
   dryRun: false,
   debug: false,
   logLevel: 'info',
+  outputMode: 'human',
   maxRetries: 3,
   circuitBreakerThreshold: 5,
   taskDelay: 2000,

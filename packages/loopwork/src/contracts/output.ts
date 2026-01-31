@@ -6,8 +6,9 @@
 
 /**
  * Output format type
+ * @deprecated Use OutputMode from './config' instead
  */
-export type OutputFormat = 'human' | 'json'
+export type OutputFormat = 'human' | 'json' | 'ink' | 'silent'
 
 /**
  * Base JSON event structure
@@ -119,12 +120,18 @@ export interface DecomposeJsonOutput {
     status: string
     priority: string
     dependencies?: string[]
+    files?: string[]
+    timeEstimate?: string
+    complexity?: number
+    testStrategy?: string
+    edgeCases?: string[]
     prdPath?: string
   }>
   summary: {
     totalTasks: number
     topLevel: number
     subtasks: number
+    totalTimeEstimate?: string
   }
   dryRun?: boolean
 }

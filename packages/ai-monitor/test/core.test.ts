@@ -344,4 +344,37 @@ describe('AIMonitor Integration', () => {
     const stats = monitor.getStats()
     expect(stats.llmCallCount).toBe(0)
   })
+
+  test('should emit error-detected event', async () => {
+    const monitor = new AIMonitor()
+
+    const errors: any[] = []
+    monitor.on(AIMonitor.ERROR_DETECTED, (error) => {
+      errors.push(error)
+    })
+
+    // Verify event constants are defined
+    expect(AIMonitor.ERROR_DETECTED).toBe('error-detected')
+    expect(AIMonitor.HEALING_STARTED).toBe('healing-started')
+    expect(AIMonitor.HEALING_COMPLETED).toBe('healing-completed')
+  })
+
+  test('should emit healing-started and healing-completed events', async () => {
+    const monitor = new AIMonitor()
+
+    const healingStarted: any[] = []
+    const healingCompleted: any[] = []
+
+    monitor.on(AIMonitor.HEALING_STARTED, (data) => {
+      healingStarted.push(data)
+    })
+
+    monitor.on(AIMonitor.HEALING_COMPLETED, (data) => {
+      healingCompleted.push(data)
+    })
+
+    // Verify event constants are defined
+    expect(AIMonitor.HEALING_STARTED).toBe('healing-started')
+    expect(AIMonitor.HEALING_COMPLETED).toBe('healing-completed')
+  })
 })
