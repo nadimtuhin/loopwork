@@ -222,9 +222,18 @@ export class PtySpawner implements ProcessSpawner {
   }
 
   spawn(command: string, args: string[], options?: SpawnOptions): SpawnedProcess {
+    let finalCommand = command
+    let finalArgs = args
+
+    // Apply nice priority if requested and not on Windows
+    if (options?.nice !== undefined && process.platform !== 'win32') {
+      finalCommand = 'nice'
+      finalArgs = ['-n', options.nice.toString(), command, ...args]
+    }
+
     const pty = getPtyModule()
 
-    const ptyProcess = pty.spawn(command, args, {
+    const ptyProcess = pty.spawn(finalCommand, finalArgs, {
       name: 'xterm-256color',
       cols: options?.cols ?? 120,
       rows: options?.rows ?? 30,

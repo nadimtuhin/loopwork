@@ -4,7 +4,7 @@ import type {
   ProcessMetadata,
   ProcessInfo,
   CleanupResult,
-  SpawnOptions as ISpawnOptions
+  ISpawnOptions
 } from '../../contracts/process-manager'
 import type { ProcessSpawner } from '../../contracts/spawner'
 import { ProcessRegistry } from './registry'
@@ -49,6 +49,7 @@ export class ProcessManager implements IProcessManager {
     const proc = this.spawner.spawn(command, args, {
       cwd: options?.cwd,
       env: options?.env,
+      nice: options?.nice,
       cols: 80,
       rows: 24
     })
@@ -98,8 +99,8 @@ export class ProcessManager implements IProcessManager {
       }
 
       return true
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === 'ESRCH') {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (error.code === 'ESRCH' || error.errno === 3) {
         // Process doesn't exist - remove from registry
         this.registry.remove(pid)
         return false

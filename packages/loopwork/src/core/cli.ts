@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { logger, StreamLogger } from './utils'
 import { Debugger } from './debugger'
+import type { PrePromptEvent } from '../contracts/debugger'
 import type { Config } from './config'
 import { LoopworkError } from './errors'
 import { PROGRESS_UPDATE_INTERVAL_MS, SIGKILL_DELAY_MS } from './constants'
@@ -478,7 +479,7 @@ export class CliExecutor {
     feature?: string
   ): Promise<number> {
     const capabilities = plugins.getCapabilityRegistry().getPromptInjection()
-    const finalPrompt = capabilities
+    let finalPrompt = capabilities
       ? `${prompt}\n\n# Plugin Capabilities\n\n${capabilities}`
       : prompt
 
@@ -604,12 +605,23 @@ export class CliExecutor {
           }
         } as ToolCallEvent)
 
-        await this.debugger?.onEvent({
-          type: 'PRE_PROMPT',
-          taskId,
-          timestamp: Date.now(),
-          data: { model: displayName, cli: modelConfig.cli, modelId: modelConfig.model }
-        })
+        if (this.debugger) {
+          const prePromptEvent: PrePromptEvent = {
+            type: 'PRE_PROMPT',
+            taskId,
+            timestamp: Date.now(),
+            prompt: finalPrompt,
+            data: { model: displayName, cli: modelConfig.cli, modelId: modelConfig.model }
+          }
+          await this.debugger.onEvent(prePromptEvent)
+
+          const modifiedPrompt = this.debugger.getAndClearModifiedPrompt()
+          if (modifiedPrompt !== undefined) {
+            finalPrompt = modifiedPrompt
+            fs.writeFileSync(promptFile, finalPrompt)
+            logger.info(`[${displayName}] Using modified prompt from debugger`)
+          }
+        }
 
         logger.info('─────────────────────────────────────')
         logger.info('📝 Streaming CLI output below...')

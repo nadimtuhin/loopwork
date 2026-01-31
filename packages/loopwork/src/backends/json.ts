@@ -273,19 +273,26 @@ export class JsonTaskAdapter implements TaskBackend {
     return this.loadFullTask(entry, data)
   }
 
-  async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
+  async listTasks(options?: FindTaskOptions): Promise<Task[]> {
     const data = this.loadTasksFile()
     if (!data) return []
 
     let entries = data.tasks.filter(t => {
-      if (t.status === 'pending') return true
+      // Filter by status
+      if (options?.status) {
+        const statuses = Array.isArray(options.status) ? options.status : [options.status]
+        if (!statuses.includes(t.status)) return false
+      }
+
+      // Handle retry cooldown for failed tasks if status includes 'failed'
       if (t.status === 'failed' && options?.retryCooldown !== undefined) {
         const failedAt = t.timestamps?.failedAt
         if (!failedAt) return false
         const elapsed = Date.now() - new Date(failedAt).getTime()
-        return elapsed > options.retryCooldown
+        if (elapsed <= options.retryCooldown) return false
       }
-      return false
+
+      return true
     })
 
     if (options?.feature) {
@@ -327,6 +334,10 @@ export class JsonTaskAdapter implements TaskBackend {
     }
 
     return tasks
+  }
+
+  async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
+    return this.listTasks({ ...options, status: 'pending' })
   }
 
   private loadTaskSummary(entry: JsonTaskEntry, data: JsonTasksFile): Task {

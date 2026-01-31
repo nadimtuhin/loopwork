@@ -44,6 +44,14 @@ export const STATE_FILES = {
   PAUSE: 'pause-state.json',
   /** Orphan events log */
   ORPHAN_EVENTS: 'orphan-events.log',
+  /** Inter-agent messages queue */
+  MESSAGES: 'messages',
+  /** Global retry budget state */
+  RETRY_BUDGET: 'retry-budget.json',
+  /** Offline operations queue */
+  OFFLINE_QUEUE: 'offline-queue',
+  /** Plugin state storage */
+  PLUGIN_STATE: 'plugin-state',
 } as const
 
 /**
@@ -56,7 +64,32 @@ export const STATE_DIRS = {
   AI_MONITOR: 'ai-monitor',
   /** LLM cache within AI Monitor */
   LLM_CACHE: 'ai-monitor/llm-cache.json',
+  /** Checkpoints directory */
+  CHECKPOINTS: 'checkpoints',
 } as const
+
+/**
+ * Session metadata for tracking unified session state
+ * Used by both foreground (up) and daemon (up -d) modes
+ */
+export interface SessionMetadata {
+  /** Session ID (timestamp-based, e.g., "2026-01-31T10-30-00") */
+  id: string
+  /** Namespace for this session */
+  namespace: string
+  /** Execution mode: foreground (attached) or daemon (detached) */
+  mode: 'foreground' | 'daemon'
+  /** Process ID */
+  pid: number
+  /** ISO timestamp when session started */
+  startedAt: string
+  /** Current session status */
+  status: 'running' | 'completed' | 'failed' | 'stopped'
+  /** CLI arguments used to start the session */
+  args?: string[]
+  /** Last updated timestamp */
+  updatedAt?: string
+}
 
 /**
  * Glob patterns for watching state files (used by dashboard)
@@ -215,6 +248,22 @@ export class LoopworkState {
     },
 
     /**
+     * Session directory path
+     * .loopwork/runs/{namespace}/{session-id}
+     */
+    sessionDir: (sessionId: string, namespace?: string): string => {
+      return path.join(this.paths.runs(namespace), sessionId)
+    },
+
+    /**
+     * Session metadata file path
+     * .loopwork/runs/{namespace}/{session-id}/session.json
+     */
+    sessionFile: (sessionId: string, namespace?: string): string => {
+      return path.join(this.paths.sessionDir(sessionId, namespace), 'session.json')
+    },
+
+    /**
      * AI Monitor directory
      * .loopwork/ai-monitor
      */
@@ -223,11 +272,53 @@ export class LoopworkState {
     },
 
     /**
+     * Checkpoints directory
+     * .loopwork/checkpoints
+     */
+    checkpoints: (): string => {
+      return path.join(this.dir, STATE_DIRS.CHECKPOINTS)
+    },
+
+    /**
      * LLM cache file path
      * .loopwork/ai-monitor/llm-cache.json
      */
     llmCache: (): string => {
       return path.join(this.dir, STATE_DIRS.LLM_CACHE)
+    },
+
+    /**
+     * Messages queue file path
+     * .loopwork/messages.json or .loopwork/messages-{namespace}.json
+     */
+    messages: (namespace?: string): string => {
+      const ns = namespace || this.namespace
+      const suffix = ns === 'default' ? '' : `-${ns}`
+      return path.join(this.dir, `${STATE_FILES.MESSAGES}${suffix}.json`)
+    },
+
+    /**
+     * Offline operations queue file path
+     * .loopwork/offline-queue.json or .loopwork/offline-queue-{namespace}.json
+     */
+    offlineQueue: (): string => {
+      return path.join(this.dir, `${STATE_FILES.OFFLINE_QUEUE}${this.namespaceSuffix}.json`)
+    },
+
+    /**
+     * Retry budget state file path
+     * .loopwork/retry-budget.json (shared across namespaces)
+     */
+    retryBudget: (): string => {
+      return path.join(this.dir, STATE_FILES.RETRY_BUDGET)
+    },
+
+    /**
+     * Plugin state file path
+     * .loopwork/plugin-state.json or .loopwork/plugin-state-{namespace}.json
+     */
+    pluginState: (): string => {
+      return path.join(this.dir, `${STATE_FILES.PLUGIN_STATE}${this.namespaceSuffix}.json`)
     },
   }
 
@@ -322,6 +413,132 @@ export class LoopworkState {
       projectRoot: this.projectRoot,
       namespace,
     })
+  }
+
+  /**
+   * Generate a new session ID based on current timestamp
+   */
+  generateSessionId(): string {
+    return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  }
+
+  /**
+   * Create a new session and write its metadata
+   */
+  createSession(metadata: Omit<SessionMetadata, 'id' | 'startedAt' | 'updatedAt'>): SessionMetadata {
+    const sessionId = this.generateSessionId()
+    const now = new Date().toISOString()
+
+    const session: SessionMetadata = {
+      ...metadata,
+      id: sessionId,
+      startedAt: now,
+      updatedAt: now,
+    }
+
+    const sessionDir = this.paths.sessionDir(sessionId, metadata.namespace)
+    const logsDir = path.join(sessionDir, 'logs')
+
+    // Create session directories
+    fs.mkdirSync(logsDir, { recursive: true })
+
+    // Write session metadata
+    this.writeJson(this.paths.sessionFile(sessionId, metadata.namespace), session)
+
+    return session
+  }
+
+  /**
+   * Update an existing session's metadata
+   */
+  updateSession(sessionId: string, namespace: string, updates: Partial<SessionMetadata>): SessionMetadata | null {
+    const sessionFile = this.paths.sessionFile(sessionId, namespace)
+    const existing = this.readJson<SessionMetadata>(sessionFile)
+
+    if (!existing) {
+      return null
+    }
+
+    const updated: SessionMetadata = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }
+
+    this.writeJson(sessionFile, updated)
+    return updated
+  }
+
+  /**
+   * Get session metadata
+   */
+  getSession(sessionId: string, namespace?: string): SessionMetadata | null {
+    const ns = namespace || this.namespace
+    return this.readJson<SessionMetadata>(this.paths.sessionFile(sessionId, ns))
+  }
+
+  /**
+   * List all sessions for a namespace, sorted by most recent first
+   */
+  listSessions(namespace?: string): SessionMetadata[] {
+    const ns = namespace || this.namespace
+    const runsDir = this.paths.runs(ns)
+
+    if (!fs.existsSync(runsDir)) {
+      return []
+    }
+
+    const sessions: SessionMetadata[] = []
+
+    try {
+      const entries = fs.readdirSync(runsDir, { withFileTypes: true })
+
+      for (const entry of entries) {
+        // Skip monitor-logs directory
+        if (!entry.isDirectory() || entry.name === 'monitor-logs') {
+          continue
+        }
+
+        const sessionFile = this.paths.sessionFile(entry.name, ns)
+        const session = this.readJson<SessionMetadata>(sessionFile)
+
+        if (session) {
+          sessions.push(session)
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+
+    // Sort by startedAt descending (most recent first)
+    return sessions.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  }
+
+  /**
+   * Get the most recent session for a namespace
+   */
+  getLatestSession(namespace?: string): SessionMetadata | null {
+    const sessions = this.listSessions(namespace)
+    return sessions[0] || null
+  }
+
+  /**
+   * Get all running sessions across all namespaces
+   */
+  getActiveSessions(): SessionMetadata[] {
+    const activeSessions: SessionMetadata[] = []
+    const namespaces = this.getNamespaces()
+
+    for (const ns of namespaces) {
+      const sessions = this.listSessions(ns)
+      for (const session of sessions) {
+        if (session.status === 'running') {
+          activeSessions.push(session)
+        }
+      }
+    }
+
+    return activeSessions
   }
 }
 

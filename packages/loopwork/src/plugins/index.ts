@@ -57,6 +57,7 @@ export { withSafety } from './safety'
 export { withFeatureFlags } from './feature-flags'
 export { withAgents } from './agents'
 export { createGitAutoCommitPlugin, withGitAutoCommit } from './git-autocommit'
+export { createControlApi, withControlApi } from '@loopwork-ai/control-api'
 export {
   createGovernancePlugin,
   withGovernance,

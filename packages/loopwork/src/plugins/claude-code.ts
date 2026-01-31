@@ -15,7 +15,7 @@ export interface ClaudeCodePluginOptions {
   claudeMdPath?: string
 }
 
-export function createClaudeCodePlugin(options: ClaudeCodePluginOptions = {}): LoopworkPlugin {
+export function createClaudeCodePlugin( _options: ClaudeCodePluginOptions = {}): LoopworkPlugin {
   const {
     enabled = true,
     skillsDir = '.claude/skills',
@@ -24,6 +24,7 @@ export function createClaudeCodePlugin(options: ClaudeCodePluginOptions = {}): L
 
   return {
     name: 'claude-code',
+    classification: 'enhancement',
 
     onConfigLoad(config) {
       if (!enabled) return config

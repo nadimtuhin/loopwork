@@ -110,25 +110,37 @@ export class GitHubTaskAdapter implements TaskBackend {
     }
   }
 
-  async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
+  async listTasks(options?: FindTaskOptions): Promise<Task[]> {
     try {
       return await this.withRetry(async () => {
-        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state open --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt --limit 100`.quiet()
+        let stateFilter = 'open'
+        if (options?.status) {
+          const statuses = Array.isArray(options.status) ? options.status : [options.status]
+          if (statuses.includes('completed')) {
+            stateFilter = statuses.length === 1 ? 'closed' : 'all'
+          }
+        }
+
+        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state ${stateFilter} --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt --limit 100`.quiet()
         const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
         const allTasks = issues.map(issue => this.adaptIssue(issue))
 
-        let tasks = allTasks.filter(t => {
-          if (t.status === 'pending') return true
-          
-          if (t.status === 'failed' && options?.retryCooldown !== undefined) {
-            const failedAt = t.timestamps?.failedAt
-            if (!failedAt) return false
-            const elapsed = Date.now() - new Date(failedAt).getTime()
-            return elapsed > options.retryCooldown
-          }
-          
-          return false
-        })
+        let tasks = allTasks
+
+        if (options?.status) {
+          const statuses = Array.isArray(options.status) ? options.status : [options.status]
+          tasks = tasks.filter(t => {
+            if (statuses.includes(t.status)) return true
+            
+            if (t.status === 'failed' && statuses.includes('pending') && options.retryCooldown !== undefined) {
+              const failedAt = t.timestamps?.failedAt
+              if (!failedAt) return false
+              const elapsed = Date.now() - new Date(failedAt).getTime()
+              return elapsed > options.retryCooldown
+            }
+            return false
+          })
+        }
 
         if (options?.feature) {
           tasks = tasks.filter(t => t.feature === options.feature)
@@ -168,6 +180,10 @@ export class GitHubTaskAdapter implements TaskBackend {
     } catch {
       return []
     }
+  }
+
+  async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
+    return this.listTasks({ ...options, status: 'pending' })
   }
 
   async countPending(options?: FindTaskOptions): Promise<number> {

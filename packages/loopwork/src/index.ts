@@ -15,6 +15,8 @@ export {
   withAIMonitor,
   withDynamicTasks,
   withGitAutoCommit,
+  withSmartTestTasks,
+  withTaskRecovery,
   // CLI configuration
   withCli,
   withModels,

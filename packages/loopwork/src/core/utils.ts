@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import fs from 'fs'
 import path from 'path'
 import ora, { type Ora } from 'ora'
+import crypto from 'crypto'
 import type { LogLevel } from '../contracts/config'
 import type { OutputFormat, JsonEvent } from '../contracts/output'
 
@@ -12,6 +13,14 @@ export function getTimestamp(): string {
     second: '2-digit',
     hour12: true,
   })
+}
+
+/**
+ * Calculate a SHA-256 checksum for an object
+ */
+export function calculateChecksum(data: unknown): string {
+  const content = typeof data === 'string' ? data : JSON.stringify(data)
+  return crypto.createHash('sha256').update(content).digest('hex')
 }
 
 let activeSpinner: Ora | null = null
@@ -297,9 +306,20 @@ export async function promptUser(
 export class StreamLogger {
   private buffer: string = ''
   private prefix: string = ''
+  private onEvent?: (event: { type: string; data: unknown }) => void
+  private isPaused: boolean = false
 
-  constructor(prefix?: string) {
+  constructor(prefix?: string, onEvent?: (event: { type: string; data: unknown }) => void) {
     this.prefix = prefix || ''
+    this.onEvent = onEvent
+  }
+
+  pause() {
+    this.isPaused = true
+  }
+
+  resume() {
+    this.isPaused = false
   }
 
   log(chunk: string | Buffer) {
@@ -313,6 +333,24 @@ export class StreamLogger {
   }
 
   private printLine(line: string) {
+    // Events must still fire when paused to drive debugger breakpoints
+    if (this.onEvent && (
+      line.includes('Tool Call:') || 
+      line.includes('Running tool') || 
+      line.includes('Calling tool') ||
+      line.includes('✔ Tool output') ||
+      line.includes('✖ Tool error')
+    )) {
+      this.onEvent({
+        type: 'POST_TOOL',
+        data: { line: line.replace(/^\s*\|\s*/, '') }
+      })
+    }
+
+    if (this.isPaused) {
+      return
+    }
+
     stopActiveSpinner()
     process.stdout.write('\r\x1b[K')
     const timestamp = chalk.gray(getTimestamp())
@@ -342,8 +380,20 @@ export class StreamLogger {
       }
     }
 
-    // Signal that output just happened to coordinate with progress updates
     logger.lastOutputTime = Date.now()
+
+    if (this.onEvent && (
+      line.includes('Tool Call:') || 
+      line.includes('Running tool') || 
+      line.includes('Calling tool') ||
+      line.includes('✔ Tool output') ||
+      line.includes('✖ Tool error')
+    )) {
+      this.onEvent({
+        type: 'POST_TOOL',
+        data: { line: cleanedLine }
+      })
+    }
   }
 
   private wrapText(text: string, maxWidth: number): string[] {

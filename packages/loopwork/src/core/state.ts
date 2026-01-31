@@ -108,6 +108,51 @@ export class StateManager {
   }
 
   /**
+   * Get plugin-specific state
+   */
+  getPluginState<T = unknown>(pluginName: string): T | null {
+    const pluginStateFile = this.loopworkState.paths.pluginState()
+
+    if (!fs.existsSync(pluginStateFile)) {
+      return null
+    }
+
+    try {
+      const allPluginState = this.loopworkState.readJson<Record<string, unknown>>(pluginStateFile)
+      return (allPluginState[pluginName] as T) || null
+    } catch (error) {
+      logger.error(`Failed to read plugin state for ${pluginName}:`, error)
+      return null
+    }
+  }
+
+  /**
+   * Set plugin-specific state
+   */
+  setPluginState<T = unknown>(pluginName: string, state: T): void {
+    this.ensureLoopworkDir()
+    const pluginStateFile = this.loopworkState.paths.pluginState()
+
+    try {
+      let allPluginState: Record<string, unknown> = {}
+
+      if (fs.existsSync(pluginStateFile)) {
+        allPluginState = this.loopworkState.readJson<Record<string, unknown>>(pluginStateFile)
+      }
+
+      allPluginState[pluginName] = state
+
+      this.loopworkState.writeJson(pluginStateFile, allPluginState)
+
+      if (this.config.debug) {
+        logger.info(`Plugin state saved for ${pluginName}`)
+      }
+    } catch (error) {
+      logger.error(`Failed to save plugin state for ${pluginName}:`, error)
+    }
+  }
+
+  /**
    * Save current session state
    */
   saveState(currentIssue: number, iteration: number): void {

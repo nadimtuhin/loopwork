@@ -20,6 +20,14 @@ import type { TaskContext, LoopStats } from '../contracts/plugin'
 import type { RunLogger } from '../commands/run'
 import { logger as defaultLogger } from './utils'
 import { LoopworkError } from './errors'
+import { Debugger } from './debugger'
+import type { IMessageBus } from '../contracts/messaging'
+import { createMessageBus as _createMessageBus } from './message-bus'
+import { failureState } from './failure-state'
+import { RetryBudget } from './retry-budget'
+import { getRetryPolicy, isRetryableError, calculateBackoff } from './retry'
+import { CheckpointIntegrator } from './checkpoint-integrator'
+import { plugins } from '../plugins'
 
 /**
  * Worker colors for console output
@@ -91,6 +99,10 @@ export interface ParallelRunnerOptions {
   onTaskComplete?: (context: TaskContext, result: { output: string; duration: number; success: boolean }) => Promise<void>
   onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
   buildPrompt: (task: Task, retryContext?: string) => string
+  debugger?: Debugger
+  messageBus?: IMessageBus
+  enableMessaging?: boolean
+  retryBudget?: RetryBudget
 }
 
 /**
@@ -111,6 +123,9 @@ export class ParallelRunner {
   private onTaskComplete?: (context: TaskContext, result: { output: string; duration: number; success: boolean }) => Promise<void>
   private onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
   private buildPrompt: (task: Task, retryContext?: string) => string
+  private debugger?: Debugger
+  private retryBudget: RetryBudget
+  private checkpointIntegrator?: CheckpointIntegrator
 
   // Circuit breaker state
   private consecutiveFailures = 0
@@ -131,6 +146,7 @@ export class ParallelRunner {
   private interruptedTasks: string[] = []
   private tasksPerWorker: number[] = []
   private retryCount: Map<string, number> = new Map()
+  private lastErrors: Map<string, string> = new Map()
 
   // Periodic cleanup
   private lastCleanupTime: number = 0
@@ -146,6 +162,7 @@ export class ParallelRunner {
     this.onTaskComplete = options.onTaskComplete
     this.onTaskFailed = options.onTaskFailed
     this.buildPrompt = options.buildPrompt
+    this.debugger = options.debugger
     this.circuitBreakerThreshold = options.config.circuitBreakerThreshold ?? 5
     this.tasksPerWorker = new Array(this.workers).fill(0)
     // Save original values for self-healing reset
@@ -156,6 +173,26 @@ export class ParallelRunner {
     this.selfHealingCooldown = options.config.selfHealingCooldown ?? 30000
     // Cleanup interval (default 5 minutes)
     this.cleanupInterval = options.config.orphanWatch?.interval ?? 300000
+
+    // Initialize retry budget
+    if (options.retryBudget) {
+      this.retryBudget = options.retryBudget
+    } else {
+      const budgetConfig = this.config.retryBudget || {
+        maxRetries: 50,
+        windowMs: 3600000,
+        enabled: true,
+      }
+      this.retryBudget = new RetryBudget(
+        budgetConfig.maxRetries || 50,
+        budgetConfig.windowMs || 3600000
+      )
+    }
+
+    // Initialize checkpoint integrator
+    if (this.config.checkpoint?.enabled) {
+      this.checkpointIntegrator = new CheckpointIntegrator(this.config.checkpoint, this.config.projectRoot)
+    }
   }
 
   /**
@@ -168,10 +205,71 @@ export class ParallelRunner {
 
     this.logger.info(`Starting parallel execution with ${this.workers} workers`)
     this.logger.info(`Failure mode: ${this.config.parallelFailureMode}`)
+
+    // Check for reduced functionality mode
+    if (plugins.isDegradedMode(this.config.flags)) {
+      this.logger.raw(chalk.yellow('\n' + '═'.repeat(40)))
+      this.logger.warn(' ⚡ REDUCED FUNCTIONALITY MODE ENABLED')
+      this.logger.raw(chalk.yellow('═'.repeat(40) + '\n'))
+      
+      if (this.config.flags?.reducedFunctionality) {
+        this.logger.warn('   Reason: --flag reducedFunctionality is set')
+      }
+
+      const disabledPlugins = plugins.getDisabledPluginsReport()
+      if (disabledPlugins.length > 0) {
+        this.logger.warn('   Disabled plugins:')
+        for (const { name, reason } of disabledPlugins) {
+          this.logger.warn(`     - ${name} (${reason})`)
+        }
+      }
+
+      const activePluginsReport = plugins.getActivePluginsReport()
+      if (activePluginsReport.length > 0) {
+        this.logger.info('   Active plugins:')
+        for (const { name, classification } of activePluginsReport) {
+          this.logger.info(`     - ${name} (${classification})`)
+        }
+      }
+
+      const hasEnhancements = activePluginsReport.some(p => p.classification === 'enhancement')
+      if (!hasEnhancements) {
+        this.logger.warn('   Note: All enhancement features disabled')
+      }
+    }
+
     this.logger.info('─────────────────────────────────────')
+
+    if (this.debugger) {
+      await this.debugger.onEvent({
+        type: 'LOOP_START',
+        timestamp: Date.now(),
+        data: { mode: 'parallel', workers: this.workers }
+      })
+    }
 
     // Main loop - runs until no more tasks or max iterations reached
     while (this.iterationCount < maxIterations && !this.isAborted) {
+      // Trigger checkpoint at configured intervals if enabled
+      if (this.checkpointIntegrator?.shouldCheckpoint(this.iterationCount)) {
+        // Periodic checkpoints are non-blocking and safe
+        this.checkpointIntegrator.checkpoint({
+          taskId: 'parallel-loop-iteration',
+          iteration: this.iterationCount,
+          context: {
+            tasksCompleted: this.tasksCompleted,
+            tasksFailed: this.tasksFailed,
+            consecutiveFailures: this.consecutiveFailures,
+          },
+          memory: {
+            lastCheckpointTime: Date.now(),
+          },
+        }).catch(err => this.logger.debug(`Periodic parallel checkpoint failed: ${err}`))
+      }
+
+      // Increment checkpoint iteration counter
+      this.checkpointIntegrator?.incrementIteration()
+
       // Check circuit breaker before starting new iteration
       if (this.consecutiveFailures >= this.circuitBreakerThreshold) {
         // Attempt self-healing before giving up
@@ -204,10 +302,14 @@ export class ParallelRunner {
 
       this.iterationCount++
 
-      // Launch workers in parallel
-      const workerPromises = Array.from({ length: this.workers }, (_, i) =>
-        this.runWorker(i, options, namespace)
-      )
+        // Launch workers in parallel
+        const workerOptions: FindTaskOptions = {
+          ...options,
+          retryCooldown: this.config.retryCooldown
+        }
+        const workerPromises = Array.from({ length: this.workers }, (_, i) =>
+          this.runWorker(i, workerOptions, namespace)
+        )
 
       // Wait for all workers to complete this round
       const results = await Promise.allSettled(workerPromises)
@@ -257,12 +359,39 @@ export class ParallelRunner {
 
     const duration = (Date.now() - startTime) / 1000
 
+    // Create final checkpoint after loop completes
+    if (this.checkpointIntegrator) {
+      await this.checkpointIntegrator.checkpoint({
+        taskId: 'parallel-loop-complete',
+        iteration: this.iterationCount,
+        context: {
+          tasksCompleted: this.tasksCompleted,
+          tasksFailed: this.tasksFailed,
+          totalIterations: this.iterationCount,
+          status: 'completed',
+        },
+        memory: {
+          completionTime: new Date().toISOString(),
+        },
+      })
+    }
+
+    if (this.debugger) {
+      await this.debugger.onEvent({
+        type: 'LOOP_END',
+        timestamp: Date.now(),
+        data: { completed: this.tasksCompleted, failed: this.tasksFailed, duration }
+      })
+    }
+
     return {
       completed: this.tasksCompleted,
       failed: this.tasksFailed,
       duration,
       workers: this.workers,
       tasksPerWorker: this.tasksPerWorker,
+      isDegraded: plugins.isDegradedMode(this.config.flags),
+      disabledPlugins: plugins.getDisabledPlugins(),
     }
   }
 
@@ -303,16 +432,45 @@ export class ParallelRunner {
     }
 
     this.tasksPerWorker[workerId]++
-    this.logger.info(`${prefix} Claimed task ${task.id}: ${task.title}`)
+    const isDegraded = plugins.isDegradedMode(this.config.flags)
+    const degradedSuffix = isDegraded ? chalk.yellow(' (Reduced)') : ''
+    this.logger.info(`${prefix} Claimed task ${task.id}: ${task.title}${degradedSuffix}`)
+
+    if (this.debugger) {
+      await this.debugger.onEvent({
+        type: 'TASK_START',
+        taskId: task.id,
+        iteration: this.iterationCount,
+        timestamp: Date.now(),
+        data: { title: task.title, workerId }
+      })
+
+      await this.debugger.onEvent({
+        type: 'PRE_TASK',
+        taskId: task.id,
+        iteration: this.iterationCount,
+        timestamp: Date.now(),
+        data: { workerId }
+      })
+    }
 
     const taskStartTime = Date.now()
+
+    // Get retry policy for this task
+    const retryPolicy = getRetryPolicy(task, this.config)
+    const currentRetryAttempt = this.retryCount.get(task.id) || 0
 
     // Create task context
     const taskContext: TaskContext = {
       task,
+      config: this.config,
       iteration: this.iterationCount,
       startTime: new Date(),
       namespace,
+      flags: this.config.flags,
+      retryAttempt: currentRetryAttempt,
+      retryPolicy,
+      lastError: this.lastErrors.get(task.id),
     }
 
     // Notify task start
@@ -343,12 +501,13 @@ export class ParallelRunner {
     fs.writeFileSync(promptFile, prompt)
 
     try {
-      const exitCode = await this.cliExecutor.execute(
+      const exitCode = await this.cliExecutor.executeTask(
+        task,
         prompt,
         outputFile,
         this.config.timeout || 600,
-        task.id,
-        workerId
+        workerId,
+        taskContext.permissions
       )
 
       const duration = (Date.now() - taskStartTime) / 1000
@@ -368,53 +527,230 @@ export class ParallelRunner {
           await this.onTaskComplete(taskContext, { output, duration, success: true })
         }
 
+        if (this.debugger) {
+          await this.debugger.onEvent({
+            type: 'POST_TASK',
+            taskId: task.id,
+            iteration: this.iterationCount,
+            timestamp: Date.now(),
+            data: { success: true, duration, workerId }
+          })
+        }
+
         this.tasksCompleted++
         this.retryCount.delete(task.id)
+        failureState.clearFailure(task.id)
+        this.lastErrors.delete(task.id)
         this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
+
+        // Create checkpoint after task completion if not skipped
+        if (this.checkpointIntegrator && !this.config.checkpoint?.skipOnTaskComplete) {
+          await this.checkpointIntegrator.checkpoint({
+            taskId: task.id,
+            iteration: this.iterationCount,
+            context: {
+              tasksCompleted: this.tasksCompleted,
+              tasksFailed: this.tasksFailed,
+              status: 'completed',
+              workerId,
+            },
+            memory: {
+              lastCompletedTask: task.id,
+            },
+          })
+        }
+
         this.logger.success(`${prefix} Task ${task.id} completed in ${duration.toFixed(1)}s`)
 
         return { workerId, taskId: task.id, success: true, duration }
       } else {
-        // Task failed
+        // Task failed - retrieve error information
+        let outputContent = ''
+        try {
+          if (fs.existsSync(outputFile)) {
+            outputContent = fs.readFileSync(outputFile, 'utf-8')
+            // Get last 500 chars for error analysis
+            outputContent = outputContent.slice(-500)
+          }
+        } catch {}
+
+        const taskError = new Error(`Task failed with exit code ${exitCode}${outputContent ? `\n\nOutput: ${outputContent}` : ''}`)
         const currentRetries = this.retryCount.get(task.id) || 0
-        const maxRetries = this.config.maxRetries ?? 3
 
-        if (currentRetries < maxRetries - 1) {
-          // Reset to pending for retry
-          this.retryCount.set(task.id, currentRetries + 1)
-          await this.backend.resetToPending(task.id)
-          this.logger.warn(`${prefix} Task ${task.id} failed, resetting for retry (${currentRetries + 2}/${maxRetries})`)
-          this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
-          return { workerId, taskId: task.id, success: false, error: 'Task failed, scheduled for retry' }
-        } else {
-          // Max retries reached - read output file to get actual error for categorization
-          let outputContent = ''
-          try {
-            if (fs.existsSync(outputFile)) {
-              outputContent = fs.readFileSync(outputFile, 'utf-8')
-              // Get last 500 chars for error analysis
-              outputContent = outputContent.slice(-500)
-            }
-          } catch {}
-
-          const errorMsg = `Max retries (${maxRetries}) reached\n\nSession: ${this.config.sessionId}\nIteration: ${this.iterationCount}`
-          await this.backend.markFailed(task.id, errorMsg)
+        // Check if error is retryable
+        if (!isRetryableError(taskError)) {
+          this.logger.error(`${prefix} Task ${task.id} failed with non-retryable error`)
+          const errorMsg = `Non-retryable error\n\nSession: ${this.config.sessionId}\nIteration: ${this.iterationCount}${outputContent ? `\n\nOutput: ${outputContent}` : ''}`
+          await this.recordTaskFailure(task, errorMsg)
 
           if (this.onTaskFailed) {
             await this.onTaskFailed(taskContext, errorMsg)
           }
 
+          if (this.debugger) {
+            await this.debugger.onEvent({
+              type: 'POST_TASK',
+              taskId: task.id,
+              iteration: this.iterationCount,
+              timestamp: Date.now(),
+              data: { success: false, error: errorMsg, workerId }
+            })
+          }
+
           this.tasksFailed++
           this.retryCount.delete(task.id)
+          this.lastErrors.delete(task.id)
           this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
-          this.logger.error(`${prefix} Task ${task.id} failed after ${maxRetries} attempts`)
 
-          // Return with actual output for better failure categorization
-          const fullError = outputContent ? `${errorMsg}\n\nOutput: ${outputContent}` : errorMsg
-          return { workerId, taskId: task.id, success: false, error: fullError, duration }
+          // Create checkpoint after task failure if enabled
+          if (this.checkpointIntegrator) {
+            await this.checkpointIntegrator.checkpoint({
+              taskId: task.id,
+              iteration: this.iterationCount,
+              context: {
+                tasksCompleted: this.tasksCompleted,
+                tasksFailed: this.tasksFailed,
+                status: 'failed-non-retryable',
+                workerId,
+              },
+              memory: {
+                lastFailedTask: task.id,
+              },
+            })
+          }
+
+          return { workerId, taskId: task.id, success: false, error: errorMsg, duration }
         }
+
+        // Get retry policy for this task
+        const retryPolicy = getRetryPolicy(task, this.config)
+
+        // Check if max retries exceeded
+        if (currentRetries >= retryPolicy.maxRetries) {
+          const errorMsg = `Max retries (${retryPolicy.maxRetries}) reached\n\nSession: ${this.config.sessionId}\nIteration: ${this.iterationCount}${outputContent ? `\n\nOutput: ${outputContent}` : ''}`
+          await this.recordTaskFailure(task, errorMsg)
+
+          if (this.onTaskFailed) {
+            await this.onTaskFailed(taskContext, errorMsg)
+          }
+
+          if (this.debugger) {
+            await this.debugger.onEvent({
+              type: 'POST_TASK',
+              taskId: task.id,
+              iteration: this.iterationCount,
+              timestamp: Date.now(),
+              data: { success: false, error: errorMsg, workerId }
+            })
+          }
+
+          this.tasksFailed++
+          this.retryCount.delete(task.id)
+          this.lastErrors.delete(task.id)
+          this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
+
+          // Create checkpoint after task failure if enabled
+          if (this.checkpointIntegrator) {
+            await this.checkpointIntegrator.checkpoint({
+              taskId: task.id,
+              iteration: this.iterationCount,
+              context: {
+                tasksCompleted: this.tasksCompleted,
+                tasksFailed: this.tasksFailed,
+                status: 'failed-max-retries',
+                workerId,
+              },
+              memory: {
+                lastFailedTask: task.id,
+              },
+            })
+          }
+
+          this.logger.error(`${prefix} Task ${task.id} failed after ${retryPolicy.maxRetries} attempts`)
+          return { workerId, taskId: task.id, success: false, error: errorMsg, duration }
+        }
+
+        // Check if we have budget for a retry
+        const hasBudget = this.config.retryBudget?.enabled !== false && this.retryBudget.hasBudget()
+
+        if (!hasBudget && this.config.retryBudget?.enabled !== false) {
+          const budgetConfig = this.retryBudget.getConfig()
+          this.logger.error(`${prefix} Retry budget exhausted (${budgetConfig.maxRetries} per ${budgetConfig.windowMs / 3600000}h). Cannot retry task ${task.id}.`)
+
+          // Treat as final failure since we can't retry
+          const errorMsg = `Retry budget exhausted${outputContent ? `\n\nOutput: ${outputContent}` : ''}`
+          await this.recordTaskFailure(task, errorMsg)
+
+          if (this.onTaskFailed) {
+            await this.onTaskFailed(taskContext, errorMsg)
+          }
+
+          if (this.debugger) {
+            await this.debugger.onEvent({
+              type: 'POST_TASK',
+              taskId: task.id,
+              iteration: this.iterationCount,
+              timestamp: Date.now(),
+              data: { success: false, error: errorMsg, workerId }
+            })
+          }
+
+          this.tasksFailed++
+          this.retryCount.delete(task.id)
+          this.lastErrors.delete(task.id)
+          this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
+
+          // Create checkpoint after task failure if enabled
+          if (this.checkpointIntegrator) {
+            await this.checkpointIntegrator.checkpoint({
+              taskId: task.id,
+              iteration: this.iterationCount,
+              context: {
+                tasksCompleted: this.tasksCompleted,
+                tasksFailed: this.tasksFailed,
+                status: 'failed-budget-exhausted',
+                workerId,
+              },
+              memory: {
+                lastFailedTask: task.id,
+              },
+            })
+          }
+
+          return { workerId, taskId: task.id, success: false, error: errorMsg, duration }
+        }
+
+        // Consume budget
+        if (this.config.retryBudget?.enabled !== false) {
+          this.retryBudget.consume()
+        }
+
+        // Calculate backoff delay
+        const backoffDelay = calculateBackoff(currentRetries, retryPolicy)
+        this.logger.warn(`${prefix} Task ${task.id} failed (retryable error). Waiting ${backoffDelay}ms before retry (${currentRetries + 1}/${retryPolicy.maxRetries})`)
+
+        // Store error information for next retry attempt
+        const errorInfo = `Exit code ${exitCode}${outputContent ? `\n\nOutput excerpt:\n${outputContent}` : ''}`
+        this.lastErrors.set(task.id, errorInfo)
+
+        // Wait for backoff period
+        await new Promise(resolve => setTimeout(resolve, backoffDelay))
+
+        // Reset to pending for retry
+        this.retryCount.set(task.id, currentRetries + 1)
+        await this.backend.resetToPending(task.id)
+        this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
+        return { workerId, taskId: task.id, success: false, error: 'Task failed, scheduled for retry after backoff' }
       }
     } catch (error) {
+      if (this.debugger) {
+        await this.debugger.onEvent({
+          type: 'ERROR',
+          taskId: task.id,
+          timestamp: Date.now(),
+          error
+        })
+      }
       // Execution error - reset task to pending
       await this.backend.resetToPending(task.id).catch(() => {})
       this.logger.error(`${prefix} Execution error for ${task.id}: ${error}`)
@@ -655,5 +991,21 @@ export class ParallelRunner {
     }
 
     return false
+  }
+
+  /**
+   * Record task failure and handle auto-quarantine logic
+   */
+  private async recordTaskFailure(task: Task, errorMsg: string): Promise<void> {
+    failureState.recordFailure(task.id)
+    const failureCount = failureState.getFailureCount(task.id)
+    const threshold = this.config.quarantineThreshold ?? 3
+
+    if (failureCount >= threshold) {
+      this.logger.warn(`⚠️ Task ${task.id} has failed ${failureCount} times. Moving to quarantine (DLQ).`)
+      await this.backend.markQuarantined(task.id, `Exceeded quarantine threshold (${threshold}). Last error: ${errorMsg}`)
+    } else {
+      await this.backend.markFailed(task.id, errorMsg)
+    }
   }
 }

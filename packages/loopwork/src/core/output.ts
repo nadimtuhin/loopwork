@@ -228,7 +228,7 @@ export class Table {
    * Strip ANSI color codes to get plain text length
    */
   private stripAnsi(str: string): string {
-    // eslint-disable-next-line no-control-regex
+     
     return str.replace(/\u001b\[[0-9;]*m/g, '')
   }
 }
@@ -340,7 +340,7 @@ export class Banner {
    * Strip ANSI color codes to get plain text length
    */
   private stripAnsi(str: string): string {
-    // eslint-disable-next-line no-control-regex
+     
     return str.replace(/\u001b\[[0-9;]*m/g, '')
   }
 }
@@ -499,6 +499,8 @@ export class CompletionSummary {
   private duration: number | null = null
   private nextSteps: string[] = []
   private isTTY: boolean
+  private isDegraded: boolean = false
+  private disabledPlugins: string[] = []
 
   constructor(title: string) {
     this.title = title
@@ -508,11 +510,23 @@ export class CompletionSummary {
   /**
    * Set completion statistics
    */
-  setStats(stats: { completed?: number; failed?: number; skipped?: number }): void {
+  setStats(stats: { 
+    completed?: number; 
+    failed?: number; 
+    skipped?: number;
+    isDegraded?: boolean;
+    disabledPlugins?: string[];
+  }): void {
     this.stats = {
       completed: stats.completed ?? this.stats.completed,
       failed: stats.failed ?? this.stats.failed,
       skipped: stats.skipped ?? this.stats.skipped,
+    }
+    if (stats.isDegraded !== undefined) {
+      this.isDegraded = stats.isDegraded
+    }
+    if (stats.disabledPlugins) {
+      this.disabledPlugins = stats.disabledPlugins
     }
   }
 
@@ -588,6 +602,13 @@ export class CompletionSummary {
       lines.push(`Duration: ${this.formatDuration(this.duration)}`)
     }
 
+    if (this.isDegraded) {
+      lines.push('Status: RUNNING IN REDUCED/DEGRADED MODE')
+      if (this.disabledPlugins.length > 0) {
+        lines.push(`Disabled Plugins: ${this.disabledPlugins.join(', ')}`)
+      }
+    }
+
     // Next steps
     if (this.nextSteps.length > 0) {
       lines.push('\nNext Steps:')
@@ -635,6 +656,13 @@ export class CompletionSummary {
     // Add duration
     if (this.duration !== null) {
       banner.addRow('Duration', chalk.cyan(this.formatDuration(this.duration)))
+    }
+
+    if (this.isDegraded) {
+      banner.addRow('Status', chalk.yellow('⚡ REDUCED/DEGRADED MODE'))
+      if (this.disabledPlugins.length > 0) {
+        banner.addRow('Disabled', chalk.dim(this.disabledPlugins.join(', ')))
+      }
     }
 
     // Add next steps

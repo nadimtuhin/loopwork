@@ -37,21 +37,21 @@ export type WithCliOptions = CliExecutorConfig
  * )(defineConfig({}))
  * ```
  */
-export function withCli(options: WithCliOptions): ConfigWrapper {
+export function withCli( _options: WithCliOptions): ConfigWrapper {
   return (config: LoopworkConfig): LoopworkConfig => ({
     ...config,
     cliConfig: {
       ...config.cliConfig,
-      ...options,
+      ..._options,
       // Deep merge retry config
       retry: {
         ...config.cliConfig?.retry,
-        ...options.retry,
+        ..._options.retry,
       },
       // Deep merge cliPaths
       cliPaths: {
         ...config.cliConfig?.cliPaths,
-        ...options.cliPaths,
+        ..._options.cliPaths,
       },
     },
   })
@@ -96,14 +96,14 @@ export interface WithModelsOptions {
  * )(defineConfig({}))
  * ```
  */
-export function withModels(options: WithModelsOptions): ConfigWrapper {
+export function withModels( _options: WithModelsOptions): ConfigWrapper {
   return (config: LoopworkConfig): LoopworkConfig => ({
     ...config,
     cliConfig: {
       ...config.cliConfig,
-      models: options.models,
-      fallbackModels: options.fallbackModels ?? config.cliConfig?.fallbackModels,
-      selectionStrategy: options.strategy ?? config.cliConfig?.selectionStrategy,
+      models: _options.models,
+      fallbackModels: _options.fallbackModels ?? config.cliConfig?.fallbackModels,
+      selectionStrategy: _options.strategy ?? config.cliConfig?.selectionStrategy,
     },
   })
 }
@@ -123,14 +123,14 @@ export function withModels(options: WithModelsOptions): ConfigWrapper {
  * )(defineConfig({}))
  * ```
  */
-export function withRetry(options: RetryConfig): ConfigWrapper {
+export function withRetry( _options: RetryConfig): ConfigWrapper {
   return (config: LoopworkConfig): LoopworkConfig => ({
     ...config,
     cliConfig: {
       ...config.cliConfig,
       retry: {
         ...config.cliConfig?.retry,
-        ...options,
+        ..._options,
       },
     },
   })
@@ -211,8 +211,8 @@ export const ModelPresets = {
    * Claude Sonnet - balanced performance and cost
    */
   claudeSonnet: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'claude-sonnet',
-    displayName: 'sonnet',
+    name: 'claude-code-sonnet',
+    displayName: 'claude-code-sonnet',
     cli: 'claude',
     model: 'sonnet',
     timeout: 300,
@@ -224,8 +224,8 @@ export const ModelPresets = {
    * Claude Opus - highest capability
    */
   claudeOpus: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'claude-opus',
-    displayName: 'opus',
+    name: 'claude-code-opus',
+    displayName: 'claude-code-opus',
     cli: 'claude',
     model: 'opus',
     timeout: 900,
@@ -237,8 +237,8 @@ export const ModelPresets = {
    * Claude Haiku - fast and cheap
    */
   claudeHaiku: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'claude-haiku',
-    displayName: 'haiku',
+    name: 'claude-code-haiku',
+    displayName: 'claude-code-haiku',
     cli: 'claude',
     model: 'haiku',
     timeout: 120,
@@ -250,8 +250,20 @@ export const ModelPresets = {
    * Gemini Flash via OpenCode - fast
    */
   geminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-flash',
-    displayName: 'gemini-flash',
+    name: 'opencode-gemini-flash',
+    displayName: 'opencode-gemini-flash',
+    cli: 'opencode',
+    model: 'google/antigravity-gemini-3-flash',
+    timeout: 180,
+    costWeight: 15,
+    ...overrides,
+  }),
+  /**
+   * Gemini Flash via OpenCode - fast
+   */
+  opencodeGeminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    name: 'opencode-gemini-flash',
+    displayName: 'opencode-gemini-flash',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
@@ -263,10 +275,34 @@ export const ModelPresets = {
    * Gemini Pro via OpenCode - capable
    */
   geminiPro: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-pro',
-    displayName: 'gemini-pro',
+    name: 'opencode-gemini-pro-low',
+    displayName: 'opencode-gemini-pro-low',
     cli: 'opencode',
-    model: 'google/antigravity-gemini-3-pro',
+    model: 'google/antigravity-gemini-3-pro-low',
+    timeout: 600,
+    costWeight: 60,
+    ...overrides,
+  }),
+  /**
+   * Gemini Pro via OpenCode - capable
+   */
+  opencodeGeminiProHigh: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    name: 'opencode-gemini-pro-high',
+    displayName: 'opencode-gemini-pro-high',
+    cli: 'opencode',
+    model: 'google/antigravity-gemini-3-pro-high',
+    timeout: 600,
+    costWeight: 60,
+    ...overrides,
+  }),
+  /**
+   * Gemini Pro via OpenCode - capable
+   */
+  opencodeGeminiProLow: (overrides?: Partial<ModelConfig>): ModelConfig => ({
+    name: 'opencode-gemini-pro-low',
+    displayName: 'opencode-gemini-pro-low',
+    cli: 'opencode',
+    model: 'google/antigravity-gemini-3-pro-low',
     timeout: 600,
     costWeight: 60,
     ...overrides,

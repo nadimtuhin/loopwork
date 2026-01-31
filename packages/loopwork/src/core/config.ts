@@ -278,6 +278,18 @@ function validateConfig(config: Config): void {
  * Load configuration from loopwork.config.ts or loopwork.config.js
  */
 async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFileConfig> | null> {
+  // If projectRoot is actually a file path (from --config flag), use it directly
+  if (fs.existsSync(projectRoot) && fs.statSync(projectRoot).isFile()) {
+    const configPath = projectRoot
+    try {
+      const module = await import(configPath)
+      const config = module.default || module
+      return config
+    } catch (e: unknown) {
+      throw e
+    }
+  }
+
   const configPaths = [
     path.join(projectRoot, 'loopwork.config.ts'),
     path.join(projectRoot, 'loopwork.config.js'),

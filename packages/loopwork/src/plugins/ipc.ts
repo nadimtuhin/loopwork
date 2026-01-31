@@ -97,7 +97,7 @@ function emitIPC(
  * )(defineConfig({ ... }))
  * ```
  */
-export function createIPCPlugin(options: IPCPluginOptions = {}): LoopworkPlugin {
+export function createIPCPlugin( _options: IPCPluginOptions = {}): LoopworkPlugin {
   const {
     enabled = true,
     filter,
@@ -106,6 +106,7 @@ export function createIPCPlugin(options: IPCPluginOptions = {}): LoopworkPlugin 
 
   return {
     name: 'ipc-emitter',
+    classification: 'enhancement',
 
     onLoopStart(namespace) {
       if (!enabled) return

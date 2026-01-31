@@ -5,8 +5,10 @@ import chalk from 'chalk'
 import { logger } from '../core/utils'
 import { detectOrphans, OrphanProcess } from '../core/orphan-detector'
 import { OrphanKiller } from '../core/orphan-killer'
-import { LoopworkState } from '../core/loopwork-state'
+import { LoopworkState, type SessionMetadata } from '../core/loopwork-state'
 import { isProcessAlive } from '../commands/shared/process-utils'
+
+// export * from './resources' // TODO: Re-enable when resources.ts is created
 
 /**
  * Monitor for running Loopwork instances in the background
@@ -75,7 +77,7 @@ export class LoopworkMonitor {
   /**
    * Start a loop in the background
    */
-  async start(namespace: string, args: string[] = []): Promise<{ success: boolean; pid?: number; error?: string }> {
+  async start(namespace: string, args: string[] = []): Promise<{ success: boolean; pid?: number; sessionId?: string; error?: string }> {
     // Check if already running
     const running = this.getRunningProcesses()
     const existing = running.find(p => p.namespace === namespace)
@@ -83,22 +85,28 @@ export class LoopworkMonitor {
       return { success: false, error: `Namespace '${namespace}' is already running (PID: ${existing.pid})` }
     }
 
-    // Create log directory
-    const logsDir = this.loopworkState.paths.monitorLogs(namespace)
-    fs.mkdirSync(logsDir, { recursive: true })
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const logFile = path.join(logsDir, `${timestamp}.log`)
-
     // Build command args
     const fullArgs = ['--namespace', namespace, '-y', ...args]
 
-    // Spawn background process
-    const logStream = fs.openSync(logFile, 'a')
+    // Create session with unified structure
+    const nsState = this.loopworkState.withNamespace(namespace)
+
+    // We'll create the session after getting the PID
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
     // Find the real package root - either we are in it, or it's in packages/loopwork
     const currentPkgDir = path.join(this.projectRoot, 'packages/loopwork')
     const spawnCwd = fs.existsSync(currentPkgDir) ? currentPkgDir : this.projectRoot
+
+    // Create log directory using unified session structure
+    const sessionDir = nsState.paths.sessionDir(timestamp, namespace)
+    const logsDir = path.join(sessionDir, 'logs')
+    fs.mkdirSync(logsDir, { recursive: true })
+
+    const logFile = path.join(sessionDir, 'loopwork.log')
+
+    // Spawn background process
+    const logStream = fs.openSync(logFile, 'a')
 
     const child: ChildProcess = spawn('bun', ['run', 'src/index.ts', ...fullArgs], {
       cwd: spawnCwd,
@@ -114,18 +122,31 @@ export class LoopworkMonitor {
       return { success: false, error: 'Failed to spawn process' }
     }
 
-    // Save to state
+    // Create session metadata
+    const session: SessionMetadata = {
+      id: timestamp,
+      namespace,
+      mode: 'daemon',
+      pid: child.pid,
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      args: fullArgs,
+      updatedAt: new Date().toISOString(),
+    }
+    nsState.writeJson(nsState.paths.sessionFile(timestamp, namespace), session)
+
+    // Also save to monitor state for backward compatibility
     const state = this.loadState()
     state.processes.push({
       namespace,
       pid: child.pid,
-      startedAt: new Date().toISOString(),
+      startedAt: session.startedAt,
       logFile,
       args: fullArgs,
     })
     this.saveState(state)
 
-    return { success: true, pid: child.pid }
+    return { success: true, pid: child.pid, sessionId: timestamp }
   }
 
   /**
@@ -142,6 +163,9 @@ export class LoopworkMonitor {
     try {
       process.kill(proc.pid, 'SIGTERM')
 
+      // Update session status to stopped
+      this.updateLatestSessionStatus(namespace, 'stopped')
+
       // Remove from state
       state.processes = state.processes.filter(p => p.namespace !== namespace)
       this.saveState(state)
@@ -150,12 +174,24 @@ export class LoopworkMonitor {
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string }
       if (err.code === 'ESRCH') {
-        // Process already dead, clean up state
+        // Process already dead, clean up state and update session
+        this.updateLatestSessionStatus(namespace, 'stopped')
         state.processes = state.processes.filter(p => p.namespace !== namespace)
         this.saveState(state)
         return { success: true }
       }
       return { success: false, error: err.message || String(e) }
+    }
+  }
+
+  /**
+   * Update the status of the latest running session for a namespace
+   */
+  private updateLatestSessionStatus(namespace: string, status: SessionMetadata['status']): void {
+    const nsState = this.loopworkState.withNamespace(namespace)
+    const latestSession = nsState.getLatestSession(namespace)
+    if (latestSession && latestSession.status === 'running') {
+      nsState.updateSession(latestSession.id, namespace, { status })
     }
   }
 
@@ -558,7 +594,7 @@ async function main() {
         }
       }
 
-      logger.info()
+      logger.info('')
       break
     }
 

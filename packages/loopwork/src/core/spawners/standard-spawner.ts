@@ -62,7 +62,16 @@ export class StandardSpawner implements ProcessSpawner {
   }
 
   spawn(command: string, args: string[], options?: SpawnOptions): SpawnedProcess {
-    const child = spawn(command, args, {
+    let finalCommand = command
+    let finalArgs = args
+
+    // Apply nice priority if requested and not on Windows
+    if (options?.nice !== undefined && process.platform !== 'win32') {
+      finalCommand = 'nice'
+      finalArgs = ['-n', options.nice.toString(), command, ...args]
+    }
+
+    const child = spawn(finalCommand, finalArgs, {
       env: options?.env,
       cwd: options?.cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
