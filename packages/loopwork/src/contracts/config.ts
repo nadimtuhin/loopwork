@@ -111,6 +111,18 @@ export interface DynamicTasksConfig {
   autoApprove?: boolean
 }
 
+/**
+ * Feature flags for controlling system behavior
+ */
+export interface FeatureFlags {
+  /** Enable reduced functionality mode (skips non-essential plugins) */
+  reducedFunctionality?: boolean
+  /** Enable offline mode (skips plugins requiring network) */
+  offlineMode?: boolean
+  /** Custom feature flags */
+  [key: string]: boolean | undefined
+}
+
 export interface LoopworkConfig {
   // Backend
   backend: BackendConfig

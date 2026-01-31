@@ -76,6 +76,14 @@ export interface SpawnOptions {
    * Terminal rows (PTY only)
    */
   rows?: number
+
+  /**
+   * Process niceness (priority)
+   * Positive values = lower priority (background)
+   * Negative values = higher priority (requires root usually)
+   * Range: -20 to 19
+   */
+  nice?: number
 }
 
 /**

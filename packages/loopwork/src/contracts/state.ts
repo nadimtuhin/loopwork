@@ -12,6 +12,8 @@ export interface IStateManager {
   loadState(): StateSnapshot | null
   clearState(): void
   getNamespace(): string
+  getPluginState<T = unknown>(pluginName: string): T | null
+  setPluginState<T = unknown>(pluginName: string, state: T): void
 }
 
 export interface IStateManagerConstructor {

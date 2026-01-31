@@ -2,8 +2,30 @@
  * Task Types and Constants
  */
 
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed'
-export type Priority = 'high' | 'medium' | 'low'
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'quarantined'
+export type Priority = 'high' | 'medium' | 'low' | 'background'
+
+/**
+ * Task event for logging history
+ */
+export interface TaskEvent {
+  timestamp: string
+  type: string
+  message: string
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Task timestamps for tracking lifecycle
+ */
+export interface TaskTimestamps {
+  createdAt: string
+  startedAt?: string
+  completedAt?: string
+  failedAt?: string
+  resumedAt?: string
+  quarantinedAt?: string
+}
 
 /**
  * Unified task representation across all backends
@@ -18,6 +40,9 @@ export interface Task {
   parentId?: string
   dependsOn?: string[]
   metadata?: Record<string, unknown>
+  failureCount?: number
+  timestamps?: TaskTimestamps
+  events?: TaskEvent[]
 }
 
 /**
@@ -58,9 +83,11 @@ export const LABELS = {
   STATUS_PENDING: 'loopwork:pending',
   STATUS_IN_PROGRESS: 'loopwork:in-progress',
   STATUS_FAILED: 'loopwork:failed',
+  STATUS_QUARANTINED: 'loopwork:quarantined',
   PRIORITY_HIGH: 'priority:high',
   PRIORITY_MEDIUM: 'priority:medium',
   PRIORITY_LOW: 'priority:low',
+  PRIORITY_BACKGROUND: 'priority:background',
   SUB_TASK: 'loopwork:sub-task',
   BLOCKED: 'loopwork:blocked',
 } as const
@@ -69,10 +96,12 @@ export const STATUS_LABELS = [
   LABELS.STATUS_PENDING,
   LABELS.STATUS_IN_PROGRESS,
   LABELS.STATUS_FAILED,
+  LABELS.STATUS_QUARANTINED,
 ] as const
 
 export const PRIORITY_LABELS = [
   LABELS.PRIORITY_HIGH,
   LABELS.PRIORITY_MEDIUM,
   LABELS.PRIORITY_LOW,
+  LABELS.PRIORITY_BACKGROUND,
 ] as const

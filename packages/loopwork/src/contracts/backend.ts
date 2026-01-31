@@ -2,7 +2,7 @@
  * Backend Interface Contract
  */
 
-import type { Task, Priority } from './task'
+import type { Task, Priority, TaskStatus } from './task'
 import type { LoopworkPlugin } from './plugin'
 
 /**
@@ -11,10 +11,12 @@ import type { LoopworkPlugin } from './plugin'
 export interface FindTaskOptions {
   feature?: string
   priority?: Priority
+  status?: TaskStatus | TaskStatus[]
   startFrom?: string
   parentId?: string
   includeBlocked?: boolean
   topLevelOnly?: boolean
+  retryCooldown?: number
 }
 
 /**
@@ -23,6 +25,7 @@ export interface FindTaskOptions {
 export interface UpdateResult {
   success: boolean
   error?: string
+  queued?: boolean
 }
 
 /**
@@ -32,6 +35,20 @@ export interface PingResult {
   ok: boolean
   latencyMs: number
   error?: string
+}
+
+/**
+ * API quota information for rate-limited backends
+ */
+export interface ApiQuotaInfo {
+  /** Total quota limit */
+  limit: number
+  /** Remaining quota */
+  remaining: number
+  /** When the quota resets (UTC) */
+  reset: Date
+  /** Resource type (e.g., 'core', 'search', 'graphql') */
+  resource?: string
 }
 
 /**
@@ -59,6 +76,9 @@ export interface TaskBackend {
   /** List all pending tasks */
   listPendingTasks(options?: FindTaskOptions): Promise<Task[]>
 
+  /** List tasks matching criteria */
+  listTasks(options?: FindTaskOptions): Promise<Task[]>
+
   /** Count pending tasks */
   countPending(options?: FindTaskOptions): Promise<number>
 
@@ -71,8 +91,13 @@ export interface TaskBackend {
   /** Mark task as failed */
   markFailed(taskId: string, error: string): Promise<UpdateResult>
 
+  /** Mark task as quarantined */
+  markQuarantined(taskId: string, reason: string): Promise<UpdateResult>
+
   /** Reset task to pending */
   resetToPending(taskId: string): Promise<UpdateResult>
+
+  updateTask?(taskId: string, updates: Partial<Task>): Promise<UpdateResult>
 
   /** Reset all in-progress tasks to pending (for startup cleanup) */
   resetAllInProgress?(): Promise<UpdateResult>
@@ -82,6 +107,9 @@ export interface TaskBackend {
 
   /** Health check */
   ping(): Promise<PingResult>
+
+  /** Get API quota information (optional - only for API backends like GitHub) */
+  getQuotaInfo?(): Promise<ApiQuotaInfo>
 
   // Sub-task and dependency methods
 
@@ -125,10 +153,11 @@ export interface BackendPlugin extends LoopworkPlugin, TaskBackend {
  * Backend configuration
  */
 export interface BackendConfig {
-  type: 'github' | 'json'
+  type: 'github' | 'json' | 'fallback'
   repo?: string
   tasksFile?: string
   tasksDir?: string
+  flags?: Record<string, boolean>
 }
 
 /**

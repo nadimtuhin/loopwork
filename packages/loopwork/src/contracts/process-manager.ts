@@ -1,4 +1,4 @@
-import type { ChildProcess, SpawnOptions } from 'child_process'
+import type { ChildProcess } from 'child_process'
 
 /**
  * Process metadata for tracking
@@ -9,6 +9,17 @@ export interface ProcessMetadata {
   namespace: string
   taskId?: string
   startTime: number
+  /**
+   * Worker pool assignment
+   */
+  pool?: string
+  /**
+   * Resource limits for the process
+   */
+  resourceLimits?: {
+    memoryMB?: number
+    cpuUsage?: number
+  }
 }
 
 /**
@@ -39,6 +50,20 @@ export interface CleanupResult {
 }
 
 /**
+ * Options for spawning a process
+ */
+export interface ISpawnOptions {
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+  /**
+   * Process niceness (priority)
+   * Positive values = lower priority (background)
+   * Range: -20 to 19
+   */
+  nice?: number
+}
+
+/**
  * Process manager interface for dependency inversion
  * Manages child process lifecycle, tracking, and cleanup
  */
@@ -46,7 +71,7 @@ export interface IProcessManager {
   /**
    * Spawn a child process and track it
    */
-  spawn(command: string, args: string[], options?: SpawnOptions): ChildProcess
+  spawn(command: string, args: string[], options?: ISpawnOptions): ChildProcess
 
   /**
    * Kill a tracked process

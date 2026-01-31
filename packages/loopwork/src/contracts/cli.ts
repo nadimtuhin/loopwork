@@ -82,6 +82,15 @@ export interface ModelConfig {
    * Default: true
    */
   enabled?: boolean
+
+  /**
+   * Model parameters
+   */
+  temperature?: number
+  maxTokens?: number
+  topP?: number
+  topK?: number
+  stopSequences?: string[]
 }
 
 /**

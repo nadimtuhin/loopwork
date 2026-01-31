@@ -126,4 +126,5 @@ export interface DecomposeJsonOutput {
     topLevel: number
     subtasks: number
   }
+  dryRun?: boolean
 }
