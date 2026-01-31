@@ -15,11 +15,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { render, Box, Text, useApp, useInput } from 'ink'
+import { ProgressBar as InkProgressBar } from '../components/ProgressBar'
 import type { LoopworkPlugin, PluginTask } from './loopwork-config-types'
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface TaskEvent {
   id: string
@@ -33,6 +30,7 @@ interface TaskEvent {
 interface DashboardState {
   namespace: string
   currentTask: PluginTask | null
+  pendingTasks: unknown[]
   taskStartTime: number | null
   completed: number
   failed: number
@@ -42,10 +40,10 @@ interface DashboardState {
   isRunning: boolean
 }
 
-// Global state for plugin communication
 let dashboardState: DashboardState = {
   namespace: 'default',
   currentTask: null,
+  pendingTasks: [],
   taskStartTime: null,
   completed: 0,
   failed: 0,
@@ -69,10 +67,6 @@ function subscribe(fn: (state: DashboardState) => void) {
   }
 }
 
-// ============================================================================
-// Components
-// ============================================================================
-
 function Header({ namespace }: { namespace: string }) {
   return (
     <Box borderStyle="round" borderColor="cyan" paddingX={1}>
@@ -82,19 +76,6 @@ function Header({ namespace }: { namespace: string }) {
       <Text color="gray"> | </Text>
       <Text color="yellow">namespace: {namespace}</Text>
     </Box>
-  )
-}
-
-function ProgressBar({ percent, width = 30 }: { percent: number; width?: number }) {
-  const filled = Math.round((percent / 100) * width)
-  const empty = width - filled
-  const bar = '█'.repeat(filled) + '░'.repeat(empty)
-  const color = percent === 100 ? 'green' : percent > 50 ? 'yellow' : 'cyan'
-
-  return (
-    <Text color={color}>
-      [{bar}] {percent.toFixed(0)}%
-    </Text>
   )
 }
 
@@ -136,9 +117,30 @@ function CurrentTask({ task, startTime }: { task: PluginTask | null; startTime: 
   )
 }
 
-function Stats({ completed, failed, total }: { completed: number; failed: number; total: number }) {
-  const percent = total > 0 ? ((completed + failed) / total) * 100 : 0
+function PendingTasks({ tasks, total }: { tasks: unknown[]; total: number }) {
+  if (total === 0) return null
 
+  return (
+    <Box flexDirection="column" marginY={1}>
+      <Text bold color="white">Next Up:</Text>
+      {tasks.length > 0 ? (
+        // Render detailed list if available
+        <Box flexDirection="column">
+          {tasks.slice(0, 3).map((t: any, i) => (
+            <Text key={i} color="gray">  ○ {t.id}: {t.title}</Text>
+          ))}
+          {tasks.length > 3 && <Text color="gray">  ... and {tasks.length - 3} more</Text>}
+        </Box>
+      ) : (
+        <Text color="gray">  {total} tasks pending</Text>
+      )}
+    </Box>
+  )
+}
+
+function Stats({ completed, failed, total }: { completed: number; failed: number; total: number }) {
+  const pending = total - completed - failed
+  
   return (
     <Box flexDirection="column" marginY={1}>
       <Box>
@@ -146,10 +148,12 @@ function Stats({ completed, failed, total }: { completed: number; failed: number
         <Text color="gray"> | </Text>
         <Text color="red">✗ {failed}</Text>
         <Text color="gray"> | </Text>
+        <Text color="blue">○ {pending}</Text>
+        <Text color="gray"> | </Text>
         <Text>Total: {total}</Text>
       </Box>
       <Box marginTop={1}>
-        <ProgressBar percent={percent} />
+        <InkProgressBar current={completed + failed} total={total} width={30} />
       </Box>
     </Box>
   )
@@ -222,11 +226,13 @@ function Dashboard() {
     if (input === 'q' || input === 'Q') {
       exit()
     }
-    // Handle Ctrl+C
     if (key.ctrl && input === 'c') {
       exit()
     }
   })
+
+  // Calculate pending from total and completed/failed if pendingTasks is empty
+  const pendingCount = state.total - state.completed - state.failed
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -240,16 +246,14 @@ function Dashboard() {
 
       <Stats completed={state.completed} failed={state.failed} total={state.total} />
 
+      <PendingTasks tasks={state.pendingTasks} total={pendingCount} />
+
       <RecentEvents events={state.recentEvents} />
 
       <Footer />
     </Box>
   )
 }
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -265,10 +269,6 @@ function formatTimestamp(date: Date): string {
   return date.toLocaleTimeString('en-US', { hour12: false })
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
 /**
  * Render the dashboard (standalone mode)
  * Returns a Promise that resolves when the dashboard is closed
@@ -277,7 +277,6 @@ export function renderDashboard(): Promise<void> {
   return new Promise((resolve) => {
     const { unmount, waitUntilExit } = render(<Dashboard />)
 
-    // Wait for the app to exit (when user presses 'q')
     waitUntilExit().then(() => {
       unmount()
       resolve()
@@ -322,7 +321,6 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
 
     onTaskComplete(task, result) {
       const events = [...dashboardState.recentEvents]
-      // Update the started event to completed
       const idx = events.findIndex((e) => e.id === task.id && e.status === 'started')
       if (idx >= 0) {
         events[idx] = {
@@ -385,10 +383,6 @@ export function getDashboardState(): DashboardState {
 
 /**
  * Start Ink TUI with dynamic data sources
- *
- * This is an enhanced version that accepts callbacks for fetching state,
- * running loops, and namespaces. Useful for integrating with external
- * monitoring systems.
  */
 export async function startInkTui(options: {
   port?: number
@@ -419,7 +413,6 @@ export async function startInkTui(options: {
   }>>
   getNamespaces?: () => Promise<string[]>
 }): Promise<void> {
-  // If data callbacks provided, populate state from them
   if (options.getState) {
     const state = await options.getState()
     updateState({
@@ -429,6 +422,7 @@ export async function startInkTui(options: {
         status: 'pending',
         priority: 'medium',
       } : null,
+      pendingTasks: state.pendingTasks,
       completed: state.stats.completed,
       failed: state.stats.failed,
       total: state.stats.total,
@@ -446,7 +440,6 @@ export async function startInkTui(options: {
     }
   }
 
-  // If watch mode, set up periodic updates
   let interval: NodeJS.Timeout | undefined
   if (options.watch && options.getState) {
     interval = setInterval(async () => {
@@ -458,6 +451,7 @@ export async function startInkTui(options: {
           status: 'pending',
           priority: 'medium',
         } : null,
+        pendingTasks: state.pendingTasks,
         completed: state.stats.completed,
         failed: state.stats.failed,
         total: state.stats.total,
@@ -469,18 +463,15 @@ export async function startInkTui(options: {
     }, 1000)
   }
 
-  // Clean up on Ctrl+C
   const handleSigInt = () => {
     if (interval) clearInterval(interval)
     process.exit(0)
   }
   process.on('SIGINT', handleSigInt)
 
-  // Render the dashboard and wait for it to exit
   try {
     await renderDashboard()
   } finally {
-    // Clean up interval and signal handler when dashboard exits
     if (interval) clearInterval(interval)
     process.off('SIGINT', handleSigInt)
   }
