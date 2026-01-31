@@ -8,6 +8,10 @@ export interface ControlApiAuthConfig {
     secret: string
     issuer?: string
     audience?: string
+    /** Expiration time in seconds (default: 3600) */
+    expiresIn?: number
+    /** Refresh token secret (optional) */
+    refreshSecret?: string
   }
   /** Default rate limit configuration */
   rateLimit?: {

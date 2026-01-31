@@ -3,7 +3,9 @@ import { cors } from 'hono/cors'
 import { logger } from '@loopwork-ai/loopwork'
 import { authMiddleware } from './middleware/auth'
 import { rateLimitMiddleware } from './middleware/rate-limit'
-import type { TaskBackend, FindTaskOptions } from '@loopwork-ai/loopwork/contracts'
+import { auditMiddleware } from './middleware/audit'
+import { sign, verify } from 'hono/jwt'
+import { TaskBackend, FindTaskOptions } from '@loopwork-ai/loopwork/contracts'
 import type { ControlApiContext, HonoEnv } from './types'
 
 export class ControlServer {
@@ -27,17 +29,7 @@ export class ControlServer {
     this.app.use('/*', cors())
     this.app.use('/*', authMiddleware(this.context.config?.auth))
     this.app.use('/*', rateLimitMiddleware())
-    this.app.use('/*', async (c, next) => {
-      const identity = c.get('identity')
-      if (identity) {
-        const method = c.req.method
-        const path = c.req.path
-        const id = identity.id
-        const type = identity.type
-        logger.info(`[AUDIT] ${id} (${type}) - ${method} ${path}`)
-      }
-      await next()
-    })
+    this.app.use('/*', auditMiddleware())
   }
 
   private setupRoutes() {
@@ -51,6 +43,35 @@ export class ControlServer {
 
     this.app.post('/loop/stop', async (c) => {
       return c.json({ message: 'Loop stop triggered' })
+    })
+
+    this.app.post('/auth/refresh', async (c) => {
+      let body
+      try {
+        body = await c.req.json()
+      } catch (e) {
+        return c.json({ error: 'Invalid JSON body' }, 400)
+      }
+      
+      const { refreshToken } = body
+      const config = this.context.config?.auth?.jwt
+      if (!config?.refreshSecret) {
+        return c.json({ error: 'Refresh tokens not configured' }, 400)
+      }
+
+      try {
+        const payload = await verify(refreshToken, config.refreshSecret, 'HS256')
+        const newToken = await sign({
+          sub: payload.sub,
+          name: payload.name,
+          exp: Math.floor(Date.now() / 1000) + (config.expiresIn || 3600)
+        }, config.secret, 'HS256')
+
+        return c.json({ token: newToken })
+      } catch (e: any) {
+        logger.error(`[AUTH] Refresh failed: ${e.message}`)
+        return c.json({ error: 'Invalid refresh token' }, 401)
+      }
     })
 
     this.app.get('/tasks', async (c) => {

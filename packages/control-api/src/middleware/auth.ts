@@ -3,7 +3,7 @@ import { verify } from 'hono/jwt'
 import type { ControlApiAuthConfig } from '../types'
 
 export const authMiddleware = (config?: ControlApiAuthConfig) => createMiddleware(async (c, next) => {
-  if (!config) {
+  if (!config || c.req.path === '/auth/refresh' || c.req.path === '/health') {
     return await next()
   }
 

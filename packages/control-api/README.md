@@ -21,10 +21,42 @@ export default compose(
     port: 3333,
     enabled: true,
     auth: {
-      apiKeys: [{ key: 'my-secret-key', name: 'Admin' }]
+      apiKeys: [{ key: 'my-secret-key', name: 'Admin' }],
+      jwt: {
+        secret: 'your-jwt-secret',
+        refreshSecret: 'your-refresh-secret', // Optional, for /auth/refresh
+        expiresIn: 3600 // Optional, default 1 hour
+      }
     }
   })
 )(defineConfig({ ... }))
+```
+
+## Authentication
+
+The Control API supports two authentication methods:
+
+1. **API Key**: Pass the key in the `X-API-Key` header.
+2. **JWT**: Pass a valid Bearer token in the `Authorization` header.
+
+### JWT Token Refresh
+
+**POST /auth/refresh**
+
+Exchange a valid refresh token for a new access token.
+
+**Request:**
+```json
+{
+  "refreshToken": "..."
+}
+```
+
+**Response:**
+```json
+{
+  "token": "..."
+}
 ```
 
 ## API Endpoints
