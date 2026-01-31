@@ -25,7 +25,8 @@ export interface DashboardOptions {
  * Use --watch for auto-refreshing TUI mode.
  */
 export async function dashboard(
-  options: DashboardOptions = {}
+  options: DashboardOptions = {},
+  deps: { DashboardClass?: typeof Dashboard } = {}
 ): Promise<void> {
   try {
     // Web mode: Launch browser-based dashboard
@@ -50,10 +51,34 @@ export async function dashboard(
     }
 
     // TUI mode (default): Terminal-based Ink dashboard
+    const projectRoot = process.cwd()
+    const DashboardClass = deps.DashboardClass || Dashboard
+    const legacyDash = new DashboardClass(projectRoot)
+
+    // Check for TTY support before trying Ink
+    const isRawModeSupported = process.stdin.isTTY
+
+    // If no TTY, use the legacy chalk-based dashboard instead
+    if (!isRawModeSupported) {
+      console.log('Running in non-interactive mode - using simple status display\n')
+
+      // Display one-time status and exit
+      // Default to interactive mode when watch is undefined or true
+      const watchMode = options.watch ?? true
+      if (watchMode) {
+        await legacyDash.interactive()
+      } else {
+        legacyDash.display()
+      }
+
+      // Show a simple message and exit
+      console.log('\nFor interactive TUI, run in a proper terminal:')
+      console.log('  loopwork dashboard')
+      return
+    }
+
     try {
-      const projectRoot = process.cwd()
       const monitor = new LoopworkMonitor(projectRoot)
-      const legacyDash = new Dashboard(projectRoot)
 
       // Launch Ink TUI dashboard with data callbacks
       await startInkTui({

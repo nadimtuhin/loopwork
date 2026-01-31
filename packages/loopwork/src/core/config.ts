@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import path from 'path'
 import fs from 'fs'
-import type { LoopworkConfig, ParallelFailureMode } from '../contracts'
+import type { LoopworkConfig, ParallelFailureMode, LogLevel, FeatureFlags } from '../contracts'
 import { DEFAULT_CONFIG } from '../contracts'
 import type { BackendConfig } from '../contracts/backend'
 import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
@@ -66,6 +66,8 @@ export interface Config extends LoopworkConfig {
   namespace: string // For running multiple loops concurrently
   parallel: number // Number of parallel workers (1 = sequential)
   parallelFailureMode: ParallelFailureMode
+  logLevel: LogLevel
+  flags?: FeatureFlags
 }
 
 /**
@@ -76,6 +78,59 @@ function hasStringProperty<K extends string>(
   key: K
 ): obj is Record<K, string | undefined> {
   return typeof obj === 'object' && obj !== null && key in obj
+}
+
+export interface JsonBackendConfig extends BackendConfig {
+  type: 'json'
+  tasksFile: string
+  tasksDir?: string
+}
+
+export interface GithubBackendConfig extends BackendConfig {
+  type: 'github'
+}
+
+export function isBackendConfig(config: unknown): config is BackendConfig {
+  return typeof config === 'object' && 
+         config !== null && 
+         'type' in config && 
+         ['json', 'github', 'fallback'].includes((config as any).type)
+}
+
+export function isJsonBackendConfig(config: unknown): config is JsonBackendConfig {
+  return isBackendConfig(config) && 
+         config.type === 'json' && 
+         typeof (config as any).tasksFile === 'string'
+}
+
+export function isGithubBackendConfig(config: unknown): config is GithubBackendConfig {
+  return isBackendConfig(config) && 
+         config.type === 'github'
+}
+
+export function validateBackendConfig(config: unknown): void {
+  if (!isBackendConfig(config)) {
+    throw new LoopworkError(
+      'ERR_CONFIG_INVALID',
+      'Invalid backend configuration',
+      [
+        'Backend configuration must be an object with a "type" property',
+        'Supported types: "json", "github"',
+        'Example: backend: { type: "json", tasksFile: "..." }'
+      ]
+    )
+  }
+
+  if (config.type === 'json' && !isJsonBackendConfig(config)) {
+    throw new LoopworkError(
+      'ERR_CONFIG_INVALID',
+      'Invalid JSON backend configuration',
+      [
+        'JSON backend requires a "tasksFile" property (string)',
+        'Example: backend: { type: "json", tasksFile: ".specs/tasks/tasks.json" }'
+      ]
+    )
+  }
 }
 
 /**
@@ -125,7 +180,7 @@ function validateEnvironmentVariables(): void {
  */
 function validateConfig(config: Config): void {
   const supportedClis = ['opencode', 'claude', 'gemini']
-  if (!supportedClis.includes(config.cli)) {
+  if (!config.cli || !supportedClis.includes(config.cli)) {
     throw new LoopworkError(
       'ERR_CONFIG_INVALID',
       `Invalid CLI: "${config.cli}"`,
@@ -137,7 +192,7 @@ function validateConfig(config: Config): void {
     )
   }
 
-  if (isNaN(config.maxIterations) || config.maxIterations <= 0) {
+  if (config.maxIterations === undefined || isNaN(config.maxIterations) || config.maxIterations <= 0) {
     throw new LoopworkError(
       'ERR_CONFIG_INVALID',
       `Invalid maxIterations: ${config.maxIterations}`,
@@ -149,7 +204,7 @@ function validateConfig(config: Config): void {
     )
   }
 
-  if (isNaN(config.timeout) || config.timeout <= 0) {
+  if (config.timeout === undefined || isNaN(config.timeout) || config.timeout <= 0) {
     throw new LoopworkError(
       'ERR_CONFIG_INVALID',
       `Invalid timeout: ${config.timeout}`,
@@ -220,8 +275,11 @@ function validateConfig(config: Config): void {
   }
 
   // Validate backend-specific config
-  if (config.backend.type === 'json') {
-    const tasksFile = config.backend.tasksFile
+  validateBackendConfig(config.backend)
+
+  if (isJsonBackendConfig(config.backend)) {
+    const backend = config.backend
+    const tasksFile = backend.tasksFile as string
     const tasksDir = path.dirname(tasksFile)
 
     // Check if tasks file exists or parent directory is writable
@@ -255,7 +313,7 @@ function validateConfig(config: Config): void {
         )
       }
     }
-  } else if (config.backend.type === 'github') {
+  } else if (isGithubBackendConfig(config.backend)) {
     const repo = config.backend.repo
     if (repo) {
       const repoPattern = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/
@@ -371,6 +429,50 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
   return null
 }
 
+export function getTasksFile(config: unknown): string | null {
+  if (typeof config === 'object' && config !== null) {
+    const anyConfig = config as any
+    if (anyConfig.backend && isJsonBackendConfig(anyConfig.backend)) {
+      return anyConfig.backend.tasksFile
+    }
+    if (isJsonBackendConfig(config)) {
+      return config.tasksFile
+    }
+  }
+  return null
+}
+
+export function getTasksDir(config: unknown): string | null {
+  if (typeof config === 'object' && config !== null) {
+    const anyConfig = config as any
+    if (anyConfig.backend && isJsonBackendConfig(anyConfig.backend)) {
+      return anyConfig.backend.tasksDir ?? null
+    }
+    if (isJsonBackendConfig(config)) {
+      return config.tasksDir ?? null
+    }
+  }
+  return null
+}
+
+export function isFeatureEnabled(config: unknown, feature: string): boolean {
+  if (typeof config !== 'object' || config === null) return false
+
+  const anyConfig = config as any
+  
+  const flags = anyConfig.flags || (anyConfig.config && anyConfig.config.flags)
+  if (flags && typeof flags === 'object' && flags[feature] === true) {
+    return true
+  }
+
+  const backendFlags = anyConfig.backend?.flags
+  if (backendFlags && typeof backendFlags === 'object' && backendFlags[feature] === true) {
+    return true
+  }
+
+  return false
+}
+
 export async function getConfig(cliOptions?: Partial<Config> & { config?: string, yes?: boolean, task?: string }): Promise<Config> {
   // Validate environment variables first
   validateEnvironmentVariables()
@@ -402,15 +504,15 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       .parse(process.argv)
 
     return program.opts()
-  })()
+  })() as Record<string, any>
 
-  const options: Record<string, unknown> = {
+  const options: any = {
     ...rawOptions,
     yes: rawOptions.yes ?? rawOptions.autoConfirm,
     task: rawOptions.task ?? rawOptions.startTask,
     backend: typeof rawOptions.backend === 'string' ? rawOptions.backend : rawOptions.backend?.type,
-    tasksFile: rawOptions.tasksFile || (hasStringProperty(rawOptions.backend, 'tasksFile') ? rawOptions.backend.tasksFile : undefined),
-    repo: rawOptions.repo || (hasStringProperty(rawOptions.backend, 'repo') ? rawOptions.backend.repo : undefined),
+    tasksFile: (rawOptions.tasksFile as string | undefined) || (hasStringProperty(rawOptions.backend, 'tasksFile') ? rawOptions.backend.tasksFile : undefined),
+    repo: (rawOptions.repo as string | undefined) || (hasStringProperty(rawOptions.backend, 'repo') ? rawOptions.backend.repo : undefined),
   }
 
   // Find project root
@@ -522,7 +624,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       : (fileConfig?.parallel ?? 1))
 
   // Determine log level: CLI flags > debug flag > file config > default
-  let logLevel: import('../contracts/config').LogLevel = fileConfig?.logLevel || DEFAULT_CONFIG.logLevel || 'info'
+  let logLevel: LogLevel = (fileConfig?.logLevel || DEFAULT_CONFIG.logLevel || 'info') as LogLevel
 
   // Check CLI flags for verbosity overrides
   const cliVerbosity = parseVerbosityLevel(process.argv)
@@ -603,13 +705,14 @@ let subagentRegistry: IAgentRegistry | null = null
 export function getSubagentRegistry(config: LoopworkConfig): IAgentRegistry {
   if (!subagentRegistry) {
     subagentRegistry = createRegistry()
-    if (config.subagents) {
-      for (const agent of config.subagents) {
+    const configAny = config as any
+    if (configAny.subagents) {
+      for (const agent of configAny.subagents) {
         subagentRegistry.register(agent)
       }
     }
-    if (config.defaultSubagent) {
-      subagentRegistry.setDefault(config.defaultSubagent)
+    if (configAny.defaultSubagent) {
+      subagentRegistry.setDefault(configAny.defaultSubagent)
     }
   }
   return subagentRegistry

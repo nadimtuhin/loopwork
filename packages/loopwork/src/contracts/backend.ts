@@ -150,15 +150,85 @@ export interface BackendPlugin extends LoopworkPlugin, TaskBackend {
 }
 
 /**
- * Backend configuration
+ * Configuration for the JSON backend.
  */
-export interface BackendConfig {
-  type: 'github' | 'json' | 'fallback'
-  repo?: string
-  tasksFile?: string
+export interface JsonBackendConfig {
+  type: 'json'
+  /** 
+   * Path to the JSON file where tasks are stored.
+   * Required for JSON backend.
+   */
+  tasksFile: string
+  /** 
+   * Directory where task PRD markdown files are located.
+   */
   tasksDir?: string
+  /** 
+   * Optional feature flags to toggle backend-specific behaviors.
+   */
   flags?: Record<string, boolean>
 }
+
+/**
+ * Configuration for the GitHub backend.
+ */
+export interface GithubBackendConfig {
+  type: 'github'
+  /** 
+   * The GitHub repository identifier in 'owner/repo' format.
+   * Required for GitHub backend.
+   */
+  repo: string
+  /** 
+   * Optional feature flags to toggle backend-specific behaviors.
+   */
+  flags?: Record<string, boolean>
+}
+
+/**
+ * Configuration for the Fallback (no-op) backend.
+ */
+export interface FallbackBackendConfig {
+  type: 'fallback'
+  flags?: Record<string, boolean>
+}
+
+/**
+ * Configuration for task backends.
+ * 
+ * This is a discriminated union that supports different backend types:
+ * - 'json': Local JSON file storage (best for local development)
+ * - 'github': GitHub Issues (best for team collaboration)
+ * - 'fallback': No-op backend for testing
+ * 
+ * @example
+ * // JSON Backend configuration
+ * const jsonConfig: BackendConfig = {
+ *   type: 'json',
+ *   tasksFile: '.specs/tasks/tasks.json',
+ *   tasksDir: '.specs/tasks'
+ * };
+ * 
+ * @example
+ * // GitHub Backend configuration
+ * const githubConfig: BackendConfig = {
+ *   type: 'github',
+ *   repo: 'owner/repo',
+ *   flags: { useLabels: true }
+ * };
+ */
+export type BackendConfig = 
+  | JsonBackendConfig 
+  | GithubBackendConfig 
+  | FallbackBackendConfig
+  | {
+      // Loose type for backward compatibility and other backends
+      type: string
+      repo?: string
+      tasksFile?: string
+      tasksDir?: string
+      flags?: Record<string, boolean>
+    }
 
 /**
  * Factory function type for creating backends
