@@ -1,0 +1,38 @@
+{
+  "name": "@loopwork-ai/control-api",
+  "version": "0.1.0",
+  "description": "REST API control plugin for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*",
+    "tsup": "^8.0.0"
+  },
+  "keywords": [
+    "loopwork",
+    "api",
+    "plugin",
+    "control",
+    "rest"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git",
+    "directory": "packages/control-api"
+  }
+}
