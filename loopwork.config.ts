@@ -1,233 +1,226 @@
 /**
- * Development Configuration for Loopwork Monorepo
+ * SIMPLE Loopwork Configuration
  *
- * This file uses production-style imports (matching what `init` generates)
- * The workspace resolver handles mapping 'loopwork' to the local package
+ * This is a clean, minimal config with working OpenCode models.
+ *
+ * 📚 Documentation:
+ * - OpenCode models: opencode-models-reference.md
+ * - Documentation plugins: documentation-plugins-examples.md
+ * - All plugins reference: loopwork.config.old.ts (comprehensive examples)
  */
 import {
   defineConfig,
   compose,
   withPlugin,
   withJSONBackend,
-  withGitHubBackend,
   withCli,
-  withModels,
-  withRetry,
   withGitAutoCommit,
+  withSmartTestTasks,
+  withTaskRecovery,
   ModelPresets,
-  RetryPresets,
+  createModel,
 } from "@loopwork-ai/loopwork";
-import { withTelegram } from "@loopwork-ai/telegram";
 import { withCostTracking } from "@loopwork-ai/cost-tracking";
-import { withAsana } from "@loopwork-ai/asana";
-import { withEverhour } from "@loopwork-ai/everhour";
-import { withTodoist } from "@loopwork-ai/todoist";
-import { withDiscord } from "@loopwork-ai/discord";
-
-/**
- * Loopwork Configuration
- *
- * This file configures the Loopwork task runner.
- * Similar to next.config.js, you can use plugin wrappers to add functionality.
- *
- * Backends are now plugins:
- * - withJSONBackend({ tasksFile: 'tasks.json' })
- * - withGitHubBackend({ repo: 'owner/repo' })
- */
-
-// =============================================================================
-// Full Example with All Plugins
-// =============================================================================
 
 export default compose(
-  // Backend plugin (choose one)
+  // Choose your backend
   withJSONBackend({ tasksFile: ".specs/tasks/tasks.json" }),
-  // withGitHubBackend({ repo: 'owner/repo' }),
 
-  // CLI configuration with custom model pools
+  // Cost-Aware Mode: Free models first, then paid models
   withCli({
     models: [
-      ModelPresets.claudeHaiku({ timeout: 300 }),  // Fast fallback
-      ModelPresets.geminiFlash({ timeout: 300 }), // Primary: balanced
-      ModelPresets.opencodeGeminiProLow({ timeout: 300 }),  // Fast fallback
-      ModelPresets.claudeSonnet({ timeout: 300 }), // Primary: balanced
-      ModelPresets.opencodeGeminiProHigh({ timeout: 300 }),  // Fast fallback
+      // === FREE TIER MODELS (costWeight: 5) - Used First ===
+      // Best for reasoning
+      // createModel({ name: "deepseek-r1", cli: "opencode", model: "openrouter/deepseek/deepseek-r1:free", timeout: 600, costWeight: 5 }),
+
+      // Best for coding
+      // createModel({ name: "qwen3-coder", cli: "opencode", model: "openrouter/qwen/qwen3-coder:free", timeout: 300, costWeight: 5 }),
+
+      // Best balanced free model
+      // createModel({ name: "llama-3.3-70b", cli: "opencode", model: "openrouter/meta-llama/llama-3.3-70b-instruct:free", timeout: 600, costWeight: 5 }),
+
+      // Good for general tasks
+      // createModel({ name: "gemma-3-27b", cli: "opencode", model: "openrouter/google/gemma-3-27b-it:free", timeout: 300, costWeight: 5 }),
+
+      // Additional free models
+      // createModel({ name: "mistral-7b", cli: "opencode", model: "openrouter/mistralai/mistral-7b-instruct:free", timeout: 180, costWeight: 5 }),
+      // createModel({ name: "devstral-2512", cli: "opencode", model: "openrouter/mistralai/devstral-2512:free", timeout: 600, costWeight: 5 }),
+      createModel({
+        name: "glm-4.7-free",
+        cli: "opencode",
+        model: "opencode/glm-4.7-free",
+        timeout: 600,
+        costWeight: 5,
+      }),
+      createModel({
+        name: "kimi-k2.5-free",
+        cli: "opencode",
+        model: "opencode/kimi-k2.5-free",
+        timeout: 600,
+        costWeight: 5,
+      }),
+      createModel({
+        name: "minimax-m2.1-free",
+        cli: "opencode",
+        model: "opencode/minimax-m2.1-free",
+        timeout: 600,
+        costWeight: 5,
+      }),
+      // Zhipu AI Coding Plan Models (ZAI) - Specialized for coding
+      createModel({
+        name: "glm-4.7-flash",
+        cli: "opencode",
+        model: "zai-coding-plan/glm-4.7-flash",
+        timeout: 300,
+        costWeight: 12,
+      }),
+      createModel({
+        name: "glm-4.7",
+        cli: "opencode",
+        model: "zai-coding-plan/glm-4.7",
+        timeout: 600,
+        costWeight: 22,
+      }),
+      // === PAID MODELS (costWeight: 10-30) - Used After Free ===
+      // Fast & cheap
+      // ModelPresets.claudeHaiku({ timeout: 300, costWeight: 10 }),
+      ModelPresets.geminiFlash({ timeout: 300, costWeight: 15 }),
+
+      // Minimax Coding Plan Models - Specialized for coding
+      createModel({
+        name: "minimax-m2.1-code",
+        cli: "opencode",
+        model: "minimax-coding-plan/MiniMax-M2.1",
+        timeout: 600,
+        costWeight: 20,
+      }),
+
+      // Other Chinese AI Models
+      createModel({
+        name: "kimi-k2.5",
+        cli: "opencode",
+        model: "opencode/kimi-k2.5",
+        timeout: 600,
+        costWeight: 22,
+      }),
+
+      // Cerebras Models - Fast and cheap (limited tokens)
+      createModel({
+        name: "cerebras-qwen-3",
+        cli: "opencode",
+        model: "cerebras/qwen-3-235b-a22b-instruct-2507",
+        timeout: 120,
+        costWeight: 12,
+      }),
+      createModel({
+        name: "cerebras-glm-4.7",
+        cli: "opencode",
+        model: "cerebras/zai-glm-4.7",
+        timeout: 120,
+        costWeight: 12,
+      }),
+
+      // Balanced
+      ModelPresets.opencodeGeminiProLow({ timeout: 300, costWeight: 25 }),
+      // ModelPresets.claudeSonnet({ timeout: 300, costWeight: 30 }),
+
+      // Uncomment for more premium models:
+      // createModel({ name: "antigravity-gemini-3-flash", cli: "opencode", model: "google/antigravity-gemini-3-flash", timeout: 180, costWeight: 15 }),
+      // createModel({ name: "antigravity-claude-sonnet-4-5", cli: "opencode", model: "google/antigravity-claude-sonnet-4-5", timeout: 300, costWeight: 30 }),
     ],
     fallbackModels: [
-      // ModelPresets.claudeOpus({ timeout: 900 }),   // Heavy tasks
-      ModelPresets.opencodeGeminiProHigh({ timeout: 900 }),  // Fast fallback
+      // Premium models for complex tasks
+      // ModelPresets.claudeHaiku({ timeout: 300, costWeight: 10 }),
+      ModelPresets.geminiFlash({ timeout: 300, costWeight: 15 }),
+      ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
+      // createModel({ name: "claude-opus", cli: "claude", model: "opus", timeout: 900, costWeight: 100 }),
     ],
-    selectionStrategy: "round-robin",
-    orphanWatch: {
-      enabled: true,          // Enable automatic monitoring
-      interval: 60000,        // Check every 60 seconds
-      maxAge: 1800000,        // Kill orphans older than 30 minutes
-      autoKill: true,         // Automatically kill confirmed orphans
-      patterns: [],           // Additional process patterns to watch
-    },
-    retry: {
-      exponentialBackoff: true,
-      baseDelayMs: 2000,
-      maxDelayMs: 120000,
-      retrySameModel: true,
-      maxRetriesPerModel: 2,
-    },
+    selectionStrategy: "cost-aware", // Uses cheapest (lowest costWeight) first!
   }),
 
-  // Telegram notifications on task events
-  // withTelegram({
-  //   botToken: process.env.TELEGRAM_BOT_TOKEN,
-  //   chatId: process.env.TELEGRAM_CHAT_ID,
-  //   silent: false,
-  // }),
-
-  // Asana integration: sync task status to Asana project
-  // Tasks should have metadata.asanaGid set in the tasks file
-  // withAsana({
-  //   projectId: process.env.ASANA_PROJECT_ID,
-  //   syncStatus: true,
-  // }),
-
-  // Everhour time tracking: auto-track time spent on tasks
-  // Uses metadata.everhourId or metadata.asanaGid (auto-prefixed with 'as:')
-  // withEverhour({
-  //   autoStartTimer: true,
-  //   autoStopTimer: true,
-  // }),
-
-  // Todoist integration: sync task status to Todoist
-  // Tasks should have metadata.todoistId set
-  // withTodoist({
-  //   projectId: process.env.TODOIST_PROJECT_ID,
-  //   syncStatus: true,
-  //   addComments: true,
-  // }),
-
-  // Discord notifications via webhook
-  // withDiscord({
-  //   webhookUrl: process.env.DISCORD_WEBHOOK_URL,
-  //   username: 'Loopwork',
-  //   notifyOnComplete: true,
-  //   notifyOnFail: true,
-  //   mentionOnFail: '<@&123456>',  // mention role on failures
-  // }),
-
-  // Cost tracking for token usage
+  // Track costs
   withCostTracking({
     enabled: true,
     defaultModel: "claude-4.5-sonnet",
   }),
 
-  // Git auto-commit: automatically commit after each task completion
+  // Auto-commit after each task
   withGitAutoCommit({
     enabled: true,
-    addAll: true,  // Auto-stage all changes before commit
-    coAuthor: 'Loopwork AI <noreply@loopwork.ai>',
-    skipIfNoChanges: true,  // Skip if no changes detected
+    addAll: true,
+    coAuthor: "Loopwork AI <noreply@loopwork.ai>",
+    skipIfNoChanges: true,
   }),
 
-  // Dashboard TUI: live progress display
-  // Requires: bun add ink react @types/react
-  // withPlugin(createDashboardPlugin({ totalTasks: 10 })),
-
-  // Custom plugin: Log to console
-  withPlugin({
-    name: "console-logger",
-    onLoopStart: (namespace) => {
-      console.log(`\n🚀 Loop starting in namespace: ${namespace}\n`);
-    },
-    onTaskStart: (context) => {
-      console.log(`📋 Starting: ${context.task.id} - ${context.task.title}`);
-    },
-    onTaskComplete: (context, result) => {
-      console.log(`✅ Completed: ${context.task.id} in ${result.duration}s`);
-    },
-    onTaskFailed: (context, error) => {
-      console.log(`❌ Failed: ${context.task.id} - ${error}`);
-    },
-    onLoopEnd: (stats) => {
-      console.log(
-        `\n📊 Loop finished: ${stats.completed} completed, ${stats.failed} failed\n`,
-      );
-    },
-  }),
-
-  // Custom plugin: Slack webhook (example)
-  // withPlugin({
-  //   name: 'slack-notify',
-  //   onTaskComplete: async (task) => {
-  //     await fetch(process.env.SLACK_WEBHOOK_URL, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({
-  //         text: `✅ Task completed: ${task.id} - ${task.title}`,
-  //       }),
-  //     })
-  //   },
+  // Smart Test Tasks - Automatically create test tasks for new features
+  // withSmartTestTasks({
+  //   enabled: true,
+  //   autoCreate: false,  // Suggest but don't auto-create (requires approval)
+  //   maxSuggestions: 3,  // Max 3 test task suggestions per completed task
+  //   minConfidence: 70,  // Only suggest tests with 70%+ confidence
+  //   cli: 'opencode',    // Use free OpenCode models for analysis
+  //   model: 'openrouter/meta-llama/llama-3.3-70b-instruct:free',  // Free model for test suggestions
   // }),
+
+  // Task Recovery - AI-powered failure analysis and recovery
+  // withTaskRecovery({
+  //   enabled: true,
+  //   autoRecover: true,          // Automatically attempt recovery on failures
+  //   maxRecoveryAttempts: 3,     // Max recovery attempts per task
+  //   analysisModel: 'claude',    // Use Claude for failure analysis (better reasoning)
+  //   analysisModelId: 'haiku',   // Use Haiku (cheaper for analysis)
+  //   cooldownMs: 60000,          // Wait 60s between recovery attempts
+  // }),
+
+  // Documentation Plugin - Auto-update CHANGELOG.md after each task
+  // For advanced options (AI-powered, README updates), see: documentation-plugins-examples.md
+  // Uncomment to enable simple documentation:
+  withPlugin({
+    name: "documentation",
+    async onTaskComplete(context, result) {
+      const fs = await import("fs");
+      const path = await import("path");
+
+      const changelogPath = path.join(process.cwd(), "CHANGELOG.md");
+      const taskTitle = context.task?.title || "Task completed";
+      const taskId = context.task?.id || "";
+      const date = new Date().toISOString().split("T")[0];
+
+      // Read existing changelog
+      let changelog = "";
+      if (fs.existsSync(changelogPath)) {
+        changelog = fs.readFileSync(changelogPath, "utf-8");
+      }
+
+      // Create new entry
+      const entry = `\n### ${date} - ${taskId}\n- ${taskTitle}\n`;
+
+      // Insert after header (assumes ## Unreleased section exists)
+      if (changelog.includes("## Unreleased")) {
+        changelog = changelog.replace(
+          "## Unreleased\n",
+          `## Unreleased\n${entry}`,
+        );
+      } else {
+        // Create Unreleased section if it doesn't exist
+        changelog = `# Changelog\n\n## Unreleased\n${entry}\n${changelog}`;
+      }
+
+      // Write back
+      fs.writeFileSync(changelogPath, changelog);
+      console.log(`✅ Updated CHANGELOG.md`);
+    },
+  }),
 )(
   defineConfig({
-    // Loop settings
+    parallel: 5,
     maxIterations: 500,
-    timeout: 600, // default timeout (can be overridden per-model via withCli)
-    namespace: "default", // for concurrent loops
-
-    // Behavior
-    autoConfirm: true, // -y flag
-    dryRun: false,
+    timeout: 600,
+    namespace: "default",
+    autoConfirm: true,
     debug: true,
-
-    // Retry settings
     maxRetries: 5,
-    circuitBreakerThreshold: 10,
-    taskDelay: 2000, // ms between tasks
-    retryDelay: 3000, // ms before retry
+    taskDelay: 2000,
+    retryDelay: 3000,
   }),
 );
-
-// =============================================================================
-// Alternative: Simple CLI Config (backward compatible)
-// =============================================================================
-
-// export default compose(
-//   withJSONBackend({ tasksFile: 'tasks.json' }),
-//   withTelegram(),
-// )(defineConfig({
-//   cli: 'claude',        // Legacy: simple CLI selection
-//   model: 'sonnet',      // Legacy: single model
-//   timeout: 600,
-// }))
-
-// =============================================================================
-// Alternative: Cost-Aware Model Selection
-// =============================================================================
-
-// export default compose(
-//   withJSONBackend({ tasksFile: 'tasks.json' }),
-//   withModels({
-//     models: [
-//       { name: 'haiku', cli: 'claude', model: 'haiku', costWeight: 1, timeout: 60 },
-//       { name: 'sonnet', cli: 'claude', model: 'sonnet', costWeight: 5, timeout: 300 },
-//     ],
-//     fallbackModels: [
-//       { name: 'opus', cli: 'claude', model: 'opus', costWeight: 15, timeout: 900 },
-//     ],
-//     strategy: 'cost-aware',  // Prefer cheaper models first
-//   }),
-//   withRetry(RetryPresets.aggressive()),
-// )(defineConfig({ maxIterations: 100 }))
-
-// =============================================================================
-// Alternative: GitHub Backend with Gentle Retry
-// =============================================================================
-
-// export default compose(
-//   withGitHubBackend({ repo: 'myorg/myrepo' }),
-//   withCli({
-//     models: [ModelPresets.claudeSonnet()],
-//     retry: RetryPresets.gentle(),  // Longer waits, no same-model retry
-//   }),
-//   withDiscord({ webhookUrl: process.env.DISCORD_WEBHOOK_URL }),
-// )(defineConfig({
-//   feature: 'auth',  // filter by feature label
-// }))
