@@ -775,6 +775,2390 @@
         "DYNAMICT-003",
         "DYNAMICT-004"
       ]
+    },
+    {
+      "id": "RETRY-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Core Retry Utilities and Configuration",
+      "feature": "retry"
+    },
+    {
+      "id": "RETRY-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Retry Budget System",
+      "feature": "retry",
+      "dependsOn": [
+        "RETRY-001"
+      ]
+    },
+    {
+      "id": "RETRY-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Integrate Retry Logic into Task Runner",
+      "feature": "retry",
+      "dependsOn": [
+        "RETRY-001",
+        "RETRY-002"
+      ]
+    },
+    {
+      "id": "RETRY-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add Alerting and Telemetry for Retries",
+      "feature": "retry",
+      "dependsOn": [
+        "RETRY-003"
+      ]
+    },
+    {
+      "id": "HEALTHCH-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Scaffold Healthcheck Plugin and Scheduler",
+      "feature": "healthcheck"
+    },
+    {
+      "id": "HEALTHCH-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement System Resource Monitors",
+      "feature": "healthcheck",
+      "dependsOn": [
+        "HEALTHCH-001"
+      ]
+    },
+    {
+      "id": "HEALTHCH-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Connectivity and Quota Monitors",
+      "feature": "healthcheck",
+      "dependsOn": [
+        "HEALTHCH-001"
+      ]
+    },
+    {
+      "id": "HEALTHCH-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add Webhook Notification System",
+      "feature": "healthcheck",
+      "dependsOn": [
+        "HEALTHCH-002",
+        "HEALTHCH-003"
+      ]
+    },
+    {
+      "id": "CHAOS-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Scaffold Chaos Plugin Package and Configuration",
+      "feature": "chaos"
+    },
+    {
+      "id": "CHAOS-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Task-Level Fault Injection",
+      "feature": "chaos",
+      "dependsOn": [
+        "CHAOS-001"
+      ]
+    },
+    {
+      "id": "CHAOS-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Network Interception for API Simulation",
+      "feature": "chaos",
+      "dependsOn": [
+        "CHAOS-001"
+      ]
+    },
+    {
+      "id": "CHAOS-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add Chaos Reporting and CI Presets",
+      "feature": "chaos",
+      "dependsOn": [
+        "CHAOS-002",
+        "CHAOS-003"
+      ]
+    },
+    {
+      "id": "ROLLBACK-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Git Snapshot Utilities",
+      "feature": "rollback"
+    },
+    {
+      "id": "ROLLBACK-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create Rollback Plugin & Lifecycle Hooks",
+      "feature": "rollback",
+      "dependsOn": [
+        "ROLLBACK-001"
+      ]
+    },
+    {
+      "id": "ROLLBACK-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Interactive & Selective Rollback",
+      "feature": "rollback",
+      "dependsOn": [
+        "ROLLBACK-002"
+      ]
+    },
+    {
+      "id": "BULKHEAD-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Hierarchical Worker Pool Manager",
+      "feature": "bulkhead"
+    },
+    {
+      "id": "BULKHEAD-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Integrate Worker Pools into CLI Executor",
+      "feature": "bulkhead",
+      "dependsOn": [
+        "BULKHEAD-001"
+      ]
+    },
+    {
+      "id": "BULKHEAD-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Process Resource Limits (CPU & Memory)",
+      "feature": "bulkhead",
+      "dependsOn": [
+        "BULKHEAD-002"
+      ]
+    },
+    {
+      "id": "BULKHEAD-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Enhance Namespace and State Isolation",
+      "feature": "bulkhead",
+      "dependsOn": [
+        "BULKHEAD-002"
+      ]
+    },
+    {
+      "id": "CHECKPOI-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Design Checkpoint System and Core Manager",
+      "feature": "checkpoint"
+    },
+    {
+      "id": "CHECKPOI-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Auto-Checkpoint Integration",
+      "feature": "checkpoint",
+      "dependsOn": [
+        "CHECKPOI-001"
+      ]
+    },
+    {
+      "id": "CHECKPOI-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add Resume-from-Checkpoint Capabilities",
+      "feature": "checkpoint",
+      "dependsOn": [
+        "CHECKPOI-002"
+      ]
+    },
+    {
+      "id": "CHECKPOI-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add Checkpoint Management CLI Commands",
+      "feature": "checkpoint",
+      "dependsOn": [
+        "CHECKPOI-003"
+      ]
+    },
+    {
+      "id": "FALLBACK-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Feature Flag Infrastructure",
+      "feature": "fallback"
+    },
+    {
+      "id": "FALLBACK-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create Fallback Task Backend Adapter",
+      "feature": "fallback"
+    },
+    {
+      "id": "FALLBACK-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Offline Operation Queue",
+      "feature": "fallback",
+      "dependsOn": [
+        "FALLBACK-002"
+      ]
+    },
+    {
+      "id": "FALLBACK-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Reduced Functionality Mode",
+      "feature": "fallback",
+      "dependsOn": [
+        "FALLBACK-001"
+      ]
+    },
+    {
+      "id": "DEADLETT-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Failure State Persistence",
+      "feature": "deadletter"
+    },
+    {
+      "id": "DEADLETT-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Update Backend Interface for Quarantine Status",
+      "feature": "deadletter",
+      "dependsOn": [
+        "DEADLETT-001"
+      ]
+    },
+    {
+      "id": "DEADLETT-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Auto-Quarantine Logic",
+      "feature": "deadletter",
+      "dependsOn": [
+        "DEADLETT-002"
+      ]
+    },
+    {
+      "id": "DEADLETT-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add Cooldown & Retry Policy",
+      "feature": "deadletter",
+      "dependsOn": [
+        "DEADLETT-003"
+      ]
+    },
+    {
+      "id": "DEADLETT-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Create Deadletter Management CLI",
+      "feature": "deadletter",
+      "dependsOn": [
+        "DEADLETT-004"
+      ]
+    },
+    {
+      "id": "TIMESTAM-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Define Task Timestamps and Event Log Interfaces",
+      "feature": "timestamps"
+    },
+    {
+      "id": "TIMESTAM-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Lifecycle Tracking in JSON Backend",
+      "feature": "timestamps",
+      "dependsOn": [
+        "TIMESTAM-001"
+      ]
+    },
+    {
+      "id": "TIMESTAM-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Map GitHub Timestamps to Task Lifecycle",
+      "feature": "timestamps",
+      "dependsOn": [
+        "TIMESTAM-001"
+      ]
+    },
+    {
+      "id": "PLUGINAR-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Dynamic Plugin Loading System",
+      "feature": "plugin-arch"
+    },
+    {
+      "id": "PLUGINAR-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Add Granular Lifecycle Hooks to Core",
+      "feature": "plugin-arch",
+      "dependsOn": [
+        "PLUGINAR-001"
+      ]
+    },
+    {
+      "id": "PLUGINAR-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Create Capability Registration API",
+      "feature": "plugin-arch",
+      "dependsOn": [
+        "PLUGINAR-001"
+      ]
+    },
+    {
+      "id": "PLUGINAR-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Persistent Plugin State",
+      "feature": "plugin-arch",
+      "dependsOn": [
+        "PLUGINAR-001"
+      ]
+    },
+    {
+      "id": "DEBUGGER-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Debugger Core & Event Hooks",
+      "feature": "debugger"
+    },
+    {
+      "id": "DEBUGGER-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Build TUI Inspector & Interactive Shell",
+      "feature": "debugger",
+      "dependsOn": [
+        "DEBUGGER-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T06:03:11.281Z",
+        "startedAt": "2026-01-31T06:03:11.281Z",
+        "completedAt": "2026-01-31T06:31:23.125Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:03:11.281Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:31:23.125Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T06-03-08-35393\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "DEBUGGER-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement 'Edit & Continue' for Prompts",
+      "feature": "debugger",
+      "dependsOn": [
+        "DEBUGGER-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T06:33:13.906Z",
+        "startedAt": "2026-01-31T06:33:13.906Z",
+        "resumedAt": "2026-01-31T08:26:12.682Z",
+        "completedAt": "2026-01-31T08:39:25.954Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:33:13.906Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:26:12.682Z",
+          "type": "resumed",
+          "message": "Task resumed",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:39:25.954Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "DEBUGGER-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add Debugger Configuration & CLI Flags",
+      "feature": "debugger",
+      "dependsOn": [
+        "DEBUGGER-001"
+      ]
+    },
+    {
+      "id": "MCPMANAG-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create MCP Plugin Package & Configuration Schema",
+      "feature": "mcp-manager"
+    },
+    {
+      "id": "MCPMANAG-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement MCP Client Connection & Tool Registry",
+      "feature": "mcp-manager",
+      "dependsOn": [
+        "MCPMANAG-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T06:03:11.294Z",
+        "startedAt": "2026-01-31T06:33:13.912Z",
+        "resumedAt": "2026-01-31T08:39:27.973Z",
+        "completedAt": "2026-01-31T08:48:38.657Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:03:11.294Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:28:13.641Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:33:13.912Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:39:27.973Z",
+          "type": "resumed",
+          "message": "Task resumed",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:48:38.657Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "MCPMANAG-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Build Local Script Bridge Adapter",
+      "feature": "mcp-manager",
+      "dependsOn": [
+        "MCPMANAG-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T08:48:40.678Z",
+        "startedAt": "2026-01-31T08:48:40.678Z",
+        "completedAt": "2026-01-31T09:02:03.231Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T08:48:40.678Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T09:02:03.231Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "MCPMANAG-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Task-Scoped Context Injection Logic",
+      "feature": "mcp-manager",
+      "dependsOn": [
+        "MCPMANAG-003"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T09:02:05.238Z",
+        "startedAt": "2026-01-31T09:02:05.238Z",
+        "completedAt": "2026-01-31T09:31:53.864Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T09:02:05.238Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T09:31:53.864Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "CONTROLA-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Initialize Control API Plugin & Server Scaffold",
+      "feature": "control-api"
+    },
+    {
+      "id": "CONTROLA-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Loop Control REST Endpoints",
+      "feature": "control-api",
+      "dependsOn": [
+        "CONTROLA-001"
+      ]
+    },
+    {
+      "id": "CONTROLA-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Real-time Event Streaming (SSE)",
+      "feature": "control-api",
+      "dependsOn": [
+        "CONTROLA-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T09:31:55.876Z",
+        "startedAt": "2026-01-31T09:31:55.876Z",
+        "completedAt": "2026-01-31T09:51:03.915Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T09:31:55.876Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T09:51:03.915Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 9",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "CONTROLA-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Task Query Endpoints",
+      "feature": "control-api",
+      "dependsOn": [
+        "CONTROLA-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T09:51:05.938Z",
+        "startedAt": "2026-01-31T11:28:51.115Z",
+        "completedAt": "2026-01-31T11:32:38.950Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T09:51:05.938Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:21:40.394Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:28:47.029Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:30:45.744Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:39:44.785Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T10-30-45-21635\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:39:44.786Z",
+          "type": "reset",
+          "message": "Task reset from completed to pending",
+          "metadata": {
+            "oldStatus": "completed",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:01:41.129Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:01:46.309Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.431Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:00.215Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:11.287Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:28.137Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:55.978Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:28:51.115Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:32:38.950Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T11-28-51-47947\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "CONTROLA-005",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Add Authentication Middleware",
+      "feature": "control-api",
+      "dependsOn": [
+        "CONTROLA-001",
+        "CONTROLA-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T10:28:47.131Z",
+        "startedAt": "2026-01-31T12:08:47.656Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T10:28:47.131Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T10:30:45.846Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:01:41.130Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:01:46.411Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.432Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:00.316Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:11.288Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:28.239Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:55.979Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:28:51.217Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:48:22.174Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:49:17.648Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:45.459Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:47.656Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
+      ]
+    },
+    {
+      "id": "VISUALIZ-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Task Graph Analysis Engine",
+      "feature": "visualizer"
+    },
+    {
+      "id": "VISUALIZ-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Build Mermaid and DOT Diagram Generators",
+      "feature": "visualizer",
+      "dependsOn": [
+        "VISUALIZ-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:01:46.414Z",
+        "startedAt": "2026-01-31T11:27:28.242Z",
+        "completedAt": "2026-01-31T11:27:55.974Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:01:46.414Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.433Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:00.319Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.769Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T11-25-00-46072\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.770Z",
+          "type": "reset",
+          "message": "Task reset from completed to pending",
+          "metadata": {
+            "oldStatus": "completed",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:11.289Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:28.242Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:55.974Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T11-27-28-46965\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "VISUALIZ-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Create Static Reporting Module (Markdown/PDF)",
+      "feature": "visualizer",
+      "dependsOn": [
+        "VISUALIZ-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:28:51.222Z",
+        "startedAt": "2026-01-31T11:28:51.222Z",
+        "completedAt": "2026-01-31T11:44:28.787Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:28:51.222Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:44:28.787Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T11-28-51-47947\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "VISUALIZ-004",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Develop Visualizer Plugin & Interactive Web View",
+      "feature": "visualizer",
+      "dependsOn": [
+        "VISUALIZ-001",
+        "VISUALIZ-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:28:51.329Z",
+        "startedAt": "2026-01-31T11:28:51.329Z",
+        "completedAt": "2026-01-31T11:31:57.803Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:28:51.329Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:31:57.803Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T11-28-51-47947\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "SCAFFOLD-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Scaffolding Core & Template Engine",
+      "feature": "scaffold"
+    },
+    {
+      "id": "SCAFFOLD-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Plugin Generator",
+      "feature": "scaffold",
+      "dependsOn": [
+        "SCAFFOLD-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:01:46.518Z",
+        "startedAt": "2026-01-31T11:28:51.338Z",
+        "completedAt": "2026-01-31T11:31:12.248Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:01:46.518Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.434Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:00.422Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.771Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T11-25-00-46072\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.772Z",
+          "type": "reset",
+          "message": "Task reset from completed to pending",
+          "metadata": {
+            "oldStatus": "completed",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:11.290Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:28.345Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:55.980Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:28:51.338Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:31:12.248Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T11-28-51-47947\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "SCAFFOLD-003",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Backend Generator",
+      "feature": "scaffold",
+      "dependsOn": [
+        "SCAFFOLD-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:01:46.525Z",
+        "startedAt": "2026-01-31T11:27:28.351Z",
+        "completedAt": "2026-01-31T11:27:55.971Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:01:46.525Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.423Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T11-01-46-37915\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.425Z",
+          "type": "reset",
+          "message": "Task reset from completed to pending",
+          "metadata": {
+            "oldStatus": "completed",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:02:25.435Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:00.427Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.666Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T11-25-00-46072\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:10.668Z",
+          "type": "reset",
+          "message": "Task reset from completed to pending",
+          "metadata": {
+            "oldStatus": "completed",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:25:11.290Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:28.351Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:27:55.971Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T11-27-28-46965\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "SCAFFOLD-004",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Add Input Validation & Post-Generation Hooks",
+      "feature": "scaffold",
+      "dependsOn": [
+        "SCAFFOLD-002",
+        "SCAFFOLD-003"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:49:17.750Z",
+        "startedAt": "2026-01-31T12:08:47.759Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:49:17.750Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:45.462Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:47.759Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
+      ]
+    },
+    {
+      "id": "SAFETY-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Define Safety Configuration & Risk Taxonomy",
+      "feature": "safety"
+    },
+    {
+      "id": "SAFETY-002",
+      "status": "completed",
+      "priority": "medium",
+      "title": "Implement Risk Analysis Engine",
+      "feature": "safety",
+      "dependsOn": [
+        "SAFETY-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:49:17.753Z",
+        "startedAt": "2026-01-31T11:49:17.753Z",
+        "completedAt": "2026-01-31T11:56:08.201Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:49:17.753Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T11:56:08.201Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T11-49-17-56315\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "SAFETY-003",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Build Interactive Confirmation System",
+      "feature": "safety",
+      "dependsOn": [
+        "SAFETY-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T12:08:47.763Z",
+        "startedAt": "2026-01-31T12:08:47.763Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T12:08:47.763Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
+      ]
+    },
+    {
+      "id": "SAFETY-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Safety Plugin into Loopwork",
+      "feature": "safety",
+      "dependsOn": [
+        "SAFETY-003"
+      ]
+    },
+    {
+      "id": "MEMORY-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Vector Store & Embedding Infrastructure",
+      "feature": "memory"
+    },
+    {
+      "id": "MEMORY-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create Semantic Code Indexer with Incremental Updates",
+      "feature": "memory",
+      "dependsOn": [
+        "MEMORY-001"
+      ]
+    },
+    {
+      "id": "MEMORY-003",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Implement Retrieval & Sliding Window Context Management",
+      "feature": "memory",
+      "dependsOn": [
+        "MEMORY-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:49:17.857Z",
+        "startedAt": "2026-01-31T12:08:47.865Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:49:17.857Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:45.465Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:47.865Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
+      ]
+    },
+    {
+      "id": "MEMORY-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Add Project Summarization & Plugin Integration",
+      "feature": "memory",
+      "dependsOn": [
+        "MEMORY-003"
+      ]
+    },
+    {
+      "id": "DOCS-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Audit documentation and define structure",
+      "feature": "docs"
+    },
+    {
+      "id": "DOCS-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Revamp Onboarding and QuickStart",
+      "feature": "docs",
+      "dependsOn": [
+        "DOCS-001"
+      ]
+    },
+    {
+      "id": "DOCS-003",
+      "status": "in-progress",
+      "priority": "medium",
+      "title": "Implement TypeDoc API Reference generation",
+      "feature": "docs",
+      "dependsOn": [
+        "DOCS-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T11:49:17.862Z",
+        "startedAt": "2026-01-31T12:08:47.871Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T11:49:17.862Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:45.467Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T12:08:47.871Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
+      ]
+    },
+    {
+      "id": "DOCS-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Developer Extension Guides",
+      "feature": "docs",
+      "dependsOn": [
+        "DOCS-003"
+      ]
+    },
+    {
+      "id": "DOCS-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Create Architecture Diagrams",
+      "feature": "docs",
+      "dependsOn": [
+        "DOCS-001"
+      ]
+    },
+    {
+      "id": "SWARM-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Define Agent Persona Configuration Schema",
+      "feature": "swarm"
+    },
+    {
+      "id": "SWARM-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement Inter-Agent Messaging Infrastructure",
+      "feature": "swarm",
+      "dependsOn": [
+        "SWARM-001"
+      ]
+    },
+    {
+      "id": "SWARM-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Manager-Worker Delegation Logic",
+      "feature": "swarm",
+      "dependsOn": [
+        "SWARM-002"
+      ]
+    },
+    {
+      "id": "SWARM-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Build Result Aggregation System",
+      "feature": "swarm",
+      "dependsOn": [
+        "SWARM-003"
+      ]
+    },
+    {
+      "id": "TELEMETR-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Setup OpenTelemetry SDK and Infrastructure",
+      "feature": "telemetry"
+    },
+    {
+      "id": "TELEMETR-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Instrument Agent Reasoning and Task Loop",
+      "feature": "telemetry",
+      "dependsOn": [
+        "TELEMETR-001"
+      ]
+    },
+    {
+      "id": "TELEMETR-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Tool Execution Tracing and Latency",
+      "feature": "telemetry",
+      "dependsOn": [
+        "TELEMETR-002"
+      ]
+    },
+    {
+      "id": "TELEMETR-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add Token Metrics and Error Correlation",
+      "feature": "telemetry",
+      "dependsOn": [
+        "TELEMETR-003"
+      ]
+    },
+    {
+      "id": "GOVERNAN-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Create Governance Plugin with Basic Policy Engine",
+      "feature": "governance"
+    },
+    {
+      "id": "GOVERNAN-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Human-in-the-Loop (HITL) Approval Gates",
+      "feature": "governance",
+      "dependsOn": [
+        "GOVERNAN-001"
+      ]
+    },
+    {
+      "id": "GOVERNAN-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Enhance Cost Tracking with Per-Task/User Budget Caps",
+      "feature": "governance",
+      "dependsOn": [
+        "GOVERNAN-001"
+      ]
+    },
+    {
+      "id": "GOVERNAN-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Implement Comprehensive Audit Logging Plugin",
+      "feature": "governance",
+      "dependsOn": [
+        "GOVERNAN-001",
+        "GOVERNAN-002"
+      ]
+    },
+    {
+      "id": "TERMINAL-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Add ink-based component library for rich CLI rendering",
+      "feature": "terminal-ui-overhaul",
+      "timestamps": {
+        "createdAt": "2026-01-31T06:03:11.016Z",
+        "startedAt": "2026-01-31T06:33:13.696Z",
+        "resumedAt": "2026-01-31T08:09:29.846Z",
+        "completedAt": "2026-01-31T08:09:42.294Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:03:11.016Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:33:11.253Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:33:13.696Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:09:29.846Z",
+          "type": "resumed",
+          "message": "Task resumed",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:09:42.294Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-09-29-60136\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "TERMINAL-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create themed color palette with dark/light mode support",
+      "feature": "terminal-ui-overhaul",
+      "dependsOn": [
+        "TERMINAL-001"
+      ]
+    },
+    {
+      "id": "TERMINAL-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement animated progress and status displays",
+      "feature": "terminal-ui-overhaul",
+      "dependsOn": [
+        "TERMINAL-001",
+        "TERMINAL-002"
+      ]
+    },
+    {
+      "id": "TERMINAL-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Redesign completion summary with rich formatting",
+      "feature": "terminal-ui-overhaul",
+      "dependsOn": [
+        "TERMINAL-002"
+      ]
+    },
+    {
+      "id": "TERMINAL-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add interactive task selection and confirmation prompts",
+      "feature": "terminal-ui-overhaul",
+      "dependsOn": [
+        "TERMINAL-001",
+        "TERMINAL-003"
+      ]
+    },
+    {
+      "id": "TERMINAL-006",
+      "status": "pending",
+      "priority": "background",
+      "title": "Unify dashboard and CLI output systems",
+      "feature": "terminal-ui-overhaul",
+      "dependsOn": [
+        "TERMINAL-001",
+        "TERMINAL-002",
+        "TERMINAL-003",
+        "TERMINAL-004"
+      ]
+    },
+    {
+      "id": "CONFIGHO-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Add config reload function to core/config.ts",
+      "feature": "config-hot-reload",
+      "timestamps": {
+        "createdAt": "2026-01-31T06:03:11.141Z",
+        "startedAt": "2026-01-31T06:03:11.141Z",
+        "completedAt": "2026-01-31T06:27:21.788Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:03:11.141Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:27:21.788Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T06-03-08-35393\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "CONFIGHO-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate hot reload into sequential task loop",
+      "feature": "config-hot-reload",
+      "dependsOn": [
+        "CONFIGHO-001"
+      ]
+    },
+    {
+      "id": "CONFIGHO-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate hot reload into parallel runner",
+      "feature": "config-hot-reload",
+      "dependsOn": [
+        "CONFIGHO-001"
+      ]
+    },
+    {
+      "id": "CONFIGHO-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Add CliExecutor config update method",
+      "feature": "config-hot-reload",
+      "dependsOn": [
+        "CONFIGHO-001"
+      ]
+    },
+    {
+      "id": "CONFIGHO-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add integration tests for hot reload",
+      "feature": "config-hot-reload",
+      "dependsOn": [
+        "CONFIGHO-002",
+        "CONFIGHO-003",
+        "CONFIGHO-004"
+      ]
+    },
+    {
+      "id": "CONFIGHO-006",
+      "status": "pending",
+      "priority": "background",
+      "title": "Document hot reload feature",
+      "feature": "config-hot-reload",
+      "dependsOn": [
+        "CONFIGHO-005"
+      ]
+    },
+    {
+      "id": "MODELCAP-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Define capability and role type contracts",
+      "feature": "model-capability-roles",
+      "timestamps": {
+        "createdAt": "2026-01-31T06:03:11.179Z",
+        "startedAt": "2026-01-31T06:33:13.800Z",
+        "completedAt": "2026-01-31T06:34:09.506Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:03:11.179Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:13:11.193Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:33:13.800Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:34:09.506Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T06-03-08-35393\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "MODELCAP-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Update default model pool definitions with capabilities",
+      "feature": "model-capability-roles",
+      "dependsOn": [
+        "MODELCAP-001"
+      ]
+    },
+    {
+      "id": "MODELCAP-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Add capability-aware model selection strategy",
+      "feature": "model-capability-roles",
+      "dependsOn": [
+        "MODELCAP-002"
+      ]
+    },
+    {
+      "id": "MODELCAP-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add ModelPresets for capability levels",
+      "feature": "model-capability-roles",
+      "dependsOn": [
+        "MODELCAP-003"
+      ]
+    },
+    {
+      "id": "MODELCAP-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Update tests and documentation",
+      "feature": "model-capability-roles",
+      "dependsOn": [
+        "MODELCAP-004"
+      ]
+    },
+    {
+      "id": "DECOMPOS-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Add spinning progress indicator during AI call",
+      "feature": "decompose-loading-feedback",
+      "timestamps": {
+        "createdAt": "2026-01-31T06:33:13.805Z",
+        "startedAt": "2026-01-31T06:33:13.805Z",
+        "completedAt": "2026-01-31T06:36:14.028Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T06:33:13.805Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T06:36:14.028Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T06-03-08-35393\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "DECOMPOS-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Stream AI output to show real-time logs",
+      "feature": "decompose-loading-feedback",
+      "dependsOn": [
+        "DECOMPOS-001"
+      ]
+    },
+    {
+      "id": "DECOMPOS-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Add elapsed time display during decomposition",
+      "feature": "decompose-loading-feedback",
+      "dependsOn": [
+        "DECOMPOS-001"
+      ]
+    },
+    {
+      "id": "DECOMPOS-004",
+      "status": "pending",
+      "priority": "low",
+      "title": "Create shimmer loading skeleton for task preview",
+      "feature": "decompose-loading-feedback",
+      "dependsOn": [
+        "DECOMPOS-001"
+      ]
+    },
+    {
+      "id": "INKTERMI-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Audit and document current output.ts API surface",
+      "feature": "ink-terminal-output",
+      "timestamps": {
+        "createdAt": "2026-01-31T08:09:44.328Z",
+        "startedAt": "2026-01-31T08:12:33.216Z",
+        "completedAt": "2026-01-31T08:20:08.747Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T08:09:44.328Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:12:31.160Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:12:33.216Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:20:08.747Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 1",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "INKTERMI-002",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Ink-based Table component",
+      "feature": "ink-terminal-output",
+      "dependsOn": [
+        "INKTERMI-001"
+      ]
+    },
+    {
+      "id": "INKTERMI-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Ink-based Banner and ProgressBar components",
+      "feature": "ink-terminal-output",
+      "dependsOn": [
+        "INKTERMI-002"
+      ]
+    },
+    {
+      "id": "INKTERMI-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Ink-based CompletionSummary component",
+      "feature": "ink-terminal-output",
+      "dependsOn": [
+        "INKTERMI-003"
+      ]
+    },
+    {
+      "id": "INKTERMI-005",
+      "status": "pending",
+      "priority": "low",
+      "title": "Migrate core commands to use Ink components",
+      "feature": "ink-terminal-output",
+      "dependsOn": [
+        "INKTERMI-004"
+      ]
+    },
+    {
+      "id": "INKTERMI-006",
+      "status": "pending",
+      "priority": "low",
+      "title": "Deprecate legacy output.ts and update documentation",
+      "feature": "ink-terminal-output",
+      "dependsOn": [
+        "INKTERMI-005"
+      ]
+    },
+    {
+      "id": "TASKRESC-001",
+      "status": "completed",
+      "priority": "high",
+      "title": "Extend Task interface with scheduling metadata",
+      "feature": "task-reschedule",
+      "timestamps": {
+        "createdAt": "2026-01-31T08:20:10.778Z",
+        "startedAt": "2026-01-31T08:20:10.778Z",
+        "completedAt": "2026-01-31T08:23:33.076Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T08:20:10.778Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:23:33.076Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "TASKRESC-002",
+      "status": "completed",
+      "priority": "high",
+      "title": "Add rescheduleCompleted method to TaskBackend interface",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-001"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T08:23:35.090Z",
+        "startedAt": "2026-01-31T08:23:35.090Z",
+        "completedAt": "2026-01-31T08:24:04.983Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T08:23:35.090Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:24:04.983Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "TASKRESC-003",
+      "status": "completed",
+      "priority": "high",
+      "title": "Implement rescheduleCompleted in JSON backend",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-002"
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T08:24:06.997Z",
+        "startedAt": "2026-01-31T08:24:06.997Z",
+        "completedAt": "2026-01-31T08:26:10.667Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-01-31T08:24:06.997Z",
+          "type": "started",
+          "message": "Task started",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T08:26:10.667Z",
+          "type": "completed",
+          "message": "Completed by Loopwork\n\nBackend: json\nSession: loopwork-default-2026-01-31T08-12-33-79647\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
+    },
+    {
+      "id": "TASKRESC-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement rescheduleCompleted in GitHub backend",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-002"
+      ]
+    },
+    {
+      "id": "TASKRESC-005",
+      "status": "pending",
+      "priority": "high",
+      "title": "Update findNextTask to filter by scheduledFor",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-003",
+        "TASKRESC-004"
+      ]
+    },
+    {
+      "id": "TASKRESC-006",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create reschedule CLI command",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-005"
+      ]
+    },
+    {
+      "id": "TASKRESC-007",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Register reschedule command in CLI",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-006"
+      ]
+    },
+    {
+      "id": "TASKRESC-008",
+      "status": "pending",
+      "priority": "low",
+      "title": "Add tests for reschedule functionality",
+      "feature": "task-reschedule",
+      "dependsOn": [
+        "TASKRESC-007"
+      ]
     }
   ],
   "features": {
@@ -789,6 +3173,114 @@
     "dynamic-task-creation": {
       "name": "Dynamic task creation",
       "description": "Tasks for dynamic-task-creation"
+    },
+    "retry": {
+      "name": "Retry",
+      "description": "Tasks for retry"
+    },
+    "healthcheck": {
+      "name": "Healthcheck",
+      "description": "Tasks for healthcheck"
+    },
+    "chaos": {
+      "name": "Chaos",
+      "description": "Tasks for chaos"
+    },
+    "rollback": {
+      "name": "Rollback",
+      "description": "Tasks for rollback"
+    },
+    "bulkhead": {
+      "name": "Bulkhead",
+      "description": "Tasks for bulkhead"
+    },
+    "checkpoint": {
+      "name": "Checkpoint",
+      "description": "Tasks for checkpoint"
+    },
+    "fallback": {
+      "name": "Fallback",
+      "description": "Tasks for fallback"
+    },
+    "deadletter": {
+      "name": "Deadletter",
+      "description": "Tasks for deadletter"
+    },
+    "timestamps": {
+      "name": "Timestamps",
+      "description": "Tasks for timestamps"
+    },
+    "plugin-arch": {
+      "name": "Plugin arch",
+      "description": "Tasks for plugin-arch"
+    },
+    "debugger": {
+      "name": "Debugger",
+      "description": "Tasks for debugger"
+    },
+    "mcp-manager": {
+      "name": "Mcp manager",
+      "description": "Tasks for mcp-manager"
+    },
+    "control-api": {
+      "name": "Control api",
+      "description": "Tasks for control-api"
+    },
+    "visualizer": {
+      "name": "Visualizer",
+      "description": "Tasks for visualizer"
+    },
+    "scaffold": {
+      "name": "Scaffold",
+      "description": "Tasks for scaffold"
+    },
+    "safety": {
+      "name": "Safety",
+      "description": "Tasks for safety"
+    },
+    "memory": {
+      "name": "Memory",
+      "description": "Tasks for memory"
+    },
+    "docs": {
+      "name": "Docs",
+      "description": "Tasks for docs"
+    },
+    "swarm": {
+      "name": "Swarm",
+      "description": "Tasks for swarm"
+    },
+    "telemetry": {
+      "name": "Telemetry",
+      "description": "Tasks for telemetry"
+    },
+    "governance": {
+      "name": "Governance",
+      "description": "Tasks for governance"
+    },
+    "terminal-ui-overhaul": {
+      "name": "Terminal ui overhaul",
+      "description": "Tasks for terminal-ui-overhaul"
+    },
+    "config-hot-reload": {
+      "name": "Config hot reload",
+      "description": "Tasks for config-hot-reload"
+    },
+    "model-capability-roles": {
+      "name": "Model capability roles",
+      "description": "Tasks for model-capability-roles"
+    },
+    "decompose-loading-feedback": {
+      "name": "Decompose loading feedback",
+      "description": "Tasks for decompose-loading-feedback"
+    },
+    "ink-terminal-output": {
+      "name": "Ink terminal output",
+      "description": "Tasks for ink-terminal-output"
+    },
+    "task-reschedule": {
+      "name": "Task reschedule",
+      "description": "Tasks for task-reschedule"
     }
   }
 }

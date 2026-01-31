@@ -2,17 +2,17 @@
   "tasks": [
     {
       "id": "TASK-001",
-      "status": "completed",
+      "status": "pending",
       "priority": "high"
     },
     {
       "id": "TASK-002",
-      "status": "completed",
+      "status": "pending",
       "priority": "medium"
     },
     {
       "id": "TASK-003",
-      "status": "completed",
+      "status": "pending",
       "priority": "low"
     }
   ]
