@@ -52,8 +52,8 @@ export interface SmartTasksConfig {
 
   /** Skip rules */
   skip?: {
-    /** Task title patterns to skip */
-    taskPatterns?: string[]
+    /** Task title patterns to skip (strings or RegExp) */
+    taskPatterns?: (string | RegExp)[]
     /** Labels to skip */
     labels?: string[]
   }
@@ -99,7 +99,12 @@ const DEFAULT_CONFIG: Required<SmartTasksConfig> = {
  */
 function shouldSkipTask(task: Task, config: Required<SmartTasksConfig>): boolean {
   // Check title patterns
-  if (config.skip.taskPatterns && config.skip.taskPatterns.some((p) => task.title.includes(p))) {
+  if (config.skip.taskPatterns && config.skip.taskPatterns.some((p) => {
+    if (p instanceof RegExp) {
+      return p.test(task.title)
+    }
+    return task.title.includes(p)
+  })) {
     return true
   }
 

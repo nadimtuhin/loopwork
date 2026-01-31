@@ -151,8 +151,7 @@ export async function aiMonitor(options: AIMonitorOptions) {
   }
 
   const monitor = createAIMonitor({
-    enabled: true,
-    llmModel: options.model
+    enabled: true
   }) as any
 
   await monitor.onConfigLoad({

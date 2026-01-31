@@ -299,7 +299,8 @@ describe('Verification Integration', () => {
         verification: config.verification as any,
         circuitBreaker: {
           maxFailures: 3,
-          cooldownPeriodMs: 60000
+          cooldownPeriodMs: 60000,
+          halfOpenAttempts: 1
         }
       })
 
@@ -340,7 +341,8 @@ describe('Verification Integration', () => {
         verification: config.verification as any,
         circuitBreaker: {
           maxFailures: 1, // Very low threshold for testing
-          cooldownPeriodMs: 60000
+          cooldownPeriodMs: 60000,
+          halfOpenAttempts: 1
         }
       })
 

@@ -152,6 +152,7 @@ export async function dashboard(
           
           // First, use detailed backend tasks if available
           if (currentTasksFromBackend.length > 0) {
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
              displayTasks = currentTasksFromBackend.map((t: any) => ({
                id: t.id,
                title: t.title,

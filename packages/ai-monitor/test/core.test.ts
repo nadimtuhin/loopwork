@@ -299,9 +299,11 @@ describe('AIMonitor Integration', () => {
   test('should initialize with custom config', async () => {
     const monitor = new AIMonitor({
       enabled: true,
-      llmCooldown: 10000,
-      llmMaxPerSession: 5,
-      llmModel: 'sonnet'
+      llm: {
+        cooldownMs: 10000,
+        maxPerSession: 5,
+        model: 'sonnet'
+      }
     })
 
     expect(monitor.name).toBe('ai-monitor')

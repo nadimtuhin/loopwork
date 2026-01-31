@@ -67,24 +67,30 @@ describe('Smart Tasks Plugin', () => {
     })
 
     test('creates conservative preset', () => {
-      const plugin = withSmartTasksConservative()
-
-      expect(plugin.name).toBe('smart-tasks')
-      expect(plugin.onTaskComplete).toBeDefined()
+      const wrapper = withSmartTasksConservative()
+      const config = wrapper({ plugins: [] } as any)
+      
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
+      expect(config.plugins?.[0]?.onTaskComplete).toBeDefined()
     })
 
     test('creates aggressive preset', () => {
-      const plugin = withSmartTasksAggressive()
-
-      expect(plugin.name).toBe('smart-tasks')
-      expect(plugin.onTaskComplete).toBeDefined()
+      const wrapper = withSmartTasksAggressive()
+      const config = wrapper({ plugins: [] } as any)
+      
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
+      expect(config.plugins?.[0]?.onTaskComplete).toBeDefined()
     })
 
     test('creates test-focused preset', () => {
-      const plugin = withSmartTestTasks()
-
-      expect(plugin.name).toBe('smart-tasks')
-      expect(plugin.onTaskComplete).toBeDefined()
+      const wrapper = withSmartTestTasks()
+      const config = wrapper({ plugins: [] } as any)
+      
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
+      expect(config.plugins?.[0]?.onTaskComplete).toBeDefined()
     })
   })
 
@@ -450,18 +456,21 @@ describe('Smart Tasks Plugin', () => {
 
   describe('Preset Configurations', () => {
     test('conservative preset has high confidence threshold', () => {
-      const plugin = withSmartTasksConservative()
-      expect(plugin.name).toBe('smart-tasks')
+      const wrapper = withSmartTasksConservative()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
     })
 
     test('aggressive preset has lower confidence threshold', () => {
-      const plugin = withSmartTasksAggressive()
-      expect(plugin.name).toBe('smart-tasks')
+      const wrapper = withSmartTasksAggressive()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
     })
 
     test('test-focused preset only suggests test tasks', () => {
-      const plugin = withSmartTestTasks()
-      expect(plugin.name).toBe('smart-tasks')
+      const wrapper = withSmartTestTasks()
+      const config = wrapper({ plugins: [] } as any)
+      expect(config.plugins?.[0]?.name).toBe('smart-tasks')
     })
   })
 })

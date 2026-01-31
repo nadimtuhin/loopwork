@@ -663,7 +663,7 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
 /**
  * Factory function to create AI Monitor plugin
  */
-export function createAIMonitor(config?: AIMonitorConfig): LoopworkPlugin {
+export function createAIMonitor(config?: Partial<AIMonitorConfig>): LoopworkPlugin {
   return new AIMonitor(config)
 }
 
