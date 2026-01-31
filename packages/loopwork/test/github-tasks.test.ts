@@ -82,6 +82,21 @@ describe('GitHubTaskAdapter', () => {
       expect(task.status).toBe('failed')
     })
 
+    test('detects quarantined status from labels', () => {
+      const issue: GitHubIssue = {
+        number: 101,
+        title: 'TASK-002-02: Quarantined test',
+        body: 'Body',
+        state: 'open',
+        labels: [{ name: 'loopwork-task' }, { name: 'loopwork:quarantined' }],
+        url: 'https://github.com/owner/repo/issues/101',
+      }
+
+      const task = (manager as any).adaptIssue(issue)
+
+      expect(task.status).toBe('quarantined')
+    })
+
     test('detects completed status from closed state', () => {
       const issue: GitHubIssue = {
         number: 102,

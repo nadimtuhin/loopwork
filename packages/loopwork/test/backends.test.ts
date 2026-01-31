@@ -106,6 +106,10 @@ describe('TaskBackend Interface', () => {
         expect(typeof backend.markFailed).toBe('function')
       })
 
+      test('has markQuarantined method', () => {
+        expect(typeof backend.markQuarantined).toBe('function')
+      })
+
       test('has resetToPending method', () => {
         expect(typeof backend.resetToPending).toBe('function')
       })
@@ -246,6 +250,15 @@ describe('JsonTaskAdapter', () => {
       const data = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'))
       const task = data.tasks.find((t: any) => t.id === 'TASK-001-01')
       expect(task.status).toBe('failed')
+    })
+
+    test('marks task quarantined', async () => {
+      const result = await adapter.markQuarantined('TASK-001-01', 'Test reason')
+      expect(result.success).toBe(true)
+
+      const data = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'))
+      const task = data.tasks.find((t: any) => t.id === 'TASK-001-01')
+      expect(task.status).toBe('quarantined')
     })
 
     test('resets task to pending', async () => {
@@ -398,19 +411,53 @@ describe('GitHubTaskAdapter', () => {
     expect((adapter as any).adaptIssue(lowPriority).priority).toBe('low')
   })
 
-  test('adaptIssue extracts feature from labels', () => {
-    const issue = {
-      number: 1,
-      title: 'TASK-001-01: Feature task',
-      body: '',
-      state: 'open' as const,
-      labels: [{ name: 'loopwork-task' }, { name: 'feat:authentication' }],
-      url: 'https://github.com/test/repo/issues/1',
-    }
+    test('adaptIssue extracts feature from labels', () => {
+      const issue = {
+        number: 1,
+        title: 'TASK-001-01: Feature task',
+        body: '',
+        state: 'open' as const,
+        labels: [{ name: 'loopwork-task' }, { name: 'feat:authentication' }],
+        url: 'https://github.com/test/repo/issues/1',
+      }
 
-    const task = (adapter as any).adaptIssue(issue)
-    expect(task.feature).toBe('authentication')
-  })
+      const task = (adapter as any).adaptIssue(issue)
+      expect(task.feature).toBe('authentication')
+    })
+
+    test('adaptIssue maps timestamps and creates events', () => {
+      const issue = {
+        number: 123,
+        title: 'Task with timestamps',
+        body: 'Body',
+        state: 'closed' as const,
+        labels: [{ name: 'loopwork-task' }],
+        url: 'https://github.com/test/repo/issues/123',
+        createdAt: '2023-01-01T00:00:00Z',
+        closedAt: '2023-01-02T00:00:00Z',
+      }
+
+      const task = (adapter as any).adaptIssue(issue)
+
+      expect(task.timestamps).toEqual({
+        createdAt: '2023-01-01T00:00:00Z',
+        completedAt: '2023-01-02T00:00:00Z',
+      })
+
+      expect(task.events).toBeDefined()
+      expect(task.events!.length).toBe(2)
+      expect(task.events![0]).toEqual({
+        timestamp: '2023-01-01T00:00:00Z',
+        type: 'created',
+        message: 'Task created (from GitHub issue)',
+      })
+      expect(task.events![1]).toEqual({
+        timestamp: '2023-01-02T00:00:00Z',
+        type: 'completed',
+        message: 'Task completed (issue closed on GitHub)',
+      })
+    })
+
 
   test('extractIssueNumber handles GH-{number} format', () => {
     expect((adapter as any).extractIssueNumber('GH-123')).toBe(123)
@@ -464,7 +511,7 @@ describe('Task Interface', () => {
   })
 
   test('TaskStatus has valid values', () => {
-    const validStatuses = ['pending', 'in-progress', 'completed', 'failed']
+    const validStatuses = ['pending', 'in-progress', 'completed', 'failed', 'quarantined']
     const task: Task = {
       id: 'test',
       title: 'test',

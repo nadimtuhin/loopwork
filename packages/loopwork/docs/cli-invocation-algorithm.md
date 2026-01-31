@@ -110,6 +110,27 @@ OPENCODE_PERMISSION='{"*":"allow"}' opencode run --model <model> "<prompt>"
 # Prompt passed as argument
 ```
 
+## Resource Isolation (Bulkhead Pattern)
+
+Loopwork implements the Bulkhead pattern to isolate resources between different types of tasks. Each task is assigned to a worker pool based on its priority or feature.
+
+### Worker Pools
+
+Default pools configured in `CliExecutor`:
+
+| Pool | Size | Nice (CPU) | Memory Limit |
+|------|------|------------|--------------|
+| `high` | 2 | 0 | 2048 MB |
+| `medium` | 5 | 5 | 1024 MB |
+| `low` | 2 | 10 | 512 MB |
+| `background` | 1 | 15 | 256 MB |
+
+### Resource Limits Enforcement
+
+1. **CPU Priority**: Applied via `nice` command on Unix systems during process spawn.
+2. **Memory Monitoring**: `ProcessResourceMonitor` polls RSS memory usage of child processes.
+3. **Termination**: If a process exceeds its pool's `memoryLimitMB`, it is terminated with `SIGKILL` and the task fails with `ERR_RESOURCE_EXHAUSTED`.
+
 ## Source Code
 
-See `packages/loopwork/src/core/cli.ts` for implementation.
+See `packages/loopwork/src/core/cli.ts` and `packages/loopwork/src/core/isolation/WorkerPoolManager.ts` for implementation.

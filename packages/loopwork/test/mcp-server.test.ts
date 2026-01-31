@@ -129,6 +129,15 @@ describe('MCP Server', () => {
         return { success: true }
       },
 
+      async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+        const task = mockTasks.find(t => t.id === taskId)
+        if (!task) {
+          return { success: false, error: 'Task not found' }
+        }
+        task.status = 'quarantined'
+        return { success: true }
+      },
+
       async resetToPending(taskId: string): Promise<UpdateResult> {
         const task = mockTasks.find(t => t.id === taskId)
         if (!task) {

@@ -96,6 +96,15 @@ function createMockBackend(tasks: Task[]): TaskBackend & { claimedTasks: string[
       return { success: false, error: 'Task not found' }
     },
 
+    async markQuarantined(taskId: string, error: string): Promise<UpdateResult> {
+      const task = taskMap.get(taskId)
+      if (task) {
+        task.status = 'quarantined'
+        return { success: true }
+      }
+      return { success: false, error: 'Task not found' }
+    },
+
     async ping(): Promise<{ ok: boolean; latencyMs: number }> {
       return { ok: true, latencyMs: 1 }
     },
@@ -127,6 +136,9 @@ function createMockCliExecutor(exitCodes: Map<string, number> = new Map()): ICli
       fs.writeFileSync(outputFile, `Mock output for ${taskId}`)
       return exitCodes.get(taskId || '') ?? 0
     },
+    async executeTask(task: Task, prompt: string, outputFile: string, timeout: number): Promise<number> {
+      return this.execute(prompt, outputFile, timeout, task.id)
+    },
     killCurrent(): void {},
     resetFallback(): void {},
     async cleanup(): Promise<void> {},
@@ -142,6 +154,7 @@ const createMockLogger = () => ({
   warn: mock(() => {}),
   error: mock(() => {}),
   debug: mock(() => {}),
+  raw: mock(() => {}),
   setLogFile: mock(() => {}),
 })
 

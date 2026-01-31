@@ -50,7 +50,7 @@ describe('Config Validation', () => {
       process.env.LOOPWORK_BACKEND = 'invalid'
 
       try {
-        await getConfig({ backend: 'json', tasksFile: path.join(testDir, 'tasks.json') })
+        await getConfig({ backend: { type: 'json' }, tasksFile: path.join(testDir, 'tasks.json') })
         expect(true).toBe(false) // Should not reach here
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -73,7 +73,7 @@ describe('Config Validation', () => {
       process.env.LOOPWORK_NON_INTERACTIVE = 'yes'
 
       try {
-        await getConfig({ backend: 'json', tasksFile: path.join(testDir, 'tasks.json') })
+        await getConfig({ backend: { type: 'json' }, tasksFile: path.join(testDir, 'tasks.json') })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -85,7 +85,7 @@ describe('Config Validation', () => {
       process.env.LOOPWORK_DEBUG = '1'
 
       try {
-        await getConfig({ backend: 'json', tasksFile: path.join(testDir, 'tasks.json') })
+        await getConfig({ backend: { type: 'json' }, tasksFile: path.join(testDir, 'tasks.json') })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -100,7 +100,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ cli: 'invalid', backend: 'json', tasksFile })
+        await getConfig({ cli: 'invalid', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -114,7 +114,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       for (const cli of ['opencode', 'claude', 'gemini']) {
-        const config = await getConfig({ cli, backend: 'json', tasksFile })
+        const config = await getConfig({ cli, backend: { type: 'json' }, tasksFile })
         expect(config.cli).toBe(cli)
       }
     })
@@ -126,7 +126,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ maxIterations: '0', backend: 'json', tasksFile })
+        await getConfig({ maxIterations: 0, backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -140,7 +140,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ maxIterations: '-5', backend: 'json', tasksFile })
+        await getConfig({ maxIterations: '-5', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -152,7 +152,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ maxIterations: '100', backend: 'json', tasksFile })
+      const config = await getConfig({ maxIterations: '100', backend: { type: 'json' }, tasksFile })
       expect(config.maxIterations).toBe(100)
     })
   })
@@ -163,7 +163,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ timeout: '0', backend: 'json', tasksFile })
+        await getConfig({ timeout: '0', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -177,7 +177,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ timeout: '-10', backend: 'json', tasksFile })
+        await getConfig({ timeout: '-10', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -189,7 +189,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ timeout: '3600', backend: 'json', tasksFile })
+      const config = await getConfig({ timeout: '3600', backend: { type: 'json' }, tasksFile })
       expect(config.timeout).toBe(3600)
     })
   })
@@ -199,7 +199,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'nonexistent', 'tasks.json')
 
       try {
-        await getConfig({ backend: 'json', tasksFile })
+        await getConfig({ backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -212,7 +212,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile })
       expect(config.backend.type).toBe('json')
       expect(config.backend.tasksFile).toBe(tasksFile)
     })
@@ -222,7 +222,7 @@ describe('Config Validation', () => {
       fs.mkdirSync(tasksDir)
       const tasksFile = path.join(tasksDir, 'tasks.json')
 
-      const config = await getConfig({ backend: 'json', tasksFile })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile })
       expect(config.backend.type).toBe('json')
       expect(config.backend.tasksFile).toBe(tasksFile)
     })
@@ -231,7 +231,7 @@ describe('Config Validation', () => {
   describe('GitHub backend validation', () => {
     test('rejects invalid repository format', async () => {
       try {
-        await getConfig({ backend: 'github', repo: 'invalid-repo-format' })
+        await getConfig({ backend: { type: 'github' }, repo: 'invalid-repo-format' })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -241,19 +241,19 @@ describe('Config Validation', () => {
     })
 
     test('accepts valid repository format', async () => {
-      const config = await getConfig({ backend: 'github', repo: 'owner/repo' })
+      const config = await getConfig({ backend: { type: 'github' }, repo: 'owner/repo' })
       expect(config.backend.type).toBe('github')
       expect(config.backend.repo).toBe('owner/repo')
     })
 
     test('accepts owner/repo with special characters', async () => {
-      const config = await getConfig({ backend: 'github', repo: 'my-org/my.repo_name' })
+      const config = await getConfig({ backend: { type: 'github' }, repo: 'my-org/my.repo_name' })
       expect(config.backend.type).toBe('github')
       expect(config.backend.repo).toBe('my-org/my.repo_name')
     })
 
     test('accepts undefined repo (auto-detect)', async () => {
-      const config = await getConfig({ backend: 'github' })
+      const config = await getConfig({ backend: { type: 'github' } })
       expect(config.backend.type).toBe('github')
       expect(config.backend.repo).toBeUndefined()
     })
@@ -302,7 +302,7 @@ describe('Config Validation', () => {
       ]
 
       for (const model of validModels) {
-        const config = await getConfig({ model, backend: 'json', tasksFile })
+        const config = await getConfig({ model, backend: { type: 'json' }, tasksFile })
         expect(config.model).toBe(model)
       }
     })
@@ -320,7 +320,7 @@ describe('Config Validation', () => {
       ]
 
       for (const model of validModels) {
-        const config = await getConfig({ model, backend: 'json', tasksFile })
+        const config = await getConfig({ model, backend: { type: 'json' }, tasksFile })
         expect(config.model).toBe(model)
       }
     })
@@ -337,7 +337,7 @@ describe('Config Validation', () => {
       ]
 
       for (const model of validModels) {
-        const config = await getConfig({ model, backend: 'json', tasksFile })
+        const config = await getConfig({ model, backend: { type: 'json' }, tasksFile })
         expect(config.model).toBe(model)
       }
     })
@@ -356,7 +356,7 @@ describe('Config Validation', () => {
 
       for (const model of invalidModels) {
         try {
-          await getConfig({ model, backend: 'json', tasksFile })
+          await getConfig({ model, backend: { type: 'json' }, tasksFile })
           expect(true).toBe(false) // Should not reach here
         } catch (error) {
           expect(error).toBeInstanceOf(LoopworkError)
@@ -371,7 +371,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ model: 'sonnet', backend: 'json', tasksFile })
+        await getConfig({ model: 'sonnet', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -384,7 +384,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ model: 'opus', backend: 'json', tasksFile })
+        await getConfig({ model: 'opus', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -397,7 +397,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ model: 'haiku', backend: 'json', tasksFile })
+        await getConfig({ model: 'haiku', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -412,7 +412,7 @@ describe('Config Validation', () => {
       const invalidGptModels = ['4', 'gpt4', 'GPT-4']
       for (const model of invalidGptModels) {
         try {
-          await getConfig({ model, backend: 'json', tasksFile })
+          await getConfig({ model, backend: { type: 'json' }, tasksFile })
           expect(true).toBe(false)
         } catch (error) {
           expect(error).toBeInstanceOf(LoopworkError)
@@ -428,7 +428,7 @@ describe('Config Validation', () => {
       const invalidGptModels = ['3', 'gpt3', 'GPT-3']
       for (const model of invalidGptModels) {
         try {
-          await getConfig({ model, backend: 'json', tasksFile })
+          await getConfig({ model, backend: { type: 'json' }, tasksFile })
           expect(true).toBe(false)
         } catch (error) {
           expect(error).toBeInstanceOf(LoopworkError)
@@ -442,7 +442,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ model: 'pro-gemini', backend: 'json', tasksFile })
+        await getConfig({ model: 'pro-gemini', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -454,7 +454,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile })
       expect(config.model).toBeUndefined()
     })
 
@@ -463,7 +463,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ model: 'invalid', backend: 'json', tasksFile })
+        await getConfig({ model: 'invalid', backend: { type: 'json' }, tasksFile })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -484,7 +484,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ backend: 'json', tasksFile, defaultPriority: 0 })
+        await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 0 })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -498,7 +498,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ backend: 'json', tasksFile, defaultPriority: 6 })
+        await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 6 })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -511,7 +511,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ backend: 'json', tasksFile, defaultPriority: -1 })
+        await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: -1 })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -524,7 +524,7 @@ describe('Config Validation', () => {
       fs.writeFileSync(tasksFile, '{}')
 
       try {
-        await getConfig({ backend: 'json', tasksFile, defaultPriority: 2.5 })
+        await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 2.5 })
         expect(true).toBe(false)
       } catch (error) {
         expect(error).toBeInstanceOf(LoopworkError)
@@ -536,7 +536,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile, defaultPriority: 1 })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 1 })
       expect(config.defaultPriority).toBe(1)
     })
 
@@ -544,7 +544,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile, defaultPriority: 5 })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 5 })
       expect(config.defaultPriority).toBe(5)
     })
 
@@ -552,7 +552,7 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile, defaultPriority: 3 })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile, defaultPriority: 3 })
       expect(config.defaultPriority).toBe(3)
     })
 
@@ -560,8 +560,317 @@ describe('Config Validation', () => {
       const tasksFile = path.join(testDir, 'tasks.json')
       fs.writeFileSync(tasksFile, '{}')
 
-      const config = await getConfig({ backend: 'json', tasksFile })
+      const config = await getConfig({ backend: { type: 'json' }, tasksFile })
       expect(config.defaultPriority).toBeUndefined()
+    })
+  })
+
+  describe('Safety validation', () => {
+    test('rejects invalid protectedPaths', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          safety: { protectedPaths: 'invalid' as any }
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid safety configuration')
+        expect((error as LoopworkError).suggestions).toContainEqual('protectedPaths must be an array of strings')
+      }
+    })
+
+    test('accepts valid safety config', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        safety: {
+          protectedPaths: ['.env'],
+          dangerousCommands: ['rm -rf'],
+        }
+      })
+      expect(config.safety?.protectedPaths).toContain('.env')
+    })
+  })
+
+  describe('Agent persona validation', () => {
+    test('accepts valid agent definition with role only', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        agents: [
+          { role: 'qa-engineer' }
+        ]
+      })
+      expect(config.agents).toHaveLength(1)
+      expect(config.agents?.[0].role).toBe('qa-engineer')
+    })
+
+    test('accepts valid agent definition with all properties', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        agents: [
+          {
+            role: 'security-auditor',
+            description: 'Security and vulnerability specialist',
+            systemPrompt: 'You are a security auditor...',
+            tools: ['run-test', 'analyze-code', 'generate-report'],
+            model: { name: 'claude-opus-4' }
+          }
+        ]
+      })
+      expect(config.agents).toHaveLength(1)
+      expect(config.agents?.[0].role).toBe('security-auditor')
+      expect(config.agents?.[0].description).toBe('Security and vulnerability specialist')
+      expect(config.agents?.[0].systemPrompt).toBe('You are a security auditor...')
+      expect(config.agents?.[0].tools).toContainEqual('run-test')
+    })
+
+    test('accepts multiple agent definitions', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        agents: [
+          { role: 'architect' },
+          { role: 'qa-engineer' },
+          { role: 'security-auditor' }
+        ]
+      })
+      expect(config.agents).toHaveLength(3)
+      expect(config.agents?.map(a => a.role)).toEqual(['architect', 'qa-engineer', 'security-auditor'])
+    })
+
+    test('rejects agents if not an array', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: { role: 'invalid' } as any
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid agents configuration')
+        expect((error as LoopworkError).suggestions).toContainEqual('agents must be an array')
+      }
+    })
+
+    test('rejects agent without role', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [{ description: 'No role provided' } as any]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid agent definition')
+        expect((error as LoopworkError).message).toContain('role is required')
+      }
+    })
+
+    test('rejects agent with empty role string', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [{ role: '   ' }]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid agent definition')
+        expect((error as LoopworkError).message).toContain('role is required')
+      }
+    })
+
+    test('rejects agent with non-string role', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [{ role: 123 } as any]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid agent definition')
+        expect((error as LoopworkError).message).toContain('role is required')
+      }
+    })
+
+    test('rejects duplicate agent roles', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [
+            { role: 'architect' },
+            { role: 'architect' }
+          ]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Duplicate agent role')
+        expect((error as LoopworkError).message).toContain('architect')
+        expect((error as LoopworkError).suggestions).toContainEqual('Agent roles must be unique')
+      }
+    })
+
+    test('rejects agent with invalid tools (not an array)', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [
+            {
+              role: 'qa-engineer',
+              tools: 'run-test' as any
+            }
+          ]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid tools configuration')
+        expect((error as LoopworkError).suggestions).toContainEqual('"tools" must be an array of strings')
+      }
+    })
+
+    test('rejects agent with non-string tool', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      try {
+        await getConfig({
+          backend: { type: 'json' },
+          tasksFile,
+          agents: [
+            {
+              role: 'qa-engineer',
+              tools: ['run-test', 123] as any
+            }
+          ]
+        })
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        expect((error as LoopworkError).message).toContain('Invalid tool')
+        expect((error as LoopworkError).suggestions).toContainEqual('All tools must be strings')
+      }
+    })
+
+    test('accepts agent with empty tools array', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        agents: [
+          {
+            role: 'qa-engineer',
+            tools: []
+          }
+        ]
+      })
+      expect(config.agents?.[0].tools).toEqual([])
+    })
+
+    test('accepts agent with undefined tools', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile,
+        agents: [
+          {
+            role: 'qa-engineer'
+          }
+        ]
+      })
+      expect(config.agents?.[0].tools).toBeUndefined()
+    })
+
+    test('allows undefined agents array', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const config = await getConfig({
+        backend: { type: 'json' },
+        tasksFile
+      })
+      expect(config.agents).toBeUndefined()
+    })
+
+    test('accepts complex agent configuration from config file', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      const configFile = path.join(testDir, 'loopwork.config.ts')
+      const indexPath = path.resolve(__dirname, '../src/index.ts')
+
+      fs.writeFileSync(tasksFile, '{}')
+      fs.writeFileSync(configFile, `
+import { defineConfig } from '${indexPath}'
+
+export default defineConfig({
+  backend: { type: 'json', tasksFile: '${tasksFile}' },
+  agents: [
+    {
+      role: 'architect',
+      description: 'System architecture specialist',
+      systemPrompt: 'Design the system architecture...'
+    },
+    {
+      role: 'qa-engineer',
+      description: 'Quality assurance specialist',
+      tools: ['run-tests', 'check-coverage']
+    }
+  ]
+})
+      `)
+
+      const config = await getConfig({ configPath: configFile })
+      expect(config.agents).toHaveLength(2)
+      expect(config.agents?.[0].role).toBe('architect')
+      expect(config.agents?.[1].tools).toContainEqual('run-tests')
     })
   })
 })

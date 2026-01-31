@@ -167,15 +167,15 @@ describe('Plugin Registry Integration', () => {
 
       const plugin1: LoopworkPlugin = {
         name: 'plugin-1',
-        async onTaskStart(task) {
-          executionLog.push(`plugin-1:${task.id}`)
+        async onTaskStart(context) {
+          executionLog.push(`plugin-1:${context.task.id}`)
         }
       }
 
       const plugin2: LoopworkPlugin = {
         name: 'plugin-2',
-        async onTaskStart(task) {
-          executionLog.push(`plugin-2:${task.id}`)
+        async onTaskStart(context) {
+          executionLog.push(`plugin-2:${context.task.id}`)
         }
       }
 
@@ -183,7 +183,8 @@ describe('Plugin Registry Integration', () => {
       plugins.register(plugin2)
 
       const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
-      await plugins.runHook('onTaskStart', mockTask)
+      const mockContext = { task: mockTask } as any
+      await plugins.runHook('onTaskStart', mockContext)
 
       expect(executionLog).toEqual(['plugin-1:TASK-001', 'plugin-2:TASK-001'])
     })
@@ -193,15 +194,16 @@ describe('Plugin Registry Integration', () => {
 
       const plugin1: LoopworkPlugin = {
         name: 'plugin-1',
-        async onTaskComplete(task) {
-          executionLog.push(`complete:${task.id}`)
+        async onTaskComplete(context) {
+          executionLog.push(`complete:${context.task.id}`)
         }
       }
 
       plugins.register(plugin1)
 
       const mockTask = { id: 'TASK-001', status: 'completed' as const, priority: 'high' as const }
-      await plugins.runHook('onTaskComplete', mockTask)
+      const mockContext = { task: mockTask } as any
+      await plugins.runHook('onTaskComplete', mockContext)
 
       expect(executionLog).toEqual(['complete:TASK-001'])
     })
@@ -211,26 +213,45 @@ describe('Plugin Registry Integration', () => {
 
       const plugin1: LoopworkPlugin = {
         name: 'plugin-1',
-        async onTaskFailed(task, error) {
-          executionLog.push(`failed:${task.id}:${error}`)
+        async onTaskFailed(context, error) {
+          executionLog.push(`failed:${context.task.id}:${error}`)
         }
       }
 
       plugins.register(plugin1)
 
       const mockTask = { id: 'TASK-001', status: 'failed' as const, priority: 'high' as const }
-      await plugins.runHook('onTaskFailed', mockTask, 'Test error')
+      const mockContext = { task: mockTask } as any
+      await plugins.runHook('onTaskFailed', mockContext, 'Test error')
 
       expect(executionLog).toEqual(['failed:TASK-001:Test error'])
     })
 
-    test('continues execution even if one plugin hook throws', async () => {
+    test('bubbles up errors for interceptor hooks (critical plugins only)', async () => {
+      const faultyCriticalPlugin: LoopworkPlugin = {
+        name: 'faulty',
+        classification: 'critical',
+        async onTaskStart(context) {
+          throw new Error('Interceptor failed!')
+        }
+      }
+
+      plugins.register(faultyCriticalPlugin)
+
+      const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
+      const mockContext = { task: mockTask } as any
+
+      // Should throw for onTaskStart when plugin is critical
+      await expect(plugins.runHook('onTaskStart', mockContext)).rejects.toThrow('Interceptor failed!')
+    })
+
+    test('continues execution even if one plugin hook throws (for non-interceptor hooks)', async () => {
       const executionLog: string[] = []
       const errorSpy = spyOn(logger, 'error').mockImplementation(() => {})
 
       const faultyPlugin: LoopworkPlugin = {
         name: 'faulty',
-        async onTaskStart(task) {
+        async onTaskComplete(task) {
           executionLog.push('faulty:before-error')
           throw new Error('Plugin crashed!')
         }
@@ -238,7 +259,7 @@ describe('Plugin Registry Integration', () => {
 
       const goodPlugin: LoopworkPlugin = {
         name: 'good',
-        async onTaskStart(task) {
+        async onTaskComplete(task) {
           executionLog.push('good:executed')
         }
       }
@@ -247,22 +268,22 @@ describe('Plugin Registry Integration', () => {
       plugins.register(goodPlugin)
 
       const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
-      await plugins.runHook('onTaskStart', mockTask)
+      await plugins.runHook('onTaskComplete', mockTask)
 
       // Both should execute, error should be logged
       expect(executionLog).toEqual(['faulty:before-error', 'good:executed'])
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('faulty'))
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('onTaskStart'))
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('onTaskComplete'))
 
       errorSpy.mockRestore()
     })
 
-    test('handles async errors in hooks gracefully', async () => {
+    test('handles async errors in hooks gracefully (for non-interceptor hooks)', async () => {
       const errorSpy = spyOn(logger, 'error').mockImplementation(() => {})
 
       const asyncFaultyPlugin: LoopworkPlugin = {
         name: 'async-faulty',
-        async onTaskStart(task) {
+        async onTaskComplete(task) {
           await new Promise(resolve => setTimeout(resolve, 10))
           throw new Error('Async error!')
         }
@@ -273,7 +294,7 @@ describe('Plugin Registry Integration', () => {
       const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
 
       // Should not throw
-      await expect(plugins.runHook('onTaskStart', mockTask)).resolves.toBeUndefined()
+      await expect(plugins.runHook('onTaskComplete', mockTask)).resolves.toBeUndefined()
 
       expect(errorSpy).toHaveBeenCalled()
       errorSpy.mockRestore()
@@ -379,26 +400,27 @@ describe('Plugin Registry Integration', () => {
           hookLog.push('config-loaded')
           return config
         },
-        async onTaskStart(task) {
-          hookLog.push(`task-start:${task.id}`)
+        async onTaskStart(context) {
+          hookLog.push(`task-start:${context.task.id}`)
         },
-        async onTaskComplete(task) {
-          hookLog.push(`task-complete:${task.id}`)
+        async onTaskComplete(context) {
+          hookLog.push(`task-complete:${context.task.id}`)
         },
-        async onTaskFailed(task, error) {
-          hookLog.push(`task-failed:${task.id}`)
+        async onTaskFailed(context, error) {
+          hookLog.push(`task-failed:${context.task.id}`)
         }
       }
 
       plugins.register(multiHookPlugin)
 
       const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
+      const mockContext = { task: mockTask } as any
 
       // Simulate lifecycle
       await plugins.runHook('onConfigLoad', {})
-      await plugins.runHook('onTaskStart', mockTask)
-      await plugins.runHook('onTaskComplete', mockTask)
-      await plugins.runHook('onTaskFailed', mockTask, 'error')
+      await plugins.runHook('onTaskStart', mockContext)
+      await plugins.runHook('onTaskComplete', mockContext)
+      await plugins.runHook('onTaskFailed', mockContext, 'error')
 
       expect(hookLog).toEqual([
         'config-loaded',
@@ -475,8 +497,8 @@ describe('Plugin Registry Integration', () => {
 
       const plugin: LoopworkPlugin = {
         name: 'multi',
-        async onTaskStart(task) {
-          throw new Error('Start failed')
+        async onTaskFailed(task) {
+          throw new Error('Failed failed')
         },
         async onTaskComplete(task) {
           executionLog.push('complete-executed')
@@ -487,7 +509,7 @@ describe('Plugin Registry Integration', () => {
 
       const mockTask = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
 
-      await plugins.runHook('onTaskStart', mockTask) // Should log error but not throw
+      await plugins.runHook('onTaskFailed', mockTask, 'original error') // Should log error but not throw
       await plugins.runHook('onTaskComplete', mockTask) // Should still work
 
       expect(executionLog).toEqual(['complete-executed'])
@@ -503,31 +525,31 @@ describe('Plugin Registry Integration', () => {
 
       const discordPlugin: LoopworkPlugin = {
         name: 'discord',
-        async onTaskStart(task) {
-          notifications.push(`Discord: Task ${task.id} started`)
+        async onTaskStart(context) {
+          notifications.push(`Discord: Task ${context.task.id} started`)
         },
-        async onTaskComplete(task) {
-          notifications.push(`Discord: Task ${task.id} completed!`)
+        async onTaskComplete(context) {
+          notifications.push(`Discord: Task ${context.task.id} completed!`)
         }
       }
 
       const todoistPlugin: LoopworkPlugin = {
         name: 'todoist',
-        async onTaskComplete(task) {
-          notifications.push(`Todoist: Mark ${task.id} as done`)
+        async onTaskComplete(context) {
+          notifications.push(`Todoist: Mark ${context.task.id} as done`)
         }
       }
 
       const metricsPlugin: LoopworkPlugin = {
         name: 'metrics',
-        async onTaskStart(task) {
-          notifications.push(`Metrics: Start timer for ${task.id}`)
+        async onTaskStart(context) {
+          notifications.push(`Metrics: Start timer for ${context.task.id}`)
         },
-        async onTaskComplete(task) {
-          notifications.push(`Metrics: Record completion time for ${task.id}`)
+        async onTaskComplete(context) {
+          notifications.push(`Metrics: Record completion time for ${context.task.id}`)
         },
-        async onTaskFailed(task, error) {
-          notifications.push(`Metrics: Record failure for ${task.id}`)
+        async onTaskFailed(context, error) {
+          notifications.push(`Metrics: Record failure for ${context.task.id}`)
         }
       }
 
@@ -536,11 +558,12 @@ describe('Plugin Registry Integration', () => {
       plugins.register(metricsPlugin)
 
       const task = { id: 'TASK-001', status: 'pending' as const, priority: 'high' as const }
+      const mockContext = { task } as any
 
       // Simulate workflow
-      await plugins.runHook('onTaskStart', task)
+      await plugins.runHook('onTaskStart', mockContext)
       // ... work happens ...
-      await plugins.runHook('onTaskComplete', task)
+      await plugins.runHook('onTaskComplete', mockContext)
 
       expect(notifications).toEqual([
         'Discord: Task TASK-001 started',
