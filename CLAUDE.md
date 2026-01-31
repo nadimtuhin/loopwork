@@ -197,6 +197,55 @@ When creating a new plugin:
 4. Check for required metadata fields (e.g., `asanaGid`) before making API calls
 5. Use proper error handling - plugins should never crash the main loop
 
+### Git Auto-Commit Plugin
+
+The `withGitAutoCommit()` plugin automatically creates git commits after each successful task completion:
+
+**Location:** `packages/loopwork/src/plugins/git-autocommit.ts`
+
+**Features:**
+- Automatically commits changes after each task completion
+- Structured commit messages with task ID, title, and description
+- Follows conventional commit format (`feat(TASK-ID): title`)
+- Includes task metadata (iteration, namespace) in commit body
+- Optional co-author attribution
+- Graceful error handling (won't fail task if git commit fails)
+- Configurable auto-staging of changes
+- Skips commit if no changes detected
+
+**Usage in config:**
+```typescript
+import { compose, defineConfig, withGitAutoCommit } from 'loopwork'
+import { withJSONBackend } from 'loopwork/backends'
+
+export default compose(
+  withJSONBackend(),
+  withGitAutoCommit({
+    enabled: true,
+    addAll: true,  // Auto-stage all changes
+    coAuthor: 'Loopwork AI <noreply@loopwork.ai>',
+    skipIfNoChanges: true,
+  }),
+)(defineConfig({ cli: 'claude' }))
+```
+
+**Commit Message Format:**
+```
+feat(TASK-001): Add user authentication
+
+Implement JWT-based authentication
+- Create login endpoint
+- Add token validation middleware
+
+Task: TASK-001
+Iteration: 5
+Namespace: auth
+
+Co-Authored-By: Loopwork AI <noreply@loopwork.ai>
+```
+
+**Tests:** `test/git-autocommit.test.ts` (8 tests covering all functionality)
+
 #### Claude Code Integration Plugin
 
 The `withClaudeCode()` plugin is a bundled/default plugin in the core package:
@@ -306,10 +355,46 @@ npm publish
 
 ## AI Development Philosophy
 
-1. **Always do TDD**: Write tests before writing implementation code.
-2. **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
-3. **Proactive Task Proposal**: You should be able to propose new tasks when you identify gaps or improvements.
-4. **Task Creation**: You are empowered to create new tasks in the backlog to track necessary work.
+### Core Principles
+
+1. **Contract-First Design**: Define interfaces/contracts before implementation. All modules communicate through well-defined contracts in `src/contracts/`. Never depend on concrete implementations directly.
+
+2. **Dependency Inversion**: High-level modules must not depend on low-level modules. Both should depend on abstractions (contracts). Inject dependencies rather than importing concrete implementations.
+
+3. **Always TDD**: Write tests BEFORE writing implementation code. Red → Green → Refactor cycle is mandatory.
+
+4. **E2E Testing Always**: Every feature must have end-to-end tests that verify the full user journey. Unit tests alone are insufficient.
+
+5. **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
+
+### Implementation Patterns
+
+6. **Swap via Imports**: When replacing functionality, create the new implementation first, then swap the import. Never modify existing working code inline. This enables easy rollback and A/B testing.
+
+7. **Single Feature Focus**: Work on ONE feature at a time. Complete it fully (tests passing, E2E verified) before moving to the next. Avoid scattered partial implementations.
+
+8. **Task Decomposition for Long Tasks**: For complex tasks, the main thread should:
+   - Break the task into small, atomic sub-tasks (each <30 min of work)
+   - Feed each sub-task to a subagent with clear inputs/outputs
+   - Aggregate results and verify integration
+   - Never give subagents large, ambiguous tasks
+
+### Task Management
+
+9. **Proactive Task Proposal**: You should be able to propose new tasks when you identify gaps or improvements.
+
+10. **Task Creation**: You are empowered to create new tasks in the backlog to track necessary work.
+
+### Contract-Driven Development Workflow
+
+```
+1. Define contract/interface in src/contracts/
+2. Write E2E test against the contract
+3. Write unit tests for the implementation
+4. Implement to satisfy contracts and tests
+5. Verify E2E passes
+6. Swap in new implementation via import change
+```
 
 ## Integration Testing Rules
 

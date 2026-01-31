@@ -13,6 +13,7 @@ import {
   withCli,
   withModels,
   withRetry,
+  withGitAutoCommit,
   ModelPresets,
   RetryPresets,
 } from "@loopwork-ai/loopwork";
@@ -46,11 +47,15 @@ export default compose(
   // CLI configuration with custom model pools
   withCli({
     models: [
+      ModelPresets.claudeHaiku({ timeout: 300 }),  // Fast fallback
+      ModelPresets.geminiFlash({ timeout: 300 }), // Primary: balanced
+      ModelPresets.opencodeGeminiProLow({ timeout: 300 }),  // Fast fallback
       ModelPresets.claudeSonnet({ timeout: 300 }), // Primary: balanced
-      ModelPresets.claudeHaiku({ timeout: 120 }),  // Fast fallback
+      ModelPresets.opencodeGeminiProHigh({ timeout: 300 }),  // Fast fallback
     ],
     fallbackModels: [
-      ModelPresets.claudeOpus({ timeout: 900 }),   // Heavy tasks
+      // ModelPresets.claudeOpus({ timeout: 900 }),   // Heavy tasks
+      ModelPresets.opencodeGeminiProHigh({ timeout: 900 }),  // Fast fallback
     ],
     selectionStrategy: "round-robin",
     orphanWatch: {
@@ -113,6 +118,14 @@ export default compose(
     defaultModel: "claude-4.5-sonnet",
   }),
 
+  // Git auto-commit: automatically commit after each task completion
+  withGitAutoCommit({
+    enabled: true,
+    addAll: true,  // Auto-stage all changes before commit
+    coAuthor: 'Loopwork AI <noreply@loopwork.ai>',
+    skipIfNoChanges: true,  // Skip if no changes detected
+  }),
+
   // Dashboard TUI: live progress display
   // Requires: bun add ink react @types/react
   // withPlugin(createDashboardPlugin({ totalTasks: 10 })),
@@ -123,14 +136,14 @@ export default compose(
     onLoopStart: (namespace) => {
       console.log(`\n🚀 Loop starting in namespace: ${namespace}\n`);
     },
-    onTaskStart: (task) => {
-      console.log(`📋 Starting: ${task.id} - ${task.title}`);
+    onTaskStart: (context) => {
+      console.log(`📋 Starting: ${context.task.id} - ${context.task.title}`);
     },
-    onTaskComplete: (task, result) => {
-      console.log(`✅ Completed: ${task.id} in ${result.duration}s`);
+    onTaskComplete: (context, result) => {
+      console.log(`✅ Completed: ${context.task.id} in ${result.duration}s`);
     },
-    onTaskFailed: (task, error) => {
-      console.log(`❌ Failed: ${task.id} - ${error}`);
+    onTaskFailed: (context, error) => {
+      console.log(`❌ Failed: ${context.task.id} - ${error}`);
     },
     onLoopEnd: (stats) => {
       console.log(
@@ -155,18 +168,18 @@ export default compose(
 )(
   defineConfig({
     // Loop settings
-    maxIterations: 50,
+    maxIterations: 500,
     timeout: 600, // default timeout (can be overridden per-model via withCli)
     namespace: "default", // for concurrent loops
 
     // Behavior
-    autoConfirm: false, // -y flag
+    autoConfirm: true, // -y flag
     dryRun: false,
-    debug: false,
+    debug: true,
 
     // Retry settings
-    maxRetries: 3,
-    circuitBreakerThreshold: 5,
+    maxRetries: 5,
+    circuitBreakerThreshold: 10,
     taskDelay: 2000, // ms between tasks
     retryDelay: 3000, // ms before retry
   }),

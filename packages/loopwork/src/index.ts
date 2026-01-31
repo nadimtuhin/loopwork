@@ -25,6 +25,7 @@ export {
   ModelPresets,
   RetryPresets,
 } from './plugins'
+export { logger } from './core/utils'
 export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper, DynamicTasksConfig } from './contracts'
 export type {
   ModelConfig,
@@ -190,7 +191,7 @@ const RUN_ARGS = [
  */
 function shouldAutoInsertRun(args: string[]): boolean {
   // If first arg is a known subcommand, don't auto-insert
-  const subcommands = ['run', 'init', 'start', 'stop', 'kill', 'status', 'logs', 'monitor', 'restart', 'dashboard', 'help', '--help', '-h', '--version', '-V', 'd', 'decompose', 'task-new']
+  const subcommands = ['run', 'init', 'start', 'stop', 'kill', 'status', 'logs', 'monitor', 'restart', 'dashboard', 'help', '--help', '-h', '--version', '-V', 'd', 'decompose', 'task-new', 'up', 'down', 'ps', 'models:configure']
   if (args.length > 0 && subcommands.includes(args[0])) {
     return false
   }
@@ -309,6 +310,61 @@ if (import.meta.main) {
         try {
           const { taskNew } = await import('./commands/task-new')
           await taskNew(options)
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // PS command - Docker Compose-style process list
+    program
+      .command('ps')
+      .description('List running Loopwork processes (Docker Compose-style)')
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
+        try {
+          const { LoopworkMonitor } = await import('./monitor')
+          const { status } = await import('./commands/status')
+          const chalk = (await import('chalk')).default
+          const fs = await import('fs')
+          const path = await import('path')
+          const { formatUptime, formatDuration, isProcessAlive } = await import('./commands/shared/process-utils')
+
+          await status({
+            MonitorClass: LoopworkMonitor,
+            process,
+            fs: {
+              existsSync: fs.default.existsSync,
+              readFileSync: fs.default.readFileSync,
+            },
+            path: {
+              join: path.default.join,
+              basename: path.default.basename,
+            },
+            isProcessAlive,
+            formatUptime,
+            formatDuration,
+            cwd: () => process.cwd(),
+            chalk,
+            json: options.json,
+          })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Models configure command
+    program
+      .command('models:configure')
+      .description('Configure OpenCode models from authenticated providers')
+      .option('--provider <name>', 'Configure specific provider only')
+      .option('--all', 'Auto-enable all available models')
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
+        try {
+          const { modelsConfigure } = await import('./commands/models-configure')
+          await modelsConfigure(options)
         } catch (err) {
           handleError(err)
           process.exit(1)

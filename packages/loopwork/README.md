@@ -30,6 +30,92 @@ bun run start --dry-run  # Preview tasks
 
 See [examples/](./examples/) for more.
 
+## Docker Compose-Style Commands
+
+Loopwork provides Docker Compose-style commands for familiar process management:
+
+### Start Services
+
+```bash
+# Start in foreground (attached)
+loopwork up
+
+# Start in background (detached)
+loopwork up -d
+
+# Start with specific namespace
+loopwork up -d --namespace prod
+
+# Start and tail logs
+loopwork up -d --tail
+```
+
+### Stop Services
+
+```bash
+# Stop default namespace
+loopwork down
+
+# Stop specific namespace
+loopwork down prod
+
+# Stop all running processes
+loopwork down --all
+```
+
+### List Processes
+
+```bash
+# List all running processes
+loopwork ps
+
+# Output as JSON
+loopwork ps --json
+```
+
+### Backward Compatibility
+
+The traditional commands still work:
+- `loopwork start` → `loopwork up`
+- `loopwork start -d` → `loopwork up -d`
+- `loopwork stop` → `loopwork down`
+- `loopwork status` → `loopwork ps`
+
+## OpenCode Model Configuration
+
+Configure which OpenCode models to use from your authenticated providers:
+
+```bash
+# Interactive configuration (shows all authenticated providers)
+loopwork models:configure
+
+# Auto-enable all models
+loopwork models:configure --all
+
+# Configure specific provider only
+loopwork models:configure --provider google
+
+# Output available models as JSON
+loopwork models:configure --json
+```
+
+This command:
+1. Reads `~/.local/share/opencode/auth.json` to detect authenticated providers
+2. Fetches available models for each provider
+3. Generates `.loopwork/models.json` with model configurations
+4. Provides import instructions for your `loopwork.config.ts`
+
+Example usage in config:
+```typescript
+import models from './.loopwork/models.json'
+import { compose, defineConfig, withModels } from 'loopwork'
+
+export default compose(
+  withModels(models.models),
+  // ... other plugins
+)(defineConfig({ cli: 'opencode' }))
+```
+
 ### From Scratch
 
 Use the interactive init command to set up a new project:
@@ -93,6 +179,7 @@ import {
   withEverhour,
   withTodoist,
   withCostTracking,
+  withGitAutoCommit,
 } from './src/loopwork-config-types'
 import { withJSONBackend, withGitHubBackend } from './src/backend-plugin'
 
@@ -139,12 +226,32 @@ export default compose(
     dailyBudget: 10.00,
     alertThreshold: 0.8,
   }),
+
+  // Git Auto-Commit (optional)
+  withGitAutoCommit({
+    enabled: true,
+    addAll: true,
+    coAuthor: 'Loopwork AI <noreply@loopwork.ai>',
+    scope: 'all', // 'all' | 'task-only' | 'staged-only'
+  }),
 )(defineConfig({
   cli: 'claude',              // AI CLI: claude, opencode, gemini
   model: 'claude-sonnet-4-20250514',
   maxIterations: 50,
   taskTimeout: 600,           // seconds
   nonInteractive: true,
+  // specialized agents
+  agents: [
+    {
+      role: 'qa',
+      description: 'Quality Assurance Specialist',
+      systemPrompt: 'You are an expert QA engineer. Focus on edge cases and security.',
+      tools: ['run-tests', 'report-bug'],
+      model: {
+        model: 'claude-opus-3-5' // Use smarter model for QA
+      }
+    }
+  ]
 }))
 ```
 
@@ -658,6 +765,7 @@ export function createMyPlugin(options: MyOptions): LoopworkPlugin {
 | Everhour | Time tracking | `withEverhour()` |
 | Todoist | Task sync | `withTodoist()` |
 | Cost Tracking | Token/cost monitoring | `withCostTracking()` |
+| Git Auto-Commit | Auto-commit after each task completion | `withGitAutoCommit()` |
 
 ### Examples
 

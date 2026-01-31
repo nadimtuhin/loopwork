@@ -74,7 +74,24 @@ export const ERROR_CODES = {
   /** State file is corrupted and cannot be recovered */
   ERR_STATE_CORRUPT: 'https://docs.loopwork.ai/errors/state-corrupt',
 
+  /** Checkpoint Errors - Issues with checkpoint restore or validation */
+
+  /** Checkpoint not found or integrity validation failed */
+  ERR_CHECKPOINT_INVALID: 'https://docs.loopwork.ai/errors/checkpoint-invalid',
+
+  /** Checkpoint is incompatible with current configuration */
+  ERR_CHECKPOINT_INCOMPATIBLE: 'https://docs.loopwork.ai/errors/checkpoint-incompatible',
+
   /** Plugin Errors - Issues with plugin lifecycle or execution */
+
+  /** Required plugin not found */
+  ERR_PLUGIN_NOT_FOUND: 'https://docs.loopwork.ai/errors/plugin-not-found',
+
+  /** Failed to load plugin module */
+  ERR_PLUGIN_LOAD: 'https://docs.loopwork.ai/errors/plugin-load',
+
+  /** Plugin object or factory is invalid */
+  ERR_PLUGIN_INVALID: 'https://docs.loopwork.ai/errors/plugin-invalid',
 
   /** Plugin failed during initialization */
   ERR_PLUGIN_INIT: 'https://docs.loopwork.ai/errors/plugin-init',
@@ -90,21 +107,33 @@ export const ERROR_CODES = {
   /** Failed to kill process - may lack permissions or process doesn't exist */
   ERR_PROCESS_KILL: 'https://docs.loopwork.ai/errors/process-kill',
 
-  /** Monitor Errors - Issues with monitoring daemon lifecycle */
+  /** Process exceeded resource limits (CPU/Memory) and was terminated */
+  ERR_RESOURCE_EXHAUSTED: 'https://docs.loopwork.ai/errors/resource-exhausted',
 
-  /** Failed to start monitoring daemon */
+  /** Monitor Errors - Issues with monitoring daemon lifecycle */
   ERR_MONITOR_START: 'https://docs.loopwork.ai/errors/monitor-start',
 
   /** Failed to stop monitoring daemon */
   ERR_MONITOR_STOP: 'https://docs.loopwork.ai/errors/monitor-stop',
 
+  /** Safety Errors - Issues with safety policy violations */
+
+  /** Action or command blocked by safety policy */
+  ERR_SAFETY_VIOLATION: 'https://docs.loopwork.ai/errors/safety-violation',
+
   /** Dashboard Errors - Issues with dashboard functionality */
+  ERR_TUI_UNSUPPORTED: 'https://docs.loopwork.ai/errors/tui-unsupported',
+
+  /** Worker Pool Errors - Issues with concurrency isolation */
+  /** Timeout waiting for a worker pool slot to become available */
+  ERR_POOL_SLOT_TIMEOUT: 'https://docs.loopwork.ai/errors/pool-slot-timeout',
 
   /** Feature not yet implemented */
-  ERR_NOT_IMPLEMENTED: 'https://docs.loopwork.ai/errors/not-implemented',
 
-  /** TUI mode not supported in this terminal */
-  ERR_TUI_UNSUPPORTED: 'https://docs.loopwork.ai/errors/tui-unsupported',
+  /** Chaos Engineering Errors - Intentional failures injected for testing */
+
+  /** Task failed due to chaos engineering fault injection */
+  ERR_CHAOS_INJECTION: 'https://docs.loopwork.ai/errors/chaos-injection',
 
   /** Generic Error - Fallback for uncategorized errors */
 
@@ -131,6 +160,16 @@ export class LoopworkError extends Error {
   }
 
   public readonly docsUrl: string
+}
+
+/**
+ * Error thrown when chaos engineering fault is injected
+ */
+export class ChaosError extends LoopworkError {
+  constructor(message: string = 'Chaos injection triggered') {
+    super('ERR_CHAOS_INJECTION', message, [], ERROR_CODES.ERR_CHAOS_INJECTION)
+    this.name = 'ChaosError'
+  }
 }
 
 /**
