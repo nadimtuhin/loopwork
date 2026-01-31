@@ -82,3 +82,18 @@ plans/
 .specs/attachments/
 **/test-photo-*.jpg
 **/test-photo-*.png
+
+# State/Runtime files
+*.state.json
+.loopwork-cost-tracking.json
+test*.json
+
+# WIP/Temporary documentation
+*-FIX.md
+*-IMPLEMENTATION.md
+*IMPLEMENTATION.md
+MODEL-TESTING.md
+opencode-models-reference.md
+
+# WIP directories
+marketing/
