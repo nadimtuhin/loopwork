@@ -37,6 +37,7 @@ export interface BackendPlugin extends LoopworkPlugin {
   markInProgress(taskId: string): Promise<UpdateResult>
   markCompleted(taskId: string, comment?: string): Promise<UpdateResult>
   markFailed(taskId: string, error: string): Promise<UpdateResult>
+  markQuarantined(taskId: string, reason: string): Promise<UpdateResult>
   resetToPending(taskId: string): Promise<UpdateResult>
   addComment?(taskId: string, comment: string): Promise<UpdateResult>
   ping(): Promise<{ ok: boolean; latencyMs: number; error?: string }>
@@ -84,6 +85,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
   return {
     name: 'json-backend',
     backendType: 'json',
+    classification: 'critical',
 
     async onConfigLoad(cfg) {
       await getAdapter()
@@ -92,51 +94,68 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
 
     // Delegate all backend operations to the adapter
     async findNextTask(options) {
-      return (await getAdapter()).findNextTask(options)
+      const a = await getAdapter()
+      return a!.findNextTask(options)
     },
     async getTask(taskId) {
-      return (await getAdapter()).getTask(taskId)
+      const a = await getAdapter()
+      return a!.getTask(taskId)
     },
     async listPendingTasks(options) {
-      return (await getAdapter()).listPendingTasks(options)
+      const a = await getAdapter()
+      return a!.listPendingTasks(options)
     },
     async countPending(options) {
-      return (await getAdapter()).countPending(options)
+      const a = await getAdapter()
+      return a!.countPending(options)
     },
     async markInProgress(taskId) {
-      return (await getAdapter()).markInProgress(taskId)
+      const a = await getAdapter()
+      return a!.markInProgress(taskId)
     },
     async markCompleted(taskId, comment) {
-      return (await getAdapter()).markCompleted(taskId, comment)
+      const a = await getAdapter()
+      return a!.markCompleted(taskId, comment)
     },
     async markFailed(taskId, error) {
-      return (await getAdapter()).markFailed(taskId, error)
+      const a = await getAdapter()
+      return a!.markFailed(taskId, error)
+    },
+    async markQuarantined(taskId, reason) {
+      const a = await getAdapter()
+      return a!.markQuarantined(taskId, reason)
     },
     async resetToPending(taskId) {
-      return (await getAdapter()).resetToPending(taskId)
+      const a = await getAdapter()
+      return a!.resetToPending(taskId)
     },
     async addComment(taskId, comment) {
       const a = await getAdapter()
-      return a.addComment?.(taskId, comment) || { success: false, error: 'Not supported' }
+      return a!.addComment?.(taskId, comment) || { success: false, error: 'Not supported' }
     },
     async ping() {
-      return (await getAdapter()).ping()
+      const a = await getAdapter()
+      return a!.ping()
     },
     async getSubTasks(taskId) {
-      return (await getAdapter()).getSubTasks(taskId)
+      const a = await getAdapter()
+      return a!.getSubTasks(taskId)
     },
     async getDependencies(taskId) {
-      return (await getAdapter()).getDependencies(taskId)
+      const a = await getAdapter()
+      return a!.getDependencies(taskId)
     },
     async getDependents(taskId) {
-      return (await getAdapter()).getDependents(taskId)
+      const a = await getAdapter()
+      return a!.getDependents(taskId)
     },
     async areDependenciesMet(taskId) {
-      return (await getAdapter()).areDependenciesMet(taskId)
+      const a = await getAdapter()
+      return a!.areDependenciesMet(taskId)
     },
     async createTask(task) {
       const a = await getAdapter()
-      if (!a.createTask) {
+      if (!a!.createTask) {
         throw new LoopworkError(
           'ERR_BACKEND_INVALID',
           'This backend does not support creating tasks',
@@ -148,11 +167,11 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
           ]
         )
       }
-      return a.createTask(task)
+      return a!.createTask(task)
     },
     async createSubTask(parentId, task) {
       const a = await getAdapter()
-      if (!a.createSubTask) {
+      if (!a!.createSubTask) {
         throw new LoopworkError(
           'ERR_BACKEND_INVALID',
           'This backend does not support creating sub-tasks',
@@ -162,19 +181,19 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
           ]
         )
       }
-      return a.createSubTask(parentId, task)
+      return a!.createSubTask(parentId, task)
     },
     async addDependency(taskId, dependsOnId) {
       const a = await getAdapter()
-      return a.addDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
+      return a!.addDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
     },
     async removeDependency(taskId, dependsOnId) {
       const a = await getAdapter()
-      return a.removeDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
+      return a!.removeDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
     },
     async setPriority(taskId, priority) {
-      const a = await getAdapter()
-      if (a.setPriority) {
+      const a = (await getAdapter()) as unknown as BackendPlugin
+      if (a && a.setPriority) {
         return a.setPriority(taskId, priority)
       }
       return { success: false, error: 'setPriority not supported by JSON adapter' }
@@ -226,6 +245,7 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
   return {
     name: 'github-backend',
     backendType: 'github',
+    classification: 'critical',
 
     async onConfigLoad(cfg) {
       if (!repo) {
@@ -237,61 +257,87 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
 
     // Delegate all backend operations
     async findNextTask(options) {
-      return (await getAdapter()).findNextTask(options)
+      const a = await getAdapter()
+      return a!.findNextTask(options)
     },
     async getTask(taskId) {
-      return (await getAdapter()).getTask(taskId)
+      const a = await getAdapter()
+      return a!.getTask(taskId)
     },
     async listPendingTasks(options) {
-      return (await getAdapter()).listPendingTasks(options)
+      const a = await getAdapter()
+      return a!.listPendingTasks(options)
     },
     async countPending(options) {
-      return (await getAdapter()).countPending(options)
+      const a = await getAdapter()
+      return a!.countPending(options)
     },
     async markInProgress(taskId) {
-      return (await getAdapter()).markInProgress(taskId)
+      const a = await getAdapter()
+      return a!.markInProgress(taskId)
     },
     async markCompleted(taskId, comment) {
-      return (await getAdapter()).markCompleted(taskId, comment)
+      const a = await getAdapter()
+      return a!.markCompleted(taskId, comment)
     },
     async markFailed(taskId, error) {
-      return (await getAdapter()).markFailed(taskId, error)
+      const a = await getAdapter()
+      return a!.markFailed(taskId, error)
+    },
+    async markQuarantined(taskId, reason) {
+      const a = await getAdapter()
+      return a!.markQuarantined(taskId, reason)
     },
     async resetToPending(taskId) {
-      return (await getAdapter()).resetToPending(taskId)
+      const a = await getAdapter()
+      return a!.resetToPending(taskId)
     },
     async addComment(taskId, comment) {
-      return (await getAdapter()).addComment(taskId, comment)
+      const a = await getAdapter()
+      return a!.addComment?.(taskId, comment) || { success: false, error: 'Not supported' }
     },
     async ping() {
-      return (await getAdapter()).ping()
+      const a = await getAdapter()
+      return a!.ping()
     },
     async getSubTasks(taskId) {
-      return (await getAdapter()).getSubTasks(taskId)
+      const a = await getAdapter()
+      return a!.getSubTasks(taskId)
     },
     async getDependencies(taskId) {
-      return (await getAdapter()).getDependencies(taskId)
+      const a = await getAdapter()
+      return a!.getDependencies(taskId)
     },
     async getDependents(taskId) {
-      return (await getAdapter()).getDependents(taskId)
+      const a = await getAdapter()
+      return a!.getDependents(taskId)
     },
     async areDependenciesMet(taskId) {
-      return (await getAdapter()).areDependenciesMet(taskId)
+      const a = await getAdapter()
+      return a!.areDependenciesMet(taskId)
     },
     async createTask(task) {
-      return (await getAdapter()).createTask(task)
+      const a = await getAdapter()
+      return a!.createTask!(task)
     },
     async createSubTask(parentId, task) {
-      return (await getAdapter()).createSubTask(parentId, task)
+      const a = await getAdapter()
+      return a!.createSubTask!(parentId, task)
     },
     async addDependency(taskId, dependsOnId) {
-      return (await getAdapter()).addDependency(taskId, dependsOnId)
+      const a = await getAdapter()
+      return a!.addDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
     },
     async removeDependency(taskId, dependsOnId) {
-      return (await getAdapter()).removeDependency(taskId, dependsOnId)
+      const a = await getAdapter()
+      return a!.removeDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
     },
     async setPriority(taskId, priority) {
-      return (await getAdapter()).setPriority(taskId, priority)
+      const a = (await getAdapter()) as unknown as BackendPlugin
+      if (a && a.setPriority) {
+        return a.setPriority(taskId, priority)
+      }
+      return { success: false, error: 'setPriority not supported by GitHub adapter' }
     },
   }
 }
@@ -311,6 +357,191 @@ export function withGitHubBackend(config: GitHubBackendConfig = {}) {
 }
 
 // ============================================================================
+// Fallback Backend Plugin
+// ============================================================================
+
+export interface FallbackBackendConfig {
+  primary: BackendPlugin
+  fallback: BackendPlugin
+}
+
+/**
+ * Create Fallback backend plugin
+ *
+ * Wraps two backends (primary and fallback). Read operations try primary first,
+ * then fallback on connection/5xx errors. Write operations only use primary.
+ */
+export function createFallbackBackendPlugin(config: FallbackBackendConfig): BackendPlugin {
+  let adapter: TaskBackend | null = null
+
+  const getAdapter = async (cfg?: LoopworkConfig) => {
+    if (!adapter) {
+      const { FallbackTaskBackend } = await import('./fallback')
+      
+      let queue
+      if (cfg) {
+        const { OfflineQueue } = await import('../core/offline-queue')
+        const { LoopworkState } = await import('../core/loopwork-state')
+        const state = new LoopworkState({ 
+          projectRoot: (cfg as unknown as Record<string, unknown>).projectRoot as string, 
+          namespace: cfg.namespace 
+        })
+        queue = new OfflineQueue(state)
+      }
+
+      adapter = new FallbackTaskBackend(config.primary, config.fallback, queue)
+    }
+    return adapter
+  }
+
+  const plugin: BackendPlugin = {
+    name: 'fallback-backend',
+    backendType: 'fallback',
+    classification: 'critical',
+
+    async onConfigLoad(cfg) {
+      await getAdapter(cfg)
+      return cfg
+    },
+
+    // Delegate all backend operations to the adapter
+    async findNextTask(options) {
+      const a = await getAdapter()
+      return a!.findNextTask(options)
+    },
+    async getTask(taskId) {
+      const a = await getAdapter()
+      return a!.getTask(taskId)
+    },
+    async listPendingTasks(options) {
+      const a = await getAdapter()
+      return a!.listPendingTasks(options)
+    },
+    async countPending(options) {
+      const a = await getAdapter()
+      return a!.countPending(options)
+    },
+    async markInProgress(taskId) {
+      const a = await getAdapter()
+      return a!.markInProgress(taskId)
+    },
+    async markCompleted(taskId, comment) {
+      const a = await getAdapter()
+      return a!.markCompleted(taskId, comment)
+    },
+    async markFailed(taskId, error) {
+      const a = await getAdapter()
+      return a!.markFailed(taskId, error)
+    },
+    async markQuarantined(taskId, reason) {
+      const a = await getAdapter()
+      return a!.markQuarantined(taskId, reason)
+    },
+    async resetToPending(taskId) {
+      const a = await getAdapter()
+      return a!.resetToPending(taskId)
+    },
+    async addComment(taskId, comment) {
+      const a = await getAdapter()
+      return a!.addComment?.(taskId, comment) || { success: false, error: 'Not supported' }
+    },
+    async ping() {
+      const a = await getAdapter()
+      return a!.ping()
+    },
+    async getSubTasks(taskId) {
+      const a = await getAdapter()
+      return a!.getSubTasks(taskId)
+    },
+    async getDependencies(taskId) {
+      const a = await getAdapter()
+      return a!.getDependencies(taskId)
+    },
+    async getDependents(taskId) {
+      const a = await getAdapter()
+      return a!.getDependents(taskId)
+    },
+    async areDependenciesMet(taskId) {
+      const a = await getAdapter()
+      return a!.areDependenciesMet(taskId)
+    },
+    async createTask(task) {
+      const a = await getAdapter()
+      if (!a!.createTask) {
+        throw new LoopworkError(
+          'ERR_BACKEND_INVALID',
+          'This backend does not support creating tasks',
+          [
+            'Primary backend does not support task creation',
+            'Try using a different backend combination'
+          ]
+        )
+      }
+      return a!.createTask(task)
+    },
+    async createSubTask(parentId, task) {
+      const a = await getAdapter()
+      if (!a!.createSubTask) {
+        throw new LoopworkError(
+          'ERR_BACKEND_INVALID',
+          'This backend does not support creating sub-tasks',
+          [
+            'Primary backend does not support sub-task creation',
+            'Try using a different backend combination'
+          ]
+        )
+      }
+      return a!.createSubTask(parentId, task)
+    },
+    async addDependency(taskId, dependsOnId) {
+      const a = await getAdapter()
+      return a!.addDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
+    },
+    async removeDependency(taskId, dependsOnId) {
+      const a = await getAdapter()
+      return a!.removeDependency?.(taskId, dependsOnId) || { success: false, error: 'Not supported' }
+    },
+    async setPriority(taskId, priority) {
+      const a = (await getAdapter()) as unknown as BackendPlugin
+      if (a && a.setPriority) {
+        return a.setPriority(taskId, priority)
+      }
+      return { success: false, error: 'setPriority not supported by primary backend' }
+    },
+  }
+
+  // Expose adapter for sync-offline command
+  Object.defineProperty(plugin, 'adapter', {
+    get: () => adapter,
+    enumerable: false,
+    configurable: true
+  })
+
+  return plugin
+}
+
+/**
+ * Config wrapper for Fallback backend
+ *
+ * Usage:
+ *   export default compose(
+ *     withFallbackBackend({
+ *       primary: createGitHubBackendPlugin({ repo: 'owner/repo' }),
+ *       fallback: createJSONBackendPlugin({ tasksFile: 'tasks.json' })
+ *     })
+ *   )(defineConfig({ cli: 'claude' }))
+ */
+export function withFallbackBackend(config: FallbackBackendConfig) {
+  return (baseConfig: LoopworkConfig): LoopworkConfig => ({
+    ...baseConfig,
+    backend: {
+      type: 'fallback',
+    },
+    plugins: [...(baseConfig.plugins || []), createFallbackBackendPlugin(config)],
+  })
+}
+
+// ============================================================================
 // Helper to get backend from config
 // ============================================================================
 
@@ -320,7 +551,7 @@ export function withGitHubBackend(config: GitHubBackendConfig = {}) {
 export function getBackendPlugin(config: LoopworkConfig): BackendPlugin | null {
   const plugins = config.plugins || []
   for (const plugin of plugins) {
-    if ('backendType' in plugin) {
+    if (typeof plugin === 'object' && plugin !== null && 'backendType' in plugin) {
       return plugin as BackendPlugin
     }
   }

@@ -18,6 +18,9 @@ interface GitHubIssue {
   state: 'open' | 'closed'
   labels: { name: string }[]
   url: string
+  createdAt: string
+  updatedAt: string
+  closedAt: string | null
 }
 
 /**
@@ -58,7 +61,15 @@ export class GitHubTaskAdapter implements TaskBackend {
   }
 
   private isRetryableError(error: unknown): boolean {
-    const message = String(error?.message || error || '').toLowerCase()
+    let message = ''
+    if (error instanceof Error) {
+      message = error.message
+    } else if (typeof error === 'string') {
+      message = error
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      message = String((error as { message?: unknown }).message)
+    }
+    message = message.toLowerCase()
     if (message.includes('network') || message.includes('timeout')) return true
     if (message.includes('econnreset') || message.includes('econnrefused')) return true
     if (message.includes('socket hang up')) return true
@@ -90,7 +101,7 @@ export class GitHubTaskAdapter implements TaskBackend {
 
     try {
       return await this.withRetry(async () => {
-        const result = await $`gh issue view ${issueNumber} ${this.repoFlag()} --json number,title,body,labels,url,state`.quiet()
+        const result = await $`gh issue view ${issueNumber} ${this.repoFlag()} --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt`.quiet()
         const issue: GitHubIssue = JSON.parse(result.stdout.toString())
         return this.adaptIssue(issue)
       })
@@ -100,16 +111,59 @@ export class GitHubTaskAdapter implements TaskBackend {
   }
 
   async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
-    const labels = [LABELS.LOOPWORK_TASK, LABELS.STATUS_PENDING]
-    if (options?.feature) labels.push(`feat:${options.feature}`)
-    if (options?.priority) labels.push(`priority:${options.priority}`)
-
     try {
       return await this.withRetry(async () => {
-        const labelArg = labels.join(',')
-        const result = await $`gh issue list ${this.repoFlag()} --label "${labelArg}" --state open --json number,title,labels,url --limit 100`.quiet()
+        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state open --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt --limit 100`.quiet()
         const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
-        return issues.map(issue => this.adaptIssue(issue))
+        const allTasks = issues.map(issue => this.adaptIssue(issue))
+
+        let tasks = allTasks.filter(t => {
+          if (t.status === 'pending') return true
+          
+          if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+            const failedAt = t.timestamps?.failedAt
+            if (!failedAt) return false
+            const elapsed = Date.now() - new Date(failedAt).getTime()
+            return elapsed > options.retryCooldown
+          }
+          
+          return false
+        })
+
+        if (options?.feature) {
+          tasks = tasks.filter(t => t.feature === options.feature)
+        }
+
+        if (options?.priority) {
+          tasks = tasks.filter(t => t.priority === options.priority)
+        }
+
+        if (options?.parentId) {
+          const parentNum = this.extractIssueNumber(options.parentId)
+          tasks = tasks.filter(t => {
+            if (!t.parentId) return false
+            const tParentNum = this.extractIssueNumber(t.parentId)
+            return tParentNum === parentNum || t.parentId === options.parentId
+          })
+        }
+
+        if (options?.topLevelOnly) {
+          tasks = tasks.filter(t => !t.parentId)
+        }
+
+        const priorityOrder: Record<string, number> = { 
+          'high': 0, 
+          'medium': 1, 
+          'low': 2, 
+          'background': 3 
+        }
+        tasks.sort((a, b) => {
+          const pa = priorityOrder[a.priority] ?? 1
+          const pb = priorityOrder[b.priority] ?? 1
+          return pa - pb
+        })
+
+        return tasks
       })
     } catch {
       return []
@@ -169,6 +223,24 @@ export class GitHubTaskAdapter implements TaskBackend {
     }
   }
 
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_PENDING}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_QUARANTINED}"`.quiet()
+        const commentText = `**Loopwork Quarantined**\n\nReason: ${reason}`
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${commentText}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
   async resetToPending(taskId: string): Promise<UpdateResult> {
     const issueNumber = this.extractIssueNumber(taskId)
     if (!issueNumber) return { success: false, error: 'Invalid task ID' }
@@ -205,7 +277,7 @@ export class GitHubTaskAdapter implements TaskBackend {
       const result = await $`gh auth status`.quiet()
       return { ok: result.exitCode === 0, latencyMs: Date.now() - start }
     } catch (e: unknown) {
-      return { ok: false, latencyMs: Date.now() - start, error: e.message }
+      return { ok: false, latencyMs: Date.now() - start, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -266,7 +338,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     if (task.feature) labels.push(`feat:${task.feature}`)
 
     const result = await this.withRetry(async () => {
-      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url`.quiet()
+      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url,createdAt,updatedAt,closedAt`.quiet()
       return JSON.parse(r.stdout.toString())
     })
 
@@ -371,7 +443,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     }
 
     const result = await this.withRetry(async () => {
-      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url`.quiet()
+      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url,createdAt,updatedAt,closedAt`.quiet()
       return JSON.parse(r.stdout.toString())
     })
 
@@ -405,7 +477,7 @@ export class GitHubTaskAdapter implements TaskBackend {
   private async listAllTasks(): Promise<Task[]> {
     try {
       return await this.withRetry(async () => {
-        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state open --json number,title,body,labels,url --limit 200`.quiet()
+        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state open --json number,title,body,labels,url,createdAt,updatedAt,closedAt --limit 200`.quiet()
         const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
         return issues.map(issue => this.adaptIssue(issue))
       })
@@ -424,6 +496,7 @@ export class GitHubTaskAdapter implements TaskBackend {
     let status: Task['status'] = 'pending'
     if (labels.includes(LABELS.STATUS_IN_PROGRESS)) status = 'in-progress'
     else if (labels.includes(LABELS.STATUS_FAILED)) status = 'failed'
+    else if (labels.includes(LABELS.STATUS_QUARANTINED)) status = 'quarantined'
     else if (issue.state === 'closed') status = 'completed'
 
     let priority: Task['priority'] = 'medium'
@@ -432,6 +505,58 @@ export class GitHubTaskAdapter implements TaskBackend {
 
     const featureLabel = labels.find(l => l.startsWith('feat:'))
     const feature = featureLabel?.replace('feat:', '')
+
+    // Map timestamps
+    const timestamps: Task['timestamps'] = {
+      createdAt: issue.createdAt,
+    }
+    if (issue.closedAt) {
+      timestamps.completedAt = issue.closedAt
+    }
+
+    // Use updatedAt as a proxy for specific lifecycle states if status matches
+    if (status === 'in-progress') {
+      timestamps.startedAt = issue.updatedAt
+    } else if (status === 'failed') {
+      timestamps.failedAt = issue.updatedAt
+    } else if (status === 'quarantined') {
+      timestamps.quarantinedAt = issue.updatedAt
+    }
+
+    // Simulated events for GitHub backend
+    const events: Task['events'] = [
+      {
+        timestamp: issue.createdAt,
+        type: 'created',
+        message: 'Task created (from GitHub issue)',
+      },
+    ]
+
+    if (status === 'in-progress') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'started',
+        message: 'Task marked as in-progress (on GitHub)',
+      })
+    } else if (status === 'failed') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'failed',
+        message: 'Task marked as failed (on GitHub)',
+      })
+    } else if (status === 'quarantined') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'quarantined',
+        message: 'Task quarantined (on GitHub)',
+      })
+    } else if (issue.state === 'closed') {
+      events.push({
+        timestamp: issue.closedAt || issue.updatedAt,
+        type: 'completed',
+        message: 'Task completed (issue closed on GitHub)',
+      })
+    }
 
     let parentId: string | undefined
     const parentMatch = body.match(PARENT_PATTERN)
@@ -486,6 +611,8 @@ export class GitHubTaskAdapter implements TaskBackend {
       parentId,
       dependsOn,
       metadata: { issueNumber: issue.number, url: issue.url, labels },
+      timestamps,
+      events,
     }
   }
 }

@@ -11,6 +11,8 @@ import type {
   FindTaskOptions,
   UpdateResult,
   BackendConfig,
+  TaskTimestamps,
+  TaskEvent,
 } from './types'
 
 /**
@@ -38,6 +40,10 @@ interface JsonTaskEntry {
   feature?: string
   parentId?: string       // Parent task ID (for sub-tasks)
   dependsOn?: string[]    // Task IDs this task depends on
+  metadata?: Record<string, unknown>
+  failureCount?: number
+  timestamps?: TaskTimestamps
+  events?: TaskEvent[]
 }
 
 interface JsonTasksFile {
@@ -194,7 +200,16 @@ export class JsonTaskAdapter implements TaskBackend {
       if (!data) return null
 
       // Find pending tasks with same logic as listPendingTasks
-      let entries = data.tasks.filter(t => t.status === 'pending')
+    let entries = data.tasks.filter(t => {
+      if (t.status === 'pending') return true
+      if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+        const failedAt = t.timestamps?.failedAt
+        if (!failedAt) return false
+        const elapsed = Date.now() - new Date(failedAt).getTime()
+        return elapsed > options.retryCooldown
+      }
+      return false
+    })
 
       if (options?.feature) {
         entries = entries.filter(t => t.feature === options.feature)
@@ -213,7 +228,7 @@ export class JsonTaskAdapter implements TaskBackend {
       }
 
       // Sort by priority
-      const priorityOrder = { high: 0, medium: 1, low: 2 }
+      const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2, background: 3 }
       entries.sort((a, b) => {
         const pa = priorityOrder[a.priority || 'medium']
         const pb = priorityOrder[b.priority || 'medium']
@@ -240,8 +255,7 @@ export class JsonTaskAdapter implements TaskBackend {
 
       const entry = entries[0]
 
-      // Mark as in-progress atomically
-      entry.status = 'in-progress'
+      this.updateTaskEntryLifecycle(entry, 'in-progress', 'Status changed to in-progress (claimed)', { method: 'claimTask' })
       this.saveTasksFile(data)
 
       // Return full task with PRD content
@@ -263,7 +277,16 @@ export class JsonTaskAdapter implements TaskBackend {
     const data = this.loadTasksFile()
     if (!data) return []
 
-    let entries = data.tasks.filter(t => t.status === 'pending')
+    let entries = data.tasks.filter(t => {
+      if (t.status === 'pending') return true
+      if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+        const failedAt = t.timestamps?.failedAt
+        if (!failedAt) return false
+        const elapsed = Date.now() - new Date(failedAt).getTime()
+        return elapsed > options.retryCooldown
+      }
+      return false
+    })
 
     if (options?.feature) {
       entries = entries.filter(t => t.feature === options.feature)
@@ -284,7 +307,7 @@ export class JsonTaskAdapter implements TaskBackend {
     }
 
     // Sort by priority: high > medium > low
-    const priorityOrder = { high: 0, medium: 1, low: 2 }
+    const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2, background: 3 }
     entries.sort((a, b) => {
       const pa = priorityOrder[a.priority || 'medium']
       const pb = priorityOrder[b.priority || 'medium']
@@ -319,8 +342,12 @@ export class JsonTaskAdapter implements TaskBackend {
       parentId: entry.parentId,
       dependsOn: entry.dependsOn,
       metadata: {
-        featureName: featureInfo?.name,
+        ...entry.metadata,
+        featureName: typeof featureInfo === 'object' ? featureInfo?.name : undefined,
       },
+      failureCount: entry.failureCount,
+      timestamps: entry.timestamps,
+      events: entry.events,
     }
   }
 
@@ -346,12 +373,12 @@ export class JsonTaskAdapter implements TaskBackend {
     return this.updateTaskStatus(taskId, 'in-progress')
   }
 
-  async markCompleted(taskId: string, _comment?: string): Promise<UpdateResult> {
-    return this.updateTaskStatus(taskId, 'completed')
+  async markCompleted(taskId: string, comment?: string): Promise<UpdateResult> {
+    return this.updateTaskStatus(taskId, 'completed', comment)
   }
 
   async markFailed(taskId: string, error: string): Promise<UpdateResult> {
-    const result = await this.updateTaskStatus(taskId, 'failed')
+    const result = await this.updateTaskStatus(taskId, 'failed', `Failed: ${error}`, { error })
     if (result.success) {
       // Append error to a log file
       const logFile = path.join(this.tasksDir, `${taskId}.log`)
@@ -367,8 +394,66 @@ export class JsonTaskAdapter implements TaskBackend {
     return result
   }
 
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    const result = await this.updateTaskStatus(taskId, 'quarantined', `Quarantined: ${reason}`, { reason })
+    if (result.success) {
+      // Append reason to a log file
+      const logFile = path.join(this.tasksDir, `${taskId}.log`)
+      const timestamp = new Date().toISOString()
+      const entry = `\n[${timestamp}] QUARANTINED: ${reason}\n`
+      try {
+        fs.appendFileSync(logFile, entry)
+      } catch (e: unknown) {
+        logger.warn(`Failed to write log for ${taskId}: ${getErrorMessage(e)}`)
+      }
+    }
+    return result
+  }
+
   async resetToPending(taskId: string): Promise<UpdateResult> {
-    return this.updateTaskStatus(taskId, 'pending')
+    try {
+      return await this.withLock(() => {
+        const data = this.loadTasksFile()
+        if (!data) {
+          return { success: false, error: 'Tasks file not found' }
+        }
+
+        const entry = data.tasks.find(t => t.id === taskId)
+        if (!entry) {
+          return { success: false, error: `Task ${taskId} not found` }
+        }
+
+        const now = new Date().toISOString()
+        const oldStatus = entry.status
+        entry.status = 'pending'
+
+        // Clear timestamps related to execution (keep createdAt)
+        if (entry.timestamps) {
+          const { createdAt } = entry.timestamps
+          entry.timestamps = { createdAt }
+        }
+
+        // Record reset event
+        if (!entry.events) entry.events = []
+        entry.events.push({
+          timestamp: now,
+          type: 'reset',
+          message: `Task reset from ${oldStatus} to pending`,
+          metadata: {
+            oldStatus,
+            newStatus: 'pending',
+          },
+        })
+
+        if (this.saveTasksFile(data)) {
+          return { success: true }
+        }
+
+        return { success: false, error: 'Failed to save tasks file' }
+      })
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
+    }
   }
 
   async resetAllInProgress(): Promise<UpdateResult> {
@@ -399,6 +484,60 @@ export class JsonTaskAdapter implements TaskBackend {
       })
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async updateTask(taskId: string, updates: Partial<Task>): Promise<UpdateResult> {
+    try {
+      return await this.withLock(() => {
+        const data = this.loadTasksFile()
+        if (!data) return { success: false, error: 'Tasks file not found' }
+
+        const entry = data.tasks.find(t => t.id === taskId)
+        if (!entry) return { success: false, error: `Task ${taskId} not found` }
+
+        if (updates.status) {
+          this.updateTaskEntryLifecycle(entry, updates.status, 'Updated via updateTask', updates.metadata as Record<string, unknown>)
+        }
+
+        if (updates.priority) entry.priority = updates.priority
+        if (updates.feature) entry.feature = updates.feature
+        if (updates.parentId !== undefined) entry.parentId = updates.parentId
+        if (updates.dependsOn) entry.dependsOn = updates.dependsOn
+        if (updates.metadata) {
+          entry.metadata = { ...entry.metadata, ...updates.metadata }
+        }
+
+        if (!this.saveTasksFile(data)) {
+          return { success: false, error: 'Failed to save tasks file' }
+        }
+
+        if (updates.title !== undefined || updates.description !== undefined) {
+          const prdFile = path.join(this.tasksDir, `${taskId}.md`)
+          let currentContent = ''
+          if (fs.existsSync(prdFile)) {
+            currentContent = fs.readFileSync(prdFile, 'utf-8')
+          }
+
+          let title = updates.title
+          if (title === undefined) {
+            const titleMatch = currentContent.match(/^#\s+(.+)$/m)
+            title = titleMatch ? titleMatch[1] : taskId
+          }
+
+          let description = updates.description
+          if (description === undefined) {
+            description = currentContent.replace(/^#\s+.+$/m, '').trim()
+          }
+
+          const newContent = `# ${title}\n\n${description}`
+          fs.writeFileSync(prdFile, newContent)
+        }
+
+        return { success: true }
+      })
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 
@@ -533,10 +672,14 @@ export class JsonTaskAdapter implements TaskBackend {
       parentId: entry.parentId,
       dependsOn: entry.dependsOn,
       metadata: {
+        ...entry.metadata,
         prdFile,
-        featureName: featureInfo?.name,
+        featureName: typeof featureInfo === 'object' ? featureInfo?.name : undefined,
         prdWarning,
       },
+      failureCount: entry.failureCount,
+      timestamps: entry.timestamps,
+      events: entry.events,
     }
   }
 
@@ -626,6 +769,7 @@ export class JsonTaskAdapter implements TaskBackend {
       }
       const newId = `${prefix}-${String(num).padStart(3, '0')}`
 
+      const now = new Date().toISOString()
       const newEntry: JsonTaskEntry = {
         id: newId,
         status: 'pending',
@@ -633,6 +777,17 @@ export class JsonTaskAdapter implements TaskBackend {
         feature: task.feature,
         parentId: task.parentId,
         dependsOn: task.dependsOn,
+        metadata: task.metadata,
+        timestamps: task.timestamps || { createdAt: now },
+        events: task.events || [{
+          timestamp: now,
+          type: 'created',
+          message: 'Task created',
+          metadata: {
+            priority: task.priority || 'medium',
+            feature: task.feature,
+          },
+        }],
       }
 
       data.tasks.push(newEntry)
@@ -652,7 +807,12 @@ export class JsonTaskAdapter implements TaskBackend {
         feature: task.feature,
         parentId: task.parentId,
         dependsOn: task.dependsOn,
-        metadata: { prdFile },
+        metadata: {
+          ...task.metadata,
+          prdFile,
+        },
+        timestamps: newEntry.timestamps,
+        events: newEntry.events,
       }
     })
   }
@@ -692,6 +852,7 @@ export class JsonTaskAdapter implements TaskBackend {
       const suffix = String.fromCharCode(97 + existingSubtasks.length) // a, b, c...
       const newId = `${parentId}${suffix}`
 
+      const now = new Date().toISOString()
       const newEntry: JsonTaskEntry = {
         id: newId,
         status: 'pending',
@@ -699,6 +860,18 @@ export class JsonTaskAdapter implements TaskBackend {
         feature: task.feature,
         parentId,
         dependsOn: task.dependsOn,
+        metadata: task.metadata,
+        timestamps: task.timestamps || { createdAt: now },
+        events: task.events || [{
+          timestamp: now,
+          type: 'created',
+          message: `Sub-task created under ${parentId}`,
+          metadata: {
+            priority: task.priority,
+            feature: task.feature,
+            parentId,
+          },
+        }],
       }
 
       data.tasks.push(newEntry)
@@ -718,8 +891,14 @@ export class JsonTaskAdapter implements TaskBackend {
         feature: task.feature,
         parentId,
         dependsOn: task.dependsOn,
-        metadata: { prdFile },
+        metadata: {
+          ...task.metadata,
+          prdFile,
+        },
+        timestamps: newEntry.timestamps,
+        events: newEntry.events,
       }
+
     })
   }
 
@@ -774,7 +953,58 @@ export class JsonTaskAdapter implements TaskBackend {
     }
   }
 
-  private async updateTaskStatus(taskId: string, status: TaskStatus): Promise<UpdateResult> {
+  private updateTaskEntryLifecycle(entry: JsonTaskEntry, status: TaskStatus, comment?: string, metadata?: Record<string, unknown>) {
+    const now = new Date().toISOString()
+    const oldStatus = entry.status
+    entry.status = status
+
+    if (!entry.timestamps) {
+      entry.timestamps = { createdAt: now }
+    }
+
+    let eventType = 'status_change'
+    let eventMessage = comment || `Status changed from ${oldStatus} to ${status}`
+
+    if (status === 'in-progress') {
+      if (!entry.timestamps.startedAt) {
+        entry.timestamps.startedAt = now
+        eventType = 'started'
+        eventMessage = comment || 'Task started'
+      } else {
+        entry.timestamps.resumedAt = now
+        eventType = 'resumed'
+        eventMessage = comment || 'Task resumed'
+      }
+    } else if (status === 'completed') {
+      entry.timestamps.completedAt = now
+      eventType = 'completed'
+      eventMessage = comment || 'Task completed'
+      entry.failureCount = 0
+    } else if (status === 'failed') {
+      entry.timestamps.failedAt = now
+      eventType = 'failed'
+      eventMessage = comment || 'Task failed'
+      entry.failureCount = (entry.failureCount || 0) + 1
+    } else if (status === 'quarantined') {
+      entry.timestamps.quarantinedAt = now
+      eventType = 'quarantined'
+      eventMessage = comment || 'Task quarantined'
+    }
+
+    if (!entry.events) entry.events = []
+    entry.events.push({
+      timestamp: now,
+      type: eventType,
+      message: eventMessage,
+      metadata: {
+        oldStatus,
+        newStatus: status,
+        ...metadata,
+      },
+    })
+  }
+
+  private async updateTaskStatus(taskId: string, status: TaskStatus, comment?: string, metadata?: Record<string, unknown>): Promise<UpdateResult> {
     try {
       return await this.withLock(() => {
         const data = this.loadTasksFile()
@@ -787,7 +1017,7 @@ export class JsonTaskAdapter implements TaskBackend {
           return { success: false, error: `Task ${taskId} not found` }
         }
 
-        entry.status = status
+        this.updateTaskEntryLifecycle(entry, status, comment, metadata)
 
         if (this.saveTasksFile(data)) {
           return { success: true }

@@ -8,6 +8,19 @@
 export * from './types'
 export { GitHubTaskAdapter } from './github'
 export { JsonTaskAdapter } from './json'
+export { FallbackTaskBackend } from './fallback'
+export { LocalVectorStore } from '../vector-stores/local-vector-store'
+export {
+  withJSONBackend,
+  withGitHubBackend,
+  withFallbackBackend,
+  getBackendPlugin,
+  createJSONBackendPlugin,
+  createGitHubBackendPlugin,
+  createFallbackBackendPlugin,
+  type BackendPlugin,
+  type FallbackBackendConfig,
+} from './plugin'
 
 import type { TaskBackend, BackendConfig } from './types'
 import { GitHubTaskAdapter } from './github'
@@ -35,6 +48,23 @@ export function createBackend(config: BackendConfig): TaskBackend {
 
     case 'json':
       return new JsonTaskAdapter(config)
+
+    case 'fallback':
+      throw new LoopworkError(
+        'ERR_BACKEND_INVALID',
+        'Fallback backend must be initialized via plugins',
+        [
+          'The fallback backend requires nested primary and fallback backends.',
+          'Use the withFallbackBackend() plugin in your loopwork.config.ts instead.',
+          'Example:',
+          '  export default compose(',
+          '    withFallbackBackend({',
+          '      primary: createGitHubBackendPlugin({ repo: "..." }),',
+          '      fallback: createJSONBackendPlugin()',
+          '    })',
+          '  )(defineConfig({ ... }))'
+        ]
+      )
 
     default:
       throw new LoopworkError(
