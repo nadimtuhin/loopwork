@@ -128,6 +128,9 @@ export async function dashboard(
           let pendingCount = 0
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let pendingTasksList: any[] = []
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let currentTaskFromBackend: any = null
+
           if (backend) {
             try {
               pendingCount = await backend.countPending()
@@ -136,18 +139,41 @@ export async function dashboard(
                 priority: undefined, // undefined to get default sorting
                 limit: 5 // We only show top 3-5 anyway
               })
+
+              // Check for in-progress tasks in backend
+              const inProgressTasks = await backend.listTasks({ status: 'in-progress' })
+              if (inProgressTasks.length > 0) {
+                currentTaskFromBackend = inProgressTasks[0]
+              }
             } catch {
               // Ignore backend errors during refresh
             }
           }
 
+          // Combine monitor info (PID) and backend info (Task ID)
+          let displayTask = null
+          if (running.length > 0) {
+             displayTask = { 
+               id: `PID-${running[0].pid}`, 
+               title: `Running in ${running[0].namespace}` 
+             }
+          } 
+          // Prefer backend task info if available because it's more descriptive (has Task ID and Title)
+          if (currentTaskFromBackend) {
+             displayTask = { 
+               id: currentTaskFromBackend.id, 
+               title: currentTaskFromBackend.title,
+               startedAt: currentTaskFromBackend.timestamps?.startedAt ? new Date(currentTaskFromBackend.timestamps.startedAt) : undefined
+             }
+          }
+
           return {
-            currentTask: running.length > 0 ? { id: `PID-${running[0].pid}`, title: `Running in ${running[0].namespace}` } : null,
+            currentTask: displayTask,
             pendingTasks: pendingTasksList,
             completedTasks,
             failedTasks,
             stats: {
-              total: completedTasks.length + failedTasks.length + pendingCount,
+              total: completedTasks.length + failedTasks.length + pendingCount + (displayTask ? 1 : 0),
               pending: pendingCount,
               completed: completedTasks.length,
               failed: failedTasks.length,

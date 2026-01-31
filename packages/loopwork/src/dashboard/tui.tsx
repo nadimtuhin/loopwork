@@ -428,11 +428,12 @@ export async function startInkTui(options: {
       currentTask: state.currentTask ? {
         id: state.currentTask.id,
         title: state.currentTask.title,
-        status: 'pending',
+        status: 'in-progress',
         priority: 'medium',
-        } : null,
-        pendingTasks: state.pendingTasks as any,
-        completed: state.stats.completed,
+      } : null,
+      taskStartTime: state.currentTask?.startedAt ? state.currentTask.startedAt.getTime() : null,
+      pendingTasks: state.pendingTasks as any,
+      completed: state.stats.completed,
       failed: state.stats.failed,
       total: state.stats.total,
       recentEvents: state.recentEvents.map(e => ({
@@ -457,9 +458,10 @@ export async function startInkTui(options: {
         currentTask: state.currentTask ? {
           id: state.currentTask.id,
           title: state.currentTask.title,
-          status: 'pending',
+          status: 'in-progress',
           priority: 'medium',
         } : null,
+        taskStartTime: state.currentTask?.startedAt ? state.currentTask.startedAt.getTime() : null,
         pendingTasks: state.pendingTasks as any,
         completed: state.stats.completed,
         failed: state.stats.failed,
