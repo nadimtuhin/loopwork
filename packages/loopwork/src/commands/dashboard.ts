@@ -159,14 +159,26 @@ export async function dashboard(
                startedAt: t.timestamps?.startedAt ? new Date(t.timestamps.startedAt) : undefined
              }))
           } 
-          // If no backend tasks but monitors are running, use PID info as fallback
-          else if (running.length > 0) {
-             displayTasks = running.map(p => ({
-               id: `PID-${p.pid}`, 
-               title: `Running in ${p.namespace}`,
-               startedAt: new Date(p.startedAt)
-             }))
+          
+          // If we have more running processes than tasks, show them as idle/polling workers
+          // This ensures we show the full swarm capacity even if some workers haven't claimed tasks yet
+          const extraWorkersCount = Math.max(0, running.length - displayTasks.length)
+          
+          if (extraWorkersCount > 0) {
+             // We can't easily map PIDs to tasks, so we just take the last N processes
+             // This is a heuristic - it might double-list a process if we pick the wrong one,
+             // but it guarantees we show the correct *count* of active entities.
+             const extraWorkers = running.slice(running.length - extraWorkersCount)
+             extraWorkers.forEach(p => {
+               displayTasks.push({
+                 id: `PID-${p.pid}`,
+                 title: `Worker in ${p.namespace} (Polling)`,
+                 startedAt: new Date(p.startedAt)
+               })
+             })
           }
+          // If no backend tasks at all and no extra workers logic needed (count matches),
+          // check if we fell through (0 tasks, some running) - logic above handles it (extraWorkersCount == running.length)
 
           return {
             currentTasks: displayTasks,
