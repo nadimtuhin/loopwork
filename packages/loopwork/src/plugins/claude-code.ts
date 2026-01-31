@@ -15,7 +15,7 @@ export interface ClaudeCodePluginOptions {
   claudeMdPath?: string
 }
 
-export function createClaudeCodePlugin( _options: ClaudeCodePluginOptions = {}): LoopworkPlugin {
+export function createClaudeCodePlugin(options: ClaudeCodePluginOptions = {}): LoopworkPlugin {
   const {
     enabled = true,
     skillsDir = '.claude/skills',
