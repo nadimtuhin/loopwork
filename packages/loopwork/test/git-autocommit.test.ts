@@ -54,7 +54,7 @@ describe('Git Auto-Commit Plugin', () => {
     await plugin.onTaskComplete!(context, result)
 
     // Should only check if git repo
-    expect(mockExecSync).toHaveBeenCalledWith('git rev-parse --git-dir', { stdio: 'pipe' })
+    expect(mockExecSync).toHaveBeenCalledWith('git rev-parse --is-inside-work-tree', { stdio: 'pipe' })
   })
 
   test('should skip commit if no changes', async () => {
@@ -91,7 +91,7 @@ describe('Git Auto-Commit Plugin', () => {
     await plugin.onTaskComplete!(context, result)
 
     // Should check for changes
-    expect(mockExecSync).toHaveBeenCalledWith('git status --porcelain', { encoding: 'utf-8' })
+    expect(mockExecSync).toHaveBeenCalledWith('git status --porcelain', { stdio: 'pipe' })
   })
 
   test('should create commit with task details', async () => {

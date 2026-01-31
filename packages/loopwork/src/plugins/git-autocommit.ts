@@ -101,7 +101,7 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
           // Default: add all changes if requested
           if (addAll) {
             try {
-              execSync('git add .', { stdio: 'pipe' })
+              execSync('git add -A', { stdio: 'pipe' })
             } catch (error) {
               logger.warn(`Failed to stage changes: ${error}`)
             }
