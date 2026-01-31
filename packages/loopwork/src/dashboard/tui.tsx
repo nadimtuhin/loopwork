@@ -370,3 +370,98 @@ export function setTotalTasks(count: number) {
 export function getDashboardState(): DashboardState {
   return { ...dashboardState }
 }
+
+/**
+ * Start Ink TUI with dynamic data sources
+ *
+ * This is an enhanced version that accepts callbacks for fetching state,
+ * running loops, and namespaces. Useful for integrating with external
+ * monitoring systems.
+ */
+export async function startInkTui(options: {
+  port?: number
+  watch?: boolean
+  directMode?: boolean
+  getState?: () => Promise<{
+    currentTask: { id: string; title: string } | null
+    pendingTasks: unknown[]
+    completedTasks: Array<{ id: string; title: string }>
+    failedTasks: Array<{ id: string; title: string }>
+    stats: {
+      total: number
+      pending: number
+      completed: number
+      failed: number
+    }
+    recentEvents: Array<{
+      id: string
+      title: string
+      status: 'started' | 'completed' | 'failed'
+      timestamp: Date
+    }>
+  }>
+  getRunningLoops?: () => Promise<Array<{
+    namespace: string
+    pid: number
+    startTime: Date
+  }>>
+  getNamespaces?: () => Promise<string[]>
+}): Promise<void> {
+  // If data callbacks provided, populate state from them
+  if (options.getState) {
+    const state = await options.getState()
+    updateState({
+      currentTask: state.currentTask ? {
+        id: state.currentTask.id,
+        title: state.currentTask.title,
+        status: 'pending',
+        priority: 'medium',
+      } : null,
+      completed: state.stats.completed,
+      failed: state.stats.failed,
+      total: state.stats.total,
+      recentEvents: state.recentEvents.map(e => ({
+        ...e,
+        timestamp: e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp),
+      })),
+    })
+  }
+
+  if (options.getNamespaces) {
+    const namespaces = await options.getNamespaces()
+    if (namespaces.length > 0) {
+      updateState({ namespace: namespaces[0] })
+    }
+  }
+
+  // If watch mode, set up periodic updates
+  if (options.watch && options.getState) {
+    const interval = setInterval(async () => {
+      const state = await options.getState!()
+      updateState({
+        currentTask: state.currentTask ? {
+          id: state.currentTask.id,
+          title: state.currentTask.title,
+          status: 'pending',
+          priority: 'medium',
+        } : null,
+        completed: state.stats.completed,
+        failed: state.stats.failed,
+        total: state.stats.total,
+        recentEvents: state.recentEvents.map(e => ({
+          ...e,
+          timestamp: e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp),
+        })),
+      })
+    }, 1000)
+
+    // Clean up on exit
+    process.on('SIGINT', () => {
+      clearInterval(interval)
+      process.exit(0)
+    })
+  }
+
+  // Render the dashboard
+  renderDashboard()
+}

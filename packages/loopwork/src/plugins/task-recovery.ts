@@ -106,7 +106,7 @@ const DEFAULT_CONFIG: Required<TaskRecoveryConfig> = {
 function readLogExcerpt(context: TaskContext): string {
   try {
     // Try to read from session output file
-    const sessionId = (context.config as any).sessionId || 'unknown'
+    const sessionId = (context.config as { sessionId?: string }).sessionId || 'unknown'
     const namespace = context.namespace || 'default'
     const outputFile = path.join(
       process.cwd(),
@@ -163,7 +163,7 @@ function shouldSkipFailure(
   }
 
   // Check label skip rules
-  const labels = (context.task as any).labels as string[] | undefined
+  const labels = (context.task as Task & { labels?: string[] }).labels
   if (labels?.some(label => config.skip.labels.includes(label))) {
     return true
   }
@@ -198,7 +198,7 @@ function buildAnalysisPrompt(
 **ID:** ${task.id}
 **Title:** ${task.title}
 **Description:** ${task.description || 'N/A'}
-**Labels:** ${((task as any).labels as string[] | undefined)?.join(', ') || 'None'}
+**Labels:** ${(task as Task & { labels?: string[] }).labels?.join(', ') || 'None'}
 **Iteration:** ${iteration}
 **Retry Attempt:** ${retryAttempt + 1}/${config.maxRetries}
 
@@ -342,7 +342,12 @@ async function executeRecoveryPlan(
       if (config.strategies.createTasks && plan.newTask) {
         try {
           logger.info(`Creating recovery task: ${plan.newTask.title}`)
-          const taskData: any = {
+          const taskData: {
+            title: string
+            description: string
+            priority: 'high' | 'medium' | 'low'
+            labels?: string[]
+          } = {
             title: plan.newTask.title,
             description: plan.newTask.description,
             priority: plan.newTask.priority,

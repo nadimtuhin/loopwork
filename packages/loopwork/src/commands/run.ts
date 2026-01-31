@@ -221,7 +221,16 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   const config = await loadConfig(options)
   const stateManager: IStateManager = new StateManagerClass(config)
   const backend: TaskBackend = makeBackend(config.backend)
-  const cliExecutor = new CliExecutorClass(config)
+
+  // Initialize debugger if requested
+  let dbg: Record<string, unknown> | undefined
+  if (options.debugger) {
+    const { Debugger } = await import('../core/debugger')
+    dbg = new Debugger()
+    dbg.setEnabled(true)
+  }
+
+  const cliExecutor = new CliExecutorClass(config, { debugger: dbg })
 
   // Register AI Monitor plugin if --with-ai-monitor flag is set
   if (options.withAIMonitor || options['with-ai-monitor']) {
