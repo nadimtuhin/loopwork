@@ -346,7 +346,8 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
       })
     },
 
-    onTaskFailed(task, error) {
+    onTaskFailed(context, error) {
+      const { task } = context
       const events = [...dashboardState.recentEvents]
       const idx = events.findIndex((e) => e.id === task.id && e.status === 'started')
       if (idx >= 0) {
@@ -429,9 +430,9 @@ export async function startInkTui(options: {
         title: state.currentTask.title,
         status: 'pending',
         priority: 'medium',
-      } : null,
-      pendingTasks: state.pendingTasks,
-      completed: state.stats.completed,
+        } : null,
+        pendingTasks: state.pendingTasks as any,
+        completed: state.stats.completed,
       failed: state.stats.failed,
       total: state.stats.total,
       recentEvents: state.recentEvents.map(e => ({
@@ -459,7 +460,7 @@ export async function startInkTui(options: {
           status: 'pending',
           priority: 'medium',
         } : null,
-        pendingTasks: state.pendingTasks,
+        pendingTasks: state.pendingTasks as any,
         completed: state.stats.completed,
         failed: state.stats.failed,
         total: state.stats.total,

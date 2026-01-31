@@ -151,7 +151,7 @@ function _validateDirectoryPath(value: string, deps: InitDeps = {}): string {
     const testFile = path.join(dir, '.write-test')
     fs.writeFileSync(testFile, 'test')
     fs.unlinkSync(testFile)
-  } catch (error) {
+  } catch {
     throw new ValidationError(
       `Cannot write to directory: ${normalized}`,
       'Please ensure the path is valid and you have write permissions'
@@ -164,7 +164,7 @@ function _validateDirectoryPath(value: string, deps: InitDeps = {}): string {
 /**
  * Validate GitHub repo format (owner/repo)
  */
-function validateRepoFormat(value: string): string | undefined {
+function _validateRepoFormat(value: string): string | undefined {
   const normalized = value.trim()
 
   if (normalized === 'current repo') {
@@ -299,7 +299,7 @@ function getBuiltInHooks(options: InitOptions = {}): PostGenHook[] {
 /**
  * Run all post-generation hooks
  */
-async function runPostGenHooks(options: InitOptions = {}, deps: InitDeps = {}): Promise<void> {
+async function _runPostGenHooks(options: InitOptions = {}, deps: InitDeps = {}): Promise<void> {
   const activeLogger = deps.logger ?? logger
 
   if (options.skipHooks) {

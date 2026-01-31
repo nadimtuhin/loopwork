@@ -280,7 +280,7 @@ export function validateWebhookUrl(input: string): ValidationResult {
     }
     
     return { valid: true, value: url.toString() }
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Invalid webhook URL format'

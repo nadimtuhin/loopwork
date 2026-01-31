@@ -339,7 +339,8 @@ export class ProgressBar {
     const filledLength = calculateBarFilled(this.current, this.total, 20)
     const emptyLength = calculateBarEmpty(this.current, this.total, 20)
     const bar = this.renderBar(filledLength, emptyLength)
-    const status = this.mode === 'chalk' ? (chalk as any)[this.filledColor]?.(`${percent}%`) : `{${this.filledColor}-fg}`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const status = this.mode === 'chalk' ? (chalk as any)[this.filledColor]?.(`${percent}%`) : `{${this.filledColor}-fg}`
 
     const msg = message ? ` ${message}` : ''
     if (this.mode === 'chalk') {
@@ -356,6 +357,7 @@ export class ProgressBar {
     const frame = this.spinnerFrames[this.spinnerIndex]
     this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const spinner = this.mode === 'chalk' ? (chalk as any)[this.filledColor]?.(frame) ?? frame : `{${this.filledColor}-fg}${frame}`.replace('{', '').replace('}', '')
     const msg = message ? ` ${message}` : ''
 
@@ -373,6 +375,7 @@ export class ProgressBar {
     const filledStr = this.filledChar.repeat(filled)
     const emptyStr = this.emptyChar.repeat(empty)
     if (this.mode === 'chalk') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (chalk as any)[this.filledColor]?.(filledStr) + (chalk as any)[this.emptyColor]?.(emptyStr)
     } else {
       return `{${this.filledColor}-fg}${filledStr}{${this.emptyColor}-fg}${emptyStr}`

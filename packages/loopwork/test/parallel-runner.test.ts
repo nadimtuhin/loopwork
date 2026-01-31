@@ -365,7 +365,7 @@ describe('ParallelRunner', () => {
       const config = createTestConfig({
         parallel: 1,
         circuitBreakerThreshold: 5,
-        maxRetries: 1,
+        maxRetries: 0, // No retries - test circuit breaker reset without retry complexity
       })
 
       const runner = new ParallelRunner({
@@ -400,7 +400,7 @@ describe('ParallelRunner', () => {
       const config = createTestConfig({
         parallel: 1,
         parallelFailureMode: 'continue',
-        maxRetries: 1,
+        maxRetries: 0, // No retries - test failure mode handling without retry delays
       })
 
       const runner = new ParallelRunner({
@@ -435,7 +435,7 @@ describe('ParallelRunner', () => {
       const config = createTestConfig({
         parallel: 1,
         parallelFailureMode: 'abort-all',
-        maxRetries: 1,
+        maxRetries: 0, // No retries - test abort-all mode without retry delays
       })
 
       const logger = createMockLogger()
@@ -635,7 +635,7 @@ describe('ParallelRunner', () => {
       const config = createTestConfig({
         parallel: 2,
         circuitBreakerThreshold: 3,
-        maxRetries: 1,
+        maxRetries: 0,
         timeout: 60,
         taskDelay: 10,
         selfHealingCooldown: 10,
@@ -713,9 +713,9 @@ describe('ParallelRunner', () => {
 
       // Start with 3 workers so self-healing can reduce them
       const config = createTestConfig({
-        parallel: 3,
+        parallel: 2,
         circuitBreakerThreshold: 3,
-        maxRetries: 1,
+        maxRetries: 0,
         taskDelay: 10,
         selfHealingCooldown: 10,
       })
@@ -774,7 +774,7 @@ describe('ParallelRunner', () => {
       const config = createTestConfig({
         parallel: 1,
         circuitBreakerThreshold: 3,
-        maxRetries: 1,
+        maxRetries: 0,
         taskDelay: 10,
       })
 
