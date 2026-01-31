@@ -31,7 +31,6 @@ function setupProcessKillMock() {
     mockProcessKillCalls.push({ pid, signal })
 
     if (signal === 0) {
-      // Signal 0 is checking if process exists
       const isAlive = mockProcessAliveMap.get(pid) ?? false
       if (!isAlive) {
         const err = new Error('Process not found') as NodeJS.ErrnoException
@@ -42,12 +41,10 @@ function setupProcessKillMock() {
     }
 
     if (signal === 'SIGTERM') {
-      // SIGTERM - process might still be alive
       return true
     }
 
     if (signal === 'SIGKILL') {
-      // SIGKILL - process is now dead
       mockProcessAliveMap.set(pid, false)
       return true
     }
@@ -67,12 +64,11 @@ describe('ProcessCleaner', () => {
   const testRegistryPath = '.test-process-cleaner-registry'
 
   beforeEach(async () => {
-    // Clean up test registry directory
     await Bun.$`rm -rf ${testRegistryPath}`.nothrow()
     await Bun.$`mkdir -p ${testRegistryPath}`
 
     registry = new ProcessRegistry(testRegistryPath)
-    cleaner = new ProcessCleaner(registry, 100) // Short grace period for tests
+    cleaner = new ProcessCleaner(registry)
 
     setupProcessKillMock()
   })
@@ -86,7 +82,6 @@ describe('ProcessCleaner', () => {
     test('cleans up single orphan process', async () => {
       const orphan = createOrphanInfo(12345, 'parent-dead')
 
-      // Register the process
       registry.add(orphan.pid, {
         command: 'test',
         args: [],
@@ -94,16 +89,14 @@ describe('ProcessCleaner', () => {
         startTime: Date.now()
       })
 
-      // Mark as alive initially
       mockProcessAliveMap.set(12345, true)
 
       const result = await cleaner.cleanup([orphan])
 
       expect(result.cleaned).toContain(12345)
       expect(result.failed).toHaveLength(0)
-      expect(result.errors).toHaveLength(0)
+      expect(result.alreadyGone).toHaveLength(0)
 
-      // Verify SIGTERM was sent
       expect(mockProcessKillCalls.some(c => c.pid === 12345 && c.signal === 'SIGTERM')).toBe(true)
     })
 
@@ -143,13 +136,13 @@ describe('ProcessCleaner', () => {
         startTime: Date.now()
       })
 
-      // Process is already dead
       mockProcessAliveMap.set(99999, false)
 
       const result = await cleaner.cleanup([orphan])
 
       expect(result.cleaned).toContain(99999)
       expect(result.failed).toHaveLength(0)
+      expect(result.alreadyGone).toContain(99999)
     })
 
     test('handles empty orphan list', async () => {
@@ -157,7 +150,7 @@ describe('ProcessCleaner', () => {
 
       expect(result.cleaned).toHaveLength(0)
       expect(result.failed).toHaveLength(0)
-      expect(result.errors).toHaveLength(0)
+      expect(result.alreadyGone).toHaveLength(0)
     })
 
     test('records failures when kill fails', async () => {
@@ -174,7 +167,7 @@ describe('ProcessCleaner', () => {
       // @ts-ignore
       process.kill = (pid: number, signal: string | number) => {
         if (signal === 0) {
-          return true // Process exists
+          return true
         }
         const err = new Error('Permission denied') as NodeJS.ErrnoException
         err.code = 'EPERM'
@@ -184,9 +177,10 @@ describe('ProcessCleaner', () => {
       const result = await cleaner.cleanup([orphan])
 
       expect(result.cleaned).toHaveLength(0)
-      expect(result.failed).toContain(44444)
-      expect(result.errors).toHaveLength(1)
-      expect(result.errors[0].error).toContain('Permission denied')
+      expect(result.failed).toHaveLength(1)
+      expect(result.failed[0].pid).toBe(44444)
+      expect(result.failed[0].error).toContain('Permission denied')
+      expect(result.alreadyGone).toHaveLength(0)
     })
 
     test('updates registry after successful cleanup', async () => {
@@ -200,12 +194,10 @@ describe('ProcessCleaner', () => {
       })
       mockProcessAliveMap.set(55555, true)
 
-      // Verify process is in registry
       expect(registry.list().some(p => p.pid === 55555)).toBe(true)
 
       await cleaner.cleanup([orphan])
 
-      // Process should be removed from registry
       expect(registry.list().some(p => p.pid === 55555)).toBe(false)
     })
   })
@@ -231,7 +223,6 @@ describe('ProcessCleaner', () => {
         }
 
         if (signal === 'SIGTERM') {
-          // Simulate process dying gracefully
           setTimeout(() => mockProcessAliveMap.set(testPid, false), 50)
           return true
         }
@@ -243,7 +234,6 @@ describe('ProcessCleaner', () => {
 
       expect(result).toBe(true)
       expect(mockProcessKillCalls.some(c => c.pid === pid && c.signal === 'SIGTERM')).toBe(true)
-      // SIGKILL should not be needed
       expect(mockProcessKillCalls.some(c => c.pid === pid && c.signal === 'SIGKILL')).toBe(false)
     })
 
@@ -267,12 +257,10 @@ describe('ProcessCleaner', () => {
         }
 
         if (signal === 'SIGTERM') {
-          // Process survives SIGTERM
           return true
         }
 
         if (signal === 'SIGKILL') {
-          // Process dies from SIGKILL
           mockProcessAliveMap.set(testPid, false)
           return true
         }
@@ -294,7 +282,6 @@ describe('ProcessCleaner', () => {
       const result = await cleaner.gracefulKill(pid)
 
       expect(result).toBe(true)
-      // Process check (signal 0) will be sent, but no SIGTERM/SIGKILL
       expect(mockProcessKillCalls.filter(c => c.pid === pid && c.signal === 'SIGTERM')).toHaveLength(0)
       expect(mockProcessKillCalls.filter(c => c.pid === pid && c.signal === 'SIGKILL')).toHaveLength(0)
     })
@@ -312,7 +299,7 @@ describe('ProcessCleaner', () => {
 
       const result = await cleaner.gracefulKill(pid)
 
-      expect(result).toBe(true) // ESRCH treated as success
+      expect(result).toBe(true)
     })
 
     test('throws on EPERM error', async () => {
@@ -385,79 +372,6 @@ describe('ProcessCleaner', () => {
       }
 
       expect(() => cleaner.forceKill(pid)).toThrow('Permission denied')
-    })
-  })
-
-  describe('grace period', () => {
-    test('waits for grace period before SIGKILL', async () => {
-      const pid = 99999
-      mockProcessAliveMap.set(pid, true)
-
-      const startTime = Date.now()
-
-      // Process survives SIGTERM
-      // @ts-ignore
-      process.kill = (testPid: number, signal: string | number) => {
-        mockProcessKillCalls.push({ pid: testPid, signal })
-
-        if (signal === 0) {
-          const isAlive = mockProcessAliveMap.get(testPid) ?? false
-          if (!isAlive) {
-            const err = new Error('Process not found') as NodeJS.ErrnoException
-            err.code = 'ESRCH'
-            throw err
-          }
-          return true
-        }
-
-        if (signal === 'SIGKILL') {
-          mockProcessAliveMap.set(testPid, false)
-        }
-
-        return true
-      }
-
-      await cleaner.gracefulKill(pid)
-
-      const elapsed = Date.now() - startTime
-
-      // Should wait at least the grace period (100ms in test)
-      expect(elapsed).toBeGreaterThanOrEqual(100)
-    })
-
-    test('respects custom grace period', async () => {
-      const customCleaner = new ProcessCleaner(registry, 200) // 200ms grace period
-      const pid = 11111
-      mockProcessAliveMap.set(pid, true)
-
-      const startTime = Date.now()
-
-      // Process survives SIGTERM
-      // @ts-ignore
-      process.kill = (testPid: number, signal: string | number) => {
-        if (signal === 0) {
-          const isAlive = mockProcessAliveMap.get(testPid) ?? false
-          if (!isAlive) {
-            const err = new Error('Process not found') as NodeJS.ErrnoException
-            err.code = 'ESRCH'
-            throw err
-          }
-          return true
-        }
-
-        if (signal === 'SIGKILL') {
-          mockProcessAliveMap.set(testPid, false)
-        }
-
-        return true
-      }
-
-      await customCleaner.gracefulKill(pid)
-
-      const elapsed = Date.now() - startTime
-
-      // Should wait at least the custom grace period (200ms)
-      expect(elapsed).toBeGreaterThanOrEqual(200)
     })
   })
 })

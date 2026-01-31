@@ -46,6 +46,30 @@ export default compose(
       // Additional free models
       // createModel({ name: "mistral-7b", cli: "opencode", model: "openrouter/mistralai/mistral-7b-instruct:free", timeout: 180, costWeight: 5 }),
       // createModel({ name: "devstral-2512", cli: "opencode", model: "openrouter/mistralai/devstral-2512:free", timeout: 600, costWeight: 5 }),
+      // Zhipu AI Coding Plan Models (ZAI) - Specialized for coding
+      ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
+      // Minimax Coding Plan Models - Specialized for coding
+      createModel({
+        name: "minimax-m2.1-code",
+        cli: "opencode",
+        model: "minimax-coding-plan/MiniMax-M2.1",
+        timeout: 600,
+        costWeight: 20,
+      }),
+      createModel({
+        name: "glm-4.7-flash",
+        cli: "opencode",
+        model: "zai-coding-plan/glm-4.7-flash",
+        timeout: 600,
+        costWeight: 12,
+      }),
+      createModel({
+        name: "glm-4.7",
+        cli: "opencode",
+        model: "zai-coding-plan/glm-4.7",
+        timeout: 600,
+        costWeight: 22,
+      }),
       createModel({
         name: "glm-4.7-free",
         cli: "opencode",
@@ -67,45 +91,12 @@ export default compose(
         timeout: 600,
         costWeight: 5,
       }),
-      // Zhipu AI Coding Plan Models (ZAI) - Specialized for coding
-      createModel({
-        name: "glm-4.7-flash",
-        cli: "opencode",
-        model: "zai-coding-plan/glm-4.7-flash",
-        timeout: 600,
-        costWeight: 12,
-      }),
-      createModel({
-        name: "glm-4.7",
-        cli: "opencode",
-        model: "zai-coding-plan/glm-4.7",
-        timeout: 600,
-        costWeight: 22,
-      }),
+
       // === PAID MODELS (costWeight: 10-30) - Used After Free ===
       // Fast & cheap
       ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
-      ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
 
-      // Minimax Coding Plan Models - Specialized for coding
-      createModel({
-        name: "minimax-m2.1-code",
-        cli: "opencode",
-        model: "minimax-coding-plan/MiniMax-M2.1",
-        timeout: 600,
-        costWeight: 20,
-      }),
       /*
-
-      // Other Chinese AI Models
-      createModel({
-        name: "kimi-k2.5",
-        cli: "opencode",
-        model: "opencode/kimi-k2.5",
-        timeout: 600,
-        costWeight: 22,
-      }),
-
       // Cerebras Models - Fast and cheap (limited tokens)
       createModel({
         name: "cerebras-qwen-3",
@@ -128,17 +119,29 @@ export default compose(
       // ModelPresets.claudeSonnet({ timeout: 600, costWeight: 30 }),
 
       // Uncomment for more premium models:
-      // createModel({ name: "antigravity-gemini-3-flash", cli: "opencode", model: "google/antigravity-gemini-3-flash", timeout: 180, costWeight: 15 }),
-      // createModel({ name: "antigravity-claude-sonnet-4-5", cli: "opencode", model: "google/antigravity-claude-sonnet-4-5", timeout: 600, costWeight: 30 }),
+      createModel({
+        name: "antigravity-gemini-3-flash",
+        cli: "opencode",
+        model: "google/antigravity-gemini-3-flash",
+        timeout: 180,
+        costWeight: 15,
+      }),
+      createModel({
+        name: "antigravity-claude-sonnet-4-5",
+        cli: "opencode",
+        model: "google/antigravity-claude-sonnet-4-5",
+        timeout: 600,
+        costWeight: 30,
+      }),
     ],
     fallbackModels: [
       // Premium models for complex tasks
       // ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
-      ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
-      ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
+      ModelPresets.geminiFlash({ timeout: 900, costWeight: 15 }),
+      // ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
       // createModel({ name: "claude-opus", cli: "claude", model: "opus", timeout: 900, costWeight: 100 }),
     ],
-    selectionStrategy: "round-robin", // Uses cheapest (lowest costWeight) first!
+    selectionStrategy: "random", // Uses cheapest (lowest costWeight) first!
   }),
 
   // Track costs

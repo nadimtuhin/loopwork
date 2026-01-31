@@ -45,8 +45,8 @@ export interface OrphanInfo {
  */
 export interface CleanupResult {
   cleaned: number[]
-  failed: number[]
-  errors: Array<{ pid: number; error: string }>
+  failed: Array<{ pid: number; error: string }>
+  alreadyGone: number[]
 }
 
 /**

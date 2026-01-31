@@ -10,7 +10,7 @@ import type { TaskAnalyzer } from './analysis'
 /**
  * Log levels for controlling output verbosity
  */
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'success' | 'silent'
 
 /**
  * Output mode for controlling how output is rendered
@@ -184,6 +184,10 @@ export interface LoopworkConfig {
   circuitBreakerThreshold?: number
   taskDelay?: number
   retryDelay?: number
+  maxRetryDelay?: number
+  backoffMultiplier?: number
+  jitter?: boolean
+  retryStrategy?: 'linear' | 'exponential'
 
   /**
    * Cooldown delay after self-healing (in milliseconds)

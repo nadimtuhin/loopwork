@@ -119,7 +119,7 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       dryRun: options.dryRun,
     })
 
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       <InkTable
         headers={['PID', 'Command', 'Age', 'Status', 'Action']}
         columnConfigs={[
@@ -162,7 +162,7 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       nextSteps.push(`Use --force to also kill ${suspectedCount} suspected orphan(s)`)
     }
 
-    const summaryOutput = renderInk(
+    const summaryOutput = await renderInk(
       <InkCompletionSummary
         title="Orphan Cleanup Summary"
         stats={{

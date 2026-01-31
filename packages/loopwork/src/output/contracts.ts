@@ -22,7 +22,7 @@ export interface BaseOutputEvent {
 /**
  * Log level types matching logger methods
  */
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'success' | 'silent'
 
 /**
  * Log event - emitted for all logger.* calls
@@ -152,6 +152,7 @@ export interface ProgressStopEvent extends BaseOutputEvent {
 export interface RawOutputEvent extends BaseOutputEvent {
   type: 'raw'
   content: string
+  noNewline?: boolean
 }
 
 /**

@@ -172,7 +172,7 @@ export function createTaskRecoveryPlugin(
         if (config.autoRecover && plan.confidence >= 70) {
           await executeRecovery(plan, context, backend, config)
         } else {
-          await presentRecoveryPlan(plan, context)
+          await presentRecoveryPlan(plan, context, config)
         }
       } catch (err) {
         logger.warn(`Task recovery analysis failed: ${err}`)
@@ -318,7 +318,11 @@ async function executeRecovery(
 /**
  * Present recovery plan for approval
  */
-async function presentRecoveryPlan(plan: RecoveryPlan, context: TaskContext): Promise<void> {
+async function presentRecoveryPlan(
+  plan: RecoveryPlan, 
+  context: TaskContext,
+  config: Required<TaskRecoveryConfig>
+): Promise<void> {
   logger.raw('\n' + '─'.repeat(60))
   logger.raw(`🔧 Task Recovery Analysis: ${context.task.id}`)
   logger.raw('─'.repeat(60))
@@ -330,7 +334,14 @@ async function presentRecoveryPlan(plan: RecoveryPlan, context: TaskContext): Pr
   if (plan.newTask) {
     logger.raw(`New Task: ${plan.newTask.title}`)
   }
-  logger.raw('\n' + 'To enable auto-recovery, add autoRecover: true to your TaskRecovery config')
+  
+  // Show appropriate message based on config
+  if (!config.autoRecover) {
+    logger.raw('\n' + 'To enable auto-recovery, add autoRecover: true to your TaskRecovery config')
+  } else {
+    logger.raw(`\n` + `Auto-recovery not triggered (confidence ${plan.confidence}% < 70% threshold)`)
+  }
+  
   logger.raw('─'.repeat(60) + '\n')
 }
 

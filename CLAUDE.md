@@ -394,31 +394,43 @@ npm publish
 - **Always Build**: AI tasks are not complete until `bun run build` passes.
 - **Check Cycles**: If you modify exports/imports, verify graph integrity.
 
+## Modular Development Protocol (CRITICAL)
+
+All architectural changes must follow the **Contract → Implement → Swap** protocol to ensure granular tasks can be executed by free AI models without introducing regressions.
+
+1.  **Define Contract**: Add/update pure TypeScript interfaces in `@loopwork-ai/contracts` (or `src/contracts`).
+2.  **Define Package**: Create a new standalone package for the module if appropriate.
+3.  **Implement**: Create the new implementation that satisfies the contract. 
+4.  **Integration (DI)**: Refactor consumer classes to accept the interface via **Constructor Injection** rather than concrete imports.
+5.  **Swap**: Replace the concrete instantiation in the "Composition Root" (usually `src/index.ts` or a factory).
+
+### Dependency Inversion Rules
+- Core modules must NEVER depend on concrete implementations of other core modules.
+- Always depend on an interface defined in a lower layer (e.g. `contracts`).
+- Avoid global singleton instances (like global `logger` or `plugins`). Use injected instances.
+
 ## AI Development Philosophy
 
 ### Core Principles
 
-1. **Contract-First Design**: Define interfaces/contracts before implementation. All modules communicate through well-defined contracts in `src/contracts/`. Never depend on concrete implementations directly.
+1.  **Granular Task Decomposition**: Complex tasks must be broken down into atomic sub-tasks (each <20 min of work). This allows free models to contribute effectively without exceeding context limits.
 
-2. **Dependency Inversion**: High-level modules must not depend on low-level modules. Both should depend on abstractions (contracts). Inject dependencies rather than importing concrete implementations.
+2.  **Contract-First Design**: Define interfaces/contracts before implementation. All modules communicate through well-defined contracts. Never depend on concrete implementations directly.
 
-3. **Always TDD**: Write tests BEFORE writing implementation code. Red → Green → Refactor cycle is mandatory.
+3.  **Dependency Inversion (DIP)**: High-level modules must not depend on low-level modules. Both should depend on abstractions (contracts). Inject dependencies rather than importing concrete implementations.
 
-4. **E2E Testing Always**: Every feature must have end-to-end tests that verify the full user journey. Unit tests alone are insufficient.
+4.  **Always TDD**: Write tests BEFORE writing implementation code. Red → Green → Refactor cycle is mandatory.
 
-5. **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
+5.  **E2E Testing Always**: Every feature must have end-to-end tests that verify the full user journey. Unit tests alone are insufficient.
+
+6.  **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
 
 ### Implementation Patterns
 
-6. **Swap via Imports**: When replacing functionality, create the new implementation first, then swap the import. Never modify existing working code inline. This enables easy rollback and A/B testing.
+7.  **Swap via Imports**: When replacing functionality, create the new implementation first, then swap the import. Never modify existing working code inline. This enables easy rollback and A/B testing.
 
-7. **Single Feature Focus**: Work on ONE feature at a time. Complete it fully (tests passing, E2E verified) before moving to the next. Avoid scattered partial implementations.
+8.  **Single Feature Focus**: Work on ONE feature at a time. Complete it fully (tests passing, E2E verified) before moving to the next. Avoid scattered partial implementations.
 
-8. **Task Decomposition for Long Tasks**: For complex tasks, the main thread should:
-   - Break the task into small, atomic sub-tasks (each <30 min of work)
-   - Feed each sub-task to a subagent with clear inputs/outputs
-   - Aggregate results and verify integration
-   - Never give subagents large, ambiguous tasks
 
 9. **Node.js Built-ins in Bun**: When using Node.js built-in modules (`events`, `stream`, `util`, `path`, etc.), you MUST install them as explicit dependencies:
    ```bash

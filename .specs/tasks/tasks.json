@@ -222,7 +222,7 @@
     },
     {
       "id": "PARALLEL-001e",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Parallel: Create ParallelRunner class",
       "feature": "parallel",
@@ -241,8 +241,42 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:27.574Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.652Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:14:27.824Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.652Z",
+        "startedAt": "2026-01-31T23:11:29.652Z",
+        "completedAt": "2026-01-31T23:14:27.824Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PARALLEL-001f",
@@ -654,7 +688,7 @@
     },
     {
       "id": "AI-MONITOR-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Intelligent Log Watcher & Auto-Healer",
       "feature": "ai-monitor",
@@ -690,12 +724,42 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:27.586Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.754Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:18:04.696Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-01-31T22:03:31.248Z",
-        "startedAt": "2026-01-31T22:03:31.248Z"
-      }
+        "startedAt": "2026-01-31T23:11:29.754Z",
+        "completedAt": "2026-01-31T23:18:04.696Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "AI-MONITOR-001a",
@@ -1041,7 +1105,7 @@
     },
     {
       "id": "CLI-005",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Fix CLI output streaming - output not showing in real-time",
       "feature": "cli",
@@ -1060,8 +1124,22 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.764Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.764Z",
+        "startedAt": "2026-01-31T23:11:29.764Z"
+      }
     },
     {
       "id": "PROC-001",
@@ -1169,7 +1247,7 @@
     },
     {
       "id": "PROC-001b",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Process Management: ProcessRegistry (Track All Children)",
       "feature": "process-management",
@@ -1207,12 +1285,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.775Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:13:23.955Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.775Z",
+        "startedAt": "2026-01-31T23:11:29.775Z",
+        "completedAt": "2026-01-31T23:13:23.955Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001c",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Process Management: OrphanDetector (Find Rogue Processes)",
       "feature": "process-management",
@@ -1252,12 +1355,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.787Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:17:44.471Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.787Z",
+        "startedAt": "2026-01-31T23:11:29.787Z",
+        "completedAt": "2026-01-31T23:17:44.471Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001d",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Process Management: ProcessCleaner (Kill Orphans Safely)",
       "feature": "process-management",
@@ -1292,8 +1420,22 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.803Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.803Z",
+        "startedAt": "2026-01-31T23:11:29.803Z"
+      }
     },
     {
       "id": "PROC-001e",
@@ -1441,7 +1583,7 @@
     },
     {
       "id": "HEALTH-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create health check endpoint handler",
       "feature": "health",
@@ -1455,8 +1597,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.818Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:16:40.335Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 6)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.818Z",
+        "startedAt": "2026-01-31T23:11:29.818Z",
+        "completedAt": "2026-01-31T23:16:40.335Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "HEALTH-002",
@@ -1482,7 +1649,7 @@
     },
     {
       "id": "CLIOUTPU-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create unified output utilities module",
       "feature": "cli-output-design",
@@ -1496,8 +1663,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.837Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:14:33.342Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 7)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.837Z",
+        "startedAt": "2026-01-31T23:11:29.837Z",
+        "completedAt": "2026-01-31T23:14:33.342Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CLIOUTPU-002",
@@ -1611,7 +1803,7 @@
     },
     {
       "id": "DYNAMICT-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define TaskAnalysis contract and result parsing interface",
       "feature": "dynamic-task-creation",
@@ -1625,8 +1817,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.871Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:16:02.943Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 8)\n\nSession: loopwork-default-2026-01-31T23-11-29-29937\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.871Z",
+        "startedAt": "2026-01-31T23:11:29.871Z",
+        "completedAt": "2026-01-31T23:16:02.943Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DYNAMICT-002",
@@ -1721,7 +1938,7 @@
     },
     {
       "id": "RETRY-001",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Implement Core Retry Utilities and Configuration",
       "feature": "retry",
@@ -1735,8 +1952,22 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:11:29.897Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:11:29.897Z",
+        "startedAt": "2026-01-31T23:11:29.897Z"
+      }
     },
     {
       "id": "RETRY-002",
@@ -7566,6 +7797,1340 @@
         "ARCH-012",
         "ARCH-013"
       ]
+    },
+    {
+      "id": "EXTRACTI-001",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Process Management Contracts",
+      "feature": "EXTRACTION"
+    },
+    {
+      "id": "EXTRACTI-002",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Process Manager Package",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-001"
+      ]
+    },
+    {
+      "id": "EXTRACTI-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Process Registry & Detector",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-002"
+      ]
+    },
+    {
+      "id": "EXTRACTI-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Spawners",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-003"
+      ]
+    },
+    {
+      "id": "EXTRACTI-005",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Process Manager Orchestrator",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-004"
+      ]
+    },
+    {
+      "id": "EXTRACTI-006",
+      "status": "pending",
+      "priority": "high",
+      "title": "Inject ProcessManager into Core",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-005"
+      ]
+    },
+    {
+      "id": "EXTRACTI-007",
+      "status": "pending",
+      "priority": "high",
+      "title": "Update Consumers to use Interface",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-006"
+      ]
+    },
+    {
+      "id": "EXTRACTI-008",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define State Persistence Contracts",
+      "feature": "EXTRACTION"
+    },
+    {
+      "id": "EXTRACTI-009",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold State Package",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-008"
+      ]
+    },
+    {
+      "id": "EXTRACTI-010",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract File Persistence",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-009"
+      ]
+    },
+    {
+      "id": "EXTRACTI-011",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Loopwork State Logic",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-010"
+      ]
+    },
+    {
+      "id": "EXTRACTI-012",
+      "status": "pending",
+      "priority": "high",
+      "title": "Inject StateManager into Core",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-011"
+      ]
+    },
+    {
+      "id": "EXTRACTI-013",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Executor Interfaces",
+      "feature": "EXTRACTION"
+    },
+    {
+      "id": "EXTRACTI-014",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Executor Package",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-013"
+      ]
+    },
+    {
+      "id": "EXTRACTI-015",
+      "status": "pending",
+      "priority": "high",
+      "title": "Migrate CliExecutor",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-014"
+      ]
+    },
+    {
+      "id": "EXTRACTI-016",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Define Logger & Renderer Contracts",
+      "feature": "EXTRACTION"
+    },
+    {
+      "id": "EXTRACTI-017",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold UI Package",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-016"
+      ]
+    },
+    {
+      "id": "EXTRACTI-018",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Ink Components",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-017"
+      ]
+    },
+    {
+      "id": "EXTRACTI-019",
+      "status": "pending",
+      "priority": "critical",
+      "title": "Define Plugin Registry Interfaces",
+      "feature": "EXTRACTION"
+    },
+    {
+      "id": "EXTRACTI-020",
+      "status": "pending",
+      "priority": "critical",
+      "title": "Extract Plugin Registry",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-019"
+      ]
+    },
+    {
+      "id": "EXTRACTI-021",
+      "status": "pending",
+      "priority": "critical",
+      "title": "Implement Composition Root",
+      "feature": "EXTRACTION",
+      "dependsOn": [
+        "EXTRACTI-007",
+        "EXTRACTI-012",
+        "EXTRACTI-015",
+        "EXTRACTI-018",
+        "EXTRACTI-020"
+      ]
+    },
+    {
+      "id": "FIX-001",
+      "status": "pending",
+      "priority": "high",
+      "title": "Fix ReferenceError in Documentation Plugin",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-002",
+      "status": "pending",
+      "priority": "high",
+      "title": "Fix Promise Leaks in Status Command",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Fix Promise Leaks in Logs Command",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Fix Safety Plugin Error Propagation",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-005",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Fix Leaking Mocks in Utils Tests",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-006",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Fix Monitor Unit Test Resource Cleanup",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-007",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Fix Resource Constraints in CLI Executor Tests",
+      "feature": "FIX"
+    },
+    {
+      "id": "FIX-008",
+      "status": "pending",
+      "priority": "low",
+      "title": "Verify All Fixes",
+      "feature": "FIX",
+      "dependsOn": [
+        "FIX-001",
+        "FIX-002",
+        "FIX-003",
+        "FIX-004",
+        "FIX-005",
+        "FIX-006",
+        "FIX-007"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-001",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Vector Store Contracts",
+      "feature": "ARCH-WAVE-2"
+    },
+    {
+      "id": "ARCHWAVE-002",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Vector Store Package",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-001"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-003",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement LocalVectorStore",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-002"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-004",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Embedding Providers",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-002"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-005",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Analysis Engine Contracts",
+      "feature": "ARCH-WAVE-2"
+    },
+    {
+      "id": "ARCHWAVE-006",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Analysis Package",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-005"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-007",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Analysis Logic",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-006"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-008",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Safety Contracts",
+      "feature": "ARCH-WAVE-2"
+    },
+    {
+      "id": "ARCHWAVE-009",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Safety Package",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-008"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-010",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Risk Analysis & Confirmation",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-009"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-011",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Adapter Contracts",
+      "feature": "ARCH-WAVE-2"
+    },
+    {
+      "id": "ARCHWAVE-012",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Adapters Package",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-011"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-013",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract CLI and Git Adapters",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCHWAVE-012"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-014",
+      "status": "pending",
+      "priority": "high",
+      "title": "Integrate & Verify Wave 2",
+      "feature": "ARCH-WAVE-2",
+      "dependsOn": [
+        "ARCH-VEC-005",
+        "ARCH-ANAL-004",
+        "ARCH-SAFE-005",
+        "ARCH-ADAPT-004"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-015",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Messaging Contracts",
+      "feature": "ARCH-WAVE-3"
+    },
+    {
+      "id": "ARCHWAVE-016",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Messaging Package",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-015"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-017",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement LocalEventBus",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-016"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-018",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement IpcMessageBus",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-017"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-019",
+      "status": "pending",
+      "priority": "high",
+      "title": "Integrate Messaging into LoopworkRunner",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-018"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-020",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Telemetry Contracts",
+      "feature": "ARCH-WAVE-3"
+    },
+    {
+      "id": "ARCHWAVE-021",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold Telemetry Package & Basic Collector",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-020"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-022",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate CostTracking to Telemetry Provider",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-021"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-023",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Config Contracts & Package",
+      "feature": "ARCH-WAVE-3"
+    },
+    {
+      "id": "ARCHWAVE-024",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Config Logic",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-023"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-025",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Backend Provider Contracts",
+      "feature": "ARCH-WAVE-3"
+    },
+    {
+      "id": "ARCHWAVE-026",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Backend Packages",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-025"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-027",
+      "status": "pending",
+      "priority": "high",
+      "title": "Final Integration & Verification",
+      "feature": "ARCH-WAVE-3",
+      "dependsOn": [
+        "ARCHWAVE-019",
+        "ARCHWAVE-022",
+        "ARCHWAVE-024",
+        "ARCHWAVE-026"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-028",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Command Contracts",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-029",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold cli-commands Package",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-028"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-030",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Reschedule Command",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-029"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-031",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Init and Config Commands",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-029"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-032",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Command Registry",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-030",
+        "ARCHWAVE-031"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-033",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define UI Contracts",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-034",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold ui-components Package",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-033"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-035",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Basic UI Components",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-034"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-036",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Complex UI Components",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-035"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-037",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate UI Library",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-036"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-038",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold Task Recovery Plugin",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-039",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Task Recovery Logic",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-038"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-040",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold Smart Tasks Plugin",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-041",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Smart Tasks Logic",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-040"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-042",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create & Migrate Git Autocommit Plugin",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-043",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Specialized Plugins",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-039",
+        "ARCHWAVE-041",
+        "ARCHWAVE-042"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-044",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Utils-FS",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-045",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Utils-Common",
+      "feature": "ARCH-WAVE-4"
+    },
+    {
+      "id": "ARCHWAVE-046",
+      "status": "pending",
+      "priority": "low",
+      "title": "Refactor Core Utils",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-044",
+        "ARCHWAVE-045"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-047",
+      "status": "pending",
+      "priority": "high",
+      "title": "Final System Verification",
+      "feature": "ARCH-WAVE-4",
+      "dependsOn": [
+        "ARCHWAVE-032",
+        "ARCHWAVE-037",
+        "ARCHWAVE-043",
+        "ARCHWAVE-046"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-048",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Agent Orchestration Contracts",
+      "feature": "ARCH-WAVE-5"
+    },
+    {
+      "id": "ARCHWAVE-049",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold @loopwork-ai/agents Package",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-048"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-050",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Migrate Planner and Executor Logic",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-049"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-051",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Inject AgentRegistry into Core Commands",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-050"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-052",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Test Harness Contracts",
+      "feature": "ARCH-WAVE-5"
+    },
+    {
+      "id": "ARCHWAVE-053",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold @loopwork-ai/test-harness Package",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-052"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-054",
+      "status": "pending",
+      "priority": "high",
+      "title": "Implement MemoryBackend and MockCliExecutor",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-053"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-055",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement VirtualFileSystem Helper",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-054"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-056",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Define Spec Parser Contracts",
+      "feature": "ARCH-WAVE-5"
+    },
+    {
+      "id": "ARCHWAVE-057",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold @loopwork-ai/spec-parser",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-056"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-058",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Extract Markdown Parsing Logic",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-057"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-059",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Parser into JSON Backend",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-058"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-060",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Define Pipeline Contracts",
+      "feature": "ARCH-WAVE-5"
+    },
+    {
+      "id": "ARCHWAVE-061",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Scaffold @loopwork-ai/hook-engine",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-060"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-062",
+      "status": "pending",
+      "priority": "high",
+      "title": "Implement Middleware Runner",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-061"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-063",
+      "status": "pending",
+      "priority": "high",
+      "title": "Integrate Pipeline into LoopworkRunner",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-062"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-064",
+      "status": "pending",
+      "priority": "high",
+      "title": "Wave 5 Full Verification",
+      "feature": "ARCH-WAVE-5",
+      "dependsOn": [
+        "ARCHWAVE-051",
+        "ARCHWAVE-055",
+        "ARCHWAVE-059",
+        "ARCHWAVE-063"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-065",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Visualization Contracts",
+      "feature": "ARCH-WAVE-6"
+    },
+    {
+      "id": "ARCHWAVE-066",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Visualizer Package",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-065"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-067",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Mermaid Graph Renderer",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-066"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-068",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Visualizer into Status Command",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-067"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-069",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Documentation Contracts",
+      "feature": "ARCH-WAVE-6"
+    },
+    {
+      "id": "ARCHWAVE-070",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Doc-Engine Package",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-069"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-071",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Markdown Changelog Logic",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-070"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-072",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Inject Doc Engine into DocumentationPlugin",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-071"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-073",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Lifecycle Contracts",
+      "feature": "ARCH-WAVE-6"
+    },
+    {
+      "id": "ARCHWAVE-074",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Lifecycle-Manager Package",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-073"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-075",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement File-Based Heartbeat",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-074"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-076",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Inject Lifecycle Manager into Runner",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-075"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-077",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Error Registry Contracts",
+      "feature": "ARCH-WAVE-6"
+    },
+    {
+      "id": "ARCHWAVE-078",
+      "status": "pending",
+      "priority": "high",
+      "title": "Scaffold Error-Service Package",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-077"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-079",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Centralized Error Registry",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-078"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-080",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Error Service into Utils",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-079"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-081",
+      "status": "pending",
+      "priority": "high",
+      "title": "Final Verification & Build",
+      "feature": "ARCH-WAVE-6",
+      "dependsOn": [
+        "ARCHWAVE-068",
+        "ARCHWAVE-072",
+        "ARCHWAVE-076",
+        "ARCHWAVE-080"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-082",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define CLI Detection Contracts",
+      "feature": "ARCH-WAVE-7"
+    },
+    {
+      "id": "ARCHWAVE-083",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create CLI Detector Package",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-082"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-084",
+      "status": "pending",
+      "priority": "high",
+      "title": "Implement CLI Detection Logic",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-083"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-085",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate CLI Detector into Core",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-084"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-086",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Model Registry Contracts",
+      "feature": "ARCH-WAVE-7"
+    },
+    {
+      "id": "ARCHWAVE-087",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create Model Registry Package",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-086"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-088",
+      "status": "pending",
+      "priority": "high",
+      "title": "Migrate Model Presets and Registry Logic",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-087"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-089",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Model Registry into Core",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-088"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-090",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Resilience Contracts",
+      "feature": "ARCH-WAVE-7"
+    },
+    {
+      "id": "ARCHWAVE-091",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create Resilience Package",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-090"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-092",
+      "status": "pending",
+      "priority": "high",
+      "title": "Implement Resilience Strategies",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-091"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-093",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Resilience Engine into Core",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-092"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-094",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Budget Contracts",
+      "feature": "ARCH-WAVE-7"
+    },
+    {
+      "id": "ARCHWAVE-095",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create Budget Manager Package",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-094"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-096",
+      "status": "pending",
+      "priority": "high",
+      "title": "Implement Budget Logic",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-095"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-097",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Budget Manager into Plugin",
+      "feature": "ARCH-WAVE-7",
+      "dependsOn": [
+        "ARCHWAVE-096"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-098",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create Orchestrator Package Structure",
+      "feature": "ARCH-WAVE-8"
+    },
+    {
+      "id": "ARCHWAVE-099",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Orchestration Contracts",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-098"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-100",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement NamespaceManager",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-099"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-101",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement ClusterCoordinator",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-099"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-102",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Orchestrator into Monitor/Dashboard",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-100",
+        "ARCHWAVE-101"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-103",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create Isolation Package Structure",
+      "feature": "ARCH-WAVE-8"
+    },
+    {
+      "id": "ARCHWAVE-104",
+      "status": "pending",
+      "priority": "high",
+      "title": "Define Isolation Contracts",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-103"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-105",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement Docker & Local Providers",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-104"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-106",
+      "status": "pending",
+      "priority": "high",
+      "title": "Inject Isolation into CliExecutor",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-105"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-107",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create Notifications Package & Contracts",
+      "feature": "ARCH-WAVE-8"
+    },
+    {
+      "id": "ARCHWAVE-108",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Implement CompositeNotificationProvider",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-107"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-109",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Refactor Telegram & Discord Plugins",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-108"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-110",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Integrate Notifications into Core",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-109"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-111",
+      "status": "pending",
+      "priority": "low",
+      "title": "Create Dev-Tools Package & Scaffolder Contract",
+      "feature": "ARCH-WAVE-8"
+    },
+    {
+      "id": "ARCHWAVE-112",
+      "status": "pending",
+      "priority": "low",
+      "title": "Implement PluginScaffolder",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-111"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-113",
+      "status": "pending",
+      "priority": "low",
+      "title": "Integrate Scaffolder into CLI Init",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-112"
+      ]
+    },
+    {
+      "id": "ARCHWAVE-114",
+      "status": "pending",
+      "priority": "high",
+      "title": "Final Integration Verification",
+      "feature": "ARCH-WAVE-8",
+      "dependsOn": [
+        "ARCHWAVE-102",
+        "ARCHWAVE-106",
+        "ARCHWAVE-110",
+        "ARCHWAVE-113"
+      ]
     }
   ],
   "features": {
@@ -7696,6 +9261,42 @@
     "ARCH": {
       "name": "ARCH",
       "description": "Tasks for ARCH"
+    },
+    "EXTRACTION": {
+      "name": "EXTRACTION",
+      "description": "Tasks for EXTRACTION"
+    },
+    "FIX": {
+      "name": "FIX",
+      "description": "Tasks for FIX"
+    },
+    "ARCH-WAVE-2": {
+      "name": "ARCH WAVE 2",
+      "description": "Tasks for ARCH-WAVE-2"
+    },
+    "ARCH-WAVE-3": {
+      "name": "ARCH WAVE 3",
+      "description": "Tasks for ARCH-WAVE-3"
+    },
+    "ARCH-WAVE-4": {
+      "name": "ARCH WAVE 4",
+      "description": "Tasks for ARCH-WAVE-4"
+    },
+    "ARCH-WAVE-5": {
+      "name": "ARCH WAVE 5",
+      "description": "Tasks for ARCH-WAVE-5"
+    },
+    "ARCH-WAVE-6": {
+      "name": "ARCH WAVE 6",
+      "description": "Tasks for ARCH-WAVE-6"
+    },
+    "ARCH-WAVE-7": {
+      "name": "ARCH WAVE 7",
+      "description": "Tasks for ARCH-WAVE-7"
+    },
+    "ARCH-WAVE-8": {
+      "name": "ARCH WAVE 8",
+      "description": "Tasks for ARCH-WAVE-8"
     }
   }
 }

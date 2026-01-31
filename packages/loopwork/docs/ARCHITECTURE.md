@@ -300,6 +300,36 @@ manager.offReload(callback)
 4. **Stability Threshold** - 100ms prevents multiple reloads from single save
 5. **Event-Driven** - Allows external code to react to config changes
 
+### Retry System
+
+**File:** `src/core/retry.ts`
+
+Loopwork implements a robust retry system with configurable strategies and jitter to handle transient failures and rate limits gracefully.
+
+**Features:**
+- **Exponential Backoff**: Delay increases exponentially (multiplier: 2)
+- **Jitter**: Adds randomness (+/- 10%) to prevent thundering herd
+- **Configurable Strategies**: `linear` or `exponential`
+- **Retryable Error Detection**: Checks error messages and codes
+
+**Configuration:**
+```typescript
+interface RetryPolicy {
+  maxRetries: number           // Max attempts (default: 3)
+  initialDelay: number         // Initial wait (default: 1000ms)
+  maxDelay: number             // Max wait cap (default: 30000ms)
+  backoffMultiplier: number    // Multiplier (default: 2)
+  jitter: boolean              // Enable jitter (default: true)
+  retryStrategy: 'linear' | 'exponential' // (default: 'exponential')
+}
+```
+
+**Backoff Calculation:**
+```
+delay = initialDelay * (multiplier ^ attempt)
+finalDelay = delay * (1 + random(-0.1, 0.1))
+```
+
 ## Plugin System
 
 ### LoopworkPlugin Interface

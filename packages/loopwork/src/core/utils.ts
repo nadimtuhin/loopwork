@@ -28,6 +28,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   trace: -1,
   debug: 0,
   info: 1,
+  success: 1,
   warn: 2,
   error: 3,
   silent: 4,
@@ -189,10 +190,11 @@ export const logger = {
    * Raw output - bypass all formatting, timestamps, and prefixes
    * Use for pre-formatted output from Table, Banner, or other utilities
    */
-  raw: (msg: string) => {
+  raw: (msg: string, noNewline: boolean = false) => {
     logger.renderer.render({
       type: 'raw',
       content: msg,
+      noNewline,
       timestamp: Date.now()
     })
     logger._logToFile('RAW', msg)
@@ -277,6 +279,7 @@ export class StreamLogger {
   private prefix: string = ''
   private onEvent?: (event: { type: string; data: unknown }) => void
   private isPaused: boolean = false
+  private isAtStartOfLine: boolean = true
 
   constructor(prefix?: string, onEvent?: (event: { type: string; data: unknown }) => void) {
     this.prefix = prefix || ''
@@ -289,134 +292,90 @@ export class StreamLogger {
 
   resume() {
     this.isPaused = false
+    if (this.buffer) {
+      const toLog = this.buffer
+      this.buffer = ''
+      this.log(toLog)
+    }
   }
 
   log(chunk: string | Buffer) {
-    this.buffer += chunk.toString('utf8')
-    const lines = this.buffer.split('\n')
-    this.buffer = lines.pop() || ''
-
-    for (const line of lines) {
-      this.printLine(line)
-    }
-  }
-
-  private printLine(line: string) {
-    // Events must still fire when paused to drive debugger breakpoints
-    if (this.onEvent && (
-      line.includes('Tool Call:') || 
-      line.includes('Running tool') || 
-      line.includes('Calling tool') ||
-      line.includes('✔ Tool output') ||
-      line.includes('✖ Tool error')
-    )) {
-      this.onEvent({
-        type: 'POST_TOOL',
-        data: { line: line.replace(/^\s*\|\s*/, '') }
-      })
+    const str = chunk.toString('utf8')
+    
+    if (this.onEvent) {
+      const eventLines = (this.buffer + str).split('\n')
+      for (let i = 0; i < eventLines.length - 1; i++) {
+        const line = eventLines[i]
+        if (this.isEventLine(line)) {
+          this.onEvent({
+            type: 'POST_TOOL',
+            data: { line: line.replace(/^\s*\|\s*/, '') }
+          })
+        }
+      }
     }
 
     if (this.isPaused) {
+      this.buffer += str
       return
     }
 
+    const fullContent = this.buffer + str
+    this.buffer = ''
+    
+    const lines = fullContent.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const isLast = i === lines.length - 1
+      
+      if (line.length > 0) {
+        if (this.isAtStartOfLine) {
+          this.printPrefix()
+          this.isAtStartOfLine = false
+        }
+        // Clean up the line: remove leading | and extra spaces from tool output
+        let cleanedLine = line.replace(/^\s*\|\s*/, '')
+        logger.raw(chalk.dim(cleanedLine), true)
+      }
+      
+      if (!isLast) {
+        if (this.isAtStartOfLine) {
+          this.printPrefix()
+        }
+        logger.raw('') 
+        this.isAtStartOfLine = true
+      }
+    }
+    
+    logger.lastOutputTime = Date.now()
+  }
+
+  private isEventLine(line: string): boolean {
+    return line.includes('Tool Call:') || 
+           line.includes('Running tool') || 
+           line.includes('Calling tool') ||
+           line.includes('✔ Tool output') ||
+           line.includes('✖ Tool error')
+  }
+
+  private printPrefix() {
     // Stop spinner before outputting stream
     logger.renderer.render({ type: 'progress:stop', timestamp: Date.now() })
     
-    // Legacy formatting logic retained for backward compatibility via raw output
     const timestamp = chalk.gray(getTimestamp())
-    const separator = chalk.gray(' │')
+    const separatorStr = chalk.gray(' │')
     const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
-
-    // Clean up the line: remove leading | and extra spaces from tool output
-    let cleanedLine = line.replace(/^\s*\|\s*/, '')
-
-    // Calculate available width for content
-    // Terminal width - timestamp (12) - separator (3) - prefix (~20) - margin (5)
-    const terminalWidth = process.stdout.columns || 120
-    const reservedWidth = 12 + 3 + (this.prefix ? this.prefix.length + 3 : 0) + 5
-    const contentWidth = Math.max(60, terminalWidth - reservedWidth)
-
-    // Wrap long lines
-    const wrappedLines = this.wrapText(cleanedLine, contentWidth)
-
-    for (let i = 0; i < wrappedLines.length; i++) {
-      let outputLine = ''
-      if (i === 0) {
-        // First line: show timestamp and prefix
-        outputLine = `${timestamp}${separator}${prefixStr} ${chalk.dim(wrappedLines[i])}`
-      } else {
-        // Continuation lines: indent to align with first line content
-        const indent = ' '.repeat(12 + 3 + (this.prefix ? this.prefix.length + 3 : 0))
-        outputLine = `${indent} ${chalk.dim(wrappedLines[i])}`
-      }
-      
-      // Send as raw output to renderer (which appends newline)
-      logger.renderer.render({
-        type: 'raw',
-        content: outputLine,
-        timestamp: Date.now()
-      })
-    }
-
-    logger.lastOutputTime = Date.now()
-
-    if (this.onEvent && (
-      line.includes('Tool Call:') || 
-      line.includes('Running tool') || 
-      line.includes('Calling tool') ||
-      line.includes('✔ Tool output') ||
-      line.includes('✖ Tool error')
-    )) {
-      this.onEvent({
-        type: 'POST_TOOL',
-        data: { line: cleanedLine }
-      })
-    }
-  }
-
-  private wrapText(text: string, maxWidth: number): string[] {
-    if (text.length <= maxWidth) {
-      return [text]
-    }
-
-    const lines: string[] = []
-    let currentLine = ''
-    const words = text.split(' ')
-
-    for (const word of words) {
-      if (currentLine.length + word.length + 1 <= maxWidth) {
-        currentLine += (currentLine ? ' ' : '') + word
-      } else {
-        if (currentLine) {
-          lines.push(currentLine)
-        }
-        // If a single word is longer than maxWidth, split it
-        if (word.length > maxWidth) {
-          let remaining = word
-          while (remaining.length > maxWidth) {
-            lines.push(remaining.substring(0, maxWidth))
-            remaining = remaining.substring(maxWidth)
-          }
-          currentLine = remaining
-        } else {
-          currentLine = word
-        }
-      }
-    }
-
-    if (currentLine) {
-      lines.push(currentLine)
-    }
-
-    return lines.length > 0 ? lines : [text]
+    
+    logger.raw(`${timestamp}${separatorStr}${prefixStr} `, true)
   }
 
   flush() {
-    if (this.buffer) {
-      this.printLine(this.buffer)
-      this.buffer = ''
+    if (this.isAtStartOfLine && this.buffer) {
+      this.log('\n')
+    } else if (this.buffer) {
+      this.log('') 
     }
+    this.buffer = ''
   }
 }
 

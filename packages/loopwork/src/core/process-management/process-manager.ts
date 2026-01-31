@@ -249,7 +249,7 @@ export function createProcessManager(options?: {
   // Create dependencies
   const registry = new ProcessRegistry(storageDir)
   const detector = new OrphanDetector(registry, patterns, staleTimeoutMs)
-  const cleaner = new ProcessCleaner(registry, gracePeriodMs)
+  const cleaner = new ProcessCleaner(registry)
 
   // Compose into ProcessManager
   return new ProcessManager(registry, detector, cleaner, spawner)

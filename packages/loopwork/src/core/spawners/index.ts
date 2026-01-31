@@ -8,10 +8,12 @@
 import type { ProcessSpawner } from '../../contracts/spawner'
 import { StandardSpawner } from './standard-spawner'
 import { PtySpawner, isPtyAvailable } from './pty-spawner'
+import { BunSpawner } from './bun-spawner'
 
 // Re-export spawner implementations
 export { StandardSpawner } from './standard-spawner'
 export { PtySpawner, isPtyAvailable } from './pty-spawner'
+export { BunSpawner } from './bun-spawner'
 
 // Singleton instance for default spawner
 let _defaultSpawner: ProcessSpawner | null = null
@@ -59,7 +61,7 @@ export function isPtyFunctional(): boolean {
  * Create a process spawner
  *
  * @param preferPty - If true (default), prefer PTY spawning when available AND functional.
- *                    Falls back to standard spawning if PTY is unavailable or fails.
+ *                    Falls back to bun or standard spawning if PTY is unavailable or fails.
  *                    If false, always use standard spawning.
  * @returns A ProcessSpawner instance
  *

@@ -90,7 +90,7 @@ export abstract class BaseRenderer implements OutputRenderer {
   }
 
   protected shouldLog(level: string): boolean {
-    const levels = ['trace', 'debug', 'info', 'warn', 'error', 'silent']
+    const levels = ['trace', 'debug', 'info', 'success', 'warn', 'error', 'silent']
     const configLevel = this.config.logLevel || 'info'
     const eventLevelIndex = levels.indexOf(level)
     const configLevelIndex = levels.indexOf(configLevel)

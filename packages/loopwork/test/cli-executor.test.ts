@@ -98,7 +98,8 @@ describe('CliExecutor', () => {
     expect(status).toBe(0)
     expect(spawnSpy).toHaveBeenCalled()
     const call = spawnSpy.mock.calls[0]
-    expect(call[0]).toContain('opencode')
+    const fullCommand = [call[0], ...(call[1] as string[])].join(' ')
+    expect(fullCommand).toContain('opencode')
   })
 
   test('retry logic switches to fallback after exhausting primary models', async () => {

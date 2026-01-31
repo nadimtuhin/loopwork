@@ -82,7 +82,7 @@ export async function list(options: ProcessesListOptions = {}, deps: ProcessesDe
 
   activeLogger.info(`Loopwork Processes (${filtered.length} running)\n`)
 
-  const tableOutput = renderInk(
+  const tableOutput = await renderInk(
     <InkTable
       headers={['Namespace', 'PID', 'Uptime', 'Started At']}
       columnConfigs={[
@@ -185,7 +185,7 @@ export async function clean(options: ProcessesCleanOptions = {}, deps: Processes
     dryRun: options.dryRun,
   })
 
-  const tableOutput = renderInk(
+  const tableOutput = await renderInk(
     <InkTable
       headers={['PID', 'Command', 'Age', 'Status', 'Action']}
       columnConfigs={[

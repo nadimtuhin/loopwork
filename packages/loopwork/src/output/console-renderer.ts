@@ -181,8 +181,10 @@ export class ConsoleRenderer extends BaseRenderer {
 
   private handleRaw(event: RawOutputEvent): void {
     this.stopActiveSpinner()
-    process.stdout.write('\r\x1b[K')
-    process.stdout.write(event.content + '\n')
+    if (!event.noNewline) {
+      process.stdout.write('\r\x1b[K')
+    }
+    process.stdout.write(event.content + (event.noNewline ? '' : '\n'))
   }
 
   private handleJson(event: JsonOutputEvent): void {
