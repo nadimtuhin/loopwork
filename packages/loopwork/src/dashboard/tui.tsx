@@ -485,7 +485,7 @@ export async function startInkTui(options: {
           startedAt: t.startedAt,
         })),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pendingTasks: state.pendingTasks as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        pendingTasks: state.pendingTasks as any,
         completed: state.stats.completed,
         failed: state.stats.failed,
         total: state.stats.total,
