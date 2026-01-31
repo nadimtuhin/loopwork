@@ -3,6 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { logger, StreamLogger } from './utils'
+import { Debugger } from './debugger'
 import type { Config } from './config'
 import { LoopworkError } from './errors'
 import { PROGRESS_UPDATE_INTERVAL_MS, SIGKILL_DELAY_MS } from './constants'
@@ -64,16 +65,24 @@ import type {
   RetryConfig,
   CliType,
 } from '../contracts/cli'
+import type {
+  StepEvent,
+  ToolCallEvent,
+  AgentResponseEvent,
+} from '../contracts/plugin'
 import { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG } from '../contracts/cli'
 import { ModelSelector, calculateBackoffDelay } from './model-selector'
 import type { ProcessSpawner, SpawnedProcess } from '../contracts/spawner'
 import { createSpawner } from './spawners'
 import type { IProcessManager } from '../contracts/process-manager'
 import { createProcessManager } from './process-management/process-manager'
+import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/WorkerPoolManager'
+import { plugins } from '../plugins'
+
+import type { Task } from '../contracts/task'
 
 /**
  * Legacy CliConfig interface for backward compatibility
- * @deprecated Use ModelConfig from contracts/cli instead
  */
 export interface CliConfig {
   name: string
@@ -126,6 +135,12 @@ export interface CliExecutorOptions {
    * If not provided, creates a default ProcessManager with the configured spawner
    */
   processManager?: IProcessManager
+  debugger?: Debugger
+  /**
+   * Checkpoint integrator for automatic checkpoint creation during CLI execution
+   * If provided, checkpoints will be created at strategic points in CLI lifecycle
+   */
+  checkpointIntegrator?: import('./checkpoint-integrator').CheckpointIntegrator
 }
 
 export class CliExecutor {
@@ -136,6 +151,11 @@ export class CliExecutor {
   private retryConfig: Required<RetryConfig>
   private spawner: ProcessSpawner
   private processManager: IProcessManager
+  private debugger?: Debugger
+  private poolManager: WorkerPoolManager
+  private checkpointIntegrator?: import('./checkpoint-integrator').CheckpointIntegrator
+  private lastCliCheckpointTime?: number
+  private resourceExhaustedPids: Map<number, string> = new Map()
 
   // Timing configuration
   private sigkillDelayMs: number
@@ -147,6 +167,9 @@ export class CliExecutor {
       ...DEFAULT_CLI_EXECUTOR_CONFIG,
       ...config.cliConfig,
     }
+
+    this.debugger = options?.debugger
+    this.checkpointIntegrator = options?.checkpointIntegrator
 
     // Merge retry config
     this.retryConfig = {
@@ -167,7 +190,7 @@ export class CliExecutor {
     // If processManager provided, use it; otherwise create one with the spawner
     this.processManager = options?.processManager ?? createProcessManager({
       spawner: this.spawner,
-      staleTimeoutMs: (this.cliConfig.timeout ?? 600) * 1000 * 2, // 2x CLI timeout
+      staleTimeoutMs: (this.config.timeout ?? 600) * 1000 * 2, // 2x CLI timeout
       gracePeriodMs: this.sigkillDelayMs,
     })
 
@@ -180,6 +203,30 @@ export class CliExecutor {
     const strategy = this.cliConfig.selectionStrategy ?? 'round-robin'
 
     this.modelSelector = new ModelSelector(primaryModels, fallbackModels, strategy)
+
+    // Initialize worker pool manager with configured or default pools
+    const poolConfig: WorkerPoolConfig = this.config.workerPools || {
+      pools: {
+        'high': { size: 2, nice: 0, memoryLimitMB: 2048 },
+        'medium': { size: 5, nice: 5, memoryLimitMB: 1024 },
+        'low': { size: 2, nice: 10, memoryLimitMB: 512 },
+        'background': { size: 1, nice: 15, memoryLimitMB: 256 },
+      },
+      defaultPool: 'medium'
+    }
+    this.poolManager = new WorkerPoolManager(poolConfig, {
+      onTerminateProcess: async (pid: number, reason: string) => {
+        logger.error(`[ResourceLimit] Terminating process ${pid}: ${reason}`)
+        this.resourceExhaustedPids.set(pid, reason)
+        this.processManager.kill(pid, 'SIGKILL')
+      }
+    })
+    const poolDetails = Object.entries(poolConfig.pools).map(([name, config]) => `${name}(${config.size})`).join(', ')
+    logger.debug(`WorkerPoolManager initialized with pools: ${poolDetails}`)
+
+    if (this.config.flags?.forceFallback) {
+      this.switchToFallback()
+    }
   }
 
   private detectClis(): void {
@@ -336,6 +383,9 @@ export class CliExecutor {
     // Kill current process if running
     this.killCurrent()
 
+    // Shutdown pool manager and resource monitors
+    this.poolManager.shutdown()
+
     // Detect and clean orphans
     const result = await this.processManager.cleanup()
 
@@ -360,6 +410,56 @@ export class CliExecutor {
   }
 
   /**
+   * Determine pool name based on task metadata
+   * Priority: Feature-specific pool > Priority-based pool > Default pool
+   */
+  private getPoolForTask(taskId?: string, priority?: string, feature?: string): string {
+    // If a dedicated pool exists for this feature, use it
+    if (feature && this.poolManager.getStats()[feature]) {
+      return feature
+    }
+
+    if (priority === 'high') {
+      return 'high'
+    } else if (priority === 'low') {
+      return 'low'
+    } else if (priority === 'background') {
+      return 'background'
+    }
+    return 'medium'
+  }
+
+  /**
+   * Get pool manager for external access and metrics
+   */
+  getPoolManager(): WorkerPoolManager {
+    return this.poolManager
+  }
+
+  /**
+   * Execute a task using the appropriate pool and CLI
+   */
+  async executeTask(
+    task: Task,
+    prompt: string,
+    outputFile: string,
+    timeoutSecs: number,
+    workerId?: number,
+    permissions?: Record<string, string>
+  ): Promise<number> {
+    return this.execute(
+      prompt,
+      outputFile,
+      timeoutSecs,
+      task.id,
+      workerId,
+      permissions,
+      task.priority,
+      task.feature
+    )
+  }
+
+  /**
    * Execute a prompt using the CLI
    *
    * @param prompt - The prompt to send to the CLI
@@ -372,173 +472,325 @@ export class CliExecutor {
     outputFile: string,
     timeoutSecs: number,
     taskId?: string,
-    workerId?: number
+    workerId?: number,
+    permissions?: Record<string, string>,
+    priority?: string,
+    feature?: string
   ): Promise<number> {
+    const capabilities = plugins.getCapabilityRegistry().getPromptInjection()
+    const finalPrompt = capabilities
+      ? `${prompt}\n\n# Plugin Capabilities\n\n${capabilities}`
+      : prompt
+
     const promptFile = path.join(path.dirname(outputFile), 'current-prompt.md')
-    fs.writeFileSync(promptFile, prompt)
+    fs.writeFileSync(promptFile, finalPrompt)
 
-    const maxAttempts = this.modelSelector.getTotalModelCount()
-    let rateLimitAttempt = 0
+    // Emit step event: execution start
+    const executionStartTime = Date.now()
+    await plugins.runHook('onStep', {
+      stepId: 'cli_execution_start',
+      description: 'Starting CLI execution',
+      phase: 'start',
+      context: { taskId, poolName: this.getPoolForTask(taskId, priority, feature) }
+    } as StepEvent)
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const modelConfig = this.modelSelector.getNext()
-      if (!modelConfig) {
-        break
-      }
+    // Determine pool based on priority/feature
+    const poolName = this.getPoolForTask(taskId, priority, feature)
+    logger.info(`[Pool:${poolName}] Assigned for task ${taskId || 'unknown'}`)
 
-      const modelName = modelConfig.displayName || modelConfig.name
-      // Show both CLI runner and model name (e.g., "opencode/gemini-flash" or "claude")
-      const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
-      const cliPath = this.cliPaths.get(modelConfig.cli)
-
-      if (!cliPath) {
-        logger.debug(`CLI ${modelConfig.cli} not available, skipping`)
-        continue
-      }
-
-      // Use per-model timeout if configured, otherwise use default
-      const effectiveTimeout = modelConfig.timeout ?? timeoutSecs
-
-      // Build environment with per-model env vars
-      const env = { ...process.env, ...modelConfig.env }
-
-      // Build CLI arguments
-      let args: string[]
-
-      if (modelConfig.cli === 'opencode') {
-        env['OPENCODE_PERMISSION'] = '{"*":"allow"}'
-        args = ['run', '--model', modelConfig.model, prompt]
-      } else if (modelConfig.cli === 'gemini') {
-        args = ['--model', modelConfig.model, prompt]
-      } else {
-        // claude
-        args = ['-p', '--dangerously-skip-permissions', '--model', modelConfig.model]
-      }
-
-      // Add per-model custom args if configured
-      if (modelConfig.args && modelConfig.args.length > 0) {
-        args.push(...modelConfig.args)
-      }
-
-      // Show command being executed
-      const cmdDisplay = modelConfig.cli === 'opencode'
-        ? `opencode run --model ${modelConfig.model} "<prompt>"`
-        : modelConfig.cli === 'gemini'
-          ? `gemini --model ${modelConfig.model} "<prompt>"`
-          : `claude -p --dangerously-skip-permissions --model ${modelConfig.model}`
-
-      logger.info(`[${displayName}] Executing: ${cmdDisplay}`)
-      logger.info(`[${displayName}] Timeout: ${effectiveTimeout}s`)
-      logger.info(`[${displayName}] Log file: ${outputFile}`)
-      logger.info('─────────────────────────────────────')
-      logger.info('📝 Streaming CLI output below...')
-      logger.info('─────────────────────────────────────')
-
-      const result = await this.spawnWithTimeout(
-        cliPath,
-        args,
-        {
-          env,
-          input: modelConfig.cli === 'claude' ? prompt : undefined,
-          prefix: displayName,
-          taskId,
-          workerId,
-        },
-        outputFile,
-        effectiveTimeout
+    // Acquire slot from appropriate pool with timeout
+    try {
+      await this.poolManager.acquire(poolName, timeoutSecs * 1000)
+      logger.debug(`[Pool:${poolName}] Slot acquired for task ${taskId || 'unknown'}`)
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      logger.error(`[Pool:${poolName}] Failed to acquire slot: ${error.message}`)
+      throw new LoopworkError(
+        'ERR_POOL_SLOT_TIMEOUT',
+        `Could not acquire worker pool slot for ${poolName} priority tasks`,
+        [
+          'The worker pool is at capacity and queue is full',
+          'Wait for other tasks to complete or increase pool size',
+          'Check pool configuration in loopwork.config.ts'
+        ]
       )
-
-      if (result.timedOut) {
-        logger.error(`Timed out after ${effectiveTimeout}s with ${displayName}`)
-        if (modelConfig.timeout) {
-          logger.info(`💡 This model has custom timeout: ${modelConfig.timeout}s`)
-        } else {
-          logger.info(`💡 Consider increasing timeout in config: timeout: ${Math.ceil(effectiveTimeout * 1.5)}`)
-        }
-        continue
-      }
-
-      // Check for rate limits
-      const output = fs.existsSync(outputFile)
-        ? fs.readFileSync(outputFile, 'utf-8').slice(-2000)
-        : ''
-
-      if (/rate.*limit|too.*many.*request|429|RESOURCE_EXHAUSTED/i.test(output)) {
-        // Calculate wait time with optional backoff
-        const waitMs = this.retryConfig.exponentialBackoff
-          ? calculateBackoffDelay(rateLimitAttempt, this.retryConfig.baseDelayMs, this.retryConfig.maxDelayMs)
-          : this.retryConfig.rateLimitWaitMs
-
-        logger.warn(`Rate limit reached for ${displayName}, waiting ${waitMs / 1000} seconds...`)
-        logger.info('💡 Consider upgrading API tier for higher limits')
-
-        await new Promise(r => setTimeout(r, waitMs))
-        rateLimitAttempt++
-
-        // Retry same model if configured
-        if (this.retryConfig.retrySameModel) {
-          const retryCount = this.modelSelector.trackRetry(modelConfig.name)
-          if (retryCount < this.retryConfig.maxRetriesPerModel) {
-            attempt-- // Don't count this as a full attempt
-          }
-        }
-        continue
-      }
-
-      if (/quota.*exceed|billing.*limit/i.test(output)) {
-        logger.warn(`Quota exhausted for ${displayName}, switching to fallback models`)
-        logger.info('💡 Check your billing status and payment method')
-        this.switchToFallback()
-        continue
-      }
-
-      if (result.exitCode === 0) {
-        return 0
-      }
-
-      // Non-zero exit, potentially switch to fallback
-      const primaryCount = (this.cliConfig.models ?? EXEC_MODELS).length
-      if (attempt >= primaryCount - 1 && !this.modelSelector.isUsingFallback()) {
-        this.switchToFallback()
-      }
     }
 
-    // All attempts exhausted
-    const allModels = this.modelSelector.getAllModels()
-    const triedConfigs = allModels
-      .filter(cfg => this.cliPaths.has(cfg.cli))
-      .map(cfg => `${cfg.cli}/${cfg.model}`)
-      .join(', ')
+    try {
+      const maxAttempts = this.modelSelector.getTotalModelCount()
+      let rateLimitAttempt = 0
 
-    throw new LoopworkError(
-      'ERR_CLI_EXEC',
-      'All CLI configurations failed after exhausting all models',
-      [
-        `Tried the following configurations: ${triedConfigs}`,
-        '',
-        'Possible causes:',
-        '  • Invalid or expired API credentials',
-        '  • Network connectivity issues',
-        '  • API service outage',
-        '  • Insufficient permissions for CLI execution',
-        '',
-        'Recovery steps:',
-        '  1. Verify your API keys are valid and not expired',
-        '  2. Check network connectivity: curl -I https://api.anthropic.com',
-        '  3. Review the log file for specific error messages',
-        '  4. Try running the CLI manually to test authentication',
-        '  5. Check API status pages for service outages'
-      ]
-    )
+      // Checkpoint: Pre-execution (before starting model attempts)
+      if (taskId) {
+        await this.checkpointCli(taskId, 0, {
+          phase: 'pre-execution',
+          prompt: finalPrompt.substring(0, 500), // Truncate long prompts
+          poolName,
+          timestamp: Date.now()
+        })
+      }
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const modelConfig = this.modelSelector.getNext()
+        if (!modelConfig) {
+          break
+        }
+
+        const modelName = modelConfig.displayName || modelConfig.name
+        // Show both CLI runner and model name (e.g., "opencode/gemini-flash" or "claude")
+        const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
+        const cliPath = this.cliPaths.get(modelConfig.cli)
+
+        // Emit step event: model selected
+        await plugins.runHook('onStep', {
+          stepId: 'model_selected',
+          description: `Model selected: ${displayName}`,
+          phase: 'start',
+          context: { taskId, model: displayName, cli: modelConfig.cli, attempt: attempt + 1, maxAttempts }
+        } as StepEvent)
+
+        if (!cliPath) {
+          logger.debug(`CLI ${modelConfig.cli} not available, skipping`)
+          continue
+        }
+
+        // Use per-model timeout if configured, otherwise use default
+        const effectiveTimeout = modelConfig.timeout ?? timeoutSecs
+
+        // Build environment with per-model env vars and dynamic permissions
+        const env = { ...process.env, ...modelConfig.env, ...permissions }
+
+        // Build CLI arguments
+        let args: string[] = []
+
+        if (modelConfig.cli === 'opencode') {
+          if (!env['OPENCODE_PERMISSION']) {
+            env['OPENCODE_PERMISSION'] = '{"*":"allow"}'
+          }
+          args = ['run', '--model', modelConfig.model, finalPrompt]
+        }
+
+
+        // Add per-model custom args if configured
+        if (modelConfig.args && modelConfig.args.length > 0) {
+          args.push(...modelConfig.args)
+        }
+
+        // Show command being executed
+        const cmdDisplay = modelConfig.cli === 'opencode'
+          ? `opencode run --model ${modelConfig.model} "<prompt>"`
+          : modelConfig.cli === 'gemini'
+            ? `gemini --model ${modelConfig.model} "<prompt>"`
+            : `claude -p --dangerously-skip-permissions --model ${modelConfig.model}`
+
+        logger.info(`[${displayName}] Executing: ${cmdDisplay}`)
+        logger.info(`[${displayName}] Timeout: ${effectiveTimeout}s`)
+        logger.info(`[${displayName}] Log file: ${outputFile}`)
+
+        // Emit tool call event
+        await plugins.runHook('onToolCall', {
+          toolName: modelConfig.cli,
+          arguments: {
+            model: modelConfig.model,
+            cli: modelConfig.cli,
+            timeout: effectiveTimeout,
+            hasInput: modelConfig.cli === 'claude',
+          },
+          taskId,
+          timestamp: Date.now(),
+          metadata: {
+            displayName,
+            attempt: attempt + 1,
+            maxAttempts,
+          }
+        } as ToolCallEvent)
+
+        await this.debugger?.onEvent({
+          type: 'PRE_PROMPT',
+          taskId,
+          timestamp: Date.now(),
+          data: { model: displayName, cli: modelConfig.cli, modelId: modelConfig.model }
+        })
+
+        logger.info('─────────────────────────────────────')
+        logger.info('📝 Streaming CLI output below...')
+        logger.info('─────────────────────────────────────')
+
+        // Emit step event: spawn start
+        await plugins.runHook('onStep', {
+          stepId: 'cli_spawn_start',
+          description: `Spawning CLI process for ${displayName}`,
+          phase: 'start',
+          context: { taskId, model: displayName, timeout: effectiveTimeout }
+        } as StepEvent)
+
+        const startTime = Date.now()
+        const result = await this.spawnWithTimeout(
+          cliPath,
+          args,
+          {
+            env,
+            input: modelConfig.cli === 'claude' ? finalPrompt : undefined,
+            prefix: displayName,
+            taskId,
+            workerId,
+            poolName,
+          },
+          outputFile,
+          effectiveTimeout
+        )
+        const spawnDuration = Date.now() - startTime
+
+        // Emit step event: spawn end
+        await plugins.runHook('onStep', {
+          stepId: 'cli_spawn_end',
+          description: `CLI process execution completed for ${displayName}`,
+          phase: 'end',
+          durationMs: spawnDuration,
+          context: { taskId, model: displayName, exitCode: result.exitCode, timedOut: result.timedOut }
+        } as StepEvent)
+
+        // Checkpoint: Post-spawn (after CLI execution completes)
+        if (taskId) {
+          await this.checkpointCli(taskId, attempt + 1, {
+            phase: 'post-spawn',
+            model: displayName,
+            cli: modelConfig.cli,
+            effectiveTimeout,
+            executionTimeMs: spawnDuration,
+            timestamp: Date.now()
+          })
+        }
+
+        if (result.resourceExhausted) {
+          throw new LoopworkError(
+            'ERR_RESOURCE_EXHAUSTED',
+            result.resourceExhausted,
+            ['Consider increasing the memory limit for this worker pool', 'Check if the task is causing a memory leak']
+          )
+        }
+
+        if (result.timedOut) {
+          logger.error(`Timed out after ${effectiveTimeout}s with ${displayName}`)
+          if (modelConfig.timeout) {
+            logger.info(`💡 This model has custom timeout: ${modelConfig.timeout}s`)
+          } else {
+            logger.info(`💡 Consider increasing timeout in config: timeout: ${Math.ceil(effectiveTimeout * 1.5)}`)
+          }
+          continue
+        }
+
+        // Check for rate limits
+        const output = fs.existsSync(outputFile)
+          ? fs.readFileSync(outputFile, 'utf-8').slice(-2000)
+          : ''
+
+        if (/rate.*limit|too.*many.*request|429|RESOURCE_EXHAUSTED/i.test(output)) {
+          // Calculate wait time with optional backoff
+          const waitMs = this.retryConfig.exponentialBackoff
+            ? calculateBackoffDelay(rateLimitAttempt, this.retryConfig.baseDelayMs, this.retryConfig.maxDelayMs)
+            : this.retryConfig.rateLimitWaitMs
+
+          logger.warn(`Rate limit reached for ${displayName}, waiting ${waitMs / 1000} seconds...`)
+          logger.info('💡 Consider upgrading API tier for higher limits')
+
+          await new Promise(r => setTimeout(r, waitMs))
+          rateLimitAttempt++
+
+          // Retry same model if configured
+          if (this.retryConfig.retrySameModel) {
+            const retryCount = this.modelSelector.trackRetry(modelConfig.name)
+            if (retryCount < this.retryConfig.maxRetriesPerModel) {
+              attempt-- // Don't count this as a full attempt
+            }
+          }
+          continue
+        }
+
+        if (/quota.*exceed|billing.*limit/i.test(output)) {
+          logger.warn(`Quota exhausted for ${displayName}, switching to fallback models`)
+          logger.info('💡 Check your billing status and payment method')
+          this.switchToFallback()
+          continue
+        }
+
+        if (result.exitCode === 0) {
+          // Checkpoint: Pre-completion (successful execution)
+          if (taskId) {
+            await this.checkpointCli(taskId, attempt + 1, {
+              phase: 'pre-completion',
+              exitCode: 0,
+              model: displayName,
+              executionTimeMs: Date.now() - startTime,
+              timestamp: Date.now()
+            })
+          }
+          return 0
+        }
+
+        // Non-zero exit, potentially switch to fallback
+        const primaryCount = (this.cliConfig.models ?? EXEC_MODELS).length
+        if (attempt >= primaryCount - 1 && !this.modelSelector.isUsingFallback()) {
+          this.switchToFallback()
+        }
+      }
+
+      // All attempts exhausted
+      const allModels = this.modelSelector.getAllModels()
+      const triedConfigs = allModels
+        .filter(cfg => this.cliPaths.has(cfg.cli))
+        .map(cfg => `${cfg.cli}/${cfg.model}`)
+        .join(', ')
+
+      throw new LoopworkError(
+        'ERR_CLI_EXEC',
+        'All CLI configurations failed after exhausting all models',
+        [
+          `Tried the following configurations: ${triedConfigs}`,
+          '',
+          'Possible causes:',
+          '  • Invalid or expired API credentials',
+          '  • Network connectivity issues',
+          '  • API service outage',
+          '  • Insufficient permissions for CLI execution',
+          '',
+          'Recovery steps:',
+          '  1. Verify your API keys are valid and not expired',
+          '  2. Check network connectivity: curl -I https://api.anthropic.com',
+          '  3. Review the log file for specific error messages',
+          '  4. Try running the CLI manually to test authentication',
+          '  5. Check API status pages for service outages'
+        ]
+      )
+    } finally {
+      // Emit step event: execution end
+      const executionDuration = Date.now() - executionStartTime
+      await plugins.runHook('onStep', {
+        stepId: 'cli_execution_end',
+        description: 'CLI execution completed',
+        phase: 'end',
+        durationMs: executionDuration,
+        context: { taskId, poolName }
+      } as StepEvent)
+
+      // Log pool utilization metrics before releasing slot
+      const stats = this.poolManager.getStats()[poolName]
+      if (stats) {
+        logger.info(`[Pool:${poolName}] Utilization: ${stats.active}/${stats.limit} active, ${stats.queued} queued`)
+      }
+
+      // Release slot back to pool
+      this.poolManager.release(poolName)
+      logger.debug(`[Pool:${poolName}] Slot released for task ${taskId || 'unknown'}`)
+    }
   }
 
   private spawnWithTimeout(
     command: string,
     args: string[],
-    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string; taskId?: string; workerId?: number },
+    options: { env?: NodeJS.ProcessEnv; input?: string; prefix?: string; taskId?: string; workerId?: number; poolName?: string },
     outputFile: string,
     timeoutSecs: number
-  ): Promise<{ exitCode: number; timedOut: boolean }> {
+  ): Promise<{ exitCode: number; timedOut: boolean; resourceExhausted?: string }> {
     return new Promise((resolve, reject) => {
       // Check available memory before spawning (platform-aware)
       const availableMemoryMB = getAvailableMemoryMB()
@@ -555,25 +807,50 @@ export class CliExecutor {
       const writeStream = fs.createWriteStream(outputFile)
       let timedOut = false
       const startTime = Date.now()
-      const streamLogger = new StreamLogger(options.prefix)
+      const streamLogger = new StreamLogger(options.prefix, (event) => {
+        this.debugger?.onEvent({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          type: event.type as any,
+          taskId: options.taskId,
+          timestamp: Date.now(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data: event.data as any
+        })
+      })
+
+      // Wire up debugger state changes to stream logger
+      const debuggerListener = {
+        onPause: () => streamLogger.pause(),
+        onResume: () => streamLogger.resume()
+      }
+      this.debugger?.addListener(debuggerListener)
+
+      // Get pool-specific settings
+      const poolConfig = this.poolManager.getPoolConfig(options.poolName || 'medium')
 
       // Spawn via process manager for automatic tracking
-      logger.debug(`Spawning ${command} with spawner: ${this.spawner.name} (available memory: ${availableMemoryMB}MB)`)
+      logger.debug(`Spawning ${command} with spawner: ${this.spawner.name} (available memory: ${availableMemoryMB}MB, nice: ${poolConfig.nice || 'default'})`)
       const child = this.processManager.spawn(command, args, {
         env: options.env,
+        nice: poolConfig.nice,
       })
 
       this.currentProcess = child
 
       // Track additional metadata if process has PID
-      if (child.pid && options.taskId) {
-        this.processManager.track(child.pid, {
-          command,
-          args,
-          namespace: this.config.namespace || 'loopwork',
-          taskId: options.taskId,
-          startTime: Date.now(),
-        })
+      if (child.pid) {
+        if (options.taskId) {
+          this.processManager.track(child.pid, {
+            command,
+            args,
+            namespace: this.config.namespace || 'loopwork',
+            taskId: options.taskId,
+            startTime: Date.now(),
+          })
+        }
+
+        // Track in worker pool for resource monitoring
+        this.poolManager.trackProcess(options.poolName || 'medium', child.pid)
       }
 
       const progressInterval = setInterval(() => {
@@ -599,6 +876,18 @@ export class CliExecutor {
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
         streamLogger.log(data)
+
+        // Emit agent response event for captured output
+        const responseText = data.toString('utf-8')
+        plugins.runHook('onAgentResponse', {
+          responseText,
+          model: options.prefix,
+          taskId: options.taskId,
+          timestamp: Date.now(),
+          isPartial: true,
+        } as AgentResponseEvent).catch((error) => {
+          logger.debug(`Agent response hook error: ${error}`)
+        })
       })
 
       // Handle stderr (may be null for PTY spawner - stderr merged into stdout)
@@ -606,6 +895,18 @@ export class CliExecutor {
         child.stderr.on('data', (data) => {
           writeStream.write(data)
           streamLogger.log(data)
+
+          // Emit agent response event for stderr
+          const responseText = data.toString('utf-8')
+          plugins.runHook('onAgentResponse', {
+            responseText,
+            model: options.prefix,
+            taskId: options.taskId,
+            timestamp: Date.now(),
+            isPartial: true,
+          } as AgentResponseEvent).catch((error) => {
+            logger.debug(`Agent response hook error: ${error}`)
+          })
         })
       }
 
@@ -625,9 +926,21 @@ export class CliExecutor {
       child.on('close', (code) => {
         clearInterval(progressInterval)
         clearTimeout(timer)
+        this.debugger?.removeListener(debuggerListener)
         streamLogger.flush()
         writeStream.end()
         this.currentProcess = null
+
+        const pid = child.pid
+        if (pid) {
+          this.poolManager.untrackProcess(options.poolName || 'medium', pid)
+        }
+
+        const exhaustionReason = pid ? this.resourceExhaustedPids.get(pid) : undefined
+        if (exhaustionReason && pid) {
+          this.resourceExhaustedPids.delete(pid)
+        }
+
         const totalTime = Math.floor((Date.now() - startTime) / 1000)
         const minutes = Math.floor(totalTime / 60)
         const seconds = totalTime % 60
@@ -645,16 +958,37 @@ export class CliExecutor {
 
         logger.info('─────────────────────────────────────')
         logger.info(`✓ CLI execution completed in ${timeStr}`)
-        logger.info(`Exit code: ${code ?? 1}`)
+        if (exhaustionReason) {
+          logger.error(`FAILED: ${exhaustionReason}`)
+        } else {
+          logger.info(`Exit code: ${code ?? 1}`)
+        }
         logger.info(`Output size: ${finalSize}`)
         logger.info(`Log file: ${outputFile}`)
         logger.info('─────────────────────────────────────')
-        resolve({ exitCode: code ?? 1, timedOut })
+
+        // Emit final agent response event
+        plugins.runHook('onAgentResponse', {
+          responseText: '', // Completion signal
+          model: options.prefix,
+          taskId: options.taskId,
+          timestamp: Date.now(),
+          isPartial: false,
+        } as AgentResponseEvent).catch((error) => {
+          logger.debug(`Agent response hook error: ${error}`)
+        })
+
+        resolve({
+          exitCode: exhaustionReason ? 1 : (code ?? 1),
+          timedOut,
+          resourceExhausted: exhaustionReason
+        })
       })
 
       child.on('error', (err: NodeJS.ErrnoException) => {
         clearInterval(progressInterval)
         clearTimeout(timer)
+        this.debugger?.removeListener(debuggerListener)
         streamLogger.flush()
         writeStream.end()
         this.currentProcess = null
@@ -693,5 +1027,45 @@ export class CliExecutor {
         resolve({ exitCode: 1, timedOut: false })
       })
     })
+  }
+
+  /**
+   * Create a checkpoint during CLI execution with throttling
+   * Non-blocking - errors are logged but not thrown
+   */
+  private async checkpointCli(
+    taskId: string,
+    iteration: number,
+    context: Record<string, unknown>
+  ): Promise<void> {
+    if (!this.checkpointIntegrator) return
+
+    const config = this.config.checkpoint
+    if (!config?.enabled) return
+    if (config.skipOnCliExecution) return
+
+    // Throttle based on time interval
+    const now = Date.now()
+    const intervalMs = (config.cliCheckpointIntervalSecs ?? 60) * 1000
+    if (this.lastCliCheckpointTime && (now - this.lastCliCheckpointTime) < intervalMs) {
+      return
+    }
+
+    try {
+      await this.checkpointIntegrator.checkpoint({
+        taskId: `cli-${taskId}`,
+        iteration,
+        context: {
+          type: 'cli-execution',
+          ...context
+        },
+        memory: {}
+      })
+      this.lastCliCheckpointTime = now
+      logger.debug(`CLI checkpoint created for task ${taskId}`)
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      logger.warn(`CLI checkpoint failed: ${error.message}`)
+      // Non-blocking - don't throw
+    }
   }
 }

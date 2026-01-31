@@ -7,6 +7,7 @@ import type { BackendConfig } from '../contracts/backend'
 import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
 import { logger } from './utils'
 import { LoopworkError } from './errors'
+import { createRegistry, type IAgentRegistry } from '@loopwork-ai/agents'
 
 /**
  * Parse --parallel option value
@@ -573,4 +574,39 @@ function detectBackendType(projectRoot: string, tasksFile?: string): 'github' | 
     return 'json'
   }
   return 'github'
+}
+
+// Global singleton for subagent registry
+let subagentRegistry: IAgentRegistry | null = null
+
+/**
+ * Get or create the subagent registry from config
+ *
+ * Returns a singleton registry that is populated with agents from the config.
+ * The registry is created on first call and reused on subsequent calls.
+ *
+ * @param config - The Loopwork configuration containing subagent definitions
+ * @returns The subagent registry
+ */
+export function getSubagentRegistry(config: LoopworkConfig): IAgentRegistry {
+  if (!subagentRegistry) {
+    subagentRegistry = createRegistry()
+    if (config.subagents) {
+      for (const agent of config.subagents) {
+        subagentRegistry.register(agent)
+      }
+    }
+    if (config.defaultSubagent) {
+      subagentRegistry.setDefault(config.defaultSubagent)
+    }
+  }
+  return subagentRegistry
+}
+
+/**
+ * Reset the subagent registry (for testing)
+ * @internal
+ */
+export function resetSubagentRegistry(): void {
+  subagentRegistry = null
 }

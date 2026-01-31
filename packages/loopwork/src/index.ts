@@ -14,6 +14,7 @@ export {
   withIPC,
   withAIMonitor,
   withDynamicTasks,
+  withGitAutoCommit,
   // CLI configuration
   withCli,
   withModels,
@@ -33,7 +34,7 @@ export type {
   ModelSelectionStrategy,
   CliType,
 } from './contracts'
-export type { IPCMessage, IPCEventType, IPCPluginOptions, DynamicTasksOptions } from './plugins'
+export type { IPCMessage, IPCEventType, IPCPluginOptions, DynamicTasksOptions, GitAutoCommitOptions } from './plugins'
 export type {
   AIMonitorConfig,
   MonitorState,
@@ -44,6 +45,93 @@ export type {
 export { PatternAnalyzer, LLMAnalyzer } from './analyzers'
 export type { PatternAnalyzerConfig } from './analyzers'
 export type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from './contracts/analysis'
+
+// Export adapters for bridging to agent packages
+export { CliRunnerAdapter, GitRunnerAdapter } from './adapters'
+
+// Re-export from @loopwork-ai/agents
+export {
+  // Classes
+  AgentFactory,
+  AgentRegistry,
+  AgentExecutor,
+  AgentPromptBuilder,
+  // Factory functions
+  createRegistry,
+  createExecutor,
+  // Invokers
+  ClaudeInvoker,
+  OpenCodeInvoker,
+  DroidInvoker,
+  CliInvokerRegistry,
+  createInvokerRegistry,
+} from '@loopwork-ai/agents'
+
+export type {
+  AgentDefinition,
+  AgentDefinitionInput,
+  ValidationResult,
+  IAgentFactory,
+  IAgentRegistry,
+  IAgentExecutor,
+  IPromptBuilder,
+  ICliRunner,
+  CliRunOptions,
+  CliRunResult,
+  ExecutionContext,
+  ExecutionResult,
+  ICliInvoker,
+  ICliInvokerRegistry,
+  CliInvokeOptions,
+  CliInvokeResult,
+} from '@loopwork-ai/agents'
+
+// Re-export from @loopwork-ai/result-parser
+export {
+  StatusParser,
+  ArtifactDetector,
+  TaskSuggestionParser,
+  MetricsExtractor,
+  CompositeResultParser,
+  createResultParser,
+} from '@loopwork-ai/result-parser'
+
+export type {
+  SubagentResult,
+  Artifact,
+  TaskSuggestion,
+  ResultMetrics,
+  ParseContext,
+  IGitRunner,
+  ISubParser,
+  IResultParser,
+} from '@loopwork-ai/result-parser'
+
+// Re-export from @loopwork-ai/checkpoint
+export {
+  FileCheckpointStorage,
+  CheckpointManager,
+  NodeFileSystem,
+  createCheckpointManager,
+} from '@loopwork-ai/checkpoint'
+
+export type {
+  AgentCheckpoint,
+  RestoredContext,
+  CheckpointEvent,
+  IFileSystem,
+  ICheckpointStorage,
+  ICheckpointManager,
+} from '@loopwork-ai/checkpoint'
+
+// Config subagent integration
+export { getSubagentRegistry, resetSubagentRegistry } from './core/config'
+
+// Type alias for backward compatibility and convenience
+export type { AgentDefinition as SubagentDefinition } from '@loopwork-ai/agents'
+
+// Export Task type from contracts
+export type { Task } from './contracts'
 
 // Export error handling
 export {
