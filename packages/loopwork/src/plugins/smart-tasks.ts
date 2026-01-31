@@ -104,6 +104,7 @@ function shouldSkipTask(task: Task, config: Required<SmartTasksConfig>): boolean
   }
 
   // Check labels
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const taskLabels = (task as any).labels || []
   if (config.skip.labels && config.skip.labels.some((l) => taskLabels.includes(l))) {
     return true

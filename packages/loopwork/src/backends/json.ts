@@ -42,6 +42,7 @@ interface JsonTaskEntry {
   dependsOn?: string[]    // Task IDs this task depends on
   metadata?: Record<string, unknown>
   failureCount?: number
+  scheduledFor?: string | null
   timestamps?: TaskTimestamps
   events?: TaskEvent[]
 }
@@ -73,7 +74,9 @@ export class JsonTaskAdapter implements TaskBackend {
   private lockRetryDelay = LOCK_RETRY_DELAY_MS
 
   constructor(config: BackendConfig) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.tasksFile = (config as any).tasksFile || '.specs/tasks/tasks.json'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.tasksDir = (config as any).tasksDir || path.dirname(this.tasksFile)
     this.lockFile = `${this.tasksFile}.lock`
   }
@@ -226,6 +229,14 @@ export class JsonTaskAdapter implements TaskBackend {
       if (options?.topLevelOnly) {
         entries = entries.filter(t => !t.parentId)
       }
+
+      // Filter tasks by scheduledFor - exclude future-scheduled tasks
+      entries = entries.filter(t => {
+        if (!t.scheduledFor) return true
+        const scheduledDate = new Date(t.scheduledFor)
+        if (isNaN(scheduledDate.getTime())) return true
+        return scheduledDate <= new Date()
+      })
 
       // Sort by priority
       const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2, background: 3 }
@@ -495,6 +506,56 @@ export class JsonTaskAdapter implements TaskBackend {
       })
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    try {
+      return await this.withLock(() => {
+        const data = this.loadTasksFile()
+        if (!data) {
+          return { success: false, error: 'Tasks file not found' }
+        }
+
+        const entry = data.tasks.find(t => t.id === taskId)
+        if (!entry) {
+          return { success: false, error: `Task ${taskId} not found` }
+        }
+
+        if (entry.status !== 'completed') {
+          return { success: false, error: `Task ${taskId} is not completed (status: ${entry.status})` }
+        }
+
+        const now = new Date().toISOString()
+        const oldStatus = entry.status
+        entry.status = 'pending'
+        entry.scheduledFor = scheduledFor || null
+
+        // Clear completedAt from timestamps
+        if (entry.timestamps) {
+          delete entry.timestamps.completedAt
+        }
+
+        if (!entry.events) entry.events = []
+        entry.events.push({
+          timestamp: now,
+          type: 'rescheduled',
+          message: `Task rescheduled from ${oldStatus} to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`,
+          metadata: {
+            oldStatus,
+            newStatus: 'pending',
+            scheduledFor,
+          },
+        })
+
+        if (this.saveTasksFile(data)) {
+          return { success: true }
+        }
+
+        return { success: false, error: 'Failed to save tasks file' }
+      })
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
     }
   }
 

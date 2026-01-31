@@ -10,6 +10,7 @@ import { LoopworkError } from '../core/errors'
  */
 const PARENT_PATTERN = /(?:^|\n)\s*(?:Parent|parent):\s*(?:#?(\d+)|([A-Z]+-\d+-\d+[a-z]?)|(?:[\w-]+\/[\w-]+)?#(\d+))/i
 const DEPENDS_PATTERN = /(?:^|\n)\s*(?:Depends on|depends on|Dependencies|dependencies):\s*(.+?)(?:\n|$)/i
+const SCHEDULED_FOR_PATTERN = /(?:^|\n)\s*(?:Scheduled for|scheduled for|Schedule):\s*(.+?)(?:\n|$)/i
 
 interface GitHubIssue {
   number: number
@@ -35,6 +36,7 @@ export class GitHubTaskAdapter implements TaskBackend {
   private baseDelayMs = GITHUB_RETRY_BASE_DELAY_MS
 
   constructor(config: BackendConfig) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.repo = (config as any).repo
   }
 
@@ -163,11 +165,19 @@ export class GitHubTaskAdapter implements TaskBackend {
           tasks = tasks.filter(t => !t.parentId)
         }
 
-        const priorityOrder: Record<string, number> = { 
-          'high': 0, 
-          'medium': 1, 
-          'low': 2, 
-          'background': 3 
+        // Filter tasks by scheduledFor - exclude future-scheduled tasks
+        tasks = tasks.filter(t => {
+          if (!t.scheduledFor) return true
+          const scheduledDate = new Date(t.scheduledFor)
+          if (isNaN(scheduledDate.getTime())) return true
+          return scheduledDate <= new Date()
+        })
+
+        const priorityOrder: Record<string, number> = {
+          'high': 0,
+          'medium': 1,
+          'low': 2,
+          'background': 3
         }
         tasks.sort((a, b) => {
           const pa = priorityOrder[a.priority] ?? 1
@@ -266,6 +276,27 @@ export class GitHubTaskAdapter implements TaskBackend {
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_FAILED}"`.quiet().nothrow()
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
         await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_PENDING}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue reopen ${issueNumber} ${this.repoFlag()}`.quiet()
+        
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_FAILED}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_PENDING}"`.quiet()
+        
+        const msg = `Task rescheduled to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${msg}"`.quiet()
       })
       return { success: true }
     } catch (e: unknown) {
@@ -575,6 +606,12 @@ export class GitHubTaskAdapter implements TaskBackend {
     }
 
     let parentId: string | undefined
+    let scheduledFor: string | null | undefined
+    const scheduledMatch = body.match(SCHEDULED_FOR_PATTERN)
+    if (scheduledMatch) {
+      scheduledFor = scheduledMatch[1].trim()
+    }
+
     const parentMatch = body.match(PARENT_PATTERN)
     if (parentMatch) {
       // Group 1: #123 or 123 format
@@ -626,6 +663,7 @@ export class GitHubTaskAdapter implements TaskBackend {
       feature,
       parentId,
       dependsOn,
+      scheduledFor,
       metadata: { issueNumber: issue.number, url: issue.url, labels },
       timestamps,
       events,

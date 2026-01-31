@@ -8,6 +8,8 @@ import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
 import { logger } from './utils'
 import { LoopworkError } from './errors'
 import { createRegistry, type IAgentRegistry } from '@loopwork-ai/agents'
+import chokidar from 'chokidar'
+import { EventEmitter } from 'events'
 
 /**
  * Parse --parallel option value
@@ -84,12 +86,14 @@ export function isBackendConfig(config: unknown): config is BackendConfig {
   return typeof config === 'object' && 
          config !== null && 
          'type' in config && 
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
          ['json', 'github', 'fallback'].includes((config as any).type)
 }
 
 export function isJsonBackendConfig(config: unknown): config is JsonBackendConfig {
   return isBackendConfig(config) && 
          config.type === 'json' && 
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
          typeof (config as any).tasksFile === 'string'
 }
 
@@ -424,6 +428,7 @@ async function loadConfigFile(projectRoot: string): Promise<Partial<LoopworkFile
 
 export function getTasksFile(config: unknown): string | null {
   if (typeof config === 'object' && config !== null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anyConfig = config as any
     if (anyConfig.backend && isJsonBackendConfig(anyConfig.backend)) {
       return anyConfig.backend.tasksFile
@@ -437,6 +442,7 @@ export function getTasksFile(config: unknown): string | null {
 
 export function getTasksDir(config: unknown): string | null {
   if (typeof config === 'object' && config !== null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anyConfig = config as any
     if (anyConfig.backend && isJsonBackendConfig(anyConfig.backend)) {
       return anyConfig.backend.tasksDir ?? null
@@ -451,6 +457,7 @@ export function getTasksDir(config: unknown): string | null {
 export function isFeatureEnabled(config: unknown, feature: string): boolean {
   if (typeof config !== 'object' || config === null) return false
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyConfig = config as any
   
   const flags = anyConfig.flags || (anyConfig.config && anyConfig.config.flags)
@@ -466,7 +473,7 @@ export function isFeatureEnabled(config: unknown, feature: string): boolean {
   return false
 }
 
-export async function getConfig(cliOptions?: Partial<Config> & { config?: string, yes?: boolean, task?: string }): Promise<Config> {
+export async function getConfig(cliOptions?: Partial<Config> & { config?: string, yes?: boolean, task?: string, hotReload?: boolean }): Promise<Config> {
   // Validate environment variables first
   validateEnvironmentVariables()
 
@@ -497,8 +504,9 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       .parse(process.argv)
 
     return program.opts()
-  })() as Record<string, any>
+  })() as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options: any = {
     ...rawOptions,
     yes: rawOptions.yes ?? rawOptions.autoConfirm,
@@ -590,22 +598,26 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
   const backendType = options.backend ||
     process.env.LOOPWORK_BACKEND ||
     fileConfig?.backend?.type ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     detectBackendType(projectRoot, options.tasksFile || (fileConfig?.backend as any)?.tasksFile)
 
   const backend: BackendConfig = backendType === 'json'
     ? {
         type: 'json',
         tasksFile: options.tasksFile ||
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (fileConfig?.backend as any)?.tasksFile ||
           path.join(projectRoot, '.specs/tasks/tasks.json'),
         tasksDir: path.dirname(
           options.tasksFile ||
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (fileConfig?.backend as any)?.tasksFile ||
           path.join(projectRoot, '.specs/tasks/tasks.json')
         ),
       }
     : {
         type: 'github',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         repo: options.repo || (fileConfig?.backend as any)?.repo,
       }
 
@@ -633,6 +645,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
 
   const config: Config = {
     ...DEFAULT_CONFIG,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     repo: options.repo || (fileConfig?.backend as any)?.repo,
     feature: options.feature || fileConfig?.feature,
     defaultPriority: options.defaultPriority ?? fileConfig?.defaultPriority,
@@ -669,6 +682,19 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
   // Set log level on logger
   logger.setLogLevel(config.logLevel)
 
+  // Start hot reload if enabled
+  if (cliOptions?.hotReload || process.env.LOOPWORK_HOT_RELOAD === 'true') {
+    const hotReloadManager = getConfigHotReloadManager()
+    const configPath = options.config ? path.resolve(options.config) : (fileConfig && path.join(projectRoot, 'loopwork.config.ts')) || path.join(projectRoot, 'loopwork.config.ts')
+
+    if (fs.existsSync(configPath)) {
+      hotReloadManager.start(configPath, config)
+      logger.info(`Config hot reload enabled: ${configPath}`)
+    } else {
+      logger.warn(`Config file not found for hot reload: ${configPath}`)
+    }
+  }
+
   return config
 }
 
@@ -698,6 +724,7 @@ let subagentRegistry: IAgentRegistry | null = null
 export function getSubagentRegistry(config: LoopworkConfig): IAgentRegistry {
   if (!subagentRegistry) {
     subagentRegistry = createRegistry()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configAny = config as any
     if (configAny.subagents) {
       for (const agent of configAny.subagents) {
@@ -712,9 +739,181 @@ export function getSubagentRegistry(config: LoopworkConfig): IAgentRegistry {
 }
 
 /**
- * Reset the subagent registry (for testing)
+ * Reset subagent registry (for testing)
  * @internal
  */
 export function resetSubagentRegistry(): void {
   subagentRegistry = null
+}
+
+/**
+ * Config reload event type
+ */
+export interface ConfigReloadEvent {
+  timestamp: Date
+  configPath: string
+  config: Config
+}
+
+/**
+ * Config hot reload manager
+ * Watches config file for changes and reloads configuration
+ */
+class ConfigHotReloadManager {
+  private watcher: chokidar.FSWatcher | null = null
+  private emitter: EventEmitter = new EventEmitter()
+  private currentConfig: Config | null = null
+  private currentConfigPath: string | null = null
+
+  /**
+   * Start watching for config changes
+   */
+  start(configPath: string, initialConfig: Config): void {
+    if (this.watcher) {
+      logger.debug('Config watcher already running')
+      return
+    }
+
+    this.currentConfig = initialConfig
+    this.currentConfigPath = configPath
+
+    logger.debug(`Starting config watcher: ${configPath}`)
+
+    this.watcher = chokidar.watch(configPath, {
+      persistent: true,
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 100,
+        pollInterval: 10,
+      },
+    })
+
+    this.watcher.on('change', async (filePath) => {
+      logger.info(`Config file changed: ${filePath}`)
+      try {
+        const newConfig = await this.reloadConfig(filePath)
+        if (newConfig) {
+          this.currentConfig = newConfig
+          const event: ConfigReloadEvent = {
+            timestamp: new Date(),
+            configPath: filePath,
+            config: newConfig,
+          }
+          this.emitter.emit('config-reloaded', event)
+          logger.info('Configuration reloaded successfully')
+        }
+      } catch (error) {
+        logger.error(`Failed to reload config: ${error}`)
+      }
+    })
+
+    this.watcher.on('error', (error) => {
+      logger.error(`Config watcher error: ${error}`)
+    })
+  }
+
+  /**
+   * Reload configuration from file
+   */
+  private async reloadConfig(configPath: string): Promise<Config | null> {
+    try {
+      // Clear module cache to force re-import
+      const resolvedPath = path.resolve(configPath)
+      delete require.cache[require.resolve(resolvedPath)]
+
+      const module = await import(resolvedPath)
+      const fileConfig = module.default || module
+
+      if (!fileConfig || typeof fileConfig !== 'object') {
+        logger.warn('Reloaded config is invalid, keeping current config')
+        return this.currentConfig
+      }
+
+      // Merge with CLI options and environment variables
+      // We need to preserve CLI args that were set when initially loading
+      const config: Config = {
+        ...DEFAULT_CONFIG,
+        ...fileConfig,
+        projectRoot: this.currentConfig?.projectRoot || process.cwd(),
+        outputDir: this.currentConfig?.outputDir || path.join(process.cwd(), '.loopwork', 'runs', 'default', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)),
+        sessionId: this.currentConfig?.sessionId || `loopwork-default-${Date.now()}-${process.pid}`,
+        debug: fileConfig.debug || false,
+        resume: false,
+        backend: fileConfig.backend || this.currentConfig?.backend || { type: 'json', tasksFile: '.specs/tasks/tasks.json' },
+        namespace: fileConfig.namespace || 'default',
+        parallel: fileConfig.parallel || 1,
+        parallelFailureMode: fileConfig.parallelFailureMode || 'continue',
+        logLevel: fileConfig.logLevel || 'info',
+      }
+
+      validateConfig(config)
+      return config
+    } catch (error) {
+      logger.error(`Error reloading config: ${error}`)
+      return null
+    }
+  }
+
+  /**
+   * Stop watching for config changes
+   */
+  async stop(): Promise<void> {
+    if (this.watcher) {
+      await this.watcher.close()
+      this.watcher = null
+      logger.debug('Config watcher stopped')
+    }
+  }
+
+  /**
+   * Get current configuration
+   */
+  getCurrentConfig(): Config | null {
+    return this.currentConfig
+  }
+
+  /**
+   * Register listener for config reload events
+   */
+  onReload(callback: (event: ConfigReloadEvent) => void): void {
+    this.emitter.on('config-reloaded', callback)
+  }
+
+  /**
+   * Remove listener for config reload events
+   */
+  offReload(callback: (event: ConfigReloadEvent) => void): void {
+    this.emitter.off('config-reloaded', callback)
+  }
+
+  /**
+   * Check if watcher is active
+   */
+  isWatching(): boolean {
+    return this.watcher !== null
+  }
+}
+
+// Global singleton for config hot reload manager
+let hotReloadManager: ConfigHotReloadManager | null = null
+
+/**
+ * Get or create the config hot reload manager
+ */
+export function getConfigHotReloadManager(): ConfigHotReloadManager {
+  if (!hotReloadManager) {
+    hotReloadManager = new ConfigHotReloadManager()
+  }
+  return hotReloadManager
+}
+
+/**
+ * Reset config hot reload manager (for testing)
+ * @internal
+ */
+export function resetConfigHotReloadManager(): void {
+  if (hotReloadManager) {
+    hotReloadManager.stop()
+  }
+  hotReloadManager = null
 }

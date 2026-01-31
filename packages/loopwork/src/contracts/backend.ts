@@ -136,6 +136,13 @@ export interface TaskBackend {
 
   /** Remove a dependency (optional) */
   removeDependency?(taskId: string, dependsOnId: string): Promise<UpdateResult>
+
+  /**
+   * Reschedule a completed task to pending
+   * @param taskId Task ID to reschedule
+   * @param scheduledFor Optional ISO 8601 datetime to schedule for
+   */
+  rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult>
 }
 
 /**
@@ -259,6 +266,7 @@ export function warnIfLooseBackendConfig(config: BackendConfig): void {
     config.type === 'fallback'
 
   if (!isSpecialized) {
+    // eslint-disable-next-line no-console
     console.warn(
       '\x1b[33m%s\x1b[0m',
       `[DEPRECATION WARNING] Using loose BackendConfig (type: "${config.type}"). ` +

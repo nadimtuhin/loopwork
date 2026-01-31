@@ -1,7 +1,8 @@
 import type { LoopworkMonitor } from '../monitor'
 import type { ProcessInfo } from '../contracts/process-manager'
-import type { Chalk } from 'chalk'
-import { logger, separator, Table, getEmoji } from '../core/utils'
+import type { ChalkInstance } from 'chalk'
+import React from 'react'
+import { logger, separator, InkTable, getEmoji, renderInk } from '../core/utils'
 import type { StatusJsonOutput } from '../contracts/output'
 
 export interface StatusDeps {
@@ -19,7 +20,7 @@ export interface StatusDeps {
   formatUptime: (date: string) => string
   formatDuration: (ms: number) => string
   cwd: () => string
-  chalk: Chalk
+  chalk: ChalkInstance
   logger?: typeof logger
   json?: boolean
 }
@@ -92,52 +93,53 @@ export async function status(deps: StatusDeps): Promise<void> {
   if (cliProcesses.length > 0) {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold(`Active CLI Processes (${cliProcesses.length}):`))
-    const table = new Table(['CLI', 'Task', 'PID', 'Uptime', 'Namespace'], [
-      { align: 'left' },
-      { align: 'left' },
-      { align: 'right' },
-      { align: 'right' },
-      { align: 'left' },
-    ])
 
-    for (const proc of cliProcesses) {
+    const rows = cliProcesses.map(proc => {
       const uptime = formatDuration(Date.now() - proc.startTime)
       const cli = path.basename(proc.command)
       const taskIcon = proc.taskId ? getEmoji('✓') : ''
       const taskDisplay = proc.taskId ? `${taskIcon} ${chalk.cyan(proc.taskId)}` : '-'
 
-      table.addRow([
+      return [
         chalk.bold(cli),
         taskDisplay,
         proc.pid.toString(),
         uptime,
         proc.namespace,
-      ])
-    }
-    activeLogger.raw(table.render())
+      ]
+    })
+
+    const tableOutput = renderInk(
+      React.createElement(InkTable, {
+        headers: ['CLI', 'Task', 'PID', 'Uptime', 'Namespace'],
+        rows,
+      })
+    )
+    activeLogger.raw(tableOutput)
   }
 
   // Show monitor processes (from monitor start command)
   if (monitorRunning.length > 0) {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold(`Background Loops (${monitorRunning.length}):`))
-    const table = new Table(['Namespace', 'PID', 'Uptime', 'Log File'], [
-      { align: 'left' },
-      { align: 'right' },
-      { align: 'right' },
-      { align: 'left' },
-    ])
 
-    for (const proc of monitorRunning) {
+    const rows = monitorRunning.map(proc => {
       const uptime = formatUptime(proc.startedAt)
-      table.addRow([
+      return [
         chalk.bold(proc.namespace),
         proc.pid.toString(),
         uptime,
         proc.logFile,
-      ])
-    }
-    activeLogger.raw(table.render())
+      ]
+    })
+
+    const tableOutput = renderInk(
+      React.createElement(InkTable, {
+        headers: ['Namespace', 'PID', 'Uptime', 'Log File'],
+        rows,
+      })
+    )
+    activeLogger.raw(tableOutput)
   }
 
   // Show message if nothing running
@@ -149,24 +151,26 @@ export async function status(deps: StatusDeps): Promise<void> {
   if (namespaces.length > 0) {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold('All Namespaces:'))
-    const table = new Table(['', 'Namespace', 'Last Run'], [
-      { align: 'center' },
-      { align: 'left' },
-      { align: 'left' },
-    ])
 
-    for (const ns of namespaces) {
+    const rows = namespaces.map(ns => {
       const isRunning = ns.status === 'running' || cliProcesses.some(p => p.namespace === ns.name)
       const icon = isRunning ? chalk.green(getEmoji('●')) : chalk.gray(getEmoji('○'))
       const lastRunDisplay = ns.lastRun ? chalk.gray(ns.lastRun) : chalk.gray('-')
 
-      table.addRow([
+      return [
         icon,
         ns.name,
         lastRunDisplay,
-      ])
-    }
-    activeLogger.raw(table.render())
+      ]
+    })
+
+    const tableOutput = renderInk(
+      React.createElement(InkTable, {
+        headers: ['', 'Namespace', 'Last Run'],
+        rows,
+      })
+    )
+    activeLogger.raw(tableOutput)
   }
 
   activeLogger.raw('')

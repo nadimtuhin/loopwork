@@ -1,7 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-import { logger, CompletionSummary } from '../core/utils'
+import React from 'react'
 import readline from 'readline'
+import { spawn } from 'child_process'
+import { logger, InkCompletionSummary, renderInk } from '../core/utils'
 import packageJson from '../../package.json'
 
 type InitDeps = {
@@ -9,6 +11,42 @@ type InitDeps = {
   logger?: typeof logger
   process?: NodeJS.Process
   readline?: typeof readline
+}
+
+/**
+ * Validation error class for user-friendly error messages
+ */
+class ValidationError extends Error {
+  constructor(message: string, suggestion?: string) {
+    super(message)
+    this.name = 'ValidationError'
+    if (suggestion) {
+      this.message = `${message} ${suggestion}`
+    }
+  }
+}
+
+/**
+ * Post-generation hook configuration
+ */
+interface PostGenHook {
+  /** Hook name for logging */
+  name: string
+  /** Command to run (shell command) */
+  command: string
+  /** Whether to fail init if hook fails */
+  required?: boolean
+  /** Working directory (defaults to CWD) */
+  cwd?: string
+}
+
+interface InitOptions {
+  /** Post-generation hooks to run after init completes */
+  postGenHooks?: PostGenHook[]
+  /** Built-in hooks to enable */
+  enableHooks?: ('git-init' | 'git-commit' | 'npm-install' | 'bun-install')[]
+  /** Skip all hooks */
+  skipHooks?: boolean
 }
 
 async function ask(question: string, defaultValue: string, deps: InitDeps = {}): Promise<string> {
@@ -40,6 +78,255 @@ async function ask(question: string, defaultValue: string, deps: InitDeps = {}):
 
 function resolveAsk(deps: InitDeps) {
   return deps.ask ?? ((question: string, defaultValue: string) => ask(question, defaultValue, deps))
+}
+
+/**
+ * Validate backend type input
+ */
+function _validateBackendType(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  const validBackends = ['json', 'github']
+
+  if (!validBackends.some(b => normalized.startsWith(b.charAt(0)))) {
+    throw new ValidationError(
+      `Invalid backend type: "${value}"`,
+      `Valid options: ${validBackends.join(', ')}`
+    )
+  }
+
+  return normalized.startsWith('g') ? 'github' : 'json'
+}
+
+/**
+ * Validate AI CLI tool input
+ */
+function _validateAiTool(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  const validTools = ['opencode', 'claude']
+
+  if (!validTools.some(t => normalized.startsWith(t.charAt(0)))) {
+    throw new ValidationError(
+      `Invalid AI CLI tool: "${value}"`,
+      `Valid options: ${validTools.join(', ')}`
+    )
+  }
+
+  return normalized.startsWith('c') ? 'claude' : 'opencode'
+}
+
+/**
+ * Validate budget format (must be a positive number)
+ */
+function _validateBudget(value: string): number {
+  const parsed = parseFloat(value.trim())
+  if (isNaN(parsed) || parsed <= 0) {
+    throw new ValidationError(
+      `Invalid budget: "${value}"`,
+      'Budget must be a positive number (e.g., 10.00)'
+    )
+  }
+  return parsed
+}
+
+/**
+ * Validate directory path (must be writable)
+ */
+function _validateDirectoryPath(value: string, deps: InitDeps = {}): string {
+  const normalized = value.trim()
+  const dir = path.resolve(normalized)
+
+  const activeLogger = deps.logger ?? logger
+
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+      activeLogger.debug(`Created directory: ${dir}`)
+    } else if (!fs.statSync(dir).isDirectory()) {
+      throw new ValidationError(
+        `Path exists but is not a directory: ${normalized}`,
+        'Please provide a valid directory path'
+      )
+    }
+
+    const testFile = path.join(dir, '.write-test')
+    fs.writeFileSync(testFile, 'test')
+    fs.unlinkSync(testFile)
+  } catch (error) {
+    throw new ValidationError(
+      `Cannot write to directory: ${normalized}`,
+      'Please ensure the path is valid and you have write permissions'
+    )
+  }
+
+  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized
+}
+
+/**
+ * Validate GitHub repo format (owner/repo)
+ */
+function validateRepoFormat(value: string): string | undefined {
+  const normalized = value.trim()
+
+  if (normalized === 'current repo') {
+    return undefined
+  }
+
+  const repoPattern = /^[\w.-]+\/[\w.-]+$/
+  if (!repoPattern.test(normalized)) {
+    throw new ValidationError(
+      `Invalid repo format: "${normalized}"`,
+      'Repository must be in "owner/repo" format (e.g., facebook/react)'
+    )
+  }
+
+  return normalized
+}
+
+/**
+ * Run a post-generation hook
+ */
+async function runHook(hook: PostGenHook, deps: InitDeps = {}): Promise<boolean> {
+  const activeLogger = deps.logger ?? logger
+  const runtimeProcess = deps.process ?? process
+
+  activeLogger.info(`Running hook: ${hook.name}`)
+  activeLogger.debug(`  Command: ${hook.command}`)
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('sh', ['-c', hook.command], {
+        cwd: hook.cwd || runtimeProcess.cwd(),
+        stdio: 'pipe'
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          activeLogger.debug(`  ${hook.name} completed successfully`)
+          if (stdout.trim()) {
+            activeLogger.debug(`  stdout: ${stdout.trim()}`)
+          }
+          resolve()
+        } else {
+          activeLogger.warn(`  ${hook.name} failed with exit code ${code}`)
+          if (stderr.trim()) {
+            activeLogger.warn(`  stderr: ${stderr.trim()}`)
+          }
+          if (hook.required) {
+            reject(new Error(`Required hook "${hook.name}" failed`))
+          } else {
+            resolve()
+          }
+        }
+      })
+
+      child.on('error', (error) => {
+        activeLogger.error(`  ${hook.name} error: ${error.message}`)
+        if (hook.required) {
+          reject(error)
+        } else {
+          resolve()
+        }
+      })
+    })
+
+    return true
+  } catch (error) {
+    if (hook.required) {
+      throw error
+    }
+    activeLogger.warn(`Hook ${hook.name} failed but not required, continuing...`)
+    return false
+  }
+}
+
+/**
+ * Get built-in post-generation hooks
+ */
+function getBuiltInHooks(options: InitOptions = {}): PostGenHook[] {
+  const hooks: PostGenHook[] = []
+  const enabledHooks = options.enableHooks || []
+
+  if (options.skipHooks) {
+    return hooks
+  }
+
+  if (enabledHooks.includes('git-init')) {
+    hooks.push({
+      name: 'git init',
+      command: 'git init',
+      required: false
+    })
+  }
+
+  if (enabledHooks.includes('git-commit')) {
+    hooks.push({
+      name: 'git commit',
+      command: 'git add -A && git commit -m "Initial commit: Loopwork project initialized"',
+      required: false
+    })
+  }
+
+  if (enabledHooks.includes('npm-install')) {
+    hooks.push({
+      name: 'npm install',
+      command: 'npm install',
+      required: false
+    })
+  }
+
+  if (enabledHooks.includes('bun-install')) {
+    hooks.push({
+      name: 'bun install',
+      command: 'bun install',
+      required: false
+    })
+  }
+
+  return hooks
+}
+
+/**
+ * Run all post-generation hooks
+ */
+async function runPostGenHooks(options: InitOptions = {}, deps: InitDeps = {}): Promise<void> {
+  const activeLogger = deps.logger ?? logger
+
+  if (options.skipHooks) {
+    activeLogger.info('Skipping post-generation hooks')
+    return
+  }
+
+  const customHooks = options.postGenHooks || []
+  const builtInHooks = getBuiltInHooks(options)
+  const allHooks = [...builtInHooks, ...customHooks]
+
+  if (allHooks.length === 0) {
+    return
+  }
+
+  activeLogger.info('\nRunning post-generation hooks...')
+
+  for (const hook of allHooks) {
+    try {
+      await runHook(hook, deps)
+    } catch (error) {
+      activeLogger.error(`Hook execution failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw error
+    }
+  }
+
+  activeLogger.success('Post-generation hooks completed')
 }
 
 export async function safeWriteFile(
@@ -498,11 +785,20 @@ Implement the first feature
     nextSteps.push(`View PRD templates: ${path.join(prdDir, 'templates')}`)
   }
 
-  const summary = new CompletionSummary('Initialization Complete')
-  summary.addNextSteps(nextSteps)
+  const summaryOutput = renderInk(
+    React.createElement(InkCompletionSummary, {
+      title: 'Initialization Complete',
+      stats: {
+        completed: 1,
+        failed: 0,
+        skipped: 0,
+      },
+      nextSteps,
+    })
+  )
 
   activeLogger.raw('')
-  activeLogger.raw(summary.render())
+  activeLogger.raw(summaryOutput)
   activeLogger.raw('')
 }
 

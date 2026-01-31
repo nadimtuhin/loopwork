@@ -2,12 +2,18 @@ import { LoopworkError, handleError } from '../core/errors'
 import { startInkTui } from '../dashboard/tui'
 import { LoopworkMonitor } from '../monitor'
 import { Dashboard } from '../dashboard/cli'
+import { getBackendAndConfig } from './shared'
 
 export interface DashboardOptions {
   tui?: boolean
   web?: boolean
   watch?: boolean
   port?: number
+  // Allow passing backend config options
+  config?: string
+  backend?: string
+  tasksFile?: string
+  repo?: string
 }
 
 /**
@@ -40,7 +46,7 @@ export async function dashboard(
 
       // For now, show a message that web UI is coming soon
       throw new LoopworkError(
-        'ERR_NOT_IMPLEMENTED',
+        'ERR_UNKNOWN',
         'Web UI mode is not yet implemented',
         [
           'Use TUI mode instead: loopwork dashboard',
@@ -79,6 +85,15 @@ export async function dashboard(
 
     try {
       const monitor = new LoopworkMonitor(projectRoot)
+      
+      // Initialize backend to get task stats
+      let backend: any = null
+      try {
+        const { backend: initializedBackend } = await getBackendAndConfig(options as any)
+        backend = initializedBackend
+      } catch (err) {
+        // If backend fails to initialize, continue without task stats to show process status
+      }
 
       // Launch Ink TUI dashboard with data callbacks
       await startInkTui({
@@ -107,14 +122,25 @@ export async function dashboard(
             timestamp: new Date(), // Activity doesn't have full timestamps
           }))
 
+          // Fetch pending tasks from backend if available
+          let pendingCount = 0
+          const pendingTasksList: any[] = []
+          if (backend) {
+            try {
+              pendingCount = await backend.countPending()
+            } catch (err) {
+              // Ignore backend errors during refresh
+            }
+          }
+
           return {
             currentTask: running.length > 0 ? { id: `PID-${running[0].pid}`, title: `Running in ${running[0].namespace}` } : null,
-            pendingTasks: [],
+            pendingTasks: pendingTasksList,
             completedTasks,
             failedTasks,
             stats: {
-              total: completedTasks.length + failedTasks.length,
-              pending: 0,
+              total: completedTasks.length + failedTasks.length + pendingCount,
+              pending: pendingCount,
               completed: completedTasks.length,
               failed: failedTasks.length,
             },
@@ -126,7 +152,7 @@ export async function dashboard(
           return running.map(p => ({
             namespace: p.namespace,
             pid: p.pid,
-            startTime: p.startedAt,
+            startTime: new Date(p.startedAt),
           }))
         },
         getNamespaces: async () => {

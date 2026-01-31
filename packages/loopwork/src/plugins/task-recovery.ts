@@ -1,4 +1,3 @@
-import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import type { LoopworkPlugin, TaskBackend, Task, TaskContext, ConfigWrapper, LoopworkConfig } from '../contracts'
@@ -197,6 +196,7 @@ function shouldSkip(task: Task, error: string, config: Required<TaskRecoveryConf
   }
 
   // Check labels (if available)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const taskLabels = (task as any).labels || []
   if (config.skip.labels?.some((l) => taskLabels.includes(l))) {
     return true
@@ -209,7 +209,7 @@ function shouldSkip(task: Task, error: string, config: Required<TaskRecoveryConf
  * Read the last few lines of the task output log
  */
 async function readLogExcerpt(context: TaskContext): Promise<string | undefined> {
-  const { task, iteration, namespace } = context
+  const { iteration, namespace } = context
 
   // Find latest session
   const stateDir = path.join(process.cwd(), '.loopwork')
@@ -248,7 +248,7 @@ async function readLogExcerpt(context: TaskContext): Promise<string | undefined>
  */
 async function generateRecoveryPlan(
   context: FailureContext,
-  config: Required<TaskRecoveryConfig>
+  _config: Required<TaskRecoveryConfig>
 ): Promise<RecoveryPlan | null> {
   // Implementation would call AI CLI
   // For now, mock a response based on common errors
@@ -298,7 +298,6 @@ async function executeRecovery(
 
   if (plan.type === 'retry' && config.strategies.autoRetry) {
     logger.info(`🔄 Retrying task ${task.id}...`)
-    const retryAttempt = ((task.metadata?.retryAttempt as number) || 0) + 1
     await backend.resetToPending(task.id)
     // Update metadata with retry count
     // backend.updateTaskMetadata(task.id, { retryAttempt })
@@ -308,6 +307,7 @@ async function executeRecovery(
       await backend.createTask({
         title: plan.newTask.title,
         description: plan.newTask.description,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         priority: plan.newTask.priority as any,
         parentId: task.id,
       })
