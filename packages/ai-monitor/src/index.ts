@@ -456,7 +456,7 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
   }
 
   private async recoverTask(taskId: string): Promise<void> {
-    if (!this.circuitBreaker.canProceed() || !this.backend) return
+    if (!this.circuitBreaker.canHeal() || !this.backend) return
 
     try {
       const logs = await this.getRecentLogs(this.config.recovery.maxRetries * 20)
@@ -517,7 +517,7 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
   }
 
   private async handleLogLine(logLine: LogLine): Promise<void> {
-    if (!this.circuitBreaker.canProceed()) return
+    if (!this.circuitBreaker.canHeal()) return
 
     const match = matchPattern(logLine.line)
 

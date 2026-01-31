@@ -13,23 +13,23 @@ describe('CircuitBreaker', () => {
 
       expect(state.state).toBe('closed')
       expect(state.consecutiveFailures).toBe(0)
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
     })
 
     test('should transition to OPEN after max failures', () => {
       const cb = new CircuitBreaker({ maxFailures: 3 })
 
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       cb.recordFailure()
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       cb.recordFailure()
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       cb.recordFailure()
 
       const state = cb.getState()
       expect(state.state).toBe('open')
       expect(state.consecutiveFailures).toBe(3)
-      expect(cb.canProceed()).toBe(false)
+      expect(cb.canHeal()).toBe(false)
       expect(cb.isOpen()).toBe(true)
     })
 
@@ -46,7 +46,7 @@ describe('CircuitBreaker', () => {
       // Wait for cooldown
       await new Promise(resolve => setTimeout(resolve, 150))
 
-      expect(cb.canProceed()).toBe(true) // Should transition to half-open
+      expect(cb.canHeal()).toBe(true) // Should transition to half-open
       expect(cb.getState().state).toBe('half-open')
     })
 
@@ -65,7 +65,7 @@ describe('CircuitBreaker', () => {
       await new Promise(resolve => setTimeout(resolve, 150))
 
       // Transition to half-open
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       expect(cb.getState().state).toBe('half-open')
 
       // Record success should close the circuit
@@ -89,13 +89,13 @@ describe('CircuitBreaker', () => {
       await new Promise(resolve => setTimeout(resolve, 150))
 
       // Transition to half-open
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       expect(cb.getState().state).toBe('half-open')
 
       // Record failure should reopen the circuit
       cb.recordFailure()
       expect(cb.getState().state).toBe('open')
-      expect(cb.canProceed()).toBe(false)
+      expect(cb.canHeal()).toBe(false)
     })
   })
 
@@ -122,7 +122,7 @@ describe('CircuitBreaker', () => {
       cb.recordFailure()
       await new Promise(resolve => setTimeout(resolve, 150))
 
-      cb.canProceed() // Transition to half-open
+      cb.canHeal() // Transition to half-open
       cb.recordSuccess()
 
       expect(cb.getState().state).toBe('closed')
@@ -138,15 +138,15 @@ describe('CircuitBreaker', () => {
 
       cb.recordFailure()
       cb.recordFailure()
-      expect(cb.canProceed()).toBe(false)
+      expect(cb.canHeal()).toBe(false)
 
       // Still in cooldown
       await new Promise(resolve => setTimeout(resolve, 100))
-      expect(cb.canProceed()).toBe(false)
+      expect(cb.canHeal()).toBe(false)
 
       // Cooldown elapsed
       await new Promise(resolve => setTimeout(resolve, 150))
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
     })
 
     test('should report remaining cooldown time', () => {
@@ -184,7 +184,7 @@ describe('CircuitBreaker', () => {
       cb.reset()
       expect(cb.getState().state).toBe('closed')
       expect(cb.getState().consecutiveFailures).toBe(0)
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
     })
   })
 
@@ -231,11 +231,11 @@ describe('CircuitBreaker', () => {
       await new Promise(resolve => setTimeout(resolve, 150))
 
       // First attempt allowed
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
       expect(cb.getState().state).toBe('half-open')
 
       // Second attempt blocked
-      expect(cb.canProceed()).toBe(false)
+      expect(cb.canHeal()).toBe(false)
     })
 
     test('should allow multiple half-open attempts if configured', async () => {
@@ -249,10 +249,10 @@ describe('CircuitBreaker', () => {
       cb.recordFailure()
       await new Promise(resolve => setTimeout(resolve, 150))
 
-      expect(cb.canProceed()).toBe(true)
-      expect(cb.canProceed()).toBe(true)
-      expect(cb.canProceed()).toBe(true)
-      expect(cb.canProceed()).toBe(false) // 4th attempt blocked
+      expect(cb.canHeal()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
+      expect(cb.canHeal()).toBe(false) // 4th attempt blocked
     })
   })
 
@@ -287,7 +287,7 @@ describe('CircuitBreaker', () => {
       cb.recordFailure()
       await new Promise(resolve => setTimeout(resolve, 150))
 
-      cb.canProceed() // Transition to half-open
+      cb.canHeal() // Transition to half-open
       const status = cb.getStatus()
 
       expect(status).toContain('HALF_OPEN')
@@ -343,7 +343,7 @@ describe('CircuitBreaker', () => {
 
       cb.reset()
       expect(cb.getState().state).toBe('closed')
-      expect(cb.canProceed()).toBe(true)
+      expect(cb.canHeal()).toBe(true)
     })
   })
 })

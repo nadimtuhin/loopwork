@@ -323,7 +323,7 @@ export function createDocumentationPlugin(
   return {
     name: 'documentation',
 
-    async onTaskComplete(context: Record<string, unknown>, _result: Record<string, unknown>) {
+    async onTaskComplete(context: Record<string, unknown>, result: Record<string, unknown>) {
       if (!config.enabled) {
         return
       }
@@ -340,7 +340,7 @@ export function createDocumentationPlugin(
       const taskResult: TaskResult = {
         success: (result?.success as boolean) ?? true,
         output: (result?.output as string) || undefined,
-        error: (result?.error as string) | undefined,
+        error: (result?.error as string) || undefined,
       }
 
       // Check if we should skip this task
