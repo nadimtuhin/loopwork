@@ -252,7 +252,7 @@ class Dashboard {
   /**
    * Get recent activity across all namespaces
    */
-  private getRecentActivity(): { time: string; namespace: string; type: string; message: string }[] {
+  getRecentActivity(): { time: string; namespace: string; type: string; message: string }[] {
     const activity: { time: string; namespace: string; type: string; message: string }[] = []
 
     const runsDir = path.join(this.projectRoot, '.loopwork/runs')

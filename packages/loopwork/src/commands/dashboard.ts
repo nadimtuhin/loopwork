@@ -1,5 +1,7 @@
-import { Dashboard } from '../dashboard/cli'
 import { LoopworkError, handleError } from '../core/errors'
+import { startInkTui } from '../dashboard/tui'
+import { LoopworkMonitor } from '../monitor'
+import { Dashboard } from '../dashboard/cli'
 
 export interface DashboardOptions {
   tui?: boolean
@@ -23,8 +25,7 @@ export interface DashboardOptions {
  * Use --watch for auto-refreshing TUI mode.
  */
 export async function dashboard(
-  options: DashboardOptions = {},
-  deps: { DashboardClass?: typeof Dashboard } = {}
+  options: DashboardOptions = {}
 ): Promise<void> {
   try {
     // Web mode: Launch browser-based dashboard
@@ -48,33 +49,65 @@ export async function dashboard(
       )
     }
 
-    // TUI mode (default): Terminal-based dashboard
+    // TUI mode (default): Terminal-based Ink dashboard
     try {
-      // Try to import the TUI module
-      let startTui: ((options: { port: number; watch: boolean }) => Promise<void>) | undefined
-      try {
-        const tuiModule = await import('@loopwork-ai/dashboard/tui')
-        startTui = tuiModule.startTui
-      } catch {
-        // TUI module not available, fallback to legacy Dashboard
-        console.log('TUI module not available, using legacy dashboard...')
-        const DashboardClass = deps.DashboardClass ?? Dashboard
-        const dash = new DashboardClass()
+      const projectRoot = process.cwd()
+      const monitor = new LoopworkMonitor(projectRoot)
+      const legacyDash = new Dashboard(projectRoot)
 
-        if (options.watch ?? true) {
-          // Interactive mode with auto-refresh (default)
-          await dash.interactive()
-        } else {
-          // One-time display
-          dash.display()
-        }
-        return
-      }
-
-      // Launch TUI dashboard
-      await startTui({
+      // Launch Ink TUI dashboard with data callbacks
+      await startInkTui({
         port: options.port || 3333,
-        watch: options.watch ?? true
+        watch: options.watch ?? true,
+        directMode: true,
+        getState: async () => {
+          const { running } = monitor.getStatus()
+          const activity = legacyDash.getRecentActivity()
+
+          // Convert activity to task events format
+          const completedTasks = activity.filter(a => a.type === 'completed').map(a => ({
+            id: a.message.replace('Completed ', ''),
+            title: a.message,
+          }))
+          const failedTasks = activity.filter(a => a.type === 'failed').map(a => ({
+            id: a.message.replace('Failed ', ''),
+            title: a.message,
+          }))
+
+          // Convert activity to recent events format for display
+          const recentEvents = activity.map(a => ({
+            id: a.message.replace(/^(Completed|Failed|Started iteration) /, ''),
+            title: a.message,
+            status: (a.type === 'completed' ? 'completed' : a.type === 'failed' ? 'failed' : 'started') as 'started' | 'completed' | 'failed',
+            timestamp: new Date(), // Activity doesn't have full timestamps
+          }))
+
+          return {
+            currentTask: running.length > 0 ? { id: `PID-${running[0].pid}`, title: `Running in ${running[0].namespace}` } : null,
+            pendingTasks: [],
+            completedTasks,
+            failedTasks,
+            stats: {
+              total: completedTasks.length + failedTasks.length,
+              pending: 0,
+              completed: completedTasks.length,
+              failed: failedTasks.length,
+            },
+            recentEvents,
+          }
+        },
+        getRunningLoops: async () => {
+          const running = monitor.getRunningProcesses()
+          return running.map(p => ({
+            namespace: p.namespace,
+            pid: p.pid,
+            startTime: p.startedAt,
+          }))
+        },
+        getNamespaces: async () => {
+          const { namespaces } = monitor.getStatus()
+          return namespaces
+        },
       })
     } catch (tuiError: unknown) {
       // If TUI fails (e.g., non-interactive terminal), suggest web mode
