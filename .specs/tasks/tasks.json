@@ -842,7 +842,7 @@
     },
     {
       "id": "AI-MONITOR-001d",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "AI Monitor: Auto-Create PRD Action",
       "feature": "ai-monitor",
@@ -867,8 +867,22 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:03:25.663Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T22-49-42-72137\nIteration: 1",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:03:25.663Z",
+        "completedAt": "2026-01-31T23:03:25.663Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "AI-MONITOR-001e",
@@ -1096,7 +1110,7 @@
     },
     {
       "id": "PROC-001a",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Process Management: IProcessManager Interface (Dependency Inversion)",
       "feature": "process-management",
@@ -1136,8 +1150,22 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:04:20.809Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 6)\n\nSession: loopwork-default-2026-01-31T22-49-42-72137\nIteration: 1",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:04:20.809Z",
+        "completedAt": "2026-01-31T23:04:20.809Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001b",
@@ -7395,6 +7423,149 @@
       ],
       "failureCount": 0,
       "scheduledFor": null
+    },
+    {
+      "id": "ARCH-001",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create @loopwork-ai/contracts package foundation",
+      "feature": "ARCH"
+    },
+    {
+      "id": "ARCH-002",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create @loopwork-ai/common package with Logger abstraction",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-001"
+      ]
+    },
+    {
+      "id": "ARCH-003",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create @loopwork-ai/state package with IPersistenceLayer",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-001",
+        "ARCH-002"
+      ]
+    },
+    {
+      "id": "ARCH-004",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create @loopwork-ai/plugin-registry package",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-001",
+        "ARCH-002"
+      ]
+    },
+    {
+      "id": "ARCH-005",
+      "status": "pending",
+      "priority": "high",
+      "title": "Create @loopwork-ai/executor package with CliExecutor",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-003",
+        "ARCH-004"
+      ]
+    },
+    {
+      "id": "ARCH-006",
+      "status": "pending",
+      "priority": "high",
+      "title": "Refactor @loopwork-ai/loopwork as composition root",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-005"
+      ]
+    },
+    {
+      "id": "ARCH-007",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Update root workspace configuration",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-006"
+      ]
+    },
+    {
+      "id": "ARCH-008",
+      "status": "pending",
+      "priority": "high",
+      "title": "Fix test imports and update test suite",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-006"
+      ]
+    },
+    {
+      "id": "ARCH-009",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Add JSDoc documentation to interfaces",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-006"
+      ]
+    },
+    {
+      "id": "ARCH-010",
+      "status": "pending",
+      "priority": "high",
+      "title": "Verify no circular dependencies",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-006"
+      ]
+    },
+    {
+      "id": "ARCH-011",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Update CLAUDE.md with new architecture",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-009",
+        "ARCH-010"
+      ]
+    },
+    {
+      "id": "ARCH-012",
+      "status": "pending",
+      "priority": "high",
+      "title": "Run full build and integration test",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-008",
+        "ARCH-010"
+      ]
+    },
+    {
+      "id": "ARCH-013",
+      "status": "pending",
+      "priority": "medium",
+      "title": "Create migration guide for external users",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-011"
+      ]
+    },
+    {
+      "id": "ARCH-014",
+      "status": "pending",
+      "priority": "background",
+      "title": "Commit refactor with atomic commits",
+      "feature": "ARCH",
+      "dependsOn": [
+        "ARCH-012",
+        "ARCH-013"
+      ]
     }
   ],
   "features": {
@@ -7521,6 +7692,10 @@
     "ink-output-system": {
       "name": "Ink output system",
       "description": "Tasks for ink-output-system"
+    },
+    "ARCH": {
+      "name": "ARCH",
+      "description": "Tasks for ARCH"
     }
   }
 }
