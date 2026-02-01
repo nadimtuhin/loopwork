@@ -752,7 +752,7 @@
     },
     {
       "id": "IMPROVE-004",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "medium",
       "title": "Improve CLI error handling and user feedback",
       "description": "Add better error messages and recovery suggestions for common failure scenarios",
@@ -1115,12 +1115,23 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T11:02:07.555Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:35:15.978Z",
-        "updatedAt": "2026-02-01T10:52:02.489Z",
-        "startedAt": "2026-02-01T10:52:02.489Z"
+        "updatedAt": "2026-02-01T11:02:07.555Z"
       }
     },
     {
@@ -1960,7 +1971,7 @@
     },
     {
       "id": "AI-MONITOR-001f",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "medium",
       "title": "AI Monitor: Verification Engine",
       "feature": "ai-monitor",
@@ -1998,12 +2009,23 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001f",
+          "timestamp": "2026-02-01T11:02:07.608Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:52:02.547Z",
-        "updatedAt": "2026-02-01T10:52:02.547Z",
-        "startedAt": "2026-02-01T10:52:02.547Z"
+        "updatedAt": "2026-02-01T11:02:07.608Z"
       }
     },
     {
