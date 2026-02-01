@@ -110,6 +110,9 @@ export class CliHealthChecker {
       autoClearCache: options.autoClearCache ?? true,
       logger: options.logger,
       delayBetweenValidationsMs: options.delayBetweenValidationsMs ?? 2000,
+      onModelHealthy: options.onModelHealthy,
+      onModelUnhealthy: options.onModelUnhealthy,
+      onValidationComplete: options.onValidationComplete,
     }
   }
 

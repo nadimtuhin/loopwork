@@ -26,6 +26,7 @@ import { createMessageBus as _createMessageBus } from './message-bus'
 import { failureState } from './failure-state'
 import { RetryBudget } from './retry-budget'
 import { getRetryPolicy, isRetryableError, calculateBackoff } from './retry'
+import { isRateLimitError } from '@loopwork-ai/resilience'
 import { CheckpointIntegrator } from './checkpoint-integrator'
 import type { IPluginRegistry } from '@loopwork-ai/contracts'
 
@@ -949,11 +950,8 @@ export class ParallelRunner {
    */
   private categorizeFailure(error: string): FailureCategory {
     const lowerError = error.toLowerCase()
-    if (lowerError.includes('rate limit') ||
-
-        lowerError.includes('429') ||
-        lowerError.includes('too many requests') ||
-        lowerError.includes('overloaded')) {
+    
+    if (isRateLimitError(error)) {
       return 'rate_limit'
     }
 
@@ -1011,6 +1009,7 @@ export class ParallelRunner {
       timeout: 0,
       memory: 0,
       unknown: 0,
+      cli_cache: 0,
     }
 
     for (const failure of this.recentFailures) {

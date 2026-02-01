@@ -2,13 +2,11 @@ import { spawnSync, execSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import chalk from 'chalk'
 import { StreamLogger } from '@loopwork-ai/common'
 import { 
   isRateLimitOutput, 
   createResilienceRunner, 
   RateLimitError,
-  isRateLimitError 
 } from '@loopwork-ai/resilience'
 import type { 
   ILogger, 
@@ -16,7 +14,6 @@ import type {
   ISpawnedProcess, 
   ISpawner,
   IPluginRegistry,
-  ICapabilityRegistry,
   ModelConfig,
   CliExecutorConfig,
   RetryConfig,
@@ -28,26 +25,11 @@ import type {
 import { ModelSelector } from './model-selector'
 import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/worker-pool-manager'
 import { createSpawner } from './spawners'
-import { CliHealthChecker, type HealthCheckResult, type ValidatedModelConfig } from './cli-health-checker'
+import { CliHealthChecker, type ValidatedModelConfig } from './cli-health-checker'
 import { createDefaultRegistry } from './strategies'
 
 const MIN_FREE_MEMORY_MB = 512
 const DEFAULT_SIGKILL_DELAY_MS = 5000
-const DEFAULT_PROGRESS_INTERVAL_MS = 2000
-
-/**
- * OpenCode cache corruption error patterns
- * These patterns indicate the OpenCode cache is corrupted and needs to be cleared
- */
-const OPENCODE_CACHE_CORRUPTION_PATTERNS = [
-  /ENOENT.*reading.*\.cache\/opencode/i,
-  /ENOENT.*\.cache\/opencode\/node_modules/i,
-  /BuildMessage:.*ENOENT.*opencode/i,
-]
-
-export function isOpenCodeCacheCorruption(output: string): boolean {
-  return OPENCODE_CACHE_CORRUPTION_PATTERNS.some(pattern => pattern.test(output))
-}
 
 export function clearOpenCodeCache(logger?: ILogger): boolean {
   const homeDir = os.homedir()
@@ -452,7 +434,6 @@ export class CliExecutor {
     // Track validation progress
     let totalHealthy = 0
     let totalUnhealthy = 0
-    let validationComplete = false
     let resolveValidationComplete: (value: { totalHealthy: number; totalUnhealthy: number }) => void
     const validationPromise = new Promise<{ totalHealthy: number; totalUnhealthy: number }>((resolve) => {
       resolveValidationComplete = resolve
@@ -484,7 +465,6 @@ export class CliExecutor {
       },
       // Called when all validations are complete
       onValidationComplete: (summary) => {
-        validationComplete = true
         this.preflightValidated = true
         this.modelSelector.signalValidationComplete()
         this.logger.info(
@@ -495,15 +475,15 @@ export class CliExecutor {
     })
 
     // Start validation in background (don't await)
-    const validationTask = progressiveHealthChecker.validateAllModels(
+    progressiveHealthChecker.validateAllModels(
       this.cliPaths,
       allModels
-    )
+    ).catch(() => {})
 
     // Wait for at least one model to be available or timeout
     const hasAvailable = await this.modelSelector.waitForAvailableModels(30000)
     
-    const { sufficient, canContinue } = this.healthChecker.hasMinimumHealthyModels(
+    const { canContinue } = this.healthChecker.hasMinimumHealthyModels(
       this.modelSelector.getAvailableModelCount(),
       minimumRequired
     )
@@ -610,28 +590,20 @@ export class CliExecutor {
       const maxAttempts = this.modelSelector.getTotalModelCount() * (this.retryConfig.retrySameModel ? this.retryConfig.maxRetriesPerModel : 1)
 
       const runner = createResilienceRunner({
-        maxAttempts: maxAttempts + 1,
+        maxAttempts: maxAttempts,
         retryOnRateLimit: true,
         retryOnTransient: true,
         retryableErrors: ['opencode cache corruption'],
         rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
         exponentialBackoff: this.retryConfig.exponentialBackoff,
-        exponentialBackoffBaseDelay: this.retryConfig.baseDelayMs,
+        exponentialBackoffBaseDelay: this.retryConfig.delayBetweenModelAttemptsMs || this.retryConfig.baseDelayMs,
         exponentialBackoffMaxDelay: this.retryConfig.maxDelayMs,
         exponentialBackoffMultiplier: this.retryConfig.backoffMultiplier,
       })
 
       let currentModelName: string | null = null
-      let attemptCount = 0
 
       const retryResult = await runner.execute(async () => {
-        // Add delay between model attempts (except first)
-        if (attemptCount > 0 && this.retryConfig.delayBetweenModelAttemptsMs && this.retryConfig.delayBetweenModelAttemptsMs > 0) {
-          this.logger.debug?.(`[CliExecutor] Waiting ${this.retryConfig.delayBetweenModelAttemptsMs}ms before next model attempt...`)
-          await new Promise(resolve => setTimeout(resolve, this.retryConfig.delayBetweenModelAttemptsMs))
-        }
-        attemptCount++
-        
         const modelConfig = this.modelSelector.getNext()
         if (!modelConfig) {
           throw new Error('No more CLI configurations available')
@@ -868,7 +840,7 @@ export class CliExecutor {
         })
       })
 
-      child.on('error', (err) => {
+      child.on('error', () => {
         clearTimeout(timer)
         streamLogger.flush()
         writeStream.end()
