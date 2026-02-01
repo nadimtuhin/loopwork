@@ -1,47 +1,17 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { IBinaryInfo, IDetectionOptions, IDetectionResult, ICliDetector, ICliPathConfig, DEFAULT_CLI_PATH_CONFIG } from '../cli'
+import { describe, expect, test } from 'bun:test'
+import { DEFAULT_CLI_PATH_CONFIG, type IBinaryInfo, type IDetectionOptions, type IDetectionResult, type ICliDetector, type ICliPathConfig } from '../cli'
 
 /**
  * cli Tests
- * 
+ *
  * Auto-generated test suite for cli
  */
 
 describe('cli', () => {
-
-  describe('IBinaryInfo', () => {
-    test('should be defined', () => {
-      expect(IBinaryInfo).toBeDefined()
-    })
-  })
-
-  describe('IDetectionOptions', () => {
-    test('should be defined', () => {
-      expect(IDetectionOptions).toBeDefined()
-    })
-  })
-
-  describe('IDetectionResult', () => {
-    test('should be defined', () => {
-      expect(IDetectionResult).toBeDefined()
-    })
-  })
-
-  describe('ICliDetector', () => {
-    test('should be defined', () => {
-      expect(ICliDetector).toBeDefined()
-    })
-  })
-
-  describe('ICliPathConfig', () => {
-    test('should be defined', () => {
-      expect(ICliPathConfig).toBeDefined()
-    })
-  })
-
   describe('DEFAULT_CLI_PATH_CONFIG', () => {
     test('should be defined', () => {
       expect(DEFAULT_CLI_PATH_CONFIG).toBeDefined()
+      expect(typeof DEFAULT_CLI_PATH_CONFIG).toBe('object')
     })
   })
 })

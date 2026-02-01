@@ -1,59 +1,45 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { InternalEvent, EventSubscription, MessageBusStats, BusOptions, IMessageBus, IEventBus, TopicMatch, EventBusOptions, matchTopicPattern, DEFAULT_SINGLE_WILDCARD, DEFAULT_MULTI_WILDCARD, WildcardPattern } from '../messaging'
+import {
+  TopicMatchMode,
+  DEFAULT_SINGLE_WILDCARD,
+  DEFAULT_MULTI_WILDCARD,
+  matchTopicPattern,
+  type InternalEvent,
+  type EventSubscription,
+  type MessageBusStats,
+  type BusOptions,
+  type IMessageBus,
+  type IEventBus,
+  type TopicMatch,
+  type EventBusOptions,
+  type WildcardPattern
+} from '../messaging'
 
 /**
  * messaging Tests
- * 
+ *
  * Auto-generated test suite for messaging
  */
 
 describe('messaging', () => {
-
-  describe('InternalEvent', () => {
+  describe('TopicMatchMode', () => {
     test('should be defined', () => {
-      expect(InternalEvent).toBeDefined()
+      expect(TopicMatchMode).toBeDefined()
+      expect(typeof TopicMatchMode).toBe('object')
     })
   })
 
-  describe('EventSubscription', () => {
+  describe('DEFAULT_SINGLE_WILDCARD', () => {
     test('should be defined', () => {
-      expect(EventSubscription).toBeDefined()
+      expect(DEFAULT_SINGLE_WILDCARD).toBeDefined()
+      expect(DEFAULT_SINGLE_WILDCARD).toBe('*')
     })
   })
 
-  describe('MessageBusStats', () => {
+  describe('DEFAULT_MULTI_WILDCARD', () => {
     test('should be defined', () => {
-      expect(MessageBusStats).toBeDefined()
-    })
-  })
-
-  describe('BusOptions', () => {
-    test('should be defined', () => {
-      expect(BusOptions).toBeDefined()
-    })
-  })
-
-  describe('IMessageBus', () => {
-    test('should be defined', () => {
-      expect(IMessageBus).toBeDefined()
-    })
-  })
-
-  describe('IEventBus', () => {
-    test('should be defined', () => {
-      expect(IEventBus).toBeDefined()
-    })
-  })
-
-  describe('TopicMatch', () => {
-    test('should be defined', () => {
-      expect(TopicMatch).toBeDefined()
-    })
-  })
-
-  describe('EventBusOptions', () => {
-    test('should be defined', () => {
-      expect(EventBusOptions).toBeDefined()
+      expect(DEFAULT_MULTI_WILDCARD).toBeDefined()
+      expect(DEFAULT_MULTI_WILDCARD).toBe('**')
     })
   })
 
@@ -63,25 +49,23 @@ describe('messaging', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => matchTopicPattern()).not.toThrow()
+      expect(() => matchTopicPattern('test.*', 'test.topic')).not.toThrow()
     })
-  })
 
-  describe('DEFAULT_SINGLE_WILDCARD', () => {
-    test('should be defined', () => {
-      expect(DEFAULT_SINGLE_WILDCARD).toBeDefined()
+    test('should match exact topics', () => {
+      const result = matchTopicPattern('test.topic', 'test.topic')
+      expect(result.matched).toBe(true)
+      expect(result.mode).toBe(TopicMatchMode.EXACT)
     })
-  })
 
-  describe('DEFAULT_MULTI_WILDCARD', () => {
-    test('should be defined', () => {
-      expect(DEFAULT_MULTI_WILDCARD).toBeDefined()
+    test('should match wildcard patterns', () => {
+      const result = matchTopicPattern('test.*.event', 'test.topic.event')
+      expect(result.matched).toBe(true)
     })
-  })
 
-  describe('WildcardPattern', () => {
-    test('should be defined', () => {
-      expect(WildcardPattern).toBeDefined()
+    test('should return non-match for different topics', () => {
+      const result = matchTopicPattern('test.topic', 'other.topic')
+      expect(result.matched).toBe(false)
     })
   })
 })
