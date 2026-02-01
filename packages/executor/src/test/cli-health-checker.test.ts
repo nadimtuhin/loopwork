@@ -121,26 +121,100 @@ describe('CliHealthChecker', () => {
   })
 
   describe('progressive validation callbacks', () => {
+    test('should call onModelHealthy when model passes validation', async () => {
+      const healthyModels: any[] = []
+      const unhealthyModels: any[] = []
+      let validationComplete = false
+
+      const checker = new CliHealthChecker({
+        logger: mockLogger,
+        onModelHealthy: (model) => {
+          healthyModels.push(model)
+        },
+        onModelUnhealthy: (model) => {
+          unhealthyModels.push(model)
+        },
+        onValidationComplete: () => {
+          validationComplete = true
+        },
+      })
+
+      const cliPaths = new Map<string, string>()
+      const models: ModelConfig[] = [
+        { name: 'test-model', cli: 'claude', model: 'sonnet' },
+      ]
+
+      const result = await checker.validateAllModels(cliPaths, models)
+
+      // With no CLI path, model should be unhealthy
+      expect(unhealthyModels.length).toBeGreaterThanOrEqual(1)
+      expect(healthyModels.length).toBe(0)
+      expect(validationComplete).toBe(true)
+    })
+
     test('should call onModelUnhealthy when model fails validation', async () => {
       const callbackModels: any[] = []
-      
+
       const checker = new CliHealthChecker({
         logger: mockLogger,
         onModelUnhealthy: (model) => {
           callbackModels.push(model)
         },
       })
-      
+
       const cliPaths = new Map<string, string>()
       const models: ModelConfig[] = [
         { name: 'test-model', cli: 'claude', model: 'sonnet' },
       ]
-      
+
       const result = await checker.validateAllModels(cliPaths, models)
-      
+
       // Should have called onModelUnhealthy since CLI path is missing
       expect(callbackModels.length).toBeGreaterThanOrEqual(1)
       expect(callbackModels[0]?.healthStatus).toBe('unhealthy')
+    })
+
+    test('should invoke callbacks progressively as each model is validated', async () => {
+      const healthyCallbacks: string[] = []
+      const unhealthyCallbacks: string[] = []
+      let completeCallbackCount = 0
+
+      const checker = new CliHealthChecker({
+        logger: mockLogger,
+        onModelHealthy: (model) => {
+          healthyCallbacks.push(model.name)
+        },
+        onModelUnhealthy: (model) => {
+          unhealthyCallbacks.push(model.name)
+        },
+        onValidationComplete: () => {
+          completeCallbackCount++
+        },
+      })
+
+      const cliPaths = new Map<string, string>()
+      const models: ModelConfig[] = [
+        { name: 'model-1', cli: 'claude', model: 'sonnet' },
+        { name: 'model-2', cli: 'claude', model: 'opus' },
+        { name: 'model-3', cli: 'opencode', model: 'gemini' },
+      ]
+
+      const result = await checker.validateAllModels(cliPaths, models)
+
+      // All models should be unhealthy since no CLI paths provided
+      expect(unhealthyCallbacks.length).toBe(3)
+      expect(healthyCallbacks.length).toBe(0)
+      expect(unhealthyCallbacks).toContain('model-1')
+      expect(unhealthyCallbacks).toContain('model-2')
+      expect(unhealthyCallbacks).toContain('model-3')
+
+      // onValidationComplete should be called exactly once
+      expect(completeCallbackCount).toBe(1)
+
+      // Summary should match callback counts
+      expect(result.summary.total).toBe(3)
+      expect(result.summary.healthy).toBe(0)
+      expect(result.summary.unhealthy).toBe(3)
     })
 
     test('should call onValidationComplete when all validations done', async () => {

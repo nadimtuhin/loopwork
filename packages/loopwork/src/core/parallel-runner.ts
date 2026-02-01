@@ -250,10 +250,10 @@ export class ParallelRunner {
     this.logger.info(`Starting parallel execution with ${this.workers} workers`)
     this.logger.info(`Failure mode: ${this.config.parallelFailureMode}`)
 
-    // Run pre-flight CLI health validation
-    if (this.cliExecutor.runPreflightValidation) {
-      const preflight = await this.cliExecutor.runPreflightValidation(this.workers)
-      
+    // Run progressive CLI health validation for early start
+    if (this.cliExecutor.startProgressiveValidation) {
+      const preflight = await this.cliExecutor.startProgressiveValidation(this.workers)
+
       if (!preflight.success) {
         this.logger.error(`[Preflight] ${preflight.message}`)
         throw new LoopworkError(
@@ -267,14 +267,13 @@ export class ParallelRunner {
           ]
         )
       }
-      
+
       this.logger.info(`[Preflight] ${preflight.message}`)
-      
+
       // Warn if fewer models available than workers
-      const healthStatus = this.cliExecutor.getHealthStatus?.()
-      if (healthStatus && healthStatus.available < this.workers) {
+      if (preflight.initiallyAvailable < this.workers) {
         this.logger.warn(
-          `[Preflight] Only ${healthStatus.available} models available for ${this.workers} workers. ` +
+          `[Preflight] Only ${preflight.initiallyAvailable} models available for ${this.workers} workers. ` +
           `Some workers may wait for available models.`
         )
       }

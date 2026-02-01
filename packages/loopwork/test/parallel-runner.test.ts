@@ -377,45 +377,6 @@ describe('ParallelRunner', () => {
       expect(selfHealingLogs.length).toBeGreaterThan(0)
     })
 
-      // Use a failing executor with rate limit error
-      const failingExecutor: ICliExecutor = {
-        async execute(prompt: string, outputFile: string, timeout: number, taskId?: string): Promise<number> {
-          fs.mkdirSync(path.dirname(outputFile), { recursive: true })
-          fs.writeFileSync(outputFile, 'Error: rate limit 429')
-          return 1
-        },
-        killCurrent(): void {},
-        resetFallback(): void {},
-        async cleanup(): Promise<void> {},
-      }
-
-      const logger = createMockLogger()
-      const runner = new ParallelRunner({
-        config,
-        backend,
-        cliExecutor: createMockCliExecutor(),
-        logger,
-        pluginRegistry: createMockPluginRegistry(),
-        buildPrompt: (task) => `Test prompt for ${task.id}`,
-      })
-
-      // Run to completion (either throws or completes when tasks exhausted)
-      try {
-        await runner.run()
-      } catch (error) {
-        // Expected - circuit breaker may throw
-        expect(String(error)).toMatch(/Circuit breaker/)
-      }
-
-      // Verify that self-healing was attempted (logs show healing activity)
-      const warnCalls = logger.warn.mock.calls
-      const selfHealingLogs = warnCalls.filter((call: [string]) =>
-        call[0] && call[0].includes('Self-Healing')
-      )
-      // Self-healing should have been attempted at least once
-      expect(selfHealingLogs.length).toBeGreaterThan(0)
-    })
-
     test('should reset on success', async () => {
       const tasks = [
         createMockTask('TASK-001'),

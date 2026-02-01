@@ -65,4 +65,17 @@ export interface ICliExecutor {
    * Returns null if no models are available
    */
   getNextModel?(): { cli: string; model: string; displayName?: string } | null
+
+  /**
+   * Start progressive validation that enables immediate work with available models
+   * Returns immediately once minimumRequired models are healthy, continues validating in background
+   */
+  startProgressiveValidation?(
+    minimumRequired?: number
+  ): Promise<{
+    success: boolean
+    initiallyAvailable: number
+    message: string
+    waitForAll: () => Promise<{ totalHealthy: number; totalUnhealthy: number }>
+  }>
 }
