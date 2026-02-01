@@ -873,4 +873,131 @@ export default defineConfig({
       expect(config.agents?.[1].tools).toContainEqual('run-tests')
     })
   })
+
+  describe('Plugins from config file', () => {
+    test('should load plugins from config file', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const configFile = path.join(testDir, 'loopwork.config.ts')
+      const indexPath = path.join(__dirname, '../src/index.ts')
+
+      // Note: Plugins should be defined directly as objects, not using withPlugin()
+      // withPlugin() returns a ConfigWrapper function that needs compose()
+      fs.writeFileSync(configFile, `
+import { defineConfig } from '${indexPath}'
+
+export default defineConfig({
+  backend: { type: 'json', tasksFile: '${tasksFile}' },
+  plugins: [
+    {
+      name: 'test-plugin-1',
+      classification: 'enhancement',
+      async onTaskComplete() {
+        // Test plugin 1
+      }
+    },
+    {
+      name: 'test-plugin-2',
+      classification: 'critical',
+      async onTaskStart() {
+        // Test plugin 2
+      }
+    }
+  ]
+})
+      `)
+
+      const config = await getConfig({ configPath: configFile })
+      expect(config.plugins).toBeDefined()
+      expect(config.plugins).toHaveLength(2)
+      expect(config.plugins?.[0].name).toBe('test-plugin-1')
+      expect(config.plugins?.[1].name).toBe('test-plugin-2')
+      expect(config.plugins?.[0].classification).toBe('enhancement')
+      expect(config.plugins?.[1].classification).toBe('critical')
+    })
+
+    test('should preserve plugins when merging with CLI options', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const configFile = path.join(testDir, 'loopwork.config.ts')
+      const indexPath = path.join(__dirname, '../src/index.ts')
+
+      fs.writeFileSync(configFile, `
+import { defineConfig } from '${indexPath}'
+
+export default defineConfig({
+  backend: { type: 'json', tasksFile: '${tasksFile}' },
+  maxIterations: 100,
+  plugins: [
+    {
+      name: 'git-autocommit',
+      classification: 'enhancement',
+      async onTaskComplete() {
+        // Auto-commit plugin
+      }
+    }
+  ]
+})
+      `)
+
+      // Override some options via CLI
+      const config = await getConfig({ 
+        configPath: configFile,
+        maxIterations: '50' // CLI override
+      })
+      
+      // CLI options should override file config
+      expect(config.maxIterations).toBe(50)
+      
+      // But plugins should still be present from file config
+      expect(config.plugins).toBeDefined()
+      expect(config.plugins).toHaveLength(1)
+      expect(config.plugins?.[0].name).toBe('git-autocommit')
+    })
+
+    test('should handle empty plugins array', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const configFile = path.join(testDir, 'loopwork.config.ts')
+      const indexPath = path.join(__dirname, '../src/index.ts')
+
+      fs.writeFileSync(configFile, `
+import { defineConfig } from '${indexPath}'
+
+export default defineConfig({
+  backend: { type: 'json', tasksFile: '${tasksFile}' },
+  plugins: []
+})
+      `)
+
+      const config = await getConfig({ configPath: configFile })
+      expect(config.plugins).toBeDefined()
+      expect(config.plugins).toHaveLength(0)
+    })
+
+    test('should handle config without plugins property', async () => {
+      const tasksFile = path.join(testDir, 'tasks.json')
+      fs.writeFileSync(tasksFile, '{}')
+
+      const configFile = path.join(testDir, 'loopwork.config.ts')
+      const indexPath = path.join(__dirname, '../src/index.ts')
+
+      fs.writeFileSync(configFile, `
+import { defineConfig } from '${indexPath}'
+
+export default defineConfig({
+  backend: { type: 'json', tasksFile: '${tasksFile}' },
+  maxIterations: 50
+})
+      `)
+
+      const config = await getConfig({ configPath: configFile })
+      // defineConfig() sets plugins to empty array when not specified
+      expect(config.plugins).toBeDefined()
+      expect(config.plugins).toHaveLength(0)
+    })
+  })
 })
