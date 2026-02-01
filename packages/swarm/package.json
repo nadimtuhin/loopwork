@@ -1,0 +1,17 @@
+{
+  "name": "@loopwork-ai/swarm",
+  "version": "0.1.0",
+  "description": "Multi-agent swarm coordination for Loopwork",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "build": "echo 'No build step needed for bun'"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

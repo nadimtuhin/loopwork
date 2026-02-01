@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@loopwork-ai/swarm/*": ["./*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"]
+}
