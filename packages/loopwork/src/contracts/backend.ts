@@ -2,56 +2,26 @@
  * Backend Interface Contract
  */
 
-import type { Task, Priority, TaskStatus } from './task'
+import type {
+  Task,
+  Priority,
+  FindTaskOptions,
+  UpdateResult,
+  PingResult,
+  ApiQuotaInfo,
+  BackendConfig,
+  JsonBackendConfig,
+  GithubBackendConfig,
+  FallbackBackendConfig,
+  LooseBackendConfig,
+} from './types'
+export type { TaskStatus } from './types'
 import type { LoopworkPlugin } from './plugin'
-
-/**
- * Options for finding tasks
- */
-export interface FindTaskOptions {
-  feature?: string
-  priority?: Priority
-  status?: TaskStatus | TaskStatus[]
-  startFrom?: string
-  parentId?: string
-  includeBlocked?: boolean
-  topLevelOnly?: boolean
-  retryCooldown?: number
-}
-
-/**
- * Result of a task update operation
- */
-export interface UpdateResult {
-  success: boolean
-  error?: string
-  queued?: boolean
-  /** ISO 8601 datetime when the task is scheduled for (if applicable) */
-  scheduledFor?: string
-}
 
 /**
  * Backend health check result
  */
-export interface PingResult {
-  ok: boolean
-  latencyMs: number
-  error?: string
-}
-
-/**
- * API quota information for rate-limited backends
- */
-export interface ApiQuotaInfo {
-  /** Total quota limit */
-  limit: number
-  /** Remaining quota */
-  remaining: number
-  /** When the quota resets (UTC) */
-  reset: Date
-  /** Resource type (e.g., 'core', 'search', 'graphql') */
-  resource?: string
-}
+export type { PingResult, ApiQuotaInfo }
 
 /**
  * Task Backend Interface
@@ -158,97 +128,14 @@ export interface BackendPlugin extends LoopworkPlugin, TaskBackend {
   setPriority?(taskId: string, priority: Priority): Promise<UpdateResult>
 }
 
-/**
- * Configuration for the JSON backend.
- */
-export interface JsonBackendConfig {
-  type: 'json'
-  /** 
-   * Path to the JSON file where tasks are stored.
-   * Required for JSON backend.
-   */
-  tasksFile: string
-  /** 
-   * Directory where task PRD markdown files are located.
-   */
-  tasksDir?: string
-  /** 
-   * Optional feature flags to toggle backend-specific behaviors.
-   */
-  flags?: Record<string, boolean>
-}
-
-/**
- * Configuration for the GitHub backend.
- */
-export interface GithubBackendConfig {
-  type: 'github'
-  /** 
-   * The GitHub repository identifier in 'owner/repo' format.
-   * Required for GitHub backend.
-   */
-  repo: string
-  /** 
-   * Optional feature flags to toggle backend-specific behaviors.
-   */
-  flags?: Record<string, boolean>
-}
-
-/**
- * Configuration for the Fallback (no-op) backend.
- */
-export interface FallbackBackendConfig {
-  type: 'fallback'
-  flags?: Record<string, boolean>
-}
-
-/**
- * Configuration for task backends.
- * 
- * This is a discriminated union that supports different backend types:
- * - 'json': Local JSON file storage (best for local development)
- * - 'github': GitHub Issues (best for team collaboration)
- * - 'fallback': No-op backend for testing
- * 
- * @example
- * // JSON Backend configuration
- * const jsonConfig: BackendConfig = {
- *   type: 'json',
- *   tasksFile: '.specs/tasks/tasks.json',
- *   tasksDir: '.specs/tasks'
- * };
- * 
- * @example
- * // GitHub Backend configuration
- * const githubConfig: BackendConfig = {
- *   type: 'github',
- *   repo: 'owner/repo',
- *   flags: { useLabels: true }
- * };
- */
-export type BackendConfig = 
-  | JsonBackendConfig 
-  | GithubBackendConfig 
-  | FallbackBackendConfig
-  | LooseBackendConfig
-
-/**
- * Loose backend configuration for backward compatibility.
- * @deprecated Use JsonBackendConfig, GithubBackendConfig, or FallbackBackendConfig instead.
- */
-export interface LooseBackendConfig {
-  /** Backend type identifier */
-  type: string
-  /** GitHub repository (for GitHub backend) */
-  repo?: string
-  /** Tasks file path (for JSON backend) */
-  tasksFile?: string
-  /** Tasks directory (for JSON backend) */
-  tasksDir?: string
-  /** Feature flags */
-  flags?: Record<string, boolean>
-  /** Catch-all for other backend-specific options */
-  [key: string]: unknown
+export type {
+  BackendConfig,
+  JsonBackendConfig,
+  GithubBackendConfig,
+  FallbackBackendConfig,
+  LooseBackendConfig,
+  FindTaskOptions,
+  UpdateResult,
 }
 
 let warnedLooseBackend = false
@@ -256,15 +143,15 @@ let warnedLooseBackend = false
 /**
  * Warns if the backend configuration is using the loose type instead of a specialized one.
  * Only warns once per runtime.
- * 
+ *
  * @param config - The backend configuration to check
  */
 export function warnIfLooseBackendConfig(config: BackendConfig): void {
   if (warnedLooseBackend) return
 
-  const isSpecialized = 
-    config.type === 'json' || 
-    config.type === 'github' || 
+  const isSpecialized =
+    config.type === 'json' ||
+    config.type === 'github' ||
     config.type === 'fallback'
 
   if (!isSpecialized) {

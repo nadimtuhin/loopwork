@@ -1,87 +1,20 @@
 /**
  * Task Types and Constants
+ *
+ * This file re-exports types from types.ts for backward compatibility.
+ * New code should import directly from './types'.
  */
 
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'quarantined' | 'cancelled'
-export type Priority = 'high' | 'medium' | 'low' | 'background'
-
-export type TaskEventType = 
-  | 'created' 
-  | 'started' 
-  | 'completed' 
-  | 'failed' 
-  | 'cancelled' 
-  | 'paused' 
-  | 'resumed' 
-  | 'quarantined'
-  | 'reset'
-  | 'rescheduled'
-  | 'status_change'
-  | 'log'
-  | 'tool_call'
-
-/**
- * Task event for logging history
- */
-export interface TaskEvent {
-  id?: string
-  taskId?: string
-  timestamp: string
-  type: TaskEventType | string
-  level?: 'info' | 'warn' | 'error' | 'debug'
-  actor?: 'system' | 'user' | 'ai'
-  message: string
-  metadata?: Record<string, unknown>
-}
-
-export interface EventLog {
-  taskId: string
-  events: TaskEvent[]
-}
-
-/**
- * Task timestamps for tracking lifecycle
- */
-export interface TaskTimestamps {
-  createdAt: string
-  updatedAt?: string
-  startedAt?: string
-  completedAt?: string
-  failedAt?: string
-  resumedAt?: string
-  quarantinedAt?: string
-  cancelledAt?: string
-}
-
-/**
- * Unified task representation across all backends
- */
-export interface Task {
-  id: string
-  title: string
-  description: string
-  status: TaskStatus
-  priority: Priority
-  feature?: string
-  parentId?: string
-  dependsOn?: string[]
-  metadata?: Record<string, unknown>
-  failureCount?: number
-  lastError?: string
-  scheduledFor?: string | null
-  timestamps?: TaskTimestamps
-  events?: TaskEvent[]
-}
-
-/**
- * Task result after execution
- */
-export interface TaskResult {
-  success: boolean
-  output: string
-  duration: number
-  error?: string
-}
+export type {
+  TaskStatus,
+  Priority,
+  TaskEventType,
+  TaskEvent,
+  EventLog,
+  TaskTimestamps,
+  Task,
+  TaskResult,
+} from './types'
 
 /**
  * GitHub-specific types (for GitHub backend)
