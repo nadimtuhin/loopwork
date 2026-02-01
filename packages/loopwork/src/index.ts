@@ -27,6 +27,15 @@ export {
   ModelPresets,
   RetryPresets,
 } from './plugins'
+
+// Export simplified config helpers (NEW - easier configuration)
+export {
+  defineSimpleConfig,
+  createPresetConfig,
+  defineEasyConfig,
+  Presets,
+} from './plugins/simple-config'
+export type { SimpleConfigOptions } from './plugins/simple-config'
 export { logger } from './core/utils' // TODO: Will be moved to @loopwork-ai/common after utils refactor
 export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper, DynamicTasksConfig } from './contracts'
 export type {
@@ -66,6 +75,29 @@ export type {
 export { PatternAnalyzer, LLMAnalyzer } from './analyzers'
 export type { PatternAnalyzerConfig } from './analyzers'
 export type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from './contracts/analysis'
+export type {
+  ILLMAnalyzer,
+  LLMAnalyzerConfig,
+  ErrorAnalysisRequest,
+  ErrorAnalysisResponse,
+  IErrorAnalyzer,
+  TaskOutputAnalysisRequest,
+  TaskOutputAnalysisResponse,
+  ITaskOutputAnalyzer,
+  AnyLLMAnalyzer,
+  AnyAnalyzerRequest,
+  AnyAnalyzerResponse,
+  IAnalyzerRegistry,
+  AnalyzerFactory,
+  ErrorAnalyzerFactoryConfig,
+  TaskOutputAnalyzerFactoryConfig,
+} from './contracts/llm-analyzer'
+export {
+  analyzerRegistry,
+  createAnalyzerRegistry,
+  analyzeError,
+  analyzeTaskOutput,
+} from './core/analyzer-registry'
 
 // Export adapters for bridging to agent packages
 export { CliRunnerAdapter, GitRunnerAdapter } from './adapters'
@@ -147,6 +179,17 @@ export type {
 
 // Config subagent integration
 export { getSubagentRegistry, resetSubagentRegistry } from './core/config'
+
+// OpenCode self-healing
+export {
+  detectOpencodeIssues,
+  isOpencodeError,
+  categorizeOpencodeFailure,
+  attemptOpencodeSelfHealing,
+  healOpencodeIssue,
+  validateOpencodeInstallation,
+} from './core/opencode-healer'
+export type { OpencodeIssue, OpencodeIssueType, HealingResult } from './core/opencode-healer'
 
 // Type alias for backward compatibility and convenience
 export type { AgentDefinition as SubagentDefinition } from '@loopwork-ai/agents'

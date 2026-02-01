@@ -597,51 +597,88 @@ export async function init(deps: InitDeps = {}) {
   // Setup plugins
   const pluginConfigs = await setupPlugins(deps)
 
-  // Build imports based on selected plugins
-  const coreImports: string[] = ['defineConfig', 'compose']
-  const backendImports: string[] = []
-  const pluginPackages: { name: string; package: string; imports: string[] }[] = []
+  // Ask if user wants simple config or advanced config
+  const configStyle = await askFn('Config style (simple/advanced)', 'simple')
+  const useSimpleConfig = configStyle.toLowerCase().startsWith('s')
 
-  if (backendType === 'github') {
-    backendImports.push('withGitHubBackend')
+  let configContent = ''
+  
+  if (useSimpleConfig) {
+    // NEW: Simple config style - much cleaner!
+    const modelPreset = aiTool === 'claude' 
+      ? "['claude-sonnet', 'gemini-flash']"
+      : "['gemini-flash', 'claude-haiku']"
+    
+    configContent = `import { defineSimpleConfig } from 'loopwork'
+
+/**
+ * Loopwork Configuration
+ * 
+ * This is a simple configuration. For advanced options, see:
+ * https://github.com/nadimtuhin/loopwork#configuration
+ */
+export default defineSimpleConfig({
+  // Models to use (with automatic fallback)
+  models: ${modelPreset},
+  
+  // Backend configuration
+  backend: '${tasksFile}',
+  
+  // Number of parallel workers
+  parallel: 1,
+  
+  // Optional features (uncomment to enable)
+  // autoCommit: true,
+  // smartTests: true,
+  // taskRecovery: true,
+})
+`
   } else {
-    backendImports.push('withJSONBackend')
-  }
+    // Advanced config with compose pattern
+    const coreImports: string[] = ['defineConfig', 'compose']
+    const backendImports: string[] = []
+    const pluginPackages: { name: string; package: string; imports: string[] }[] = []
 
-  if (pluginConfigs.some(p => p.includes('withCostTracking'))) {
-    pluginPackages.push({
-      name: 'cost-tracking',
-      package: '@loopwork-ai/cost-tracking',
-      imports: ['withCostTracking']
-    })
-  }
-  if (pluginConfigs.some(p => p.includes('withTelegram'))) {
-    pluginPackages.push({
-      name: 'telegram',
-      package: '@loopwork-ai/telegram',
-      imports: ['withTelegram']
-    })
-  }
-  if (pluginConfigs.some(p => p.includes('withDiscord'))) {
-    pluginPackages.push({
-      name: 'discord',
-      package: '@loopwork-ai/discord',
-      imports: ['withDiscord']
-    })
-  }
-
-  // Generate import statements
-  let importStatements = `import { ${coreImports.join(', ')} } from 'loopwork'\n`
-  importStatements += `import { ${backendImports.join(', ')} } from 'loopwork'\n`
-
-  if (pluginPackages.length > 0) {
-    importStatements += '\n// Plugin imports\n'
-    for (const pkg of pluginPackages) {
-      importStatements += `import { ${pkg.imports.join(', ')} } from '${pkg.package}'\n`
+    if (backendType === 'github') {
+      backendImports.push('withGitHubBackend')
+    } else {
+      backendImports.push('withJSONBackend')
     }
-  }
 
-  const configContent = `${importStatements}
+    if (pluginConfigs.some(p => p.includes('withCostTracking'))) {
+      pluginPackages.push({
+        name: 'cost-tracking',
+        package: '@loopwork-ai/cost-tracking',
+        imports: ['withCostTracking']
+      })
+    }
+    if (pluginConfigs.some(p => p.includes('withTelegram'))) {
+      pluginPackages.push({
+        name: 'telegram',
+        package: '@loopwork-ai/telegram',
+        imports: ['withTelegram']
+      })
+    }
+    if (pluginConfigs.some(p => p.includes('withDiscord'))) {
+      pluginPackages.push({
+        name: 'discord',
+        package: '@loopwork-ai/discord',
+        imports: ['withDiscord']
+      })
+    }
+
+    // Generate import statements
+    let importStatements = `import { ${coreImports.join(', ')} } from 'loopwork'\n`
+    importStatements += `import { ${backendImports.join(', ')} } from 'loopwork'\n`
+
+    if (pluginPackages.length > 0) {
+      importStatements += '\n// Plugin imports\n'
+      for (const pkg of pluginPackages) {
+        importStatements += `import { ${pkg.imports.join(', ')} } from '${pkg.package}'\n`
+      }
+    }
+
+    configContent = `${importStatements}
 export default compose(
   ${backendConfig},
 ${pluginConfigs.map(p => `  ${p},`).join('\n')}
@@ -650,6 +687,7 @@ ${pluginConfigs.map(p => `  ${p},`).join('\n')}
   maxIterations: 50,
 }))
 `
+  }
 
   if (fs.existsSync('loopwork.config.ts')) {
     const overwrite = await askFn('loopwork.config.ts already exists. Overwrite? (y/N)', 'n')

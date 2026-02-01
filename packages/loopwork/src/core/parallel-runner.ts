@@ -29,6 +29,11 @@ import { getRetryPolicy, isRetryableError, calculateBackoff } from './retry'
 import { isRateLimitError } from '@loopwork-ai/resilience'
 import { CheckpointIntegrator } from './checkpoint-integrator'
 import type { IPluginRegistry } from '@loopwork-ai/contracts'
+import { 
+  isOpencodeError, 
+  attemptOpencodeSelfHealing,
+  categorizeOpencodeFailure 
+} from './opencode-healer'
 
 /**
  * Worker colors for console output
@@ -44,7 +49,7 @@ const WORKER_COLORS = [
 /**
  * Failure categories for self-healing analysis
  */
-type FailureCategory = 'rate_limit' | 'timeout' | 'memory' | 'cli_cache' | 'unknown'
+type FailureCategory = 'rate_limit' | 'timeout' | 'memory' | 'cli_cache' | 'opencode_dependency' | 'opencode_cache' | 'unknown'
 
 /**
  * Tracked failure for pattern analysis
@@ -63,6 +68,7 @@ interface SelfHealingAdjustment {
   taskDelay?: number
   timeout?: number
   reason: string
+  healOpencode?: boolean
 }
 
 /**
@@ -350,7 +356,7 @@ export class ParallelRunner {
       // Check circuit breaker before starting new iteration
       if (this.consecutiveFailures >= this.circuitBreakerThreshold) {
         // Attempt self-healing before giving up
-        const healed = this.attemptSelfHealing()
+        const healed = await this.attemptSelfHealing()
 
         if (!healed) {
           throw new LoopworkError(
@@ -988,6 +994,12 @@ export class ParallelRunner {
       return 'cli_cache'
     }
 
+    // OpenCode-specific issues
+    const opencodeCategory = categorizeOpencodeFailure(error)
+    if (opencodeCategory) {
+      return opencodeCategory
+    }
+
     return 'unknown'
   }
 
@@ -1023,6 +1035,8 @@ export class ParallelRunner {
       memory: 0,
       unknown: 0,
       cli_cache: 0,
+      opencode_dependency: 0,
+      opencode_cache: 0,
     }
 
     for (const failure of this.recentFailures) {
@@ -1069,6 +1083,22 @@ export class ParallelRunner {
       }
     }
 
+    // OpenCode dependency issues - attempt to repair installation
+    if (categoryCounts.opencode_dependency >= threshold) {
+      return {
+        reason: `OpenCode dependency issues detected (${categoryCounts.opencode_dependency}/${total} failures). Attempting to repair installation`,
+        healOpencode: true,
+      }
+    }
+
+    // OpenCode cache corruption - rebuild cache
+    if (categoryCounts.opencode_cache >= threshold) {
+      return {
+        reason: `OpenCode cache corruption detected (${categoryCounts.opencode_cache}/${total} failures). Rebuilding cache`,
+        healOpencode: true,
+      }
+    }
+
     // Unknown pattern - conservative reduction
     return {
       workers: Math.max(1, this.workers - 1),
@@ -1080,7 +1110,7 @@ export class ParallelRunner {
   /**
    * Apply self-healing adjustments
    */
-  private applySelfHealing(adjustment: SelfHealingAdjustment): void {
+  private async applySelfHealing(adjustment: SelfHealingAdjustment): Promise<void> {
     this.logger.warn('─────────────────────────────────────')
     this.logger.warn(chalk.yellow('🔄 Self-Healing Activated'))
     this.logger.warn(adjustment.reason)
@@ -1098,6 +1128,18 @@ export class ParallelRunner {
       this.config.timeout = adjustment.timeout
     }
 
+    // Handle OpenCode healing
+    if (adjustment.healOpencode) {
+      this.logger.info('[SelfHealing] Attempting OpenCode self-repair...')
+      const recentErrors = this.recentFailures.map(f => f.error).join('\n')
+      const healed = await attemptOpencodeSelfHealing(recentErrors)
+      if (healed) {
+        this.logger.success('[SelfHealing] OpenCode repair completed successfully')
+      } else {
+        this.logger.error('[SelfHealing] OpenCode repair failed - may require manual intervention')
+      }
+    }
+
     // Reset circuit breaker after healing
     this.consecutiveFailures = 0
     this.recentFailures = []
@@ -1112,7 +1154,7 @@ export class ParallelRunner {
    * Attempt self-healing or throw circuit breaker error
    * Returns true if healing was applied, false if should stop
    */
-  private attemptSelfHealing(): boolean {
+  private async attemptSelfHealing(): Promise<boolean> {
     // Check if we've exhausted self-healing attempts
     if (this.selfHealingAttempts >= this.maxSelfHealingAttempts) {
       return false
@@ -1122,7 +1164,7 @@ export class ParallelRunner {
     const adjustment = this.analyzeFailurePatterns()
 
     if (adjustment) {
-      this.applySelfHealing(adjustment)
+      await this.applySelfHealing(adjustment)
       return true
     }
 
