@@ -16,4 +16,12 @@ export interface RunLogger {
   setLogFile(filePath: string): void
   jsonEvent?(event: JsonEvent): void
   setOutputFormat?(format: 'human' | 'json'): void
+  emitWorkerStatus?(status: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  }): void
 }

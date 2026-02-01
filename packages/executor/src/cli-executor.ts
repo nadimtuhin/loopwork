@@ -526,11 +526,11 @@ export class CliExecutor {
 
         const result = await this.spawnWithTimeout(
           cliPath,
-          args,
+          prepared.args,
           {
-            env,
-            input: modelConfig.cli === 'claude' ? finalPrompt : undefined,
-            prefix: displayName,
+            env: prepared.env,
+            input: prepared.stdinInput,
+            prefix: prepared.displayName,
             taskId: options.taskId,
             workerId: options.workerId,
             poolName,
@@ -582,12 +582,12 @@ export class CliExecutor {
           throw new Error(`Quota exceeded on ${displayName}`)
         }
 
-        if (modelConfig.cli === 'opencode' && isOpenCodeCacheCorruption(fullOutput)) {
-          const cleared = clearOpenCodeCache(this.logger)
+        if (strategy.detectCacheCorruption?.(fullOutput)) {
+          const cleared = strategy.clearCache?.() ?? false
           if (cleared) {
-            throw new OpenCodeCacheError(`OpenCode cache corruption detected and cleared, retrying...`)
+            throw new OpenCodeCacheError(`${modelConfig.cli} cache corruption detected and cleared, retrying...`)
           } else {
-            throw new Error(`OpenCode cache corruption detected but failed to clear cache`)
+            throw new Error(`${modelConfig.cli} cache corruption detected but failed to clear cache`)
           }
         }
 
