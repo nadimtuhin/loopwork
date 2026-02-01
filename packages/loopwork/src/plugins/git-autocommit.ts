@@ -32,12 +32,16 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
   // Track files before each task starts
   const taskFileStates = new Map<string, Set<string>>()
 
+  logger.debug(`[git-autocommit] Plugin created with options: enabled=${enabled}, scope=${scope}, addAll=${addAll}, skipIfNoChanges=${skipIfNoChanges}`)
+
   return {
     name: 'git-autocommit',
     classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
+      logger.debug(`[git-autocommit] onTaskStart called for task ${context.task.id}`)
       if (!enabled || scope !== 'task-only') {
+        logger.debug(`[git-autocommit] Skipping onTaskStart: enabled=${enabled}, scope=${scope}`)
         return
       }
 
@@ -53,39 +57,45 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
     },
 
     async onTaskComplete(context: TaskContext, result: PluginTaskResult) {
+      logger.debug(`[git-autocommit] onTaskComplete called for task ${context.task.id}, success=${result.success}`)
       if (!enabled || !result.success) {
+        logger.debug(`[git-autocommit] Skipping: enabled=${enabled}, success=${result.success}`)
         return
       }
 
       try {
         // Check if we're in a git repository
         if (!isGitRepo()) {
-          logger.debug('Not a git repository, skipping auto-commit')
+          logger.debug('[git-autocommit] Not a git repository, skipping auto-commit')
           return
         }
+        logger.debug('[git-autocommit] Git repository detected')
 
         // Check for changes
         if (skipIfNoChanges && !hasChanges()) {
-          logger.debug('No changes to commit, skipping')
+          logger.debug('[git-autocommit] No changes to commit, skipping')
           return
         }
+        logger.debug('[git-autocommit] Changes detected, proceeding with commit')
 
         // Handle file staging based on scope
         if (scope === 'staged-only') {
-          // Don't add any files, only commit already staged files
-          logger.debug('Using staged-only scope, skipping git add')
+          logger.debug('[git-autocommit] Using staged-only scope, skipping git add')
         } else if (scope === 'task-only') {
+          logger.debug('[git-autocommit] Using task-only scope')
           // Only add files changed during this task
           const beforeFiles = taskFileStates.get(context.task.id) || new Set()
           const afterFiles = getChangedFiles()
           const taskFiles = difference(afterFiles, beforeFiles)
+          logger.debug(`[git-autocommit] Before files: ${beforeFiles.size}, After files: ${afterFiles.size}, Task-specific: ${taskFiles.size}`)
 
           if (taskFiles.size === 0) {
-            logger.debug('No task-specific changes to commit, skipping')
+            logger.debug('[git-autocommit] No task-specific changes to commit, skipping')
             taskFileStates.delete(context.task.id)
             return
           }
 
+          logger.debug(`[git-autocommit] Adding ${taskFiles.size} task-specific files`)
           // Add only task-specific files
           for (const file of Array.from(taskFiles)) {
             try {
@@ -100,24 +110,29 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
         } else {
           // Default: add all changes if requested
           if (addAll) {
+            logger.debug('[git-autocommit] Running git add -A to stage all changes')
             try {
               execSync('git add -A', { stdio: 'pipe' })
+              logger.debug('[git-autocommit] Successfully staged all changes')
             } catch (error) {
-              logger.warn(`Failed to stage changes: ${error}`)
+              logger.warn(`[git-autocommit] Failed to stage changes: ${error}`)
             }
+          } else {
+            logger.debug('[git-autocommit] addAll=false, not staging any files')
           }
         }
 
         // Create commit
         const message = generateCommitMessage(context, coAuthor)
         const escapedMessage = escapeCommitMessage(message)
+        logger.debug(`[git-autocommit] Generated commit message:\n${message}`)
+        logger.debug(`[git-autocommit] Escaped message length: ${escapedMessage.length}`)
 
         try {
           execSync(`git commit -m "${escapedMessage}"`, { stdio: 'pipe' })
-          logger.info(`Auto-committed changes for task ${context.task.id}`)
+          logger.info(`[git-autocommit] Auto-committed changes for task ${context.task.id}`)
         } catch (error) {
-          // Git commit fails if no changes staged (even if hasChanges was true due to untracked files)
-          logger.debug(`Git commit failed: ${error}`)
+          logger.debug(`[git-autocommit] Git commit failed: ${error}`)
         }
       } catch (error) {
         logger.error(`Git auto-commit failed: ${error}`)
@@ -214,6 +229,10 @@ function generateCommitMessage(context: TaskContext, coAuthor: string): string {
   if (context.namespace) {
     lines.push(`Namespace: ${context.namespace}`)
   }
+  lines.push('')
+
+  // Add autocommit marker so it's clear this was committed by the plugin
+  lines.push('[loopwork-autocommit]')
   lines.push('')
 
   // Add co-author
