@@ -43,7 +43,7 @@ const WORKER_COLORS = [
 /**
  * Failure categories for self-healing analysis
  */
-type FailureCategory = 'rate_limit' | 'timeout' | 'memory' | 'unknown'
+type FailureCategory = 'rate_limit' | 'timeout' | 'memory' | 'cli_cache' | 'unknown'
 
 /**
  * Tracked failure for pattern analysis
@@ -215,6 +215,36 @@ export class ParallelRunner {
 
     this.logger.info(`Starting parallel execution with ${this.workers} workers`)
     this.logger.info(`Failure mode: ${this.config.parallelFailureMode}`)
+
+    // Run pre-flight CLI health validation
+    if (this.cliExecutor.runPreflightValidation) {
+      const preflight = await this.cliExecutor.runPreflightValidation(this.workers)
+      
+      if (!preflight.success) {
+        this.logger.error(`[Preflight] ${preflight.message}`)
+        throw new LoopworkError(
+          'ERR_PREFLIGHT_FAILED',
+          `Pre-flight validation failed: ${preflight.message}`,
+          [
+            'Check that your AI CLI tools are installed and accessible',
+            'Run: which opencode claude gemini',
+            'Try clearing CLI caches: rm -rf ~/.cache/opencode',
+            'Check CLI credentials are configured correctly',
+          ]
+        )
+      }
+      
+      this.logger.info(`[Preflight] ${preflight.message}`)
+      
+      // Warn if fewer models available than workers
+      const healthStatus = this.cliExecutor.getHealthStatus?.()
+      if (healthStatus && healthStatus.available < this.workers) {
+        this.logger.warn(
+          `[Preflight] Only ${healthStatus.available} models available for ${this.workers} workers. ` +
+          `Some workers may wait for available models.`
+        )
+      }
+    }
 
     // Check for reduced functionality mode
     if (this.pluginRegistry.isDegradedMode(this.config.flags)) {
@@ -896,6 +926,14 @@ export class ParallelRunner {
       return 'memory'
     }
 
+    // CLI cache corruption patterns
+    if (lowerError.includes('enoent') && lowerError.includes('cache')) {
+      return 'cli_cache'
+    }
+    if (lowerError.includes('cache corruption') || lowerError.includes('corrupted')) {
+      return 'cli_cache'
+    }
+
     return 'unknown'
   }
 
@@ -966,6 +1004,13 @@ export class ParallelRunner {
       return {
         workers: newWorkers,
         reason: `Memory pressure detected (${categoryCounts.memory}/${total} failures). Reducing workers from ${this.workers} to ${newWorkers}`,
+      }
+    }
+
+    // CLI cache corruption pattern - try to reset model selectors
+    if (categoryCounts.cli_cache >= threshold) {
+      return {
+        reason: `CLI cache corruption detected (${categoryCounts.cli_cache}/${total} failures). Models will retry with cleared caches`,
       }
     }
 
