@@ -1,0 +1,14 @@
+{
+  "name": "@loopwork-ai/isolation",
+  "version": "0.0.0",
+  "description": "Sandboxing providers for task execution isolation",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  }
+}

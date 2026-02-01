@@ -13,6 +13,7 @@ import { createTelegramHookPlugin } from '@loopwork-ai/telegram'
 import type { TaskContext } from '../contracts/plugin'
 import type { ICliExecutor } from '../contracts/executor'
 import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
+import type { RunLogger } from '../contracts/logger'
 import { LoopworkError, handleError } from '../core/errors'
 import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
 import { LoopworkMonitor } from '../monitor'
@@ -149,19 +150,7 @@ ${urlLine}
  *
  * @param options - Runtime options (can override config file)
  */
-export interface RunLogger {
-  startSpinner(message: string): void
-  stopSpinner(message?: string, symbol?: string): void
-  info(message: string): void
-  success(message: string): void
-  warn(message: string): void
-  error(message: string): void
-  debug(message: string): void
-  raw(message: string): void
-  setLogFile(filePath: string): void
-  jsonEvent?(event: JsonEvent): void
-  setOutputFormat?(format: 'human' | 'json'): void
-}
+
 
 export interface RunDeps {
   getConfig?: typeof getConfig

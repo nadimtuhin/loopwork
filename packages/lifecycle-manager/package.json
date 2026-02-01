@@ -1,0 +1,43 @@
+{
+  "name": "@loopwork-ai/lifecycle-manager",
+  "version": "0.1.0",
+  "description": "Loopwork lifecycle management with heartbeat providers and health monitors",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "eslint": "^9.39.2",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "loopwork",
+    "lifecycle",
+    "heartbeat",
+    "health",
+    "monitor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/loopwork/issues"
+  },
+  "homepage": "https://github.com/nadimtuhin/loopwork#readme",
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

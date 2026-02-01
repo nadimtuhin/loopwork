@@ -1,7 +1,7 @@
 import type { DashboardBroadcaster } from './broadcaster'
-import type { DashboardServer } from './server'
+import type { IDashboardServer } from './types'
 
-export function createRoutes(broadcaster: DashboardBroadcaster, server: DashboardServer) {
+export function createRoutes(broadcaster: DashboardBroadcaster, server: IDashboardServer) {
   return async (req: Request): Promise<Response | undefined> => {
     const url = new URL(req.url)
     

@@ -39,11 +39,12 @@ export const InkLog: React.FC<InkLogProps> = ({
   }
 
   const { color, emoji, prefix } = getLevelInfo()
+  // Use 24-hour format for consistent width (always 8 chars: HH:MM:SS)
   const timeStr = timestamp ? `[${new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: true,
+    hour12: false,
   })}] ` : ''
 
   return (

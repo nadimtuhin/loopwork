@@ -21,11 +21,12 @@ export const InkStream: React.FC<InkStreamProps> = ({
   limit = 10,
 }) => {
   const displayLines = lines.slice(-limit)
+  // Use 24-hour format for consistent width (always 8 chars: HH:MM:SS)
   const timeStr = new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: true,
+    hour12: false,
   })
 
   return (

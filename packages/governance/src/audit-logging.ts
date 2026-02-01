@@ -7,7 +7,7 @@
 
 import type { LoopworkPlugin, TaskContext, PluginTaskResult, LoopStats, StepEvent, ToolCallEvent, AgentResponseEvent, ConfigWrapper } from '@loopwork-ai/loopwork/contracts'
 import type { Task } from '@loopwork-ai/loopwork/contracts'
-import { logger } from '@loopwork-ai/loopwork'
+import { logger } from '@loopwork-ai/common'
 import fs from 'fs'
 import path from 'path'
 

@@ -5,7 +5,7 @@
  */
 
 import type { LoopworkPlugin, ConfigWrapper, LoopworkConfig, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
-import { logger } from '@loopwork-ai/loopwork'
+import { logger } from '@loopwork-ai/common'
 
 export class GovernanceError extends Error {
   constructor(message: string) {

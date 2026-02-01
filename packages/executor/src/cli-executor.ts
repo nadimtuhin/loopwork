@@ -4,6 +4,12 @@ import os from 'os'
 import path from 'path'
 import chalk from 'chalk'
 import { StreamLogger } from '@loopwork-ai/common'
+import { 
+  isRateLimitOutput, 
+  createResilienceRunner, 
+  RateLimitError,
+  isRateLimitError 
+} from '@loopwork-ai/resilience'
 import type { 
   ILogger, 
   IProcessManager, 
@@ -18,13 +24,69 @@ import type {
   ExecutionOptions,
   ITaskMinimal
 } from '@loopwork-ai/contracts'
-import { ModelSelector, calculateBackoffDelay } from './model-selector'
+import { ModelSelector } from './model-selector'
 import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/worker-pool-manager'
 import { createSpawner } from './spawners'
 
 const MIN_FREE_MEMORY_MB = 512
 const DEFAULT_SIGKILL_DELAY_MS = 5000
 const DEFAULT_PROGRESS_INTERVAL_MS = 2000
+
+/**
+ * OpenCode cache corruption error patterns
+ * These patterns indicate the OpenCode cache is corrupted and needs to be cleared
+ */
+const OPENCODE_CACHE_CORRUPTION_PATTERNS = [
+  /ENOENT.*reading.*\.cache\/opencode/i,
+  /ENOENT.*\.cache\/opencode\/node_modules/i,
+  /BuildMessage:.*ENOENT.*opencode/i,
+]
+
+/**
+ * Check if output indicates OpenCode cache corruption
+ */
+function isOpenCodeCacheCorruption(output: string): boolean {
+  return OPENCODE_CACHE_CORRUPTION_PATTERNS.some(pattern => pattern.test(output))
+}
+
+/**
+ * Clear OpenCode cache directory
+ * Returns true if cache was cleared successfully
+ */
+function clearOpenCodeCache(logger?: ILogger): boolean {
+  const homeDir = os.homedir()
+  const cachePath = path.join(homeDir, '.cache', 'opencode')
+  
+  try {
+    const nodeModulesPath = path.join(cachePath, 'node_modules')
+    const bunLockPath = path.join(cachePath, 'bun.lock')
+    
+    if (fs.existsSync(nodeModulesPath)) {
+      fs.rmSync(nodeModulesPath, { recursive: true, force: true })
+      logger?.warn?.(`Cleared corrupted OpenCode cache: ${nodeModulesPath}`)
+    }
+    
+    if (fs.existsSync(bunLockPath)) {
+      fs.unlinkSync(bunLockPath)
+      logger?.warn?.(`Cleared OpenCode lock file: ${bunLockPath}`)
+    }
+    
+    return true
+  } catch (error) {
+    logger?.error?.(`Failed to clear OpenCode cache: ${error}`)
+    return false
+  }
+}
+
+/**
+ * Custom error for OpenCode cache corruption
+ */
+export class OpenCodeCacheError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'OpenCodeCacheError'
+  }
+}
 
 function getAvailableMemoryMB(): number {
   if (process.platform === 'darwin') {
@@ -94,10 +156,11 @@ export class CliExecutor {
     protected options: CliExecutorOptions = {}
   ) {
     this.retryConfig = {
-      rateLimitWaitMs: 60000,
+      rateLimitWaitMs: 30000,
       exponentialBackoff: true,
       baseDelayMs: 1000,
       maxDelayMs: 60000,
+      backoffMultiplier: 2,
       retrySameModel: true,
       maxRetriesPerModel: 3,
       ...config.retry,
@@ -262,25 +325,40 @@ export class CliExecutor {
     const slotPid = await this.poolManager.acquire(poolName)
 
     try {
-      const maxAttempts = this.modelSelector.getTotalModelCount()
-      let rateLimitAttempt = 0
+      const maxAttempts = this.modelSelector.getTotalModelCount() * (this.retryConfig.retrySameModel ? this.retryConfig.maxRetriesPerModel : 1)
 
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const runner = createResilienceRunner({
+        maxAttempts: maxAttempts + 1,
+        retryOnRateLimit: true,
+        retryOnTransient: true,
+        retryableErrors: ['opencode cache corruption'],
+        rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
+        exponentialBackoff: this.retryConfig.exponentialBackoff,
+        exponentialBackoffBaseDelay: this.retryConfig.baseDelayMs,
+        exponentialBackoffMaxDelay: this.retryConfig.maxDelayMs,
+        exponentialBackoffMultiplier: this.retryConfig.backoffMultiplier,
+      })
+
+      const retryResult = await runner.execute(async () => {
         const modelConfig = this.modelSelector.getNext()
-        if (!modelConfig) break
+        if (!modelConfig) {
+          throw new Error('No more CLI configurations available')
+        }
 
         const modelName = modelConfig.displayName || modelConfig.name
         const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
         const cliPath = this.cliPaths.get(modelConfig.cli)
 
+        if (!cliPath) {
+          throw new Error(`CLI tool ${modelConfig.cli} not found`)
+        }
+
         await this.pluginRegistry.runHook('onStep', {
           stepId: 'model_selected',
           description: `Model selected: ${displayName}`,
           phase: 'start',
-          context: { taskId: options.taskId, model: displayName, cli: modelConfig.cli, attempt: attempt + 1, maxAttempts }
+          context: { taskId: options.taskId, model: displayName, cli: modelConfig.cli }
         })
-
-        if (!cliPath) continue
 
         const effectiveTimeout = modelConfig.timeout ?? timeoutSecs
         const env = { ...process.env, ...modelConfig.env, ...options.permissions }
@@ -307,7 +385,7 @@ export class CliExecutor {
           },
           taskId: options.taskId,
           timestamp: Date.now(),
-          metadata: { displayName, attempt: attempt + 1, maxAttempts }
+          metadata: { displayName }
         })
 
         const startTime = Date.now()
@@ -315,7 +393,7 @@ export class CliExecutor {
           stepId: 'cli_spawn_start',
           description: `Spawning CLI: ${displayName}`,
           phase: 'start',
-          context: { taskId: options.taskId, model: displayName, attempt: attempt + 1 }
+          context: { taskId: options.taskId, model: displayName }
         })
 
         const result = await this.spawnWithTimeout(
@@ -363,33 +441,37 @@ export class CliExecutor {
         }
 
         if (result.timedOut) {
-          continue
+          throw new Error(`Execution timed out after ${effectiveTimeout}s`)
         }
 
         const output = fullOutput.slice(-2000)
-        if (/rate.*limit|too.*many.*request|429|RESOURCE_EXHAUSTED/i.test(output)) {
-          const waitMs = this.retryConfig.exponentialBackoff
-            ? calculateBackoffDelay(rateLimitAttempt, this.retryConfig.baseDelayMs, this.retryConfig.maxDelayMs)
-            : this.retryConfig.rateLimitWaitMs
-
-          await new Promise(r => setTimeout(r, waitMs))
-          rateLimitAttempt++
-
-          if (this.retryConfig.retrySameModel) {
-            const retryCount = this.modelSelector.trackRetry(modelConfig.name)
-            if (retryCount < this.retryConfig.maxRetriesPerModel) {
-              attempt--
-            }
-          }
-          continue
+        if (isRateLimitOutput(output)) {
+          throw new RateLimitError(`Rate limit exceeded on ${displayName}`)
         }
 
         if (/quota.*exceed|billing.*limit/i.test(output)) {
           this.switchToFallback()
-          continue
+          throw new Error(`Quota exceeded on ${displayName}`)
         }
 
-        if (result.exitCode === 0) return 0
+        if (modelConfig.cli === 'opencode' && isOpenCodeCacheCorruption(fullOutput)) {
+          const cleared = clearOpenCodeCache(this.logger)
+          if (cleared) {
+            throw new OpenCodeCacheError(`OpenCode cache corruption detected and cleared, retrying...`)
+          } else {
+            throw new Error(`OpenCode cache corruption detected but failed to clear cache`)
+          }
+        }
+
+        if (result.exitCode !== 0) {
+          throw new Error(`CLI exited with code ${result.exitCode}`)
+        }
+
+        return 0
+      })
+
+      if (retryResult.success) {
+        return 0
       }
 
       throw new Error('All CLI configurations failed after exhausting all models')

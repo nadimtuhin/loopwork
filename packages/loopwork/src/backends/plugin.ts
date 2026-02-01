@@ -13,48 +13,10 @@
  *   )(defineConfig({ cli: 'opencode' }))
  */
 
-import type { LoopworkPlugin, LoopworkConfig } from '../contracts'
+import type { LoopworkPlugin, LoopworkConfig, BackendPlugin } from '../contracts'
 import type { Task, Priority, FindTaskOptions, UpdateResult, TaskBackend } from './types'
 import { logger } from '../core/utils'
 import { LoopworkError } from '../core/errors'
-
-// ============================================================================
-// Backend Plugin Interface
-// ============================================================================
-
-/**
- * Backend plugin combines LoopworkPlugin with TaskBackend operations
- */
-export interface BackendPlugin extends LoopworkPlugin {
-  /** Backend type identifier */
-  readonly backendType: 'json' | 'github' | string
-
-  // Task operations
-  findNextTask(options?: FindTaskOptions): Promise<Task | null>
-  getTask(taskId: string): Promise<Task | null>
-  listPendingTasks(options?: FindTaskOptions): Promise<Task[]>
-  countPending(options?: FindTaskOptions): Promise<number>
-  markInProgress(taskId: string): Promise<UpdateResult>
-  markCompleted(taskId: string, comment?: string): Promise<UpdateResult>
-  markFailed(taskId: string, error: string): Promise<UpdateResult>
-  markQuarantined(taskId: string, reason: string): Promise<UpdateResult>
-  resetToPending(taskId: string): Promise<UpdateResult>
-  addComment?(taskId: string, comment: string): Promise<UpdateResult>
-  ping(): Promise<{ ok: boolean; latencyMs: number; error?: string }>
-
-  // Sub-task and dependency methods
-  getSubTasks(taskId: string): Promise<Task[]>
-  getDependencies(taskId: string): Promise<Task[]>
-  getDependents(taskId: string): Promise<Task[]>
-  areDependenciesMet(taskId: string): Promise<boolean>
-  createTask?(task: Omit<Task, 'id' | 'status'>): Promise<Task>
-  createSubTask?(parentId: string, task: Omit<Task, 'id' | 'parentId' | 'status'>): Promise<Task>
-  addDependency?(taskId: string, dependsOnId: string): Promise<UpdateResult>
-  removeDependency?(taskId: string, dependsOnId: string): Promise<UpdateResult>
-
-  // Priority
-  setPriority?(taskId: string, priority: Priority): Promise<UpdateResult>
-}
 
 // ============================================================================
 // JSON Backend Plugin
@@ -87,7 +49,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
     backendType: 'json',
     classification: 'critical',
 
-    async onConfigLoad(cfg) {
+    async onConfigLoad(cfg: any) {
       await getAdapter()
       return cfg
     },
@@ -104,6 +66,10 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
     async listPendingTasks(options) {
       const a = await getAdapter()
       return a!.listPendingTasks(options)
+    },
+    async listTasks(options) {
+      const a = await getAdapter()
+      return a!.listTasks(options)
     },
     async countPending(options) {
       const a = await getAdapter()
@@ -247,7 +213,7 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
     backendType: 'github',
     classification: 'critical',
 
-    async onConfigLoad(cfg) {
+    async onConfigLoad(cfg: any) {
       if (!repo) {
         logger.warn('GitHub backend: Missing repo. Set GITHUB_REPOSITORY or pass repo option.')
       }
@@ -267,6 +233,10 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
     async listPendingTasks(options) {
       const a = await getAdapter()
       return a!.listPendingTasks(options)
+    },
+    async listTasks(options) {
+      const a = await getAdapter()
+      return a!.listTasks(options)
     },
     async countPending(options) {
       const a = await getAdapter()
@@ -399,7 +369,7 @@ export function createFallbackBackendPlugin(config: FallbackBackendConfig): Back
     backendType: 'fallback',
     classification: 'critical',
 
-    async onConfigLoad(cfg) {
+    async onConfigLoad(cfg: any) {
       await getAdapter(cfg)
       return cfg
     },
@@ -416,6 +386,10 @@ export function createFallbackBackendPlugin(config: FallbackBackendConfig): Back
     async listPendingTasks(options) {
       const a = await getAdapter()
       return a!.listPendingTasks(options)
+    },
+    async listTasks(options) {
+      const a = await getAdapter()
+      return a!.listTasks(options)
     },
     async countPending(options) {
       const a = await getAdapter()

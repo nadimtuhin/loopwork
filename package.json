@@ -11,6 +11,7 @@
     "test": "turbo run test",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "check:circular": "madge --circular --extensions ts packages/*/src",
     "dev:loopwork": "turbo run dev --filter loopwork",
     "dev:dashboard": "turbo run dev --filter @loopwork-ai/dashboard",
     "dev:web": "turbo run dev --filter @loopwork-ai/dashboard-web",

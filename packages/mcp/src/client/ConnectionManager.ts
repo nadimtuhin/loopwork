@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
-import type { McpConfig, McpServer } from '../index'
+import type { McpConfig, McpServer } from '../types'
 import { logger } from '@loopwork-ai/loopwork'
 
 export interface McpConnection {

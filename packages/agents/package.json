@@ -4,6 +4,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./contracts": "./src/contracts/index.ts"
@@ -11,6 +12,9 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
   },
   "peerDependencies": {
     "@loopwork-ai/loopwork": "workspace:*"

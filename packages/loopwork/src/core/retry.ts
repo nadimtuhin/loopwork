@@ -1,8 +1,7 @@
-/**
- * Retry Policy
- * Defines retry strategies for task execution
- */
-
+import { 
+  isRetryable as isRetryableResilient, 
+  calculateExponentialBackoff 
+} from '@loopwork-ai/resilience'
 import type { Task } from '../contracts/types'
 
 export interface RetryPolicy {
@@ -41,20 +40,22 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 }
 
 export function isRetryableError(error: Error | string, policy: RetryPolicy = DEFAULT_RETRY_POLICY): boolean {
-  const errorMsg = typeof error === 'string' ? error : error.message
-  const errorCode = typeof error === 'object' && error !== null && 'code' in error ? (error as { code?: string }).code : undefined
+  const err = typeof error === 'string' ? new Error(error) : error
   
-  const retryableErrors = policy.retryableErrors || DEFAULT_RETRY_POLICY.retryableErrors || []
-  
-  if (retryableErrors.some(pattern => errorMsg.includes(pattern))) {
-    return true
+  // If custom retryable errors are provided, strictly use those to match legacy behavior
+  if (policy.retryableErrors && policy !== DEFAULT_RETRY_POLICY) {
+    return isRetryableResilient(err, {
+      retryOnTransient: false,
+      retryOnRateLimit: false,
+      retryableErrors: policy.retryableErrors
+    })
   }
-  
-  if (errorCode && retryableErrors.some(pattern => errorCode === pattern)) {
-    return true
-  }
-  
-  return false
+
+  return isRetryableResilient(err, {
+    retryOnTransient: true,
+    retryOnRateLimit: true,
+    retryableErrors: policy.retryableErrors || DEFAULT_RETRY_POLICY.retryableErrors
+  })
 }
 
 export function getRetryPolicy(task?: Task | null, config?: Partial<Record<string, unknown>>): RetryPolicy {
@@ -77,19 +78,24 @@ export function getRetryPolicy(task?: Task | null, config?: Partial<Record<strin
 }
 
 export function calculateBackoff(attempt: number, policy: RetryPolicy = DEFAULT_RETRY_POLICY): number {
-  let delay = policy.initialDelay
-
   if (policy.retryStrategy === 'exponential') {
-    delay = policy.initialDelay * Math.pow(policy.backoffMultiplier, attempt)
+    return calculateExponentialBackoff(attempt + 1, {
+      baseDelayMs: policy.initialDelay,
+      maxDelayMs: policy.maxDelay,
+      multiplier: policy.backoffMultiplier,
+      jitter: policy.jitter
+    })
   } else {
-    delay = policy.initialDelay * (attempt + 1)
-  }
+    // Linear backoff logic
+    const delay = policy.initialDelay * (attempt + 1)
+    let finalDelay = delay
 
-  if (policy.jitter) {
-    const jitterFactor = 0.2 
-    const randomFactor = 1 + (Math.random() * jitterFactor - (jitterFactor / 2))
-    delay = delay * randomFactor
-  }
+    if (policy.jitter) {
+      const jitterFactor = 0.2 
+      const randomFactor = 1 + (Math.random() * jitterFactor - (jitterFactor / 2))
+      finalDelay = delay * randomFactor
+    }
 
-  return Math.min(Math.floor(delay), policy.maxDelay)
+    return Math.min(Math.floor(finalDelay), policy.maxDelay)
+  }
 }

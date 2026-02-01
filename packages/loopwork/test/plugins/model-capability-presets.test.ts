@@ -102,7 +102,7 @@ describe('ModelCapabilityPresets', () => {
     test('default retry preset', () => {
       const retry = RetryPresets.default()
       expect(retry.exponentialBackoff).toBe(false)
-      expect(retry.rateLimitWaitMs).toBe(60000)
+      expect(retry.rateLimitWaitMs).toBe(30000)
     })
 
     test('aggressive retry preset', () => {

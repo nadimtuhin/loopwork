@@ -83,6 +83,7 @@ export interface RetryConfig {
   exponentialBackoff?: boolean
   baseDelayMs?: number
   maxDelayMs?: number
+  backoffMultiplier?: number
   retrySameModel?: boolean
   maxRetriesPerModel?: number
 }

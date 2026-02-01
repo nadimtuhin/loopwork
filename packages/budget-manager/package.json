@@ -1,0 +1,13 @@
+{
+  "name": "@loopwork-ai/budget-manager",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  }
+}

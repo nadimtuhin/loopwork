@@ -99,7 +99,7 @@ export interface ModelConfig {
 export interface RetryConfig {
   /**
    * Wait time when rate limit is detected (milliseconds)
-   * Default: 60000 (60 seconds)
+   * Default: 30000 (30 seconds)
    */
   rateLimitWaitMs?: number
 
@@ -227,7 +227,7 @@ export interface CliExecutorConfig {
  * Default retry configuration
  */
 export const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
-  rateLimitWaitMs: 60000,
+  rateLimitWaitMs: 30000,
   exponentialBackoff: false,
   baseDelayMs: 1000,
   maxDelayMs: 60000,

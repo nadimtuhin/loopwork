@@ -5,7 +5,7 @@
  */
 
 import type { AuditEvent } from './audit-logging'
-import { logger } from '@loopwork-ai/loopwork'
+import { logger } from '@loopwork-ai/common'
 import fs from 'fs'
 import path from 'path'
 

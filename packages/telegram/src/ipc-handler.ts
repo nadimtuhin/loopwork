@@ -5,7 +5,7 @@
  * to enable interactive approvals, structured questions, and rich notifications.
  */
 
-import type { TelegramTaskBot } from './bot'
+import type { TelegramTaskBot } from './types'
 
 /**
  * IPC message types supported by the protocol

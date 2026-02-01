@@ -1,0 +1,24 @@
+{
+  "name": "@loopwork-ai/messaging",
+  "version": "0.1.0",
+  "description": "Messaging system implementation for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "bun build ./src/index.ts --outdir dist --target node"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

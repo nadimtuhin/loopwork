@@ -88,11 +88,12 @@ function _formatTime(seconds: number): string {
 }
 
 function getTimestamp(): string {
+  // Use 24-hour format for consistent width (always 8 chars: HH:MM:SS)
   return new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: true,
+    hour12: false,
   })
 }
 

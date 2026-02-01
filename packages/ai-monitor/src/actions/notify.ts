@@ -6,7 +6,7 @@
  */
 
 import { logger } from '../utils'
-import type { Action } from './index'
+import type { Action } from './types'
 import type { PatternSeverity } from '../patterns'
 
 export interface NotificationContext {

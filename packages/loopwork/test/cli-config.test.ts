@@ -34,7 +34,7 @@ import {
 describe('CLI Configuration Types', () => {
   describe('DEFAULT_RETRY_CONFIG', () => {
     test('has expected default values', () => {
-      expect(DEFAULT_RETRY_CONFIG.rateLimitWaitMs).toBe(60000)
+      expect(DEFAULT_RETRY_CONFIG.rateLimitWaitMs).toBe(30000)
       expect(DEFAULT_RETRY_CONFIG.exponentialBackoff).toBe(false)
       expect(DEFAULT_RETRY_CONFIG.baseDelayMs).toBe(1000)
       expect(DEFAULT_RETRY_CONFIG.maxDelayMs).toBe(60000)
@@ -308,7 +308,7 @@ describe('ModelPresets', () => {
 describe('RetryPresets', () => {
   test('default preset', () => {
     const retry = RetryPresets.default()
-    expect(retry.rateLimitWaitMs).toBe(60000)
+    expect(retry.rateLimitWaitMs).toBe(30000)
     expect(retry.exponentialBackoff).toBe(false)
   })
 

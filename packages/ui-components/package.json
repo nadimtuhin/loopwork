@@ -1,0 +1,29 @@
+{
+  "name": "@loopwork-ai/ui-components",
+  "version": "0.1.0",
+  "description": "UI component library for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "ink": "^4.4.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-types": "latest",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "ink": "^4.4.1",
+    "react": "^18.2.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

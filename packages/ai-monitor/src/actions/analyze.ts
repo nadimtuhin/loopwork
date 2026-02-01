@@ -10,7 +10,7 @@ import path from 'path'
 import { spawnSync } from 'child_process'
 import Anthropic from '@anthropic-ai/sdk'
 import { logger } from '../utils'
-import type { Action } from './index'
+import type { Action } from './types'
 
 // Import LoopworkState from loopwork if available, otherwise use fallback
 let LoopworkState: any

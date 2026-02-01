@@ -676,6 +676,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     parallel: parallelValue,
     parallelFailureMode: fileConfig?.parallelFailureMode ?? 'continue',
     dynamicTasks: fileConfig?.dynamicTasks,
+    plugins: fileConfig?.plugins,
   }
 
   // Validate the final config

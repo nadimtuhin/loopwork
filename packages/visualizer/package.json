@@ -1,0 +1,23 @@
+{
+  "name": "@loopwork-ai/visualizer",
+  "version": "0.1.0",
+  "description": "Visualizer package for Loopwork - render task visualizations",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT",
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  }
+}

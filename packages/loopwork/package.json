@@ -49,6 +49,7 @@
     "@loopwork-ai/contracts": "workspace:*",
     "@loopwork-ai/executor": "workspace:*",
     "@loopwork-ai/result-parser": "workspace:*",
+    "@loopwork-ai/resilience": "workspace:*",
     "@loopwork-ai/state": "workspace:*",
     "chalk": "^5.3.0",
     "commander": "^12.0.0",

@@ -10,8 +10,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "build": "tsup src/index.ts --format esm,cjs",
+    "dev": "tsup src/index.ts --format esm,cjs --watch",
     "dev:web": "cd web && bun run dev",
     "build:web": "cd web && bun run build",
     "test": "bun test",

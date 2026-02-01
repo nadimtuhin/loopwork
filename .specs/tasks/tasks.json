@@ -376,7 +376,7 @@
     },
     {
       "id": "PARALLEL-001h",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Parallel: Write unit tests for ParallelRunner",
       "feature": "parallel",
@@ -395,8 +395,51 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "PARALLEL-001h",
+          "timestamp": "2026-02-01T10:21:22.242Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001h",
+          "timestamp": "2026-02-01T10:31:27.322Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001h",
+          "timestamp": "2026-02-01T10:31:29.440Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:21:22.242Z",
+        "updatedAt": "2026-02-01T10:31:29.440Z",
+        "startedAt": "2026-02-01T10:31:29.440Z"
+      }
     },
     {
       "id": "PARALLEL-001i",
@@ -419,8 +462,62 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:21:22.251Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:21:23.845Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:31:29.451Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:31:31.437Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:21:22.251Z",
+        "updatedAt": "2026-02-01T10:31:31.437Z"
+      }
     },
     {
       "id": "IMPROVE-001",
@@ -526,8 +623,62 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:21:22.262Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:21:24.235Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:31:29.461Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:31:31.342Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:21:22.262Z",
+        "updatedAt": "2026-02-01T10:31:31.342Z"
+      }
     },
     {
       "id": "IMPROVE-004",
@@ -9016,7 +9167,7 @@
     },
     {
       "id": "ARCH-008",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Fix test imports and update test suite",
       "feature": "ARCH",
@@ -9025,8 +9176,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T05:08:37.002Z",
-        "updatedAt": "2026-02-01T05:08:37.002Z",
-        "startedAt": "2026-02-01T05:08:37.002Z"
+        "updatedAt": "2026-02-01T05:20:07.210Z",
+        "startedAt": "2026-02-01T05:08:37.002Z",
+        "completedAt": "2026-02-01T05:20:07.210Z"
       },
       "events": [
         {
@@ -9041,8 +9193,21 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "ARCH-008",
+          "timestamp": "2026-02-01T05:20:07.210Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-009",
@@ -9056,7 +9221,7 @@
     },
     {
       "id": "ARCH-010",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Verify no circular dependencies",
       "feature": "ARCH",
@@ -9065,8 +9230,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T05:08:37.099Z",
-        "updatedAt": "2026-02-01T05:08:37.099Z",
-        "startedAt": "2026-02-01T05:08:37.099Z"
+        "updatedAt": "2026-02-01T05:34:48.628Z",
+        "startedAt": "2026-02-01T05:08:37.099Z",
+        "completedAt": "2026-02-01T05:34:48.628Z"
       },
       "events": [
         {
@@ -9081,8 +9247,21 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "ARCH-010",
+          "timestamp": "2026-02-01T05:34:48.628Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-011",
@@ -9097,14 +9276,48 @@
     },
     {
       "id": "ARCH-012",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Run full build and integration test",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-008",
         "ARCH-010"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:34:50.638Z",
+        "updatedAt": "2026-02-01T05:43:20.648Z",
+        "startedAt": "2026-02-01T05:34:50.638Z",
+        "completedAt": "2026-02-01T05:43:20.648Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCH-012",
+          "timestamp": "2026-02-01T05:34:50.638Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-012",
+          "timestamp": "2026-02-01T05:43:20.648Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-013",
@@ -10400,13 +10613,47 @@
     },
     {
       "id": "ARCHWAVE-012",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Adapters Package",
       "feature": "ARCH-WAVE-2",
       "dependsOn": [
         "ARCHWAVE-011"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:34:50.736Z",
+        "updatedAt": "2026-02-01T05:36:10.794Z",
+        "startedAt": "2026-02-01T05:34:50.736Z",
+        "completedAt": "2026-02-01T05:36:10.794Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-012",
+          "timestamp": "2026-02-01T05:34:50.736Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-012",
+          "timestamp": "2026-02-01T05:36:10.794Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-013",
@@ -10433,13 +10680,15 @@
     },
     {
       "id": "ARCHWAVE-015",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Messaging Contracts",
       "feature": "ARCH-WAVE-3",
       "timestamps": {
         "createdAt": "2026-02-01T05:08:37.120Z",
-        "updatedAt": "2026-02-01T05:08:37.130Z"
+        "updatedAt": "2026-02-01T05:42:09.025Z",
+        "startedAt": "2026-02-01T05:34:50.747Z",
+        "completedAt": "2026-02-01T05:42:09.025Z"
       },
       "events": [
         {
@@ -10491,18 +10740,78 @@
             "oldStatus": "in-progress",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:34:50.747Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:42:09.025Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-016",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Messaging Package",
       "feature": "ARCH-WAVE-3",
       "dependsOn": [
         "ARCHWAVE-015"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:43:22.668Z",
+        "updatedAt": "2026-02-01T05:45:42.064Z",
+        "startedAt": "2026-02-01T05:43:22.668Z",
+        "completedAt": "2026-02-01T05:45:42.064Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-016",
+          "timestamp": "2026-02-01T05:43:22.668Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-016",
+          "timestamp": "2026-02-01T05:45:42.064Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-017",
@@ -10536,10 +10845,94 @@
     },
     {
       "id": "ARCHWAVE-020",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Telemetry Contracts",
-      "feature": "ARCH-WAVE-3"
+      "feature": "ARCH-WAVE-3",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:34:50.757Z",
+        "updatedAt": "2026-02-01T05:44:35.888Z",
+        "startedAt": "2026-02-01T05:43:22.766Z",
+        "completedAt": "2026-02-01T05:44:35.888Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:34:50.757Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:34:50.761Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:34:50.764Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:34:50.767Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:43:22.766Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-020",
+          "timestamp": "2026-02-01T05:44:35.888Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-021",
@@ -10563,10 +10956,44 @@
     },
     {
       "id": "ARCHWAVE-023",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Config Contracts & Package",
-      "feature": "ARCH-WAVE-3"
+      "feature": "ARCH-WAVE-3",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:43:22.777Z",
+        "updatedAt": "2026-02-01T05:49:11.199Z",
+        "startedAt": "2026-02-01T05:43:22.777Z",
+        "completedAt": "2026-02-01T05:49:11.199Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-023",
+          "timestamp": "2026-02-01T05:43:22.777Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-023",
+          "timestamp": "2026-02-01T05:49:11.199Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-024",
@@ -10580,10 +11007,94 @@
     },
     {
       "id": "ARCHWAVE-025",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Backend Provider Contracts",
-      "feature": "ARCH-WAVE-3"
+      "feature": "ARCH-WAVE-3",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:43:22.787Z",
+        "updatedAt": "2026-02-01T05:55:09.671Z",
+        "startedAt": "2026-02-01T05:49:13.213Z",
+        "completedAt": "2026-02-01T05:55:09.671Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:43:22.787Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:43:22.791Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:43:22.794Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:43:22.797Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:49:13.213Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-025",
+          "timestamp": "2026-02-01T05:55:09.671Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 6",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-026",
@@ -10610,20 +11121,88 @@
     },
     {
       "id": "ARCHWAVE-028",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Command Contracts",
-      "feature": "ARCH-WAVE-4"
+      "feature": "ARCH-WAVE-4",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:49:13.313Z",
+        "updatedAt": "2026-02-01T06:02:39.751Z",
+        "startedAt": "2026-02-01T05:49:13.313Z",
+        "completedAt": "2026-02-01T06:02:39.751Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-028",
+          "timestamp": "2026-02-01T05:49:13.313Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-028",
+          "timestamp": "2026-02-01T06:02:39.751Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 6",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-029",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold cli-commands Package",
       "feature": "ARCH-WAVE-4",
       "dependsOn": [
         "ARCHWAVE-028"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:02:41.765Z",
+        "updatedAt": "2026-02-01T06:06:34.684Z",
+        "startedAt": "2026-02-01T06:02:41.765Z",
+        "completedAt": "2026-02-01T06:06:34.684Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-029",
+          "timestamp": "2026-02-01T06:02:41.765Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-029",
+          "timestamp": "2026-02-01T06:06:34.684Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 7",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-030",
@@ -10658,20 +11237,88 @@
     },
     {
       "id": "ARCHWAVE-033",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define UI Contracts",
-      "feature": "ARCH-WAVE-4"
+      "feature": "ARCH-WAVE-4",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:49:13.324Z",
+        "updatedAt": "2026-02-01T05:56:06.467Z",
+        "startedAt": "2026-02-01T05:49:13.324Z",
+        "completedAt": "2026-02-01T05:56:06.467Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-033",
+          "timestamp": "2026-02-01T05:49:13.324Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-033",
+          "timestamp": "2026-02-01T05:56:06.467Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 6",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-034",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold ui-components Package",
       "feature": "ARCH-WAVE-4",
       "dependsOn": [
         "ARCHWAVE-033"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:02:41.865Z",
+        "updatedAt": "2026-02-01T06:07:48.336Z",
+        "startedAt": "2026-02-01T06:02:41.865Z",
+        "completedAt": "2026-02-01T06:07:48.336Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-034",
+          "timestamp": "2026-02-01T06:02:41.865Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-034",
+          "timestamp": "2026-02-01T06:07:48.336Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 7",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-035",
@@ -10796,20 +11443,138 @@
     },
     {
       "id": "ARCHWAVE-048",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Agent Orchestration Contracts",
-      "feature": "ARCH-WAVE-5"
+      "feature": "ARCH-WAVE-5",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:49:13.335Z",
+        "updatedAt": "2026-02-01T06:04:26.814Z",
+        "startedAt": "2026-02-01T06:02:41.875Z",
+        "completedAt": "2026-02-01T06:04:26.814Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T05:49:13.335Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T05:49:13.339Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T05:49:13.342Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T05:49:13.344Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T06:02:41.875Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-048",
+          "timestamp": "2026-02-01T06:04:26.814Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 7",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-049",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold @loopwork-ai/agents Package",
       "feature": "ARCH-WAVE-5",
       "dependsOn": [
         "ARCHWAVE-048"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:07:50.351Z",
+        "updatedAt": "2026-02-01T06:12:19.272Z",
+        "startedAt": "2026-02-01T06:07:50.351Z",
+        "completedAt": "2026-02-01T06:12:19.272Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-049",
+          "timestamp": "2026-02-01T06:07:50.351Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-049",
+          "timestamp": "2026-02-01T06:12:19.272Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 8",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-050",
@@ -10833,30 +11598,182 @@
     },
     {
       "id": "ARCHWAVE-052",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Test Harness Contracts",
-      "feature": "ARCH-WAVE-5"
+      "feature": "ARCH-WAVE-5",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:02:41.885Z",
+        "updatedAt": "2026-02-01T06:10:58.293Z",
+        "startedAt": "2026-02-01T06:07:50.449Z",
+        "completedAt": "2026-02-01T06:10:58.293Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:02:41.885Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:02:41.889Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:02:41.892Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:02:41.895Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:07:50.449Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-052",
+          "timestamp": "2026-02-01T06:10:58.293Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 8",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-053",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold @loopwork-ai/test-harness Package",
       "feature": "ARCH-WAVE-5",
       "dependsOn": [
         "ARCHWAVE-052"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:12:21.284Z",
+        "updatedAt": "2026-02-01T06:18:38.612Z",
+        "startedAt": "2026-02-01T06:12:21.284Z",
+        "completedAt": "2026-02-01T06:18:38.612Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-053",
+          "timestamp": "2026-02-01T06:12:21.284Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-053",
+          "timestamp": "2026-02-01T06:18:38.612Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 9",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-054",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement MemoryBackend and MockCliExecutor",
       "feature": "ARCH-WAVE-5",
       "dependsOn": [
         "ARCHWAVE-053"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:19:02.934Z",
+        "updatedAt": "2026-02-01T06:31:20.303Z",
+        "startedAt": "2026-02-01T06:19:02.934Z",
+        "completedAt": "2026-02-01T06:31:20.303Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-054",
+          "timestamp": "2026-02-01T06:19:02.934Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-054",
+          "timestamp": "2026-02-01T06:31:20.303Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 10",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-055",
@@ -10957,20 +11874,88 @@
     },
     {
       "id": "ARCHWAVE-065",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Visualization Contracts",
-      "feature": "ARCH-WAVE-6"
+      "feature": "ARCH-WAVE-6",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:07:50.459Z",
+        "updatedAt": "2026-02-01T06:09:59.047Z",
+        "startedAt": "2026-02-01T06:07:50.459Z",
+        "completedAt": "2026-02-01T06:09:59.047Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-065",
+          "timestamp": "2026-02-01T06:07:50.459Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-065",
+          "timestamp": "2026-02-01T06:09:59.047Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 8",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-066",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Visualizer Package",
       "feature": "ARCH-WAVE-6",
       "dependsOn": [
         "ARCHWAVE-065"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:12:21.381Z",
+        "updatedAt": "2026-02-01T06:19:00.919Z",
+        "startedAt": "2026-02-01T06:12:21.381Z",
+        "completedAt": "2026-02-01T06:19:00.919Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-066",
+          "timestamp": "2026-02-01T06:12:21.381Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-066",
+          "timestamp": "2026-02-01T06:19:00.919Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 9",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-067",
@@ -10994,20 +11979,138 @@
     },
     {
       "id": "ARCHWAVE-069",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Documentation Contracts",
-      "feature": "ARCH-WAVE-6"
+      "feature": "ARCH-WAVE-6",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:07:50.469Z",
+        "updatedAt": "2026-02-01T06:12:55.013Z",
+        "startedAt": "2026-02-01T06:12:21.392Z",
+        "completedAt": "2026-02-01T06:12:55.013Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:07:50.469Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:07:50.472Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:07:50.476Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:07:50.479Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:12:21.392Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-069",
+          "timestamp": "2026-02-01T06:12:55.013Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 9",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-070",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Doc-Engine Package",
       "feature": "ARCH-WAVE-6",
       "dependsOn": [
         "ARCHWAVE-069"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:19:03.034Z",
+        "updatedAt": "2026-02-01T06:21:48.837Z",
+        "startedAt": "2026-02-01T06:19:03.034Z",
+        "completedAt": "2026-02-01T06:21:48.837Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-070",
+          "timestamp": "2026-02-01T06:19:03.034Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-070",
+          "timestamp": "2026-02-01T06:21:48.837Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 10",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-071",
@@ -11031,20 +12134,138 @@
     },
     {
       "id": "ARCHWAVE-073",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Lifecycle Contracts",
-      "feature": "ARCH-WAVE-6"
+      "feature": "ARCH-WAVE-6",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:12:21.403Z",
+        "updatedAt": "2026-02-01T06:24:48.288Z",
+        "startedAt": "2026-02-01T06:19:03.045Z",
+        "completedAt": "2026-02-01T06:24:48.288Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:12:21.403Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:12:21.407Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:12:21.410Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:12:21.412Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:19:03.045Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-073",
+          "timestamp": "2026-02-01T06:24:48.288Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 10",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-074",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Lifecycle-Manager Package",
       "feature": "ARCH-WAVE-6",
       "dependsOn": [
         "ARCHWAVE-073"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:31:22.316Z",
+        "updatedAt": "2026-02-01T06:37:26.317Z",
+        "startedAt": "2026-02-01T06:31:22.316Z",
+        "completedAt": "2026-02-01T06:37:26.317Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-074",
+          "timestamp": "2026-02-01T06:31:22.316Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-074",
+          "timestamp": "2026-02-01T06:37:26.317Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 11",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-075",
@@ -11068,20 +12289,138 @@
     },
     {
       "id": "ARCHWAVE-077",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Error Registry Contracts",
-      "feature": "ARCH-WAVE-6"
+      "feature": "ARCH-WAVE-6",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:19:03.055Z",
+        "updatedAt": "2026-02-01T06:35:01.117Z",
+        "startedAt": "2026-02-01T06:31:22.415Z",
+        "completedAt": "2026-02-01T06:35:01.117Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:19:03.055Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:19:03.058Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:19:03.061Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:19:03.064Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:31:22.415Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-077",
+          "timestamp": "2026-02-01T06:35:01.117Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 11",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-078",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Error-Service Package",
       "feature": "ARCH-WAVE-6",
       "dependsOn": [
         "ARCHWAVE-077"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:37:28.329Z",
+        "updatedAt": "2026-02-01T06:41:58.213Z",
+        "startedAt": "2026-02-01T06:37:28.329Z",
+        "completedAt": "2026-02-01T06:41:58.213Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-078",
+          "timestamp": "2026-02-01T06:37:28.329Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-078",
+          "timestamp": "2026-02-01T06:41:58.213Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 12",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-079",
@@ -11118,30 +12457,132 @@
     },
     {
       "id": "ARCHWAVE-082",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define CLI Detection Contracts",
-      "feature": "ARCH-WAVE-7"
+      "feature": "ARCH-WAVE-7",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:31:22.426Z",
+        "updatedAt": "2026-02-01T06:36:33.622Z",
+        "startedAt": "2026-02-01T06:31:22.426Z",
+        "completedAt": "2026-02-01T06:36:33.622Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-082",
+          "timestamp": "2026-02-01T06:31:22.426Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-082",
+          "timestamp": "2026-02-01T06:36:33.622Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 11",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-083",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create CLI Detector Package",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-082"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:37:28.428Z",
+        "updatedAt": "2026-02-01T06:39:39.089Z",
+        "startedAt": "2026-02-01T06:37:28.428Z",
+        "completedAt": "2026-02-01T06:39:39.089Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-083",
+          "timestamp": "2026-02-01T06:37:28.428Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-083",
+          "timestamp": "2026-02-01T06:39:39.089Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 12",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-084",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement CLI Detection Logic",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-083"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:42:51.686Z",
+        "updatedAt": "2026-02-01T06:47:21.507Z",
+        "startedAt": "2026-02-01T06:42:51.686Z",
+        "completedAt": "2026-02-01T06:47:21.507Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-084",
+          "timestamp": "2026-02-01T06:42:51.686Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-084",
+          "timestamp": "2026-02-01T06:47:21.507Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 13",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-085",
@@ -11155,30 +12596,182 @@
     },
     {
       "id": "ARCHWAVE-086",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Model Registry Contracts",
-      "feature": "ARCH-WAVE-7"
+      "feature": "ARCH-WAVE-7",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:31:22.436Z",
+        "updatedAt": "2026-02-01T06:42:49.673Z",
+        "startedAt": "2026-02-01T06:37:28.438Z",
+        "completedAt": "2026-02-01T06:42:49.673Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:31:22.436Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:31:22.440Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:31:22.443Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:31:22.446Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:37:28.438Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-086",
+          "timestamp": "2026-02-01T06:42:49.673Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 12",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-087",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Model Registry Package",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-086"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:42:51.785Z",
+        "updatedAt": "2026-02-01T06:46:04.482Z",
+        "startedAt": "2026-02-01T06:42:51.785Z",
+        "completedAt": "2026-02-01T06:46:04.482Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-087",
+          "timestamp": "2026-02-01T06:42:51.785Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-087",
+          "timestamp": "2026-02-01T06:46:04.482Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 13",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-088",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Migrate Model Presets and Registry Logic",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-087"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:55:28.557Z",
+        "updatedAt": "2026-02-01T06:57:22.872Z",
+        "startedAt": "2026-02-01T06:55:28.557Z",
+        "completedAt": "2026-02-01T06:57:22.872Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-088",
+          "timestamp": "2026-02-01T06:55:28.557Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-088",
+          "timestamp": "2026-02-01T06:57:22.872Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 14",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-089",
@@ -11192,20 +12785,138 @@
     },
     {
       "id": "ARCHWAVE-090",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Resilience Contracts",
-      "feature": "ARCH-WAVE-7"
+      "feature": "ARCH-WAVE-7",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:37:28.448Z",
+        "updatedAt": "2026-02-01T06:55:26.543Z",
+        "startedAt": "2026-02-01T06:42:51.795Z",
+        "completedAt": "2026-02-01T06:55:26.543Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:37:28.448Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:37:28.451Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:37:28.454Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:37:28.457Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:42:51.795Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-090",
+          "timestamp": "2026-02-01T06:55:26.543Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 13",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-091",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Resilience Package",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-090"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:55:28.655Z",
+        "updatedAt": "2026-02-01T06:58:31.843Z",
+        "startedAt": "2026-02-01T06:55:28.655Z",
+        "completedAt": "2026-02-01T06:58:31.843Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-091",
+          "timestamp": "2026-02-01T06:55:28.655Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-091",
+          "timestamp": "2026-02-01T06:58:31.843Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 14",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-092",
@@ -11215,6 +12926,124 @@
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-091"
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:58:46.117Z",
+        "updatedAt": "2026-02-01T10:31:30.953Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T06:58:46.117Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T09:45:41.119Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T09:45:43.138Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:21:20.411Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:21:20.425Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:21:22.132Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:30:20.102Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:31:29.328Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:31:30.953Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        }
       ]
     },
     {
@@ -11229,30 +13058,182 @@
     },
     {
       "id": "ARCHWAVE-094",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Budget Contracts",
-      "feature": "ARCH-WAVE-7"
+      "feature": "ARCH-WAVE-7",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:42:51.805Z",
+        "updatedAt": "2026-02-01T06:58:44.102Z",
+        "startedAt": "2026-02-01T06:55:28.666Z",
+        "completedAt": "2026-02-01T06:58:44.102Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:42:51.805Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:42:51.808Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:42:51.811Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:42:51.814Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:55:28.666Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-094",
+          "timestamp": "2026-02-01T06:58:44.102Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 14",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-095",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Budget Manager Package",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-094"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T06:58:46.215Z",
+        "updatedAt": "2026-02-01T07:11:26.792Z",
+        "startedAt": "2026-02-01T06:58:46.215Z",
+        "completedAt": "2026-02-01T07:11:26.792Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-095",
+          "timestamp": "2026-02-01T06:58:46.215Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-095",
+          "timestamp": "2026-02-01T07:11:26.792Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 15",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-096",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Budget Logic",
       "feature": "ARCH-WAVE-7",
       "dependsOn": [
         "ARCHWAVE-095"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T09:45:43.238Z",
+        "updatedAt": "2026-02-01T09:47:24.847Z",
+        "startedAt": "2026-02-01T09:45:43.238Z",
+        "completedAt": "2026-02-01T09:47:24.847Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-096",
+          "timestamp": "2026-02-01T09:45:43.238Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-096",
+          "timestamp": "2026-02-01T09:47:24.847Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 16",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-097",
@@ -11266,20 +13247,138 @@
     },
     {
       "id": "ARCHWAVE-098",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Orchestrator Package Structure",
-      "feature": "ARCH-WAVE-8"
+      "feature": "ARCH-WAVE-8",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:55:28.676Z",
+        "updatedAt": "2026-02-01T07:09:50.513Z",
+        "startedAt": "2026-02-01T06:58:46.226Z",
+        "completedAt": "2026-02-01T07:09:50.513Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T06:55:28.676Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T06:55:28.679Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T06:55:28.683Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T06:55:28.686Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T06:58:46.226Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-098",
+          "timestamp": "2026-02-01T07:09:50.513Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 15",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-099",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Orchestration Contracts",
       "feature": "ARCH-WAVE-8",
       "dependsOn": [
         "ARCHWAVE-098"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T09:45:43.248Z",
+        "updatedAt": "2026-02-01T09:50:18.674Z",
+        "startedAt": "2026-02-01T09:45:43.248Z",
+        "completedAt": "2026-02-01T09:50:18.674Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-099",
+          "timestamp": "2026-02-01T09:45:43.248Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-099",
+          "timestamp": "2026-02-01T09:50:18.674Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 16",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-100",
@@ -11314,10 +13413,192 @@
     },
     {
       "id": "ARCHWAVE-103",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Isolation Package Structure",
-      "feature": "ARCH-WAVE-8"
+      "feature": "ARCH-WAVE-8",
+      "timestamps": {
+        "createdAt": "2026-02-01T06:58:46.239Z",
+        "updatedAt": "2026-02-01T10:26:22.673Z",
+        "startedAt": "2026-02-01T10:21:22.232Z",
+        "completedAt": "2026-02-01T10:26:22.673Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T06:58:46.239Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T06:58:46.242Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T06:58:46.245Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T06:58:46.249Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T09:45:43.260Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T09:45:43.264Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T09:45:43.267Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T09:45:43.270Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:21:20.416Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:21:20.420Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:21:20.429Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:21:20.432Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:21:22.232Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-103",
+          "timestamp": "2026-02-01T10:26:22.673Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T10-21-22-17790\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-104",
@@ -11327,6 +13608,37 @@
       "feature": "ARCH-WAVE-8",
       "dependsOn": [
         "ARCHWAVE-103"
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:31:29.429Z",
+        "updatedAt": "2026-02-01T10:31:31.399Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:31:29.429Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:31:31.399Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        }
       ]
     },
     {

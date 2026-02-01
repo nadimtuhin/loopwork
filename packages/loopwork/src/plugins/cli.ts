@@ -365,10 +365,10 @@ export const ModelPresets = {
  */
 export const RetryPresets = {
   /**
-   * Default: Fixed 60s wait, no backoff
+   * Default: Fixed 30s wait, no backoff
    */
   default: (): RetryConfig => ({
-    rateLimitWaitMs: 60000,
+    rateLimitWaitMs: 30000,
     exponentialBackoff: false,
   }),
 

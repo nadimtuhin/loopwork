@@ -1,0 +1,25 @@
+{
+  "name": "@loopwork-ai/test-harness",
+  "version": "0.1.0",
+  "description": "Test harness utilities for in-memory file systems and CLI mocking",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

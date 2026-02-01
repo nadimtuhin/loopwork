@@ -3,11 +3,12 @@ import chalk from 'chalk'
 import type { ILogger } from '@loopwork-ai/contracts'
 
 export function getTimestamp(): string {
+  // Use 24-hour format for consistent width (always 8 chars: HH:MM:SS)
   return new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: true,
+    hour12: false,
   })
 }
 
@@ -108,9 +109,21 @@ export class StreamLogger {
     
     const timestamp = chalk.gray(getTimestamp())
     const separatorStr = chalk.gray(' │')
-    const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
+    // Normalize prefix to consistent width (truncate or pad to 35 chars)
+    const maxPrefixLen = 35
+    let normalizedPrefix = this.prefix
+    if (normalizedPrefix) {
+      if (normalizedPrefix.length > maxPrefixLen) {
+        // Truncate long prefixes, keeping start and end
+        normalizedPrefix = normalizedPrefix.slice(0, 20) + '...' + normalizedPrefix.slice(-12)
+      }
+      normalizedPrefix = normalizedPrefix.padEnd(maxPrefixLen, ' ')
+    } else {
+      normalizedPrefix = ''.padEnd(maxPrefixLen, ' ')
+    }
+    const prefixStr = chalk.magenta(`[${normalizedPrefix}]`)
     
-    this.logger.raw(`${timestamp}${separatorStr}${prefixStr} `, true)
+    this.logger.raw(`${timestamp}${separatorStr} ${prefixStr} `, true)
   }
 
   flush() {

@@ -34,11 +34,11 @@ export const LOCK_RETRY_DELAY_MS = 100
  */
 
 /**
- * Wait time when rate limit is detected (60 seconds)
+ * Wait time when rate limit is detected (30 seconds)
  * When the CLI output contains rate limit indicators (429, RESOURCE_EXHAUSTED, etc),
  * wait this long before retrying to avoid immediate re-failure
  */
-export const RATE_LIMIT_WAIT_MS = 60000
+export const RATE_LIMIT_WAIT_MS = 30000
 
 /**
  * Progress update interval for CLI execution (2 seconds)

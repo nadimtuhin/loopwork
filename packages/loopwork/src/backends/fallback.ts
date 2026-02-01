@@ -7,7 +7,7 @@
  */
 
 import type { Task, TaskBackend, FindTaskOptions, UpdateResult, PingResult } from './types'
-import type { BackendPlugin } from './plugin'
+import type { BackendPlugin } from '../contracts'
 
 export interface OfflineQueue {
   enqueue(operation: unknown): Promise<void>
@@ -79,6 +79,13 @@ export class FallbackTaskBackend implements TaskBackend {
     )
   }
 
+  async listTasks(options?: FindTaskOptions): Promise<Task[]> {
+    return this.tryWithFallback(
+      (backend) => backend.listTasks(options),
+      'listTasks'
+    )
+  }
+
   async countPending(options?: FindTaskOptions): Promise<number> {
     return this.tryWithFallback(
       (backend) => backend.countPending(options),
@@ -132,7 +139,7 @@ export class FallbackTaskBackend implements TaskBackend {
     return this.tryWithFallback((backend) => backend.ping(), 'ping')
   }
 
-  async getQuotaInfo() {
+  async getQuotaInfo(): Promise<any> {
     if (!this.primaryBackend.getQuotaInfo) {
       return undefined
     }
@@ -199,6 +206,9 @@ export class FallbackTaskBackend implements TaskBackend {
   }
 
   async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    if (!this.primaryBackend.rescheduleCompleted) {
+      return { success: false, error: 'rescheduleCompleted not supported' }
+    }
     return this.primaryBackend.rescheduleCompleted(taskId, scheduledFor)
   }
 }

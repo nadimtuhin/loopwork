@@ -124,20 +124,25 @@ function createMockBackend(tasks: Task[]): TaskBackend & { claimedTasks: string[
     async areDependenciesMet(taskId: string): Promise<boolean> {
       return true
     },
+
+    async listTasks(): Promise<Task[]> {
+      return Array.from(taskMap.values())
+    },
   }
 }
 
 // Mock CLI executor
 function createMockCliExecutor(exitCodes: Map<string, number> = new Map()): ICliExecutor {
   return {
-    async execute(prompt: string, outputFile: string, timeout: number, taskId?: string): Promise<number> {
+    async execute(prompt: string, outputFile: string, timeoutSecs: number, options?: { workerId?: number; permissions?: unknown }): Promise<number> {
+      const taskId = typeof options?.permissions === 'string' ? options.permissions : undefined
       // Write mock output
       fs.mkdirSync(path.dirname(outputFile), { recursive: true })
       fs.writeFileSync(outputFile, `Mock output for ${taskId}`)
       return exitCodes.get(taskId || '') ?? 0
     },
     async executeTask(task: Task, prompt: string, outputFile: string, timeout: number): Promise<number> {
-      return this.execute(prompt, outputFile, timeout, task.id)
+      return this.execute(prompt, outputFile, timeout, { workerId: 0, permissions: task.id })
     },
     killCurrent(): void {},
     resetFallback(): void {},
@@ -156,6 +161,7 @@ const createMockLogger = () => ({
   debug: mock(() => {}),
   raw: mock(() => {}),
   setLogFile: mock(() => {}),
+  update: mock(() => {}),
 })
 
 // Mock plugin registry
@@ -333,6 +339,46 @@ describe('ParallelRunner', () => {
 
       // Use a failing executor with rate limit error
       const failingExecutor: ICliExecutor = {
+        async execute(prompt: string, outputFile: string, timeoutSecs: number, options?: { workerId?: number; permissions?: unknown }): Promise<number> {
+          fs.mkdirSync(path.dirname(outputFile), { recursive: true })
+          const taskId = typeof options?.permissions === 'string' ? options.permissions : undefined
+          fs.writeFileSync(outputFile, 'Error: rate limit 429')
+          return 1
+        },
+        killCurrent(): void {},
+        resetFallback(): void {},
+        async cleanup(): Promise<void> {},
+      }
+
+      const logger = createMockLogger()
+      const runner = new ParallelRunner({
+        config,
+        backend,
+        cliExecutor: createMockCliExecutor(),
+        logger,
+        pluginRegistry: createMockPluginRegistry(),
+        buildPrompt: (task) => `Test prompt for ${task.id}`,
+      })
+
+      // Run to completion (either throws or completes when tasks exhausted)
+      try {
+        await runner.run()
+      } catch (error) {
+        // Expected - circuit breaker may throw
+        expect(String(error)).toMatch(/Circuit breaker/)
+      }
+
+      // Verify that self-healing was attempted (logs show healing activity)
+      const warnCalls = logger.warn.mock.calls
+      const selfHealingLogs = warnCalls.filter((call: string[]) =>
+        call[0] && call[0].includes('Self-Healing')
+      )
+      // Self-healing should have been attempted at least once
+      expect(selfHealingLogs.length).toBeGreaterThan(0)
+    })
+
+      // Use a failing executor with rate limit error
+      const failingExecutor: ICliExecutor = {
         async execute(prompt: string, outputFile: string, timeout: number, taskId?: string): Promise<number> {
           fs.mkdirSync(path.dirname(outputFile), { recursive: true })
           fs.writeFileSync(outputFile, 'Error: rate limit 429')
@@ -348,8 +394,7 @@ describe('ParallelRunner', () => {
         config,
         backend,
         cliExecutor: createMockCliExecutor(),
-        logger: createMockLogger(),
-        pluginRegistry: createMockPluginRegistry(),
+        logger,
         pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })

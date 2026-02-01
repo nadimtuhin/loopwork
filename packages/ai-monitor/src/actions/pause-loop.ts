@@ -8,7 +8,7 @@
 import fs from 'fs'
 import path from 'path'
 import { logger } from '../utils'
-import type { Action } from './index'
+import type { Action } from './types'
 
 // Import LoopworkState from loopwork if available, otherwise use fallback
 let LoopworkState: any

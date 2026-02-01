@@ -1,19 +1,9 @@
-import type { DashboardConfig, DashboardEvent, LoopState } from './types'
+import type { DashboardConfig, DashboardEvent, LoopState, TaskBackend, IDashboardServer } from './types'
 import { DashboardBroadcaster } from './broadcaster'
 import { createRoutes } from './routes'
 import { startFileWatcher, stopFileWatcher } from './file-watcher'
 
-// Minimal TaskBackend interface for dashboard needs
-interface TaskBackend {
-  listPendingTasks(): Promise<any[]>
-  findNextTask(): Promise<any | null>
-  getTask(id: string): Promise<any | null>
-  createTask?(input: any): Promise<any>
-  listCompletedTasks?(): Promise<any[]>
-  listFailedTasks?(): Promise<any[]>
-}
-
-export class DashboardServer {
+export class DashboardServer implements IDashboardServer {
   private config: DashboardConfig
   private broadcaster: DashboardBroadcaster
   private server?: ReturnType<typeof Bun.serve>

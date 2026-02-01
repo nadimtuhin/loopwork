@@ -11,7 +11,7 @@
 import fs from 'fs'
 import path from 'path'
 import { logger } from '../utils'
-import type { Action } from './index'
+import type { Action } from './types'
 
 export interface CreatePRDContext {
   taskId: string

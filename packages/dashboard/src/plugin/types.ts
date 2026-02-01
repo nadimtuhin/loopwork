@@ -99,6 +99,24 @@ export interface TaskStatsResponse {
 
 export type LoopState = 'running' | 'paused' | 'stopped'
 
+export interface TaskBackend {
+  listPendingTasks(): Promise<any[]>
+  findNextTask(): Promise<any | null>
+  getTask(id: string): Promise<any | null>
+  createTask?(input: any): Promise<any>
+  listCompletedTasks?(): Promise<any[]>
+  listFailedTasks?(): Promise<any[]>
+}
+
+export interface IDashboardServer {
+  backend?: TaskBackend
+  currentTaskId?: string
+  startLoop(): void
+  stopLoop(): void
+  pauseLoop(): void
+  getLoopStatus(): any
+}
+
 export interface LoopStatusResponse {
   state: LoopState
   isRunning: boolean

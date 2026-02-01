@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process'
 import { logger } from '@loopwork-ai/loopwork'
-import type { McpScript } from '../index'
+import type { McpScript } from '../types'
 
 export interface LocalScriptRunResult {
   stdout: string
