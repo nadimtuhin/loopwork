@@ -1,9 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import {
-  createTaskRecoveryPlugin,
-  withAutoRecovery,
-  withConservativeRecovery,
-} from '../src/plugins/task-recovery'
+import { withAutoRecovery, withConservativeRecovery,  } from '../src/plugins/task-recovery'
 import type { TaskBackend, Task } from '../src/contracts'
 
 /**

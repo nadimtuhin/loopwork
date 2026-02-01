@@ -1,12 +1,6 @@
 
 import { describe, test, expect } from 'bun:test'
-import {
-  calculateBackoff,
-  isRetryableError,
-  getRetryPolicy,
-  DEFAULT_RETRY_POLICY,
-  type RetryPolicy
-} from '../../src/core/retry'
+import { calculateBackoff, isRetryableError, getRetryPolicy, DEFAULT_RETRY_POLICY, type RetryPolicy } from '../../src/core/retry'
 import type { Task } from '../../src/contracts/task'
 
 describe('Retry Utilities', () => {

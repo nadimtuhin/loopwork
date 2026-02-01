@@ -7,7 +7,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import { ParallelRunner } from '../../src/core/parallel-runner'
-import { JsonTaskAdapter } from '../../src/backends/json'
+// Removed type-only import from '../../src/backends/json'
 import type { ICliExecutor } from '../../src/contracts/executor'
 import type { Config } from '../../src/core/config'
 

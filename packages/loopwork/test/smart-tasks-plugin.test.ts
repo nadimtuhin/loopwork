@@ -1,10 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import {
-  createSmartTasksPlugin,
-  withSmartTasksConservative,
-  withSmartTasksAggressive,
-  withSmartTestTasks,
-} from '../src/plugins/smart-tasks'
+// Removed type-only import from '../src/plugins/smart-tasks'
 import type { TaskBackend, Task } from '../src/contracts'
 
 /**

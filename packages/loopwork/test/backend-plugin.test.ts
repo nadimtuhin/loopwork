@@ -1,12 +1,5 @@
 import { describe, expect, test, spyOn } from 'bun:test'
-import {
-  withJSONBackend,
-  withGitHubBackend,
-  createJSONBackendPlugin,
-  createGitHubBackendPlugin,
-  getBackendPlugin,
-  requireBackend
-} from '../src/backends/plugin'
+import { withJSONBackend, withGitHubBackend, createJSONBackendPlugin, createGitHubBackendPlugin, getBackendPlugin, requireBackend } from '../src/backends/plugin'
 import { defineConfig } from '../src/plugins'
 import { logger } from '../src/core/utils'
 

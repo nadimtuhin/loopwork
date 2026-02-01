@@ -1,18 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import {
-  ModelCapabilityLevel,
-  ExtendedModelCapabilityLevel,
-  ModelRoleType,
-  TaskCategory,
-  ModelCapability,
-  ModelRole,
-  CapabilityModelConfig,
-  CapabilityCriteria,
-  CapabilityMatchResult,
-  DEFAULT_CAPABILITIES,
-  DEFAULT_ROLES,
-  TASK_CATEGORY_CAPABILITY_MAP,
-} from '../../src/contracts/model-capability'
+import { ModelCapabilityLevel, ExtendedModelCapabilityLevel, ModelRoleType, ModelCapability, ModelRole, CapabilityModelConfig, CapabilityCriteria, CapabilityMatchResult, DEFAULT_CAPABILITIES, DEFAULT_ROLES, TASK_CATEGORY_CAPABILITY_MAP,  } from '../../src/contracts/model-capability'
 
 describe('ModelCapabilityContracts', () => {
   describe('Type definitions', () => {

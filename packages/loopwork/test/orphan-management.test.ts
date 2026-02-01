@@ -2,12 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from 'bun:
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import {
-  trackSpawnedPid,
-  untrackPid,
-  getTrackedPids,
-  type OrphanProcess,
-} from '../src/core/orphan-detector'
+import { trackSpawnedPid, untrackPid, getTrackedPids, type OrphanProcess,  } from '../src/core/orphan-detector'
 import { OrphanKiller, type KillOptions } from '../src/core/orphan-killer'
 import { LoopworkMonitor } from '../src/monitor'
 

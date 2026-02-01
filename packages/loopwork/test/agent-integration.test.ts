@@ -13,29 +13,11 @@ import fs from 'fs'
 import os from 'os'
 
 // Import from the main loopwork package to verify re-exports work
-import {
-  // Agents package
-  AgentFactory,
-  AgentRegistry,
-  AgentExecutor,
-  AgentPromptBuilder,
-  createRegistry,
-  createExecutor,
-  // Result parser package
-  StatusParser,
-  ArtifactDetector,
-  TaskSuggestionParser,
-  MetricsExtractor,
-  CompositeResultParser,
-  createResultParser,
-  // Checkpoint package
-  createCheckpointManager,
-  FileCheckpointStorage,
-  NodeFileSystem,
-  // Adapters
-  CliRunnerAdapter,
-  GitRunnerAdapter,
-} from '../src/index'
+import { // Agents package
+  AgentFactory, AgentRegistry, AgentExecutor, AgentPromptBuilder, createRegistry, createExecutor, // Result parser package
+  StatusParser, ArtifactDetector, MetricsExtractor, CompositeResultParser, createResultParser, // Checkpoint package
+  createCheckpointManager, FileCheckpointStorage, NodeFileSystem, // Adapters
+  CliRunnerAdapter, GitRunnerAdapter,  } from '../src/index'
 
 // Import types
 import type {

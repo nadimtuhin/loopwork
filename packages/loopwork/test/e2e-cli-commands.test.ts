@@ -6,14 +6,7 @@ import { start, type StartOptions, type StartDeps } from '../src/commands/start'
 import { kill, type KillOptions } from '../src/commands/kill'
 import { restart, type RestartOptions, type RestartDeps } from '../src/commands/restart'
 import { logs, type LogsOptions } from '../src/commands/logs'
-import {
-  monitorStart,
-  monitorStop,
-  monitorStatus,
-  monitorLogs,
-  type MonitorStartOptions,
-  type MonitorLogsOptions,
-} from '../src/commands/monitor'
+import { monitorStart, monitorStop, monitorStatus, monitorLogs, type MonitorStartOptions, type MonitorLogsOptions,  } from '../src/commands/monitor'
 import { LoopworkMonitor } from '../src/monitor'
 import { saveRestartArgs, loadRestartArgs } from '../src/commands/shared/process-utils'
 

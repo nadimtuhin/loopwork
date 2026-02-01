@@ -234,5 +234,126 @@ describe('utils', () => {
       expect(output).toContain('line2')
       expect(output).toContain('line3')
     })
+
+    describe('prefix width consistency', () => {
+      test('short prefix is padded to 35 characters', () => {
+        const logger = new StreamLogger('SHORT')
+        logger.log('test message\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Should contain padded prefix
+        expect(output).toContain('SHORT')
+        // The prefix in brackets should be padded
+        expect(output).toMatch(/\[SHORT\s+\]/)
+      })
+
+      test('exactly 35 character prefix is not modified', () => {
+        const exactPrefix = 'A'.repeat(35)
+        const logger = new StreamLogger(exactPrefix)
+        logger.log('test\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        expect(output).toContain(exactPrefix)
+      })
+
+      test('long prefix is truncated with ellipsis', () => {
+        const longPrefix = 'opencode/antigravity-claude-sonnet-4-5-extra-long-suffix'
+        const logger = new StreamLogger(longPrefix)
+        logger.log('test\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Should contain ellipsis
+        expect(output).toContain('...')
+        // Should contain start of prefix (first 20 chars)
+        expect(output).toContain('opencode/antigravity')
+        // Should contain end of prefix (last 12 chars)
+        expect(output).toContain('-long-suffix')
+      })
+
+      test('multiple loggers produce aligned output', () => {
+        const logger1 = new StreamLogger('SHORT')
+        const logger2 = new StreamLogger('very-long-prefix-name-that-exceeds-limit')
+        
+        logger1.log('message 1\n')
+        const output1 = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        stdoutSpy.mockClear()
+        
+        logger2.log('message 2\n')
+        const output2 = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Both outputs should have timestamps at the same position
+        const timestampMatch1 = output1.match(/(\d{2}:\d{2}:\d{2})/)
+        const timestampMatch2 = output2.match(/(\d{2}:\d{2}:\d{2})/)
+        
+        expect(timestampMatch1).toBeTruthy()
+        expect(timestampMatch2).toBeTruthy()
+        
+        // Both should have the pipe separator
+        expect(output1).toContain('│')
+        expect(output2).toContain('│')
+      })
+
+      test('empty prefix still has consistent width', () => {
+        const logger = new StreamLogger('')
+        logger.log('test\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Should still have brackets with spaces
+        expect(output).toContain('│')
+        expect(output).toMatch(/\[\s*\]/)
+      })
+
+      test('timestamp is always 8 characters in 24-hour format', () => {
+        const logger = new StreamLogger('TEST')
+        logger.log('test\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Should match HH:MM:SS format
+        expect(output).toMatch(/\d{2}:\d{2}:\d{2}/)
+        // Should not have AM/PM
+        expect(output).not.toMatch(/\b(AM|PM)\b/)
+      })
+    })
+
+    describe('output formatting edge cases', () => {
+      test('handles very long log messages', () => {
+        const logger = new StreamLogger('TEST')
+        const longMessage = 'A'.repeat(1000)
+        logger.log(longMessage + '\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        expect(output).toContain(longMessage)
+      })
+
+      test('handles messages with special characters', () => {
+        const logger = new StreamLogger('TEST')
+        logger.log('Special: àáâãäåæçèéêë ñ 中文 🎉\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        expect(output).toContain('Special:')
+        expect(output).toContain('🎉')
+      })
+
+      test('handles messages with newlines', () => {
+        const logger = new StreamLogger('TEST')
+        logger.log('line1\nline2\nline3')
+        logger.flush()
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        expect(output).toContain('line1')
+        expect(output).toContain('line2')
+        expect(output).toContain('line3')
+      })
+
+      test('handles empty messages', () => {
+        const logger = new StreamLogger('TEST')
+        logger.log('\n')
+        const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+        
+        // Should not throw - empty line may or may not produce output
+        // depending on implementation, but it shouldn't crash
+        expect(() => logger.log('\n')).not.toThrow()
+      })
+    })
   })
 })

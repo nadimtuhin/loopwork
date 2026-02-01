@@ -13,23 +13,9 @@
  */
 
 import { describe, test, expect } from 'bun:test'
-import {
-  withCli,
-  withModels,
-  withRetry,
-  withCliPaths,
-  withSelectionStrategy,
-  createModel,
-  ModelPresets,
-  RetryPresets,
-  defineConfig,
-  compose,
-} from '../src/plugins'
+import { withCli, withModels, withRetry, withCliPaths, withSelectionStrategy, createModel, ModelPresets, RetryPresets, defineConfig, compose,  } from '../src/plugins'
 import type { LoopworkConfig, ModelConfig, RetryConfig } from '../src/contracts'
-import {
-  DEFAULT_RETRY_CONFIG,
-  DEFAULT_CLI_EXECUTOR_CONFIG,
-} from '../src/contracts/cli'
+import { DEFAULT_RETRY_CONFIG, DEFAULT_CLI_EXECUTOR_CONFIG,  } from '../src/contracts/cli'
 
 describe('CLI Configuration Types', () => {
   describe('DEFAULT_RETRY_CONFIG', () => {

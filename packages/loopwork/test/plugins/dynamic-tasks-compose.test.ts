@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect } from 'bun:test'
-import { compose, defineConfig, withDynamicTasks } from '../../src/plugins'
+import { compose, defineConfig } from '../../src/plugins'
 import { PatternAnalyzer } from '../../src/analyzers'
 
 describe('withDynamicTasks compose integration', () => {

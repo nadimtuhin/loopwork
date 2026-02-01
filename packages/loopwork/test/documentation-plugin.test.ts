@@ -2,11 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import {
-  createDocumentationPlugin,
-  withChangelogOnly,
-  withFullDocumentation,
-} from '../src/plugins/documentation'
+import { createDocumentationPlugin, withChangelogOnly, withFullDocumentation,  } from '../src/plugins/documentation'
 
 /**
  * Tests for Documentation Plugin

@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-import { GitHubTaskAdapter } from '../src/backends/github'
+// Removed type-only import from '../src/backends/github'
 import { $ } from 'bun'
 
 // Note: GitHubIssue is internal to the adapter, so we define it here for testing

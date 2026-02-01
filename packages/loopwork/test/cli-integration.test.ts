@@ -3,13 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { LoopworkMonitor } from '../src/monitor'
-import {
-  findLatestSession,
-  getMainLogFile,
-  readLastLines,
-  listSessions,
-  getTaskLogs,
-} from '../src/commands/shared/log-utils'
+import { findLatestSession, getMainLogFile, readLastLines, listSessions,  } from '../src/commands/shared/log-utils'
 
 describe('CLI Integration: logs and kill workflow', () => {
   const createTestRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'loopwork-cli-integration-'))

@@ -9,7 +9,7 @@ import os from 'os'
  */
 
 import { taskNew } from '../../src/commands/task-new'
-import { JsonTaskAdapter } from '../../src/backends/json'
+// Removed type-only import from '../../src/backends/json'
 import { LoopworkError } from '../../src/core/errors'
 
 describe('task-new command', () => {

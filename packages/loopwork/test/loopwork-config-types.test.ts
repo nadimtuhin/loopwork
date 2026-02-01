@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  defineConfig,
-  withJSONBackend,
-  withGitHubBackend,
-  withPlugin,
-  compose,
-  defaults,
-} from '../src/plugins'
+import { defineConfig, withJSONBackend, withGitHubBackend, withPlugin, compose, defaults,  } from '../src/plugins'
 
 describe('loopwork-config-types', () => {
   describe('defineConfig', () => {

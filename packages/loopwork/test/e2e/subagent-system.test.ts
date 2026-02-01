@@ -4,18 +4,7 @@ import { join } from 'path'
 import { mkdtemp, rm } from 'fs/promises'
 
 // Import from loopwork (re-exports)
-import {
-  createRegistry,
-  createExecutor,
-  createResultParser,
-  createCheckpointManager,
-  AgentPromptBuilder,
-  type SubagentDefinition,
-  type ICliRunner,
-  type CliRunOptions,
-  type CliRunResult,
-  type Task,
-} from '../../src/index'
+import { createRegistry, createExecutor, createResultParser, createCheckpointManager, AgentPromptBuilder, type SubagentDefinition, type ICliRunner, type CliRunOptions, type CliRunResult,  } from '../../src/index'
 
 describe('Subagent System E2E', () => {
   let tempDir: string

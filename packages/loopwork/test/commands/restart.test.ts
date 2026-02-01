@@ -1,12 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-import {
-  restart,
-  type RestartDeps,
-  type IMonitor,
-  type ILogger,
-  type IRunningProcess,
-  type ISavedRestartArgs,
-} from '../../src/commands/restart'
+import { restart, type RestartDeps, type IMonitor, type ILogger, type IRunningProcess, type ISavedRestartArgs,  } from '../../src/commands/restart'
 import { LoopworkError } from '../../src/core/errors'
 
 /**

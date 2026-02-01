@@ -3,14 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { createBackend, detectBackend } from '../src/backends/index'
-import {
-  createJSONBackendPlugin,
-  createGitHubBackendPlugin,
-  withJSONBackend,
-  withGitHubBackend,
-  getBackendPlugin,
-  requireBackend
-} from '../src/backends/plugin'
+import { createJSONBackendPlugin, createGitHubBackendPlugin, withJSONBackend, withGitHubBackend, getBackendPlugin, requireBackend } from '../src/backends/plugin'
 import { defineConfig, compose, withPlugin } from '../src/plugins'
 import type { LoopworkPlugin } from '../src/contracts'
 

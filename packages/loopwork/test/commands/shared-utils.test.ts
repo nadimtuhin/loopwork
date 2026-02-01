@@ -7,24 +7,9 @@ import path from 'path'
  * These tests are isolated from any mocks to test the actual implementations.
  */
 
-import {
-  saveRestartArgs,
-  loadRestartArgs,
-  clearRestartArgs,
-  formatUptime,
-  formatDuration,
-  isProcessAlive,
-  parseNamespace,
-  findProjectRoot,
-} from '../../src/commands/shared/process-utils'
+import { saveRestartArgs, loadRestartArgs, clearRestartArgs, formatUptime, formatDuration, isProcessAlive, parseNamespace, findProjectRoot,  } from '../../src/commands/shared/process-utils'
 
-import {
-  findLatestSession,
-  getSessionLogs,
-  getTaskLogs,
-  readLastLines,
-  listSessions,
-} from '../../src/commands/shared/log-utils'
+import { findLatestSession, getSessionLogs, readLastLines, listSessions,  } from '../../src/commands/shared/log-utils'
 
 describe('Process Utils', () => {
   const testDir = path.join('/tmp', 'loopwork-process-utils-test-' + Date.now())

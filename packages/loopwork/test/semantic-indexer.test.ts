@@ -2,14 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import {
-  SemanticCodeIndexer,
-  calculateHash,
-  detectLanguage,
-  chunkCode,
-  type CodeDocument,
-  type IndexStatus,
-} from '../src/core/semantic-indexer'
+import { SemanticCodeIndexer, calculateHash, detectLanguage, chunkCode, type CodeDocument, type IndexStatus,  } from '../src/core/semantic-indexer'
 import { IndexPersistence } from '../src/utils/index-persistence'
 import { LocalVectorStore } from '../src/vector-stores/local-vector-store'
 import type { EmbeddingProvider } from '../src/contracts/embedding'

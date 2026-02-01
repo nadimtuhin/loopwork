@@ -2,14 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import {
-  createBackend,
-  GitHubTaskAdapter,
-  JsonTaskAdapter,
-  type TaskBackend,
-  type Task,
-  type BackendConfig,
-} from '../src/backends'
+import { createBackend, type BackendConfig,  } from '../src/backends'
 import * as utils from '../src/core/utils'
 import { LoopworkError } from '../src/core/errors'
 
