@@ -5,7 +5,7 @@ import chalk from 'chalk'
 import { getConfig, type Config } from '../core/config'
 import { StateManager } from '../core/state'
 import { createBackend, type TaskBackend, type Task } from '../backends'
-import { CliExecutor } from '../core/cli'
+import { CliExecutor } from '@loopwork-ai/executor'
 import { logger, separator, InkBanner, InkCompletionSummary, renderInk } from '../core/utils'
 import { plugins, createAIMonitor } from '../plugins'
 import { createCostTrackingPlugin } from '@loopwork-ai/cost-tracking'
@@ -167,7 +167,7 @@ export interface RunDeps {
   getConfig?: typeof getConfig
   StateManagerClass?: IStateManagerConstructor
   createBackend?: typeof createBackend
-  CliExecutorClass?: new (config: Config) => ICliExecutor
+  CliExecutorClass?: new (config: Config, options: unknown) => ICliExecutor
   logger?: RunLogger
   handleError?: typeof handleError
   process?: NodeJS.Process
@@ -182,7 +182,7 @@ function resolveDeps(deps: RunDeps = {}) {
     getConfig: deps.getConfig ?? getConfig,
     StateManagerClass: deps.StateManagerClass ?? (StateManager as unknown as IStateManagerConstructor),
     createBackend: deps.createBackend ?? createBackend,
-    CliExecutorClass: deps.CliExecutorClass ?? (CliExecutor as unknown as new (config: Config) => ICliExecutor),
+    CliExecutorClass: deps.CliExecutorClass ?? (CliExecutor as unknown as new (config: Config, options: unknown) => ICliExecutor),
     logger: deps.logger ?? logger,
     handleError: deps.handleError ?? handleError,
     process: deps.process ?? process,
@@ -231,7 +231,11 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     dbg.setEnabled(true)
   }
 
-  const cliExecutor = new CliExecutorClass(config, { debugger: dbg })
+  const cliExecutor = new CliExecutorClass(config, { 
+    debugger: dbg,
+    pluginRegistry: activePlugins,
+    logger: activeLogger
+  })
 
   // Register AI Monitor plugin if --with-ai-monitor flag is set
   if (options.withAIMonitor || options['with-ai-monitor']) {
@@ -698,7 +702,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     let exitCode: number
     try {
       activeLogger.startSpinner(`Executing task ${task.id}...`)
-      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600, task.id)
+      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600, { taskId: task.id })
       activeLogger.stopSpinner()
     } catch (error: unknown) {
       if (error instanceof LoopworkError) {
@@ -974,6 +978,7 @@ async function runParallel(
     backend,
     cliExecutor,
     logger: activeLogger,
+    pluginRegistry: activePlugins,
     onTaskStart: async (context) => {
       await activePlugins.runHook('onTaskStart', context)
     },

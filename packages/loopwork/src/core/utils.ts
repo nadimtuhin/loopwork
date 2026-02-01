@@ -14,7 +14,7 @@ export { getTimestamp, calculateChecksum } from '@loopwork-ai/common'
  */
 export class StreamLogger extends CommonStreamLogger {
   constructor(prefix?: string, onEvent?: (event: { type: string; data: unknown }) => void) {
-    super(logger as any, prefix, onEvent)
+    super(logger as unknown as import('@loopwork-ai/contracts').ILogger, prefix, onEvent)
   }
 }
 

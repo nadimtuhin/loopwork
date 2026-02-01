@@ -1,7 +1,6 @@
 import type { CleanupResult } from '../../contracts/process-manager'
 import { ProcessRegistry } from './registry'
 import { logger } from '../utils'
-import { isProcessAlive } from '../../commands/shared/process-utils'
 
 /**
  * ProcessCleaner - Safely terminates orphan processes with graceful shutdown

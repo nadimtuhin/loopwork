@@ -71,7 +71,7 @@ export class CircuitBreaker {
     }
   }
 
-  private recordFailure(name: string, error: unknown): void {
+  private recordFailure(name: string, _error: unknown): void {
     this.consecutiveFailures++
     this.failureCount++
     this.lastFailureTime = Date.now()

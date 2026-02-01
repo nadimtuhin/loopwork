@@ -62,6 +62,7 @@ export default [
       'src/dashboard/**/*.ts',
       'src/dashboard/**/*.tsx',
       'src/monitor/**/*.ts',
+      'src/telemetry/**/*.ts',
     ],
     rules: {
       'no-console': 'off',

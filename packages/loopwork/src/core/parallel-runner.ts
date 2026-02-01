@@ -27,7 +27,7 @@ import { failureState } from './failure-state'
 import { RetryBudget } from './retry-budget'
 import { getRetryPolicy, isRetryableError, calculateBackoff } from './retry'
 import { CheckpointIntegrator } from './checkpoint-integrator'
-import { plugins } from '../plugins'
+import type { IPluginRegistry } from '@loopwork-ai/contracts'
 
 /**
  * Worker colors for console output
@@ -95,9 +95,12 @@ export interface ParallelRunnerOptions {
   backend: TaskBackend
   cliExecutor: ICliExecutor
   logger?: RunLogger
+  pluginRegistry: IPluginRegistry
   onTaskStart?: (context: TaskContext) => Promise<void>
   onTaskComplete?: (context: TaskContext, result: { output: string; duration: number; success: boolean }) => Promise<void>
   onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
+  onTaskRetry?: (context: TaskContext, error: string) => Promise<void>
+  onTaskAbort?: (context: TaskContext) => Promise<void>
   buildPrompt: (task: Task, retryContext?: string) => string
   debugger?: Debugger
   messageBus?: IMessageBus
@@ -118,10 +121,13 @@ export class ParallelRunner {
   private backend: TaskBackend
   private cliExecutor: ICliExecutor
   private logger: RunLogger
+  private pluginRegistry: IPluginRegistry
   private workers: number
   private onTaskStart?: (context: TaskContext) => Promise<void>
   private onTaskComplete?: (context: TaskContext, result: { output: string; duration: number; success: boolean }) => Promise<void>
   private onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
+  private onTaskRetry?: (context: TaskContext, error: string) => Promise<void>
+  private onTaskAbort?: (context: TaskContext) => Promise<void>
   private buildPrompt: (task: Task, retryContext?: string) => string
   private debugger?: Debugger
   private retryBudget: RetryBudget
@@ -147,6 +153,7 @@ export class ParallelRunner {
   private tasksPerWorker: number[] = []
   private retryCount: Map<string, number> = new Map()
   private lastErrors: Map<string, string> = new Map()
+  private activeContexts: Map<string, TaskContext> = new Map()
 
   // Periodic cleanup
   private lastCleanupTime: number = 0
@@ -157,10 +164,13 @@ export class ParallelRunner {
     this.backend = options.backend
     this.cliExecutor = options.cliExecutor
     this.logger = options.logger || defaultLogger
+    this.pluginRegistry = options.pluginRegistry
     this.workers = options.config.parallel || 2
     this.onTaskStart = options.onTaskStart
     this.onTaskComplete = options.onTaskComplete
     this.onTaskFailed = options.onTaskFailed
+    this.onTaskRetry = options.onTaskRetry
+    this.onTaskAbort = options.onTaskAbort
     this.buildPrompt = options.buildPrompt
     this.debugger = options.debugger
     this.circuitBreakerThreshold = options.config.circuitBreakerThreshold ?? 5
@@ -207,7 +217,7 @@ export class ParallelRunner {
     this.logger.info(`Failure mode: ${this.config.parallelFailureMode}`)
 
     // Check for reduced functionality mode
-    if (plugins.isDegradedMode(this.config.flags)) {
+    if (this.pluginRegistry.isDegradedMode(this.config.flags)) {
       this.logger.raw(chalk.yellow('\n' + '═'.repeat(40)))
       this.logger.warn(' ⚡ REDUCED FUNCTIONALITY MODE ENABLED')
       this.logger.raw(chalk.yellow('═'.repeat(40) + '\n'))
@@ -216,7 +226,7 @@ export class ParallelRunner {
         this.logger.warn('   Reason: --flag reducedFunctionality is set')
       }
 
-      const disabledPlugins = plugins.getDisabledPluginsReport()
+      const disabledPlugins = this.pluginRegistry.getDisabledPluginsReport()
       if (disabledPlugins.length > 0) {
         this.logger.warn('   Disabled plugins:')
         for (const { name, reason } of disabledPlugins) {
@@ -224,7 +234,7 @@ export class ParallelRunner {
         }
       }
 
-      const activePluginsReport = plugins.getActivePluginsReport()
+      const activePluginsReport = this.pluginRegistry.getActivePluginsReport()
       if (activePluginsReport.length > 0) {
         this.logger.info('   Active plugins:')
         for (const { name, classification } of activePluginsReport) {
@@ -390,8 +400,8 @@ export class ParallelRunner {
       duration,
       workers: this.workers,
       tasksPerWorker: this.tasksPerWorker,
-      isDegraded: plugins.isDegradedMode(this.config.flags),
-      disabledPlugins: plugins.getDisabledPlugins(),
+      isDegraded: this.pluginRegistry.isDegradedMode(this.config.flags),
+      disabledPlugins: this.pluginRegistry.getDisabledPlugins(),
     }
   }
 
@@ -431,8 +441,13 @@ export class ParallelRunner {
       return { workerId, taskId: null, success: true }
     }
 
+    // Sync persisted failure state to in-memory manager
+    if (task.failureCount) {
+      failureState.setFailureState(task.id, task.failureCount, task.lastError || 'Previously failed')
+    }
+
     this.tasksPerWorker[workerId]++
-    const isDegraded = plugins.isDegradedMode(this.config.flags)
+    const isDegraded = this.pluginRegistry.isDegradedMode(this.config.flags)
     const degradedSuffix = isDegraded ? chalk.yellow(' (Reduced)') : ''
     this.logger.info(`${prefix} Claimed task ${task.id}: ${task.title}${degradedSuffix}`)
 
@@ -473,6 +488,8 @@ export class ParallelRunner {
       lastError: this.lastErrors.get(task.id),
     }
 
+    this.activeContexts.set(task.id, taskContext)
+
     // Notify task start
     if (this.onTaskStart) {
       await this.onTaskStart(taskContext)
@@ -506,8 +523,10 @@ export class ParallelRunner {
         prompt,
         outputFile,
         this.config.timeout || 600,
-        workerId,
-        taskContext.permissions
+        {
+          workerId,
+          permissions: taskContext.permissions
+        }
       )
 
       const duration = (Date.now() - taskStartTime) / 1000
@@ -541,6 +560,7 @@ export class ParallelRunner {
         this.retryCount.delete(task.id)
         failureState.clearFailure(task.id)
         this.lastErrors.delete(task.id)
+        this.activeContexts.delete(task.id)
         this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
 
         // Create checkpoint after task completion if not skipped
@@ -600,6 +620,7 @@ export class ParallelRunner {
           this.tasksFailed++
           this.retryCount.delete(task.id)
           this.lastErrors.delete(task.id)
+          this.activeContexts.delete(task.id)
           this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
 
           // Create checkpoint after task failure if enabled
@@ -644,6 +665,7 @@ export class ParallelRunner {
           this.tasksFailed++
           this.retryCount.delete(task.id)
           this.lastErrors.delete(task.id)
+          this.activeContexts.delete(task.id)
           this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
 
           // Create checkpoint after task failure if enabled
@@ -695,6 +717,7 @@ export class ParallelRunner {
           this.tasksFailed++
           this.retryCount.delete(task.id)
           this.lastErrors.delete(task.id)
+          this.activeContexts.delete(task.id)
           this.interruptedTasks = this.interruptedTasks.filter(id => id !== task!.id)
 
           // Create checkpoint after task failure if enabled
@@ -730,6 +753,10 @@ export class ParallelRunner {
         const errorInfo = `Exit code ${exitCode}${outputContent ? `\n\nOutput excerpt:\n${outputContent}` : ''}`
         this.lastErrors.set(task.id, errorInfo)
 
+        if (this.onTaskRetry) {
+          await this.onTaskRetry(taskContext, errorInfo)
+        }
+
         // Wait for backoff period
         await new Promise(resolve => setTimeout(resolve, backoffDelay))
 
@@ -745,7 +772,7 @@ export class ParallelRunner {
           type: 'ERROR',
           taskId: task.id,
           timestamp: Date.now(),
-          error: error as any
+          error: error as unknown
         })
       }
       // Execution error - reset task to pending
@@ -761,6 +788,18 @@ export class ParallelRunner {
   abort(): void {
     this.isAborted = true
     this.logger.warn('Parallel runner aborted')
+  }
+
+  /**
+   * Notify plugins that active tasks are being aborted
+   */
+  async notifyAbort(): Promise<void> {
+    if (!this.onTaskAbort) return
+
+    const abortPromises = Array.from(this.activeContexts.values()).map(context =>
+      this.onTaskAbort!(context)
+    )
+    await Promise.allSettled(abortPromises)
   }
 
   /**

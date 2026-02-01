@@ -25,7 +25,10 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "eslint": "^9.39.2"
   },
   "keywords": ["loopwork", "ai", "monitoring", "auto-healing", "circuit-breaker"],
   "author": "Loopwork AI",

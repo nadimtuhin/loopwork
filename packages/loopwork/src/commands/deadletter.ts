@@ -1,60 +1,84 @@
-import { getConfig } from '../core/config'
-import { createBackend } from '../backends'
 import { logger, Table } from '../core/utils'
 import { LoopworkError } from '../core/errors'
+import type { Config } from '../core/config'
+import type { TaskBackend } from '../backends'
 
 export interface DeadletterListOptions {
   json?: boolean
 }
 
-export async function list(options: DeadletterListOptions = {}) {
-  const config = await getConfig()
-  const backend = createBackend(config.backend)
+export interface DeadletterDependencies {
+  getConfig(): Promise<Config>
+  createBackend(backendConfig: Config['backend']): TaskBackend
+  logger: {
+    info: (...args: unknown[]) => void
+    success: (...args: unknown[]) => void
+    warn: (...args: unknown[]) => void
+    error: (...args: unknown[]) => void
+    raw: (...args: unknown[]) => void
+  }
+}
+
+const defaultDependencies: DeadletterDependencies = {
+  async getConfig() {
+    const { getConfig } = await import('../core/config')
+    return getConfig()
+  },
+  createBackend(backendConfig) {
+    const { createBackend } = require('../backends')
+    return createBackend(backendConfig)
+  },
+  logger,
+}
+
+export async function list(options: DeadletterListOptions = {}, deps = defaultDependencies) {
+  const config = await deps.getConfig()
+  const backend = deps.createBackend(config.backend)
 
   const tasks = await backend.listTasks({ status: 'quarantined' })
 
   if (options.json) {
-    logger.raw(JSON.stringify(tasks, null, 2))
+    deps.logger.raw(JSON.stringify(tasks, null, 2))
     return
   }
 
   if (tasks.length === 0) {
-    logger.info('No quarantined tasks found.')
+    deps.logger.info('No quarantined tasks found.')
     return
   }
 
-  logger.info(`Dead Letter Queue (${tasks.length} quarantined tasks)\n`)
+  deps.logger.info(`Dead Letter Queue (${tasks.length} quarantined tasks)\n`)
 
   const table = new Table(
-    ['ID', 'Title', 'Feature', 'Priority', 'Reason'],
+    ['ID', 'Title', 'Feature', 'Failures', 'Last Error'],
     [
       { width: 12, align: 'left' },
       { width: 30, align: 'left' },
       { width: 15, align: 'left' },
-      { width: 10, align: 'left' },
+      { width: 10, align: 'center' },
       { width: 40, align: 'left' },
     ]
   )
 
   for (const task of tasks) {
-    const reason = task.events?.find(e => e.type === 'quarantined')?.message || 'Unknown'
+    const error = task.lastError || task.events?.find(e => e.type === 'quarantined')?.message || 'Unknown'
     table.addRow([
       task.id,
       task.title.substring(0, 29),
       task.feature || '-',
-      task.priority,
-      reason.substring(0, 39)
+      (task.failureCount || 0).toString(),
+      error.substring(0, 39)
     ])
   }
 
-  logger.raw(table.render())
-  logger.raw('')
-  logger.info('Use `loopwork deadletter retry <id>` to move a task back to pending queue.')
+  deps.logger.raw(table.render())
+  deps.logger.raw('')
+  deps.logger.info('Use `loopwork deadletter retry <id>` to move a task back to pending queue.')
 }
 
-export async function retry(taskId: string) {
-  const config = await getConfig()
-  const backend = createBackend(config.backend)
+export async function retry(taskId: string, deps = defaultDependencies) {
+  const config = await deps.getConfig()
+  const backend = deps.createBackend(config.backend)
 
   const task = await backend.getTask(taskId)
   if (!task) {
@@ -66,12 +90,12 @@ export async function retry(taskId: string) {
   }
 
   await backend.resetToPending(taskId)
-  logger.success(`Task ${taskId} moved back to pending queue`)
+  deps.logger.success(`Task ${taskId} moved back to pending queue`)
 }
 
-export async function clear(taskId: string) {
-  const config = await getConfig()
-  const backend = createBackend(config.backend)
+export async function clear(taskId: string, deps = defaultDependencies) {
+  const config = await deps.getConfig()
+  const backend = deps.createBackend(config.backend)
 
   const task = await backend.getTask(taskId)
   if (!task) {
@@ -83,7 +107,7 @@ export async function clear(taskId: string) {
   }
 
   await backend.markFailed(taskId, 'Manually cleared from dead letter queue')
-  logger.success(`Task ${taskId} marked as failed and cleared from dead letter queue`)
+  deps.logger.success(`Task ${taskId} marked as failed and cleared from dead letter queue`)
 }
 
 export function createDeadletterCommand() {

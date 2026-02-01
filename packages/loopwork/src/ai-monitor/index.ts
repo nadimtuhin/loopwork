@@ -1,11 +1,10 @@
 import { logger } from '../core/utils'
 import { LogWatcher } from './watcher'
-import { PatternDetector, type ErrorPattern, type PatternMatch } from './patterns'
+import { PatternDetector } from './patterns'
 import { ActionExecutor } from './actions'
 import { CircuitBreaker } from './circuit-breaker'
 import type {
   AIMonitorConfig,
-  MonitorAction,
   PatternMatch as PatternMatchResult,
   CircuitBreakerStats as CircuitBreakerStatsResult,
   MonitorStats,
@@ -189,7 +188,7 @@ export class AIMonitor {
   /**
    * Handle detected pattern
    */
-  private async handlePatternMatch(match: PatternMatchResult, event: any): Promise<void> {
+  private async handlePatternMatch(match: PatternMatchResult, _event: LogEvent): Promise<void> {
     this.stats.actionsExecuted++
 
     try {

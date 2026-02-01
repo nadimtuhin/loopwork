@@ -1,6 +1,5 @@
 import type { OrphanInfo, CleanupResult } from '../../contracts/process-manager'
 import { ProcessRegistry } from './registry'
-import { logger } from '../utils'
 import { isProcessAlive } from '../../commands/shared/process-utils'
 import { LoopworkError } from '../errors'
 

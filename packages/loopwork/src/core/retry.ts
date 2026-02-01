@@ -43,7 +43,7 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 
 export function isRetryableError(error: Error | string, policy: RetryPolicy = DEFAULT_RETRY_POLICY): boolean {
   const errorMsg = typeof error === 'string' ? error : error.message
-  const errorCode = typeof error === 'object' && error !== null && 'code' in error ? (error as any).code : undefined
+  const errorCode = typeof error === 'object' && error !== null && 'code' in error ? (error as { code?: string }).code : undefined
   
   const retryableErrors = policy.retryableErrors || DEFAULT_RETRY_POLICY.retryableErrors || []
   

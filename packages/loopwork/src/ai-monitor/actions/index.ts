@@ -1,10 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 import { logger } from '../../core/utils'
-import type { MonitorAction, Severity } from '../types'
+import type { Severity } from '../types'
 
 export interface ActionExecutorOptions {
-  stateManager?: any
+  stateManager?: unknown
   namespace: string
 }
 
@@ -13,7 +13,7 @@ let activePause: NodeJS.Timeout | null = null
 export async function executeCreatePRD(
   match: RegExpMatchArray,
   taskId: string,
-  options: ActionExecutorOptions
+  _options: ActionExecutorOptions
 ): Promise<void> {
   try {
     const prdPath = path.join(process.cwd(), '.specs', 'tasks', `${taskId}.md`)
@@ -161,8 +161,8 @@ export async function executeNotification(
 
 export async function executeLLMAnalysis(
   error: string,
-  context: string,
-  options: ActionExecutorOptions
+  _context: string,
+  _options: ActionExecutorOptions
 ): Promise<{ cause?: string; severity: Severity; suggestedFix?: string }> {
   try {
     if (error.includes('timeout') || error.includes('ETIMEDOUT')) {
@@ -196,7 +196,7 @@ export async function executeEnhanceTask(
     }
     testScaffolding?: string
   },
-  options: ActionExecutorOptions
+  _options: ActionExecutorOptions
 ): Promise<void> {
   try {
     const prdPath = path.join(process.cwd(), '.specs', 'tasks', `${taskId}.md`)
@@ -214,7 +214,7 @@ export async function executeEnhanceTask(
 
 export async function executeCircuitBreak(
   failureCount: number,
-  options: ActionExecutorOptions
+  _options: ActionExecutorOptions
 ): Promise<void> {
   logger.error(`[AI-MONITOR] Circuit breaker activated after ${failureCount} consecutive failures`)
   logger.error('[AI-MONITOR] Manual intervention required to reset')
@@ -252,7 +252,7 @@ async function updateTaskDescription(
     }
 
     const tasksData = JSON.parse(await readFile(tasksJsonPath, 'utf-8'))
-    const taskEntry = tasksData.tasks?.find((t: any) => t.id === taskId)
+    const taskEntry = tasksData.tasks?.find((t: { id?: string }) => t.id === taskId)
 
     if (taskEntry && !taskEntry.description) {
       taskEntry.description = description
@@ -264,7 +264,7 @@ async function updateTaskDescription(
   }
 }
 
-function applyEnhancements(content: string, enhancement: any): string {
+function applyEnhancements(content: string, enhancement: { prdAdditions?: { context?: string; approachHints?: string[] }; testScaffolding?: string }): string {
   if (!enhancement.prdAdditions) {
     return content
   }

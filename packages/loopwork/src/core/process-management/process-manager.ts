@@ -6,11 +6,11 @@ import type {
   CleanupResult,
   ISpawnOptions
 } from '../../contracts/process-manager'
-import type { ProcessSpawner } from '../../contracts/spawner'
+import type { ISpawner } from '@loopwork-ai/contracts'
 import { ProcessRegistry } from './registry'
 import { OrphanDetector } from './orphan-detector'
 import { ProcessCleaner } from './cleaner'
-import { createSpawner } from '../spawners'
+import { createSpawner } from '@loopwork-ai/executor'
 
 /**
  * ProcessManager - Orchestrates process lifecycle, tracking, and cleanup
@@ -30,7 +30,7 @@ export class ProcessManager implements IProcessManager {
     private registry: ProcessRegistry,
     private detector: OrphanDetector,
     private cleaner: ProcessCleaner,
-    private spawner: ProcessSpawner
+    private spawner: ISpawner
   ) {}
 
   /**
@@ -235,7 +235,7 @@ export class ProcessManager implements IProcessManager {
  */
 export function createProcessManager(options?: {
   storageDir?: string
-  spawner?: ProcessSpawner
+  spawner?: ISpawner
   patterns?: string[]
   staleTimeoutMs?: number
   gracePeriodMs?: number
@@ -244,7 +244,7 @@ export function createProcessManager(options?: {
   const spawner = options?.spawner ?? createSpawner()
   const patterns = options?.patterns ?? ['claude', 'opencode', 'loopwork', 'bun run']
   const staleTimeoutMs = options?.staleTimeoutMs ?? 300000 // 5 minutes
-  const gracePeriodMs = options?.gracePeriodMs ?? 5000 // 5 seconds
+  const _gracePeriodMs = options?.gracePeriodMs ?? 5000 // 5 seconds
 
   // Create dependencies
   const registry = new ProcessRegistry(storageDir)
