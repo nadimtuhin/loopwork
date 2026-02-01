@@ -1,12 +1,11 @@
 import { logger } from '../core/utils'
 import { LogWatcher } from './watcher'
 import { PatternDetector } from './patterns'
-import { ActionExecutor } from './actions'
 import { CircuitBreaker } from './circuit-breaker'
+import { VerificationEngine } from './verification'
 import type {
   AIMonitorConfig,
   PatternMatch as PatternMatchResult,
-  CircuitBreakerStats as CircuitBreakerStatsResult,
   MonitorStats,
   HealingAttempt,
   LogEvent,

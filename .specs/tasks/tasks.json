@@ -752,7 +752,7 @@
     },
     {
       "id": "IMPROVE-004",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Improve CLI error handling and user feedback",
       "description": "Add better error messages and recovery suggestions for common failure scenarios",
@@ -1102,11 +1102,25 @@
             "oldStatus": "pending",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T10:52:02.489Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:35:15.978Z",
-        "updatedAt": "2026-02-01T10:50:58.102Z"
+        "updatedAt": "2026-02-01T10:52:02.489Z",
+        "startedAt": "2026-02-01T10:52:02.489Z"
       }
     },
     {
@@ -1185,7 +1199,7 @@
     },
     {
       "id": "TELE-011",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Teleloop: Voice-to-Task (Audio Notes)",
       "feature": "teleloop",
@@ -1409,12 +1423,40 @@
             "oldStatus": "pending",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TELE-011",
+          "timestamp": "2026-02-01T10:52:02.506Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "TELE-011",
+          "timestamp": "2026-02-01T10:56:30.268Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T10-50-59-99702\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:37:53.332Z",
-        "updatedAt": "2026-02-01T10:50:58.105Z"
-      }
+        "updatedAt": "2026-02-01T10:56:30.268Z",
+        "startedAt": "2026-02-01T10:52:02.506Z",
+        "completedAt": "2026-02-01T10:56:30.268Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "TELE-012",
@@ -1529,11 +1571,36 @@
             "oldStatus": "pending",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T10:52:02.525Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T10:52:04.504Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:37:53.347Z",
-        "updatedAt": "2026-02-01T10:50:58.108Z"
+        "updatedAt": "2026-02-01T10:52:04.504Z"
       }
     },
     {
@@ -1893,7 +1960,7 @@
     },
     {
       "id": "AI-MONITOR-001f",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "AI Monitor: Verification Engine",
       "feature": "ai-monitor",
@@ -1918,8 +1985,26 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001f",
+          "timestamp": "2026-02-01T10:52:02.547Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:52:02.547Z",
+        "updatedAt": "2026-02-01T10:52:02.547Z",
+        "startedAt": "2026-02-01T10:52:02.547Z"
+      }
     },
     {
       "id": "AI-MONITOR-001g",
@@ -13656,7 +13741,7 @@
     },
     {
       "id": "ARCHWAVE-092",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Implement Resilience Strategies",
       "feature": "ARCH-WAVE-7",
@@ -13665,7 +13750,8 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T10:50:58.097Z"
+        "updatedAt": "2026-02-01T10:52:02.388Z",
+        "startedAt": "2026-02-01T10:52:02.388Z"
       },
       "events": [
         {
@@ -14138,6 +14224,19 @@
           "metadata": {
             "oldStatus": "pending",
             "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:52:02.388Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
           }
         }
       ]

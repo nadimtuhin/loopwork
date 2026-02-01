@@ -1,6 +1,7 @@
 import path from 'path';
 import { ScaffoldGenerator } from '../core/scaffold';
 import { logger } from '../core/utils';
+import { LoopworkError } from '../core/errors';
 
 export interface ScaffoldCommandOptions {
   output?: string;
@@ -40,7 +41,15 @@ export async function scaffold(templateName: string, name: string, options: Scaf
     logger.error('Scaffolding encountered errors:');
     result.errors.forEach(e => logger.error(`- ${e.message}`));
     if (result.filesCreated.length === 0) {
-        throw new Error('Scaffolding failed completely');
+        throw new LoopworkError(
+          'ERR_UNKNOWN',
+          'Scaffolding failed completely',
+          [
+            'Check the template syntax and requirements',
+            'Ensure you have write permissions in the output directory',
+            'Try running with --dry-run to see what would happen'
+          ]
+        );
     }
   } else {
     logger.success(`Scaffolding complete in ${result.duration}ms`);

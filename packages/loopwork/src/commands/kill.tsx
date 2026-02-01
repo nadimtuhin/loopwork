@@ -206,6 +206,7 @@ export async function kill(options: KillOptions = {}, deps: KillDeps = {}): Prom
       activeLogger.success(`Stopped namespace '${ns}'`)
     } else {
       throw new ErrorClass(
+        'ERR_PROCESS_KILL',
         result.error || 'Failed to stop',
         [
           `Check if namespace '${ns}' is actually running: loopwork status`,

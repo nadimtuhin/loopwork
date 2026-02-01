@@ -197,7 +197,7 @@ export interface AIMonitorConfig {
   // Verification
   verification: {
     freshnessTTL: number
-    checks: Array<'BUILD' | 'TEST' | 'LINT'>
+    checks: Array<'BUILD' | 'TEST' | 'LINT' | 'FUNCTIONALITY' | 'ARCHITECT' | 'TODO' | 'ERROR_FREE'>
     requireArchitectApproval: boolean
   }
 
@@ -240,4 +240,14 @@ export interface LogEvent {
   message: string
   line: string
   file?: string
+}
+
+/**
+ * Verification evidence
+ */
+export interface VerificationEvidence {
+  check: string
+  timestamp: Date
+  fresh: boolean
+  data?: unknown
 }
