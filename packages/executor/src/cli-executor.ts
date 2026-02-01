@@ -87,11 +87,11 @@ export class CliExecutor {
   private resourceExhaustedPids: Map<number, string> = new Map()
 
   constructor(
-    private config: CliExecutorConfig,
-    private processManager: IProcessManager,
-    private pluginRegistry: IPluginRegistry,
-    private logger: ILogger,
-    private options: CliExecutorOptions = {}
+    protected config: CliExecutorConfig,
+    protected processManager: IProcessManager,
+    protected pluginRegistry: IPluginRegistry,
+    protected logger: ILogger,
+    protected options: CliExecutorOptions = {}
   ) {
     this.retryConfig = {
       rateLimitWaitMs: 60000,
@@ -311,6 +311,13 @@ export class CliExecutor {
         })
 
         const startTime = Date.now()
+        await this.pluginRegistry.runHook('onStep', {
+          stepId: 'cli_spawn_start',
+          description: `Spawning CLI: ${displayName}`,
+          phase: 'start',
+          context: { taskId: options.taskId, model: displayName, attempt: attempt + 1 }
+        })
+
         const result = await this.spawnWithTimeout(
           cliPath,
           args,
@@ -326,6 +333,13 @@ export class CliExecutor {
           effectiveTimeout
         )
         const spawnDuration = Date.now() - startTime
+
+        await this.pluginRegistry.runHook('onStep', {
+          stepId: 'cli_spawn_end',
+          description: `CLI spawn completed: ${displayName}`,
+          phase: 'end',
+          context: { taskId: options.taskId, exitCode: result.exitCode, durationMs: spawnDuration }
+        })
 
         let fullOutput = ''
         try {
@@ -417,10 +431,6 @@ export class CliExecutor {
 
       this.currentProcess = child
 
-      if (child.pid) {
-        this.poolManager.trackProcess(child.pid, options.poolName || 'medium', options.taskId, options.workerId)
-      }
-
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
         streamLogger.log(data)
@@ -457,9 +467,13 @@ export class CliExecutor {
         writeStream.end()
         this.currentProcess = null
 
-        if (child.pid) {
-          this.poolManager.untrackProcess(child.pid)
-        }
+        this.pluginRegistry.runHook('onAgentResponse', {
+          responseText: '',
+          model: options.prefix,
+          taskId: options.taskId,
+          timestamp: Date.now(),
+          isPartial: false,
+        }).catch(() => {})
 
         resolve({
           exitCode: code ?? 1,

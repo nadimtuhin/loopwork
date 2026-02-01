@@ -1,23 +1,19 @@
-import type { Task } from './task'
+import type { ExecutionOptions, ITaskMinimal } from '@loopwork-ai/contracts'
 
 export interface ICliExecutor {
   execute(
     prompt: string,
     outputFile: string,
     timeoutSecs: number,
-    taskId?: string,
-    workerId?: number,
-    permissions?: Record<string, string>,
-    priority?: string
+    options?: ExecutionOptions
   ): Promise<number>
 
   executeTask(
-    task: Task,
+    task: ITaskMinimal,
     prompt: string,
     outputFile: string,
     timeoutSecs: number,
-    workerId?: number,
-    permissions?: Record<string, string>
+    options?: Omit<ExecutionOptions, 'taskId' | 'priority' | 'feature'>
   ): Promise<number>
 
   killCurrent(): void
