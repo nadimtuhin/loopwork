@@ -397,3 +397,19 @@ describe('calculateBackoffDelay', () => {
     expect(delay).toBe(1000)
   })
 })
+
+describe('sleep', () => {
+  test('should delay execution', async () => {
+    const start = Date.now()
+    const { sleep } = await import('../model-selector')
+    await sleep(50)
+    const elapsed = Date.now() - start
+    expect(elapsed).toBeGreaterThanOrEqual(45) // Allow small timing variance
+  })
+
+  test('should resolve after delay', async () => {
+    const { sleep } = await import('../model-selector')
+    const result = await sleep(10)
+    expect(result).toBeUndefined()
+  })
+})

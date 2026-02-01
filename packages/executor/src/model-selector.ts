@@ -12,6 +12,12 @@ export interface ModelSelectorOptions {
   failureThreshold?: number
   resetTimeoutMs?: number
   enableCircuitBreaker?: boolean
+  /**
+   * Delay between model execution attempts in milliseconds.
+   * Useful for rate limiting and avoiding resource contention.
+   * @default 1000 (1 second)
+   */
+  delayBetweenAttemptsMs?: number
 }
 
 /**
@@ -381,4 +387,13 @@ export function calculateBackoffDelay(
 ): number {
   const delay = baseDelayMs * Math.pow(2, attempt)
   return Math.min(delay, maxDelayMs)
+}
+
+/**
+ * Sleep/delay utility for async operations
+ * @param ms - Milliseconds to sleep
+ * @returns Promise that resolves after the delay
+ */
+export function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

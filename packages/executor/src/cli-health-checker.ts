@@ -32,6 +32,12 @@ export interface CliHealthCheckerOptions {
   maxRetries?: number
   autoClearCache?: boolean
   logger?: ILogger
+  /**
+   * Delay between CLI validations in milliseconds.
+   * Useful for rate limiting and avoiding resource contention.
+   * @default 2000 (2 seconds)
+   */
+  delayBetweenValidationsMs?: number
 }
 
 /**
@@ -90,6 +96,7 @@ export class CliHealthChecker {
       maxRetries: options.maxRetries ?? 1,
       autoClearCache: options.autoClearCache ?? true,
       logger: options.logger,
+      delayBetweenValidationsMs: options.delayBetweenValidationsMs ?? 2000,
     }
   }
 
@@ -201,7 +208,17 @@ export class CliHealthChecker {
       batches.push(uniqueModels.slice(i, i + concurrencyLimit))
     }
 
-    for (const batch of batches) {
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      
+      // Add delay between batches (except for the first one)
+      if (batchIndex > 0 && this.options.delayBetweenValidationsMs > 0) {
+        this.options.logger?.debug?.(
+          `[HealthCheck] Waiting ${this.options.delayBetweenValidationsMs}ms before next batch...`
+        )
+        await new Promise(resolve => setTimeout(resolve, this.options.delayBetweenValidationsMs))
+      }
+      
       const batchResults = await Promise.all(
         batch.map(async (model) => {
           const cliPath = cliPaths.get(model.cli)

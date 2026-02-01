@@ -43,6 +43,7 @@ describe('CliHealthChecker', () => {
         maxRetries: 3,
         autoClearCache: true,
         logger: mockLogger,
+        delayBetweenValidationsMs: 5000,
       })
       expect(checker).toBeDefined()
     })
@@ -91,6 +92,31 @@ describe('CliHealthChecker', () => {
       healthChecker.clearCache()
       const results = healthChecker.getResults()
       expect(results.size).toBe(0)
+    })
+  })
+
+  describe('delay between validations', () => {
+    test('should respect custom delay between validation batches', async () => {
+      const checker = new CliHealthChecker({
+        delayBetweenValidationsMs: 100,
+        logger: mockLogger,
+      })
+      
+      const cliPaths = new Map<string, string>()
+      const models: ModelConfig[] = [
+        { name: 'model1', cli: 'claude', model: 'sonnet' },
+        { name: 'model2', cli: 'claude', model: 'opus' },
+        { name: 'model3', cli: 'claude', model: 'haiku' },
+        { name: 'model4', cli: 'claude', model: 'sonnet-4' },
+      ]
+      
+      const start = Date.now()
+      await checker.validateAllModels(cliPaths, models)
+      const elapsed = Date.now() - start
+      
+      // With 4 models and concurrency of 3, there should be 2 batches
+      // Expected delay: ~100ms between batches
+      expect(elapsed).toBeGreaterThanOrEqual(90)
     })
   })
 

@@ -22,12 +22,14 @@ import type {
   RetryConfig,
   CliType,
   ExecutionOptions,
-  ITaskMinimal
+  ITaskMinimal,
+  ICliStrategyRegistry
 } from '@loopwork-ai/contracts'
 import { ModelSelector } from './model-selector'
 import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/worker-pool-manager'
 import { createSpawner } from './spawners'
 import { CliHealthChecker, type HealthCheckResult, type ValidatedModelConfig } from './cli-health-checker'
+import { createDefaultRegistry } from './strategies'
 
 const MIN_FREE_MEMORY_MB = 512
 const DEFAULT_SIGKILL_DELAY_MS = 5000
@@ -143,6 +145,7 @@ export class CliExecutor {
   private resourceExhaustedPids: Map<number, string> = new Map()
   private healthChecker: CliHealthChecker
   private preflightValidated = false
+  private strategyRegistry: ICliStrategyRegistry
 
   constructor(
     protected config: CliExecutorConfig,
@@ -159,6 +162,7 @@ export class CliExecutor {
       backoffMultiplier: 2,
       retrySameModel: true,
       maxRetriesPerModel: 3,
+      delayBetweenModelAttemptsMs: 2000,
       ...config.retry,
     }
 
@@ -199,6 +203,8 @@ export class CliExecutor {
       this.resourceExhaustedPids.set(pid, reason)
       this.processManager.kill(pid, { signal: 'SIGKILL' })
     })
+
+    this.strategyRegistry = createDefaultRegistry(this.logger)
   }
 
   private detectClis(): void {
@@ -453,8 +459,16 @@ export class CliExecutor {
       })
 
       let currentModelName: string | null = null
+      let attemptCount = 0
 
       const retryResult = await runner.execute(async () => {
+        // Add delay between model attempts (except first)
+        if (attemptCount > 0 && this.retryConfig.delayBetweenModelAttemptsMs && this.retryConfig.delayBetweenModelAttemptsMs > 0) {
+          this.logger.debug?.(`[CliExecutor] Waiting ${this.retryConfig.delayBetweenModelAttemptsMs}ms before next model attempt...`)
+          await new Promise(resolve => setTimeout(resolve, this.retryConfig.delayBetweenModelAttemptsMs))
+        }
+        attemptCount++
+        
         const modelConfig = this.modelSelector.getNext()
         if (!modelConfig) {
           throw new Error('No more CLI configurations available')
@@ -479,19 +493,15 @@ export class CliExecutor {
         })
 
         const effectiveTimeout = modelConfig.timeout ?? timeoutSecs
-        const env = { ...process.env, ...modelConfig.env, ...options.permissions }
-        let args: string[] = []
+        const baseEnv = { ...process.env, ...modelConfig.env } as Record<string, string>
 
-        if (modelConfig.cli === 'opencode') {
-          if (!env['OPENCODE_PERMISSION']) {
-            env['OPENCODE_PERMISSION'] = '{"*":"allow"}'
-          }
-          args = ['run', '--model', modelConfig.model, finalPrompt]
-        }
-
-        if (modelConfig.args && modelConfig.args.length > 0) {
-          args.push(...modelConfig.args)
-        }
+        const strategy = this.strategyRegistry.get(modelConfig.cli)
+        const prepared = strategy.prepare({
+          modelConfig,
+          prompt: finalPrompt,
+          env: baseEnv,
+          permissions: options.permissions,
+        })
 
         await this.pluginRegistry.runHook('onToolCall', {
           toolName: modelConfig.cli,
