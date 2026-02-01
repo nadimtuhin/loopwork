@@ -311,7 +311,8 @@ export class CliHealthChecker {
    */
   private buildArgs(modelConfig: ModelConfig, prompt: string): string[] {
     if (modelConfig.cli === 'opencode') {
-      return ['run', '--model', modelConfig.model, prompt]
+      // OpenCode expects input via stdin, not as an argument
+      return ['run', '--model', modelConfig.model]
     }
     if (modelConfig.cli === 'claude') {
       return ['--model', modelConfig.model]
