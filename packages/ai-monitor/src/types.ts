@@ -183,6 +183,19 @@ export interface RecoveryHistoryEntry {
   success: boolean
 }
 
+export interface WisdomPattern {
+  id: string
+  errorSignature: string
+  fixAction: string
+  successCount: number
+  firstSeen: string
+  lastSeen: string
+  context?: {
+    fileTypes?: string[]
+    errorTypes?: string[]
+  }
+}
+
 export interface MonitorState {
   sessionId: string
   startTime: Date

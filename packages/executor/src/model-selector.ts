@@ -40,6 +40,11 @@ export class ModelSelector {
   private retryCount = new Map<string, number>()
   // Track disabled models
   private disabledModels = new Set<string>()
+  // Track pending models (still being validated)
+  private pendingModels = new Set<string>()
+  // Callbacks for when models become available
+  private onModelAvailableCallbacks: ((model: ModelConfig) => void)[] = []
+  private onValidationCompleteCallbacks: (() => void)[] = []
 
   constructor(
     primaryModels: ModelConfig[],

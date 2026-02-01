@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loopwork 🔁 - AI Task Automation Framework</title>
+    <meta name="description" content="Loopwork is an extensible AI-powered task automation framework with pluggable backends and integrations.">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Animated Grid Background -->
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#docs" class="nav-link">Documentation</a></li>
+                <li><a href="#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-pulse"></span>
+                <span class="badge-text">OPEN SOURCE</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="glitch" data-text="AI TASK">AI TASK</span>
+                <br>
+                <span class="glitch neon-cyan" data-text="AUTOMATION">AUTOMATION</span>
+                <br>
+                <span class="hero-subtitle">FRAMEWORK</span>
+            </h1>
+            <p class="hero-description">
+                Orchestrate AI CLI tools against task backlogs with a Next.js-style composable plugin architecture. 
+                <span class="highlight">Real-time execution</span>, <span class="highlight">smart retries</span>, and <span class="highlight">cost awareness</span> built-in.
+            </p>
+            <div class="hero-cta">
+                <a href="#quickstart" class="btn btn-primary">
+                    <span class="btn-text">Get Started</span>
+                    <span class="btn-glow"></span>
+                </a>
+                <a href="https://github.com/nadimtuhin/loopwork" class="btn btn-secondary" target="_blank">
+                    <i class="fab fa-github"></i>
+                    <span>View on GitHub</span>
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-value">50+</span>
+                    <span class="stat-label">Tasks/Run</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">3</span>
+                    <span class="stat-label">AI Backends</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">10+</span>
+                    <span class="stat-label">Plugins</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <span class="terminal-btn red"></span>
+                        <span class="terminal-btn yellow"></span>
+                        <span class="terminal-btn green"></span>
+                    </div>
+                    <span class="terminal-title">loopwork ~ main</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="terminal-line">
+                        <span class="prompt">$</span>
+                        <span class="command">loopwork --run</span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-green">⚡</span> Running Loopwork...
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-cyan">📋 TASK-001:</span> Create Hello World function
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text indent">
+                            <span class="ansi-magenta">⏳</span> Running Claude...
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text indent">
+                            <span class="ansi-gray">></span> Creating file: hello.ts
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text indent">
+                            <span class="ansi-gray">></span> Writing helloWorld function
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-green">✅</span> Completed in 2.3s
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-cyan">📋 TASK-002:</span> Add Sum function
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text indent">
+                            <span class="ansi-magenta">⏳</span> Running Claude...
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-green">✅</span> Completed in 1.8s
+                        </span>
+                    </div>
+                    <div class="terminal-line output">
+                        <span class="output-text">
+                            <span class="ansi-yellow">📊 Summary:</span> 3 completed, 0 failed
+                        </span>
+                    </div>
+                    <div class="terminal-line">
+                        <span class="prompt">$</span>
+                        <span class="cursor">|</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">CAPABILITIES</span>
+                <h2 class="section-title glitch" data-text="FEATURES">FEATURES</h2>
+                <p class="section-description">Powerful automation with cybernetic precision</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="feature-title">Multiple AI Backends</h3>
+                    <p class="feature-desc">Support for Claude, OpenCode, and Gemini with automatic failover between models on failure.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-plug"></i>
+                    </div>
+                    <h3 class="feature-title">Plugin Architecture</h3>
+                    <p class="feature-desc">Next.js-style composable plugins for Telegram, Discord, Asana, Todoist, Everhour, and more.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3 class="feature-title">Real-time Execution</h3>
+                    <p class="feature-desc">Watch AI models work through your task backlog in real-time with streaming output.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Smart Retries</h3>
+                    <p class="feature-desc">Automatic failover between AI models with rate limit handling and timeout management.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3 class="feature-title">Cost Tracking</h3>
+                    <p class="feature-desc">Monitor token usage and enforce daily budgets to keep AI spending under control.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3 class="feature-title">Rich Notifications</h3>
+                    <p class="feature-desc">Get updates via Telegram, Discord, or Slack when tasks complete or fail.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code-branch"></i>
+                    </div>
+                    <h3 class="feature-title">Task Sources</h3>
+                    <p class="feature-desc">Flexible backends - use GitHub Issues, JSON files, or build custom task sources.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <h3 class="feature-title">Sub-tasks & Dependencies</h3>
+                    <p class="feature-desc">Hierarchical task structures with dependency management and automatic ordering.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="architecture">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">SYSTEM DESIGN</span>
+                <h2 class="section-title glitch" data-text="ARCHITECTURE">ARCHITECTURE</h2>
+            </div>
+            <div class="arch-diagram">
+                <div class="arch-layer">
+                    <div class="arch-box config">
+                        <i class="fas fa-cog"></i>
+                        <span>Config (loopwork.config.ts)</span>
+                    </div>
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-layer multi">
+                    <div class="arch-box plugin">
+                        <i class="fas fa-puzzle-piece"></i>
+                        <span>Plugins</span>
+                    </div>
+                    <div class="arch-box backend">
+                        <i class="fas fa-database"></i>
+                        <span>Backends</span>
+                    </div>
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-layer">
+                    <div class="arch-box executor">
+                        <i class="fas fa-microchip"></i>
+                        <span>CLI Executor</span>
+                    </div>
+                </div>
+                <div class="arch-arrow"><i class="fas fa-arrow-down"></i></div>
+                <div class="arch-layer multi">
+                    <div class="arch-box ai">
+                        <i class="fas fa-brain"></i>
+                        <span>Claude</span>
+                    </div>
+                    <div class="arch-box ai">
+                        <i class="fas fa-brain"></i>
+                        <span>OpenCode</span>
+                    </div>
+                    <div class="arch-box ai">
+                        <i class="fas fa-brain"></i>
+                        <span>Gemini</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section id="docs" class="documentation">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">LEARN</span>
+                <h2 class="section-title glitch" data-text="DOCUMENTATION">DOCUMENTATION</h2>
+            </div>
+            <div class="docs-grid">
+                <a href="docs/getting-started.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Getting Started</h3>
+                    <p>Zero to hero in 5 minutes. Installation, setup, and first run.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a href="docs/configuration.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h3>Configuration</h3>
+                    <p>Learn the plugin system and configure Loopwork for your needs.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a href="docs/plugins.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <h3>Plugins</h3>
+                    <p>Built-in plugins for notifications, time tracking, and integrations.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a href="docs/backends.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Task Backends</h3>
+                    <p>JSON files, GitHub Issues, and custom backend development.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a href="docs/api-reference.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>API Reference</h3>
+                    <p>Complete API documentation for core modules and plugins.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a href="docs/troubleshooting.html" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-wrench"></i>
+                    </div>
+                    <h3>Troubleshooting</h3>
+                    <p>Common issues, debug mode, and performance optimization.</p>
+                    <span class="doc-link">Read More <i class="fas fa-arrow-right"></i></span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="quickstart">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">INSTALLATION</span>
+                <h2 class="section-title glitch" data-text="QUICK START">QUICK START</h2>
+            </div>
+            <div class="quickstart-content">
+                <div class="code-window">
+                    <div class="code-header">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="install">Install</button>
+                            <button class="code-tab" data-tab="config">Config</button>
+                            <button class="code-tab" data-tab="run">Run</button>
+                        </div>
+                    </div>
+                    <div class="code-body">
+                        <div class="code-panel active" id="install">
+                            <pre><code><span class="comment"># Clone the repository</span>
+<span class="command">git clone https://github.com/nadimtuhin/loopwork.git</span>
+<span class="command">cd loopwork</span>
+
+<span class="comment"># Install dependencies</span>
+<span class="command">bun install</span>
+
+<span class="comment"># Build Loopwork</span>
+<span class="command">bun run build</span></code></pre>
+                        </div>
+                        <div class="code-panel" id="config">
+                            <pre><code><span class="comment">// loopwork.config.ts</span>
+<span class="keyword">import</span> { compose, defineConfig } <span class="keyword">from</span> <span class="string">'loopwork'</span>
+<span class="keyword">import</span> { withJSONBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+
+<span class="keyword">export default</span> <span class="function">compose</span>(
+  <span class="function">withJSONBackend</span>({
+    tasksFile: <span class="string">'.specs/tasks/tasks.json'</span>
+  }),
+)(<span class="function">defineConfig</span>({
+  cli: <span class="string">'claude'</span>,
+  maxIterations: <span class="number">50</span>
+}))</code></pre>
+                        </div>
+                        <div class="code-panel" id="run">
+                            <pre><code><span class="comment"># Navigate to example</span>
+<span class="command">cd examples/basic-json-backend</span>
+
+<span class="comment"># Run tasks</span>
+<span class="command">./quick-start.sh --run</span>
+
+<span class="comment"># Or use CLI directly</span>
+<span class="command">loopwork</span></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="footer-logo">🔁 LOOPWORK</span>
+                    <p class="footer-tagline">AI-powered task automation framework</p>
+                    <div class="footer-social">
+                        <a href="https://github.com/nadimtuhin/loopwork" target="_blank" class="social-link">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="social-link">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-link">
+                            <i class="fab fa-discord"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Documentation</h4>
+                        <ul>
+                            <li><a href="docs/getting-started.html">Getting Started</a></li>
+                            <li><a href="docs/configuration.html">Configuration</a></li>
+                            <li><a href="docs/plugins.html">Plugins</a></li>
+                            <li><a href="docs/api-reference.html">API Reference</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="https://github.com/nadimtuhin/loopwork" target="_blank">GitHub</a></li>
+                            <li><a href="https://www.npmjs.com/package/@loopwork-ai/loopwork" target="_blank">npm</a></li>
+                            <li><a href="https://github.com/nadimtuhin/loopwork/issues" target="_blank">Issues</a></li>
+                            <li><a href="https://github.com/nadimtuhin/loopwork/blob/main/CHANGELOG.md" target="_blank">Changelog</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+                <p class="made-with">Built with <span class="heart">❤</span> and <span class="coffee">☕</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

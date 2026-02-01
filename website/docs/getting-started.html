@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Loopwork Documentation</title>
+    <meta name="description" content="Get started with Loopwork in 5 minutes. Installation, setup, and first run guide.">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html#docs" class="nav-link">Documentation</a></li>
+                <li><a href="../index.html#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-layout">
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Documentation</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Getting Started</span>
+                    <ul>
+                        <li><a href="getting-started.html" class="active">Installation</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Core Concepts</span>
+                    <ul>
+                        <li><a href="backends.html">Task Backends</a></li>
+                        <li><a href="plugins.html">Plugins</a></li>
+                        <li><a href="cli-execution.html">CLI Execution</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Reference</span>
+                    <ul>
+                        <li><a href="api-reference.html">API Reference</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <div class="content-header">
+                <span class="breadcrumb">Documentation / Getting Started</span>
+                <h1 class="page-title glitch" data-text="GETTING STARTED">GETTING STARTED</h1>
+                <p class="page-description">Zero to hero in 5 minutes with Loopwork</p>
+            </div>
+
+            <article class="content-body">
+                <div class="callout callout-info">
+                    <div class="callout-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="callout-content">
+                        <strong>Prerequisites:</strong> You'll need a JavaScript runtime (Bun or Node.js) and an AI CLI tool (Claude, OpenCode, or Gemini) installed.
+                    </div>
+                </div>
+
+                <h2 id="phase1"><span class="section-number">01</span> Prerequisites Setup</h2>
+                <p>You need exactly two things to get started:</p>
+
+                <h3>Install JavaScript Runtime</h3>
+                <p><strong>Choose ONE option below:</strong></p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" data-clipboard="bun-install"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="bun-install"><span class="comment"># Bun (Recommended - Fastest)</span>
+curl -fsSL https://bun.sh/install | bash
+<span class="comment"># Close and reopen your terminal</span>
+bun --version</code></pre>
+                </div>
+
+                <p>Or if you prefer Node.js:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" data-clipboard="node-install"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="node-install"><span class="comment"># macOS with Homebrew</span>
+brew install node
+
+<span class="comment"># Or download from: https://nodejs.org/ (LTS version)</span>
+node --version</code></pre>
+                </div>
+
+                <div class="callout callout-success">
+                    <div class="callout-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="callout-content">
+                        <strong>Must See:</strong> A version number like <code>1.0.0</code>. If you see "command not found", restart your terminal and try again.
+                    </div>
+                </div>
+
+                <h3>Install AI CLI Tool</h3>
+                <p><strong>Claude Code (Recommended):</strong></p>
+                <ul>
+                    <li>Go to <a href="https://claude.ai/code" target="_blank">claude.ai/code</a> and click "Install"</li>
+                    <li>Follow the on-screen setup steps (installs automatically)</li>
+                    <li>In a new terminal window, verify: <code>claude --version</code></li>
+                </ul>
+
+                <p><strong>Or OpenCode (Alternative):</strong></p>
+                <ul>
+                    <li>Visit <a href="https://opencode.sh/" target="_blank">opencode.sh</a> for installation instructions</li>
+                    <li>Download and install the appropriate binary for your OS</li>
+                    <li>Verify: <code>opencode --version</code></li>
+                </ul>
+
+                <h2 id="phase2"><span class="section-number">02</span> Clone & Build Loopwork</h2>
+                <p>Copy and paste these commands exactly as shown:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" data-clipboard="clone-build"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="clone-build"><span class="comment"># Clone the repository</span>
+git clone https://github.com/nadimtuhin/loopwork.git
+cd loopwork
+
+<span class="comment"># Install dependencies (this takes 30-60 seconds)</span>
+bun install
+<span class="comment"># OR if using Node.js: npm install</span>
+
+<span class="comment"># Build Loopwork (REQUIRED - don't skip this step!)</span>
+bun run build
+<span class="comment"># OR if using Node.js: npm run build</span></code></pre>
+                </div>
+
+                <div class="callout callout-success">
+                    <div class="callout-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="callout-content">
+                        <strong>Verify it worked:</strong> Run <code>ls -lh packages/loopwork/bin/loopwork</code> - you should see the loopwork binary (about 50MB).
+                    </div>
+                </div>
+
+                <h2 id="phase3"><span class="section-number">03</span> Run Your First AI Task</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" data-clipboard="run-first"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="run-first"><span class="comment"># Navigate to the example</span>
+cd examples/basic-json-backend
+
+<span class="comment"># Verify everything is ready</span>
+./verify-setup.sh</code></pre>
+                </div>
+
+                <p>If all checks pass (you'll see green ✅ marks), continue:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">bash</span>
+                        <button class="copy-btn" data-clipboard="run-tasks"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="run-tasks"><span class="comment"># Option A: Interactive menu (recommended for first time)</span>
+./quick-start.sh
+<span class="comment"># Then select: 4) Reset and Run (fresh start)</span>
+
+<span class="comment"># Option B: Direct commands (if you prefer)</span>
+./quick-start.sh --reset
+./quick-start.sh --run</code></pre>
+                </div>
+
+                <h3 id="what-youll-see">What You'll See</h3>
+                <p>When you run <code>./quick-start.sh --run</code>, the terminal will display real-time output:</p>
+
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-buttons">
+                            <span class="terminal-btn red"></span>
+                            <span class="terminal-btn yellow"></span>
+                            <span class="terminal-btn green"></span>
+                        </div>
+                        <span class="terminal-title">loopwork ~ output</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-line output">
+                            <span class="ansi-green">⚡</span> Running Loopwork...
+                        </div>
+                        <div class="terminal-line output">
+                            <span class="ansi-cyan">📋 TASK-001:</span> Create Hello World function
+                        </div>
+                        <div class="terminal-line output indent">
+                            <span class="ansi-magenta">⏳</span> Running Claude...
+                        </div>
+                        <div class="terminal-line output indent">
+                            <span class="ansi-gray">></span> Creating file: hello.ts
+                        </div>
+                        <div class="terminal-line output indent">
+                            <span class="ansi-gray">></span> Writing helloWorld function
+                        </div>
+                        <div class="terminal-line output">
+                            <span class="ansi-green">✅</span> Completed in 2.3s
+                        </div>
+                        <div class="terminal-line output">
+                            <span class="ansi-cyan">📋 TASK-002:</span> Add Sum function
+                        </div>
+                        <div class="terminal-line output indent">
+                            <span class="ansi-magenta">⏳</span> Running Claude...
+                        </div>
+                        <div class="terminal-line output">
+                            <span class="ansi-green">✅</span> Completed in 1.8s
+                        </div>
+                        <div class="terminal-line output">
+                            <span class="ansi-yellow">📊 Summary:</span> 3 completed, 0 failed
+                        </div>
+                    </div>
+                </div>
+
+                <h2 id="what-happened">What Just Happened</h2>
+                <p><strong>You didn't write any code.</strong> You didn't copy-paste into ChatGPT. You just ran Loopwork, and it acted as a <strong>Project Manager</strong>:</p>
+
+                <ol class="steps">
+                    <li><span class="step-check">✓</span> <strong>Loaded</strong> 3 task descriptions from <code>.specs/tasks/</code></li>
+                    <li><span class="step-check">✓</span> <strong>Assigned</strong> each task to Claude AI</li>
+                    <li><span class="step-check">✓</span> <strong>Monitored</strong> execution in real-time</li>
+                    <li><span class="step-check">✓</span> <strong>Verified</strong> results and marked tasks complete</li>
+                    <li><span class="step-check">✓</span> <strong>Showed you a summary</strong></li>
+                </ol>
+
+                <div class="callout callout-tip">
+                    <div class="callout-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="callout-content">
+                        Imagine scaling this to <strong>50 refactoring tasks</strong>, <strong>100 documentation updates</strong>, or <strong>1000 code fixes</strong>. Running automatically. While you sleep. That is the power of Loopwork.
+                    </div>
+                </div>
+
+                <h2 id="next-steps">Next Steps</h2>
+                <div class="next-steps-grid">
+                    <a href="configuration.html" class="next-step-card">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Configuration Guide</span>
+                        <small>Learn the plugin system</small>
+                    </a>
+                    <a href="plugins.html" class="next-step-card">
+                        <i class="fas fa-puzzle-piece"></i>
+                        <span>Explore Plugins</span>
+                        <small>Telegram, Discord, and more</small>
+                    </a>
+                    <a href="backends.html" class="next-step-card">
+                        <i class="fas fa-server"></i>
+                        <span>Task Backends</span>
+                        <small>GitHub Issues integration</small>
+                    </a>
+                </div>
+            </article>
+
+            <!-- Page Navigation -->
+            <nav class="page-nav">
+                <a href="../index.html" class="page-nav-prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Home</span>
+                </a>
+                <a href="configuration.html" class="page-nav-next">
+                    <span>Configuration</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>
