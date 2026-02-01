@@ -229,3 +229,32 @@ export interface TaskResult {
   duration: number
   error?: string
 }
+
+export interface TaskBackend {
+  readonly name: string
+  findNextTask(options?: FindTaskOptions): Promise<Task | null>
+  claimTask?(options?: FindTaskOptions): Promise<Task | null>
+  getTask(taskId: string): Promise<Task | null>
+  listPendingTasks(options?: FindTaskOptions): Promise<Task[]>
+  listTasks(options?: FindTaskOptions): Promise<Task[]>
+  countPending(options?: FindTaskOptions): Promise<number>
+  markInProgress(taskId: string): Promise<UpdateResult>
+  markCompleted(taskId: string, comment?: string): Promise<UpdateResult>
+  markFailed(taskId: string, error: string): Promise<UpdateResult>
+  markQuarantined(taskId: string, reason: string): Promise<UpdateResult>
+  resetToPending(taskId: string): Promise<UpdateResult>
+  updateTask?(taskId: string, updates: Partial<Task>): Promise<UpdateResult>
+  resetAllInProgress?(): Promise<UpdateResult>
+  addComment?(taskId: string, comment: string): Promise<UpdateResult>
+  ping(): Promise<PingResult>
+  getQuotaInfo?(): Promise<ApiQuotaInfo>
+  getSubTasks(taskId: string): Promise<Task[]>
+  getDependencies(taskId: string): Promise<Task[]>
+  getDependents(taskId: string): Promise<Task[]>
+  areDependenciesMet(taskId: string): Promise<boolean>
+  createTask?(task: Omit<Task, 'id' | 'status'>): Promise<Task>
+  createSubTask?(parentId: string, task: Omit<Task, 'id' | 'parentId' | 'status'>): Promise<Task>
+  addDependency?(taskId: string, dependsOnId: string): Promise<UpdateResult>
+  removeDependency?(taskId: string, dependsOnId: string): Promise<UpdateResult>
+  rescheduleCompleted?(taskId: string, scheduledFor?: string): Promise<UpdateResult>
+}

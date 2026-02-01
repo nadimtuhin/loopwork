@@ -4,8 +4,44 @@
  * Pure types and interfaces - no implementations
  */
 
+// Base types (no dependencies)
+export type {
+  TaskStatus,
+  Priority,
+  TaskEventType,
+  TaskEvent,
+  EventLog,
+  TaskTimestamps,
+  Task,
+  TaskResult,
+  FindTaskOptions,
+  UpdateResult,
+  PingResult,
+  ApiQuotaInfo,
+  SchedulingMetadata,
+  TaskMetadata,
+  PluginTask,
+  PluginTaskResult,
+  LoopStats,
+  StepEvent,
+  ToolCallEvent,
+  AgentResponseEvent,
+  CliResultEvent,
+  LogLevel,
+  OutputMode,
+  ParallelFailureMode,
+  OrphanWatchConfig,
+  FeatureFlags,
+  DynamicTasksConfig,
+  BackendConfig,
+  JsonBackendConfig,
+  GithubBackendConfig,
+  FallbackBackendConfig,
+  LooseBackendConfig,
+} from './types'
+
 // Task types
-export type { Task, TaskStatus, Priority, TaskResult, GitHubLabel, GitHubIssue, TaskTimestamps, TaskEvent, TaskEventType, EventLog } from './task'
+export type { GitHubLabel, GitHubIssue } from './task'
 export { LABELS, STATUS_LABELS, PRIORITY_LABELS } from './task'
 
 // Checkpoint types
@@ -17,19 +53,10 @@ export type { TaskAnalysisResult, SuggestedTask, TaskAnalyzer } from './analysis
 // Plugin types
 export type {
   LoopworkPlugin,
-  PluginTask,
-  TaskMetadata,
-  SchedulingMetadata,
   PluginContext,
   TaskContext,
-  PluginTaskResult,
-  LoopStats,
   ConfigWrapper,
   LoopworkContext,
-  StepEvent,
-  ToolCallEvent,
-  AgentResponseEvent,
-  CliResultEvent,
 } from './plugin'
 
 // Capability types
@@ -44,22 +71,12 @@ export type {
 export type {
   TaskBackend,
   BackendPlugin,
-  BackendConfig,
   BackendFactory,
-  FindTaskOptions,
-  UpdateResult,
-  PingResult,
 } from './backend'
 
 // Config types
 export type {
   LoopworkConfig,
-  LogLevel,
-  OutputMode,
-  ParallelFailureMode,
-  OrphanWatchConfig,
-  FeatureFlags,
-  DynamicTasksConfig,
 } from './config'
 export { DEFAULT_CONFIG } from './config'
 

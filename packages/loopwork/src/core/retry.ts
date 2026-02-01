@@ -3,8 +3,7 @@
  * Defines retry strategies for task execution
  */
 
-import type { Task } from '../contracts/task'
-import type { LoopworkConfig } from '../contracts/config'
+import type { Task } from '../contracts/types'
 
 export interface RetryPolicy {
   maxRetries: number
@@ -58,7 +57,7 @@ export function isRetryableError(error: Error | string, policy: RetryPolicy = DE
   return false
 }
 
-export function getRetryPolicy(task?: Task | null, config?: Partial<LoopworkConfig>): RetryPolicy {
+export function getRetryPolicy(task?: Task | null, config?: Partial<Record<string, unknown>>): RetryPolicy {
   const maxRetries = (task?.metadata?.maxRetries as number) ?? config?.maxRetries ?? DEFAULT_RETRY_POLICY.maxRetries
   const initialDelay = (task?.metadata?.retryDelay as number) ?? config?.retryDelay ?? config?.taskDelay ?? DEFAULT_RETRY_POLICY.initialDelay
   const maxDelay = (task?.metadata?.maxRetryDelay as number) ?? config?.maxRetryDelay ?? DEFAULT_RETRY_POLICY.maxDelay

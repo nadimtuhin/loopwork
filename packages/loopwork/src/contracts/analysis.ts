@@ -4,8 +4,7 @@
  * Interfaces for analyzing task execution results and determining if new tasks are needed
  */
 
-import type { Task, Priority } from './task'
-import type { PluginTaskResult } from './plugin'
+import type { Task, Priority, PluginTaskResult } from './types'
 
 /**
  * Suggested task to be created based on task analysis
