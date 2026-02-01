@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-02-01 - DYNAMICT-003
+- DYNAMICT-003: Create withDynamicTasks plugin for automatic task creation
+
+### 2026-02-01 - RETRY-002
+- RETRY-002: Implement Retry Budget System
+
 ### 2026-02-01 - DYNAMICT-002
 - DYNAMICT-002: Implement output pattern analyzer for detecting follow-up work
 

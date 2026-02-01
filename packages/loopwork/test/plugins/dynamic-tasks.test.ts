@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
-// Removed type-only import from '../../src/plugins/dynamic-tasks'
+import { createDynamicTasksPlugin, withDynamicTasks } from '../../src/plugins/dynamic-tasks'
 import { PatternAnalyzer } from '../../src/analyzers/pattern-analyzer'
 import type { TaskBackend } from '../../src/contracts/backend'
 import type { Task } from '../../src/contracts/task'

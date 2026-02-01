@@ -244,12 +244,12 @@ export function createProcessManager(options?: {
   const spawner = options?.spawner ?? createSpawner()
   const patterns = options?.patterns ?? ['claude', 'opencode', 'loopwork', 'bun run']
   const staleTimeoutMs = options?.staleTimeoutMs ?? 300000 // 5 minutes
-  const _gracePeriodMs = options?.gracePeriodMs ?? 5000 // 5 seconds
+  const gracePeriodMs = options?.gracePeriodMs ?? 5000 // 5 seconds
 
   // Create dependencies
   const registry = new ProcessRegistry(storageDir)
   const detector = new OrphanDetector(registry, patterns, staleTimeoutMs)
-  const cleaner = new ProcessCleaner(registry)
+  const cleaner = new ProcessCleaner(registry, gracePeriodMs)
 
   // Compose into ProcessManager
   return new ProcessManager(registry, detector, cleaner, spawner)

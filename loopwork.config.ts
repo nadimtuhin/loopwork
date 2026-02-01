@@ -89,6 +89,7 @@ export default compose(
       // === PAID MODELS (costWeight: 10-30) - Used After Free ===
       // Fast & cheap
       ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
+
       createModel({
         name: "glm-4.7-free",
         cli: "opencode",
@@ -96,6 +97,7 @@ export default compose(
         timeout: 600,
         costWeight: 5,
       }),
+
       createModel({
         name: "kimi-k2.5-free",
         cli: "opencode",
@@ -103,7 +105,7 @@ export default compose(
         timeout: 600,
         costWeight: 5,
       }),
-      /*
+
       // Cerebras Models - Fast and cheap (limited tokens)
       createModel({
         name: "cerebras-qwen-3",
@@ -119,7 +121,6 @@ export default compose(
         timeout: 120,
         costWeight: 12,
       }),
-      */
 
       // Balanced
       ModelPresets.opencodeGeminiProLow({ timeout: 600, costWeight: 25 }),
@@ -175,7 +176,7 @@ export default compose(
   // Track costs
   withCostTracking({
     enabled: true,
-    defaultModel: "claude-4.5-sonnet",
+    // defaultModel: "claude-4.5-sonnet",
   }),
 
   // Auto-commit after each task

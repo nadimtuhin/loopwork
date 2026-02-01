@@ -580,7 +580,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
 
       // Verify registry is clean
       expect(registry.list().length).toBe(0)
-    })
+    }, TEST_TIMEOUT)
   })
 
   describe('Full Loop Integration Tests', () => {
@@ -626,10 +626,15 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(children.length).toBe(2)
 
       // Stage 2: Mark as orphans (simulate crash)
-      const tracked = manager.listChildren()
-      tracked.forEach(p => {
-        // Can't modify parentPid through manager, so simulate via registry
+      // We need to manually modify the registry to simulate a dead parent
+      const registryPath = path.join(loopworkDir, 'processes.json')
+      const registryContent = JSON.parse(await fs.readFile(registryPath, 'utf-8'))
+      const registryData = registryContent.processes
+      registryData.forEach((p: any) => {
+        p.parentPid = 99999 // Non-existent parent
       })
+      registryContent.processes = registryData
+      await fs.writeFile(registryPath, JSON.stringify(registryContent))
 
       // Simulate by creating new manager and loading state
       const manager2 = createProcessManager({
@@ -641,12 +646,13 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       await manager2.load()
       children = manager2.listChildren()
       expect(children.length).toBe(2)
+      expect(children.every(c => c.parentPid === 99999)).toBe(true)
 
       // Stage 3: Cleanup orphans
       const result = await manager2.cleanup()
 
       expect(result).toBeDefined()
-      expect(result.cleaned.length).toBeGreaterThanOrEqual(0)
+      expect(result.cleaned.length).toBe(2)
 
       // Wait for processes to terminate
       await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
@@ -695,6 +701,16 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       await manager1.persist()
 
       // Stage 2: Simulate crash by loading new instance
+      // We need to manually modify the registry to simulate a dead parent
+      const registryPath = path.join(loopworkDir, 'processes.json')
+      const registryContent = JSON.parse(await fs.readFile(registryPath, 'utf-8'))
+      const registryData = registryContent.processes
+      registryData.forEach((p: any) => {
+        p.parentPid = 99999
+      })
+      registryContent.processes = registryData
+      await fs.writeFile(registryPath, JSON.stringify(registryContent))
+
       // In real scenario, old manager dies, new instance loads state
       const manager2 = createProcessManager({
         storageDir: loopworkDir,

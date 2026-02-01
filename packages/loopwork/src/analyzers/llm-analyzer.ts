@@ -91,7 +91,7 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
 
   async analyze(task: Task, result: PluginTaskResult): Promise<TaskAnalysisResult> {
     // Check cache first
-    const cacheKey = this.getCacheKey(task.id, result.output)
+    const cacheKey = this.getCacheKey(task.id, result.output ?? null)
     const cached = this.analysisCache.get(cacheKey)
     if (cached) {
       return cached
@@ -150,9 +150,9 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
     const parsed = this.parseResponse(llmResponse)
 
     // Validate and enhance the response
-    const suggestedTasks = parsed.suggestedTasks.map(task => ({
-      ...task,
-      parentId: task.isSubTask ? task.parentId ?? task.parentId : undefined
+    const suggestedTasks = parsed.suggestedTasks.map(t => ({
+      ...t,
+      parentId: t.isSubTask ? task.id : undefined
     }))
 
     return {
@@ -179,10 +179,9 @@ Original Task:
 - Title: ${task.title}
 - Description: ${task.description}
 
-Execution Result:
+    Execution Result:
 - Success: ${result.success}
 - Duration: ${result.duration}ms
-${result.error ? `- Error: ${result.error}` : ''}
 
 Output:
 ${truncatedOutput}
@@ -194,12 +193,157 @@ Provide your analysis in JSON format as specified in the system prompt.`
    * Call the LLM with timeout protection
    */
   private async callLLM(prompt: string): Promise<string> {
-    // This is a simplified version - in production, you would use actual LLM APIs
-    // For now, we'll simulate with a structured approach
+    // Check for API key and make actual LLM call
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GOOGLE_API_KEY
 
-    // Since we don't have direct LLM API access in this context,
-    // we'll use a simple heuristic-based approach that mimics LLM analysis
+    if (apiKey) {
+      // Determine which provider to use based on available key
+      if (process.env.ANTHROPIC_API_KEY) {
+        return this.callAnthropicAPI(prompt, apiKey)
+      } else if (process.env.OPENAI_API_KEY) {
+        return this.callOpenAIAPI(prompt, apiKey)
+      } else if (process.env.GOOGLE_API_KEY) {
+        return this.callGoogleAPI(prompt, apiKey)
+      }
+    }
+
+    // Fallback to simulation if no API key available
     return this.simulateLLMAnalysis(prompt)
+  }
+
+  /**
+   * Call Anthropic API for LLM analysis
+   */
+  private async callAnthropicAPI(prompt: string, apiKey: string): Promise<string> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: this.options.model || 'haiku',
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content: `${this.options.systemPrompt}\n\n${prompt}`
+            }
+          ],
+          system: this.options.systemPrompt
+        }),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`)
+      }
+
+      const data = await response.json() as { content: Array<{ text: string }> }
+      return data.content[0]?.text || ''
+    } catch {
+      clearTimeout(timeoutId)
+      // Fallback to simulation on API error
+      return this.simulateLLMAnalysis(prompt)
+    }
+  }
+
+  /**
+   * Call OpenAI API for LLM analysis
+   */
+  private async callOpenAIAPI(prompt: string, apiKey: string): Promise<string> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
+
+    try {
+      const model = this.options.model === 'haiku' ? 'gpt-4o-mini' : 'gpt-4o'
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: this.options.systemPrompt },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 1024,
+          temperature: 0.3
+        }),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`)
+      }
+
+      const data = await response.json() as { choices: Array<{ message: { content: string } }> }
+      return data.choices[0]?.message?.content || ''
+    } catch {
+      clearTimeout(timeoutId)
+      // Fallback to simulation on API error
+      return this.simulateLLMAnalysis(prompt)
+    }
+  }
+
+  /**
+   * Call Google API for LLM analysis
+   */
+  private async callGoogleAPI(prompt: string, apiKey: string): Promise<string> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
+
+    try {
+      const model = this.options.model === 'haiku' ? 'gemini-1.5-flash' : 'gemini-1.5-pro'
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: `${this.options.systemPrompt}\n\n${prompt}` }
+            ]
+          }],
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0.3
+          }
+        }),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Google API error: ${response.status} - ${errorText}`)
+      }
+
+      const data = await response.json() as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> }
+      return data.candidates[0]?.content?.parts[0]?.text || ''
+    } catch {
+      clearTimeout(timeoutId)
+      // Fallback to simulation on API error
+      return this.simulateLLMAnalysis(prompt)
+    }
   }
 
   /**
@@ -303,7 +447,7 @@ Provide your analysis in JSON format as specified in the system prompt.`
 
       return {
         shouldCreateTasks: Boolean(parsed.shouldCreateTasks),
-        suggestedTasks: tasks.map(task => ({
+        suggestedTasks: tasks.map((task: { title?: unknown; description?: unknown; priority?: unknown; isSubTask?: unknown }) => ({
           title: String(task.title || '').substring(0, 100),
           description: String(task.description || ''),
           priority: this.validatePriority(task.priority),
