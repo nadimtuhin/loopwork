@@ -6,6 +6,13 @@
  */
 
 import type { ModelConfig, ModelSelectionStrategy } from '@loopwork-ai/contracts/executor'
+import { CircuitBreakerRegistry, CircuitBreaker } from './circuit-breaker.js'
+
+export interface ModelSelectorOptions {
+  failureThreshold?: number
+  resetTimeoutMs?: number
+  enableCircuitBreaker?: boolean
+}
 
 /**
  * ModelSelector manages the selection of models from primary and fallback pools
@@ -16,6 +23,8 @@ export class ModelSelector {
   private fallbackModels: ModelConfig[]
   private strategy: ModelSelectionStrategy
   private useFallback = false
+  private circuitBreakers: CircuitBreakerRegistry
+  private enableCircuitBreaker: boolean
 
   // Indices for round-robin strategy
   private primaryIndex = 0
@@ -23,37 +32,82 @@ export class ModelSelector {
 
   // Retry tracking per model
   private retryCount = new Map<string, number>()
+  // Track disabled models
+  private disabledModels = new Set<string>()
 
   constructor(
     primaryModels: ModelConfig[],
     fallbackModels: ModelConfig[] = [],
-    strategy: ModelSelectionStrategy = 'round-robin'
+    strategy: ModelSelectionStrategy = 'round-robin',
+    options: ModelSelectorOptions = {}
   ) {
     this.primaryModels = primaryModels.filter(m => m.enabled !== false)
     this.fallbackModels = fallbackModels.filter(m => m.enabled !== false)
     this.strategy = strategy
+    this.enableCircuitBreaker = options.enableCircuitBreaker ?? true
+    
+    this.circuitBreakers = new CircuitBreakerRegistry({
+      failureThreshold: options.failureThreshold ?? 3,
+      resetTimeoutMs: options.resetTimeoutMs ?? 300000, // 5 minutes
+    })
   }
 
   /**
    * Get the next model to try based on the selection strategy
+   * Returns null if no healthy models are available
    */
   getNext(): ModelConfig | null {
+    const maxAttempts = this.getTotalModelCount()
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      const model = this.selectNextInternal()
+      if (!model) {
+        return null
+      }
+
+      // Check if model is disabled by circuit breaker
+      if (this.enableCircuitBreaker && !this.circuitBreakers.canExecute(model.name)) {
+        attempts++
+        continue
+      }
+
+      return model
+    }
+
+    // All models exhausted
+    return null
+  }
+
+  /**
+   * Internal selection without circuit breaker check
+   */
+  private selectNextInternal(): ModelConfig | null {
     const pool = this.useFallback ? this.fallbackModels : this.primaryModels
-    if (pool.length === 0) {
+    
+    // Filter out disabled models
+    const availablePool = pool.filter(m => !this.disabledModels.has(m.name))
+    
+    if (availablePool.length === 0) {
+      // Try fallback if not already using it
+      if (!this.useFallback && this.fallbackModels.length > 0) {
+        this.switchToFallback()
+        return this.selectNextInternal()
+      }
       return null
     }
 
     switch (this.strategy) {
       case 'round-robin':
-        return this.selectRoundRobin(pool)
+        return this.selectRoundRobin(availablePool)
       case 'priority':
-        return this.selectPriority(pool)
+        return this.selectPriority(availablePool)
       case 'cost-aware':
-        return this.selectCostAware(pool)
+        return this.selectCostAware(availablePool)
       case 'random':
-        return this.selectRandom(pool)
+        return this.selectRandom(availablePool)
       default:
-        return this.selectRoundRobin(pool)
+        return this.selectRoundRobin(availablePool)
     }
   }
 
@@ -102,6 +156,83 @@ export class ModelSelector {
   }
 
   /**
+   * Record a successful execution for a model
+   */
+  recordSuccess(modelName: string): void {
+    if (this.enableCircuitBreaker) {
+      this.circuitBreakers.recordSuccess(modelName)
+    }
+    // Reset retry count on success
+    this.retryCount.set(modelName, 0)
+  }
+
+  /**
+   * Record a failed execution for a model
+   * Returns true if the circuit breaker just opened for this model
+   */
+  recordFailure(modelName: string): boolean {
+    const retryCount = this.getRetryCount(modelName) + 1
+    this.retryCount.set(modelName, retryCount)
+
+    if (this.enableCircuitBreaker) {
+      const justOpened = this.circuitBreakers.recordFailure(modelName)
+      if (justOpened) {
+        this.disabledModels.add(modelName)
+      }
+      return justOpened
+    }
+    return false
+  }
+
+  /**
+   * Check if a model is currently available (not circuit-broken)
+   */
+  isModelAvailable(modelName: string): boolean {
+    if (this.disabledModels.has(modelName)) {
+      // Check if circuit breaker has reset
+      if (this.enableCircuitBreaker && this.circuitBreakers.canExecute(modelName)) {
+        this.disabledModels.delete(modelName)
+        return true
+      }
+      return false
+    }
+    return true
+  }
+
+  /**
+   * Get list of currently disabled models
+   */
+  getDisabledModels(): string[] {
+    // Check if any can be re-enabled
+    for (const modelName of this.disabledModels) {
+      if (this.enableCircuitBreaker && this.circuitBreakers.canExecute(modelName)) {
+        this.disabledModels.delete(modelName)
+      }
+    }
+    return Array.from(this.disabledModels)
+  }
+
+  /**
+   * Get circuit breaker state for a model
+   */
+  getCircuitBreakerState(modelName: string) {
+    if (!this.enableCircuitBreaker) {
+      return null
+    }
+    return this.circuitBreakers.get(modelName).getState()
+  }
+
+  /**
+   * Get all circuit breaker states
+   */
+  getAllCircuitBreakerStates() {
+    if (!this.enableCircuitBreaker) {
+      return new Map()
+    }
+    return this.circuitBreakers.getAllStates()
+  }
+
+  /**
    * Switch to fallback pool
    */
   switchToFallback(): void {
@@ -134,10 +265,19 @@ export class ModelSelector {
   }
 
   /**
+   * Get number of currently available models
+   */
+  getAvailableModelCount(): number {
+    const allModels = [...this.primaryModels, ...this.fallbackModels]
+    return allModels.filter(m => this.isModelAvailable(m.name)).length
+  }
+
+  /**
    * Get the current pool being used
    */
   getCurrentPool(): ModelConfig[] {
-    return this.useFallback ? this.fallbackModels : this.primaryModels
+    const pool = this.useFallback ? this.fallbackModels : this.primaryModels
+    return pool.filter(m => !this.disabledModels.has(m.name))
   }
 
   /**
@@ -173,13 +313,24 @@ export class ModelSelector {
   }
 
   /**
-   * Reset all state (indices, fallback flag, retry counts)
+   * Reset all state (indices, fallback flag, retry counts, circuit breakers)
    */
   reset(): void {
     this.primaryIndex = 0
     this.fallbackIndex = 0
     this.useFallback = false
     this.retryCount.clear()
+    this.disabledModels.clear()
+    this.circuitBreakers.resetAll()
+  }
+
+  /**
+   * Reset a specific model's circuit breaker
+   */
+  resetModel(modelName: string): void {
+    this.disabledModels.delete(modelName)
+    this.circuitBreakers.reset(modelName)
+    this.retryCount.set(modelName, 0)
   }
 
   /**
@@ -187,6 +338,31 @@ export class ModelSelector {
    */
   hasExhaustedAllModels(attemptCount: number): boolean {
     return attemptCount >= this.getTotalModelCount()
+  }
+
+  /**
+   * Get health status summary
+   */
+  getHealthStatus(): {
+    total: number
+    available: number
+    disabled: number
+    circuitBreakersOpen: number
+  } {
+    const states = this.getAllCircuitBreakerStates()
+    let openCount = 0
+    for (const state of states.values()) {
+      if (state.state === 'open') {
+        openCount++
+      }
+    }
+
+    return {
+      total: this.getTotalModelCount(),
+      available: this.getAvailableModelCount(),
+      disabled: this.getDisabledModels().length,
+      circuitBreakersOpen: openCount,
+    }
   }
 }
 
