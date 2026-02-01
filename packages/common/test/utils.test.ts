@@ -129,4 +129,177 @@ describe('StreamLogger', () => {
     logger.log('completion\n')
     logger.flush()
   })
+
+  describe('prefix formatting', () => {
+    test('short prefix is padded to 35 characters', () => {
+      const mockLogger = new ConsoleLogger()
+      const logger = new StreamLogger(mockLogger, 'SHORT')
+      
+      // Capture the raw output
+      const rawCalls: string[] = []
+      const originalRaw = mockLogger.raw.bind(mockLogger)
+      mockLogger.raw = (msg: string, sameLine?: boolean) => {
+        rawCalls.push(msg)
+        originalRaw(msg, sameLine)
+      }
+      
+      logger.log('test\n')
+      logger.flush()
+      
+      // Find the prefix line
+      const prefixLine = rawCalls.find(call => call.includes('SHORT'))
+      expect(prefixLine).toBeDefined()
+      
+      // The prefix including brackets should contain padded content
+      // Format: [SHORT                              ]
+      expect(prefixLine).toContain('[SHORT')
+      expect(prefixLine).toContain(']')
+    })
+
+    test('long prefix is truncated intelligently', () => {
+      const mockLogger = new ConsoleLogger()
+      const longPrefix = 'opencode/antigravity-claude-sonnet-4-5-extra-long-name'
+      const logger = new StreamLogger(mockLogger, longPrefix)
+      
+      // Capture the raw output
+      const rawCalls: string[] = []
+      const originalRaw = mockLogger.raw.bind(mockLogger)
+      mockLogger.raw = (msg: string, sameLine?: boolean) => {
+        rawCalls.push(msg)
+        originalRaw(msg, sameLine)
+      }
+      
+      logger.log('test\n')
+      logger.flush()
+      
+      // Find the prefix line
+      const prefixLine = rawCalls.find(call => call.includes('opencode'))
+      expect(prefixLine).toBeDefined()
+      
+      // Should be truncated with ... in the middle
+      expect(prefixLine).toContain('...')
+      // Should keep start of prefix (first 20 chars)
+      expect(prefixLine).toContain('opencode/antigravity')
+      // Should keep end of prefix (last 12 chars)
+      expect(prefixLine).toContain('ra-long-name')
+    })
+
+    test('empty prefix is padded with spaces', () => {
+      const mockLogger = new ConsoleLogger()
+      const logger = new StreamLogger(mockLogger, '')
+      
+      // Capture the raw output
+      const rawCalls: string[] = []
+      const originalRaw = mockLogger.raw.bind(mockLogger)
+      mockLogger.raw = (msg: string, sameLine?: boolean) => {
+        rawCalls.push(msg)
+        originalRaw(msg, sameLine)
+      }
+      
+      logger.log('test\n')
+      logger.flush()
+      
+      // Find the prefix line with brackets
+      const prefixLine = rawCalls.find(call => call.includes('│') && call.includes('['))
+      expect(prefixLine).toBeDefined()
+      expect(prefixLine).toContain('[')
+      expect(prefixLine).toContain(']')
+    })
+
+    test('prefix width is consistent regardless of content', () => {
+      const mockLogger = new ConsoleLogger()
+      const rawCalls: string[] = []
+      
+      // Test with different prefix lengths
+      const prefixes = [
+        'SHORT',
+        'medium-length-prefix-name',
+        'opencode/antigravity-claude-sonnet-4-5-very-long-name-that-needs-truncation'
+      ]
+      
+      for (const prefix of prefixes) {
+        const logger = new StreamLogger(mockLogger, prefix)
+        const originalRaw = mockLogger.raw.bind(mockLogger)
+        
+        mockLogger.raw = (msg: string, sameLine?: boolean) => {
+          rawCalls.push(msg)
+          originalRaw(msg, sameLine)
+        }
+        
+        logger.log('test\n')
+        logger.flush()
+        
+        // Find the prefix line and check the prefix portion length
+        const prefixLine = rawCalls[rawCalls.length - 2] // Second to last call
+        if (prefixLine && prefixLine.includes('[')) {
+          const match = prefixLine.match(/\[([^\]]+)\]/)
+          if (match) {
+            // The content inside brackets should be exactly 35 chars
+            expect(match[1].length).toBe(35)
+          }
+        }
+        
+        rawCalls.length = 0 // Clear for next iteration
+      }
+    })
+  })
+
+  describe('visual alignment', () => {
+    test('timestamp and separator are present', () => {
+      const mockLogger = new ConsoleLogger()
+      const logger = new StreamLogger(mockLogger, 'TEST')
+      
+      const rawCalls: string[] = []
+      const originalRaw = mockLogger.raw.bind(mockLogger)
+      mockLogger.raw = (msg: string, sameLine?: boolean) => {
+        rawCalls.push(msg)
+        originalRaw(msg, sameLine)
+      }
+      
+      logger.log('message\n')
+      logger.flush()
+      
+      // Find the prefix line
+      const prefixLine = rawCalls.find(call => call.includes('TEST'))
+      expect(prefixLine).toBeDefined()
+      
+      // Should have timestamp format HH:MM:SS
+      expect(prefixLine).toMatch(/\d{2}:\d{2}:\d{2}/)
+      // Should have separator
+      expect(prefixLine).toContain('│')
+    })
+
+    test('multiple loggers produce aligned output', () => {
+      const mockLogger = new ConsoleLogger()
+      const logger1 = new StreamLogger(mockLogger, 'LOGGER-1')
+      const logger2 = new StreamLogger(mockLogger, 'LOGGER-2')
+      
+      const rawCalls: string[] = []
+      const originalRaw = mockLogger.raw.bind(mockLogger)
+      mockLogger.raw = (msg: string, sameLine?: boolean) => {
+        rawCalls.push(msg)
+        originalRaw(msg, sameLine)
+      }
+      
+      logger1.log('message from logger 1\n')
+      logger2.log('message from logger 2\n')
+      logger1.flush()
+      logger2.flush()
+      
+      // Both loggers should use the same prefix width
+      const prefixLines = rawCalls.filter(call => 
+        call.includes('LOGGER-1') || call.includes('LOGGER-2')
+      )
+      
+      expect(prefixLines.length).toBe(2)
+      
+      // Extract the prefix portions and verify they have same width
+      const prefixPortions = prefixLines.map(line => {
+        const match = line.match(/\[([^\]]+)\]/)
+        return match ? match[1] : null
+      })
+      
+      expect(prefixPortions[0]?.length).toBe(prefixPortions[1]?.length)
+    })
+  })
 })

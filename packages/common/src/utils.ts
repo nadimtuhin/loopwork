@@ -107,21 +107,17 @@ export class StreamLogger {
   private printPrefix() {
     this.logger.stopSpinner()
     
-    const timestamp = chalk.gray(getTimestamp())
-    const separatorStr = chalk.gray(' │')
+    const timestamp = String(chalk.gray(getTimestamp()))
+    const separatorStr = String(chalk.gray(' │'))
     // Normalize prefix to consistent width (truncate or pad to 35 chars)
     const maxPrefixLen = 35
-    let normalizedPrefix = this.prefix
-    if (normalizedPrefix) {
-      if (normalizedPrefix.length > maxPrefixLen) {
-        // Truncate long prefixes, keeping start and end
-        normalizedPrefix = normalizedPrefix.slice(0, 20) + '...' + normalizedPrefix.slice(-12)
-      }
-      normalizedPrefix = normalizedPrefix.padEnd(maxPrefixLen, ' ')
-    } else {
-      normalizedPrefix = ''.padEnd(maxPrefixLen, ' ')
+    let normalizedPrefix = String(this.prefix || '')
+    if (normalizedPrefix.length > maxPrefixLen) {
+      // Truncate long prefixes, keeping start and end
+      normalizedPrefix = normalizedPrefix.slice(0, 20) + '...' + normalizedPrefix.slice(-12)
     }
-    const prefixStr = chalk.magenta(`[${normalizedPrefix}]`)
+    normalizedPrefix = normalizedPrefix.padEnd(maxPrefixLen, ' ')
+    const prefixStr = String(chalk.magenta(`[${normalizedPrefix}]`))
     
     this.logger.raw(`${timestamp}${separatorStr} ${prefixStr} `, true)
   }
