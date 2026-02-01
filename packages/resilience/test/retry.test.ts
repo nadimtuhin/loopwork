@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { calculateExponentialBackoff, exponentialBackoff, LinearBackoff, ConstantBackoff } from '../src/backoff'
+import { calculateExponentialBackoff, exponentialBackoff, LinearBackoff, ConstantBackoff, RateLimitBackoffStrategy, isOpenCodeCacheCorruption } from '../src/backoff'
 import { DEFAULT_RETRY_OPTIONS, isRetryable, StandardRetryStrategy } from '../src/retry'
-import { createResilienceRunner, makeResilient, ResilienceRunner, type ResilienceRunnerOptions } from '../src/runner'
+import { createResilienceRunner, makeResilient, ResilienceRunner, type ResilienceRunnerOptions } from '../src/retry'
 
 async function retryStrategyHelper<T>(fn: () => Promise<T>, options: any): Promise<T> {
   const runner = createResilienceRunner({
@@ -609,7 +609,7 @@ describe('Backoff Policies Extra', () => {
 describe('RateLimitBackoffStrategy Extra', () => {
   test('fallback works', () => {
     const fallback = new ConstantBackoff(100)
-    const strategy = new (require('../src/rate-limit').RateLimitBackoffStrategy)(30000, fallback)
+    const strategy = new RateLimitBackoffStrategy(30000, fallback)
     
     expect(strategy.calculateDelay(1, new Error('normal'))).toBe(100)
     expect(strategy.calculateDelay(1, new Error('rate limit'))).toBe(30000)
@@ -618,14 +618,13 @@ describe('RateLimitBackoffStrategy Extra', () => {
   })
 
   test('without fallback returns 0 for non-rate errors', () => {
-    const strategy = new (require('../src/rate-limit').RateLimitBackoffStrategy)(30000)
+    const strategy = new RateLimitBackoffStrategy(30000)
     expect(strategy.calculateDelay(1, new Error('normal'))).toBe(0)
   })
 })
 
 describe('Error Detection', () => {
   test('isOpenCodeCacheCorruption detection works', () => {
-    const { isOpenCodeCacheCorruption } = require('../src/rate-limit')
     expect(isOpenCodeCacheCorruption('ENOENT reading .cache/opencode')).toBe(true)
     expect(isOpenCodeCacheCorruption('Normal error')).toBe(false)
   })

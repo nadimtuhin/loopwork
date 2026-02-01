@@ -11,7 +11,7 @@ import type { BackendPlugin } from '../contracts'
 
 export interface OfflineQueue {
   enqueue(operation: unknown): Promise<void>
-  flush(): Promise<void>
+  flush(backend: TaskBackend): Promise<void>
 }
 
 /**

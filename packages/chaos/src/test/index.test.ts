@@ -1,17 +1,12 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ChaosOptions, createChaosPlugin, withChaos } from '../index'
-
-/**
- * index Tests
- * 
- * Auto-generated test suite for index
- */
+import type { ChaosOptions } from '../index'
+import { createChaosPlugin, withChaos } from '../index'
 
 describe('index', () => {
-
   describe('ChaosOptions', () => {
-    test('should be defined', () => {
-      expect(ChaosOptions).toBeDefined()
+    test('should be a valid type', () => {
+      const options: ChaosOptions = { enabled: true }
+      expect(options.enabled).toBe(true)
     })
   })
 

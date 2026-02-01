@@ -61,41 +61,34 @@ export default compose(
         cli: "opencode",
         model: "zai-coding-plan/glm-4.7-flash",
         timeout: 600,
-        costWeight: 12,
+        costWeight: 15,
       }),
       createModel({
         name: "glm-4.7",
         cli: "opencode",
         model: "zai-coding-plan/glm-4.7",
         timeout: 600,
-        costWeight: 22,
+        costWeight: 20,
       }),
 
-      createModel({
-        name: "kimi-k2.5-coding",
-        cli: "opencode",
-        model: "kimi-for-coding/k2p5",
-        timeout: 600,
-        costWeight: 60,
-      }),
       createModel({
         name: "minimax-m2.1-free",
         cli: "opencode",
         model: "opencode/minimax-m2.1-free",
         timeout: 600,
-        costWeight: 5,
+        costWeight: 20,
       }),
 
       // === PAID MODELS (costWeight: 10-30) - Used After Free ===
       // Fast & cheap
-      ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
+      // ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
 
       createModel({
         name: "glm-4.7-free",
         cli: "opencode",
         model: "opencode/glm-4.7-free",
         timeout: 600,
-        costWeight: 5,
+        costWeight: 20,
       }),
 
       createModel({
@@ -103,7 +96,21 @@ export default compose(
         cli: "opencode",
         model: "opencode/kimi-k2.5-free",
         timeout: 600,
-        costWeight: 5,
+        costWeight: 30,
+      }),
+      createModel({
+        name: "kimi-k2.5-tee",
+        cli: "opencode",
+        model: "chutes/moonshotai/Kimi-K2.5-TEE",
+        timeout: 600,
+        costWeight: 30,
+      }),
+      createModel({
+        name: "kimi-k2.5-coding",
+        cli: "opencode",
+        model: "kimi-for-coding/k2p5",
+        timeout: 600,
+        costWeight: 30,
       }),
 
       // Cerebras Models - Fast and cheap (limited tokens)
@@ -111,19 +118,19 @@ export default compose(
         name: "cerebras-qwen-3",
         cli: "opencode",
         model: "cerebras/qwen-3-235b-a22b-instruct-2507",
-        timeout: 120,
-        costWeight: 12,
+        timeout: 600,
+        costWeight: 30,
       }),
       createModel({
         name: "cerebras-glm-4.7",
         cli: "opencode",
         model: "cerebras/zai-glm-4.7",
-        timeout: 120,
-        costWeight: 12,
+        timeout: 600,
+        costWeight: 30,
       }),
 
       // Balanced
-      ModelPresets.opencodeGeminiProLow({ timeout: 600, costWeight: 25 }),
+      ModelPresets.opencodeGeminiProLow({ timeout: 600, costWeight: 30 }),
       // ModelPresets.claudeSonnet({ timeout: 600, costWeight: 30 }),
 
       // Uncomment for more premium models:
@@ -132,14 +139,7 @@ export default compose(
         cli: "opencode",
         model: "google/antigravity-gemini-3-flash",
         timeout: 600,
-        costWeight: 15,
-      }),
-      createModel({
-        name: "antigravity-claude-sonnet-4-5",
-        cli: "opencode",
-        model: "google/antigravity-claude-sonnet-4-5",
-        timeout: 600,
-        costWeight: 30,
+        costWeight: 20,
       }),
       createModel({
         name: "antigravity-claude-sonnet-4-5",
@@ -166,6 +166,13 @@ export default compose(
         model: "chutes/moonshotai/Kimi-K2.5-TEE",
         timeout: 600,
         costWeight: 65,
+      }),
+      createModel({
+        name: "kimi-k2.5-coding",
+        cli: "opencode",
+        model: "kimi-for-coding/k2p5",
+        timeout: 600,
+        costWeight: 30,
       }),
       // ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
       // createModel({ name: "claude-opus", cli: "claude", model: "opus", timeout: 900, costWeight: 100 }),

@@ -130,3 +130,35 @@ export function getChangedFiles(workDir: string = process.cwd()): Set<string> {
     return new Set()
   }
 }
+
+/**
+ * Get list of files changed between a commit/ref and current working directory
+ */
+export function getDiffNames(ref: string, workDir: string = process.cwd()): string[] {
+  try {
+    // --name-only lists changed files
+    // ref is the starting point. We compare ref..HEAD (commits) AND uncommitted changes.
+    // Actually "git diff --name-only ref" compares ref to working directory.
+    const output = execSync(`git diff --name-only ${ref}`, { stdio: 'pipe', cwd: workDir }).toString()
+    return output.split('\n').filter(line => line.trim().length > 0)
+  } catch (error) {
+    logger.debug(`Failed to get diff names from ${ref}: ${error}`)
+    return []
+  }
+}
+
+/**
+ * Checkout specific files from a ref
+ */
+export function checkoutFiles(ref: string, files: string[], workDir: string = process.cwd()): boolean {
+  if (files.length === 0) return true
+  try {
+    // Quote files to handle spaces
+    const fileArgs = files.map(f => `"${f.replace(/"/g, '\\"')}"`).join(' ')
+    execSync(`git checkout ${ref} -- ${fileArgs}`, { stdio: 'pipe', cwd: workDir })
+    return true
+  } catch (error) {
+    logger.debug(`Failed to checkout files from ${ref}: ${error}`)
+    return false
+  }
+}

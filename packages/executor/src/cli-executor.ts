@@ -119,7 +119,31 @@ const CLI_PATH_ENV_VARS: Record<CliType, string> = {
 
 export interface CliExecutorOptions {
   debugger?: any
-  checkpointIntegrator?: any
+  checkpointIntegrator?: ICheckpointIntegrator
+}
+
+/**
+ * Checkpoint integrator interface for auto-checkpointing during CLI execution
+ */
+export interface ICheckpointIntegrator {
+  checkpoint(agentId: string, state: Partial<{
+    taskId: string
+    agentName: string
+    iteration: number
+    phase: 'started' | 'executing' | 'completed' | 'failed' | 'interrupted'
+    lastToolCall?: string
+    state?: Record<string, unknown>
+  }>): Promise<void>
+  restore?(agentId: string): Promise<{
+    checkpoint: {
+      taskId: string
+      agentName: string
+      iteration: number
+      phase: string
+      state?: Record<string, unknown>
+    }
+    partialOutput: string
+  } | null>
 }
 
 export class CliExecutor {
@@ -133,6 +157,10 @@ export class CliExecutor {
   private healthChecker: CliHealthChecker
   private preflightValidated = false
   private strategyRegistry: ICliStrategyRegistry
+  private checkpointIntegrator?: ICheckpointIntegrator
+  private currentAgentId?: string
+  private currentTaskId?: string
+  private executionIteration = 0
 
   constructor(
     protected config: CliExecutorConfig,
@@ -165,7 +193,12 @@ export class CliExecutor {
     this.modelSelector = new ModelSelector(primaryModels, fallbackModels, strategy, {
       enableCircuitBreaker: true,
       failureThreshold: 3,
-      resetTimeoutMs: 300000, // 5 minutes
+      resetTimeoutMs: 600000, // 10 minutes (model sleep duration)
+    })
+
+    // Register callback for when models wake up from sleep
+    this.modelSelector.onModelWakeUp((modelName) => {
+      this.logger.info(`[CircuitBreaker] Model ${modelName} woke up from sleep and is available again`)
     })
 
     this.healthChecker = new CliHealthChecker({
@@ -192,6 +225,7 @@ export class CliExecutor {
     })
 
     this.strategyRegistry = createDefaultRegistry(this.logger)
+    this.checkpointIntegrator = options.checkpointIntegrator
   }
 
   private detectClis(): void {
@@ -305,6 +339,41 @@ export class CliExecutor {
   }
 
   /**
+   * Create a checkpoint for the current execution
+   */
+  private async createCheckpoint(
+    phase: 'started' | 'executing' | 'completed' | 'failed' | 'interrupted',
+    additionalState?: Record<string, unknown>
+  ): Promise<void> {
+    if (!this.checkpointIntegrator || !this.currentAgentId) return
+
+    try {
+      await this.checkpointIntegrator.checkpoint(this.currentAgentId, {
+        taskId: this.currentTaskId ?? 'unknown',
+        agentName: 'cli-executor',
+        iteration: this.executionIteration,
+        phase,
+        state: {
+          timestamp: Date.now(),
+          ...additionalState,
+        },
+      })
+    } catch (error) {
+      this.logger.debug(`Checkpoint failed: ${error}`)
+    }
+  }
+
+  /**
+   * Increment the execution iteration counter and create periodic checkpoint
+   */
+  private async incrementIteration(): Promise<void> {
+    this.executionIteration++
+    if (this.executionIteration % 5 === 0) {
+      await this.createCheckpoint('executing', { lastToolCall: 'iteration' })
+    }
+  }
+
+  /**
    * Run pre-flight health check on all models
    * Returns validated healthy models and filters the model selector
    */
@@ -347,7 +416,7 @@ export class CliExecutor {
 
       if (unhealthy.length > 0) {
         this.logger.warn(
-          `[Preflight] Disabled models: ${unhealthy.map(u => u.name).join(', ')}`
+          `[Preflight] Unhealthy models (will be skipped): ${unhealthy.map(u => u.name).join(', ')}`
         )
       }
     }
@@ -584,6 +653,12 @@ export class CliExecutor {
       context: { taskId: options.taskId, poolName: this.getPoolForTask(options.priority, options.feature) }
     })
 
+    this.currentTaskId = options.taskId
+    this.currentAgentId = `cli-${options.taskId ?? 'unknown'}-${Date.now()}`
+    this.executionIteration = 0
+
+    await this.createCheckpoint('started')
+
     const poolName = this.getPoolForTask(options.priority, options.feature)
     const slotPid = await this.poolManager.acquire(poolName)
 
@@ -652,6 +727,9 @@ export class CliExecutor {
           timestamp: Date.now(),
           metadata: { displayName }
         })
+
+        await this.createCheckpoint('executing', { lastToolCall: modelConfig.cli })
+        await this.incrementIteration()
 
         const startTime = Date.now()
         await this.pluginRegistry.runHook('onStep', {
@@ -733,8 +811,12 @@ export class CliExecutor {
           if (currentModelName) {
             const justOpened = this.modelSelector.recordFailure(currentModelName)
             if (justOpened) {
-              this.logger.error(
-                `[CircuitBreaker] Model ${currentModelName} disabled after ${this.modelSelector.getCircuitBreakerState(currentModelName)?.failures} failures`
+              const sleepStatus = this.modelSelector.getModelSleepStatus(currentModelName)
+              const sleepStr = sleepStatus.isSleeping
+                ? ` (sleeping for ${sleepStatus.timeRemaining}, wakes up at ${sleepStatus.wakeUpTime?.toLocaleTimeString()})`
+                : ''
+              this.logger.warn(
+                `[CircuitBreaker] Model ${currentModelName} is sleeping after ${this.modelSelector.getCircuitBreakerState(currentModelName)?.failures} failures${sleepStr}`
               )
             }
           }

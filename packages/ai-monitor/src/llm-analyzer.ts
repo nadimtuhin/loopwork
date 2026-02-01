@@ -1,24 +1,26 @@
-/**
- * LLM Fallback Analyzer for unknown errors
- * Uses Claude Haiku for cost-efficient error analysis
- * Includes rate limiting (10 calls/session, 5-min cooldown) and 24h caching
- */
-
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
 import { logger } from './utils'
 
-export interface ErrorAnalysis {
+export interface ErrorAnalysisResponse {
   rootCause: string
   suggestedFixes: string[]
   confidence: number
 }
 
+export type ErrorAnalysis = ErrorAnalysisResponse
+
+export interface ErrorAnalysisRequest {
+  errorMessage: string
+  stackTrace?: string
+  context?: Record<string, unknown>
+}
+
 export interface LLMCacheEntry {
   errorHash: string
-  analysis: ErrorAnalysis
+  analysis: ErrorAnalysisResponse
   cachedAt: string
   expiresAt: string
 }
@@ -30,7 +32,19 @@ export interface LLMAnalyzerOptions {
   projectRoot?: string
 }
 
-export class LLMAnalyzer {
+export interface IErrorAnalyzer {
+  readonly name: 'error-analyzer'
+  analyze(request: ErrorAnalysisRequest): Promise<ErrorAnalysisResponse | null>
+  canMakeCall(): boolean
+  getCacheKey(request: ErrorAnalysisRequest): string
+  clearCache(): void
+  getCallCount(): number
+  resetCallCount(): void
+  getTimeUntilNextCall(): number
+}
+
+export class LLMAnalyzer implements IErrorAnalyzer {
+  readonly name = 'error-analyzer' as const
   private cacheDir: string
   private maxCallsPerSession: number
   private cooldownMs: number
@@ -50,8 +64,7 @@ export class LLMAnalyzer {
       if (!fs.existsSync(this.cacheDir)) {
         fs.mkdirSync(this.cacheDir, { recursive: true })
       }
-    } catch (e) {
-    }
+    } catch {}
   }
 
   syncState(callCount: number, lastCallTime: number): void {
@@ -59,8 +72,8 @@ export class LLMAnalyzer {
     this.lastCallTime = lastCallTime
   }
 
-  async analyzeError(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysis | null> {
-    const errorHash = this.hashError(errorMessage, stackTrace)
+  async analyze(request: ErrorAnalysisRequest): Promise<ErrorAnalysisResponse | null> {
+    const errorHash = this.hashError(request.errorMessage, request.stackTrace)
 
     const cached = this.getCachedAnalysis(errorHash)
     if (cached) {
@@ -68,7 +81,7 @@ export class LLMAnalyzer {
       return cached
     }
 
-    const patternResult = this.analyzePattern(errorMessage)
+    const patternResult = this.analyzePattern(request.errorMessage)
     if (patternResult) {
       this.cacheAnalysis(errorHash, patternResult)
       return patternResult
@@ -80,12 +93,13 @@ export class LLMAnalyzer {
     }
 
     try {
-      const analysis = await this.callLLM(errorMessage, stackTrace)
+      const analysis = await this.callLLM(request.errorMessage, request.stackTrace)
 
-      this.cacheAnalysis(errorHash, analysis)
-
-      this.callCount++
-      this.lastCallTime = Date.now()
+      if (analysis && analysis.confidence > 0.1) {
+        this.cacheAnalysis(errorHash, analysis)
+        this.callCount++
+        this.lastCallTime = Date.now()
+      }
 
       return analysis
     } catch (error) {
@@ -94,7 +108,65 @@ export class LLMAnalyzer {
     }
   }
 
-  private analyzePattern(errorMessage: string): ErrorAnalysis | null {
+  async analyzeError(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysisResponse | null> {
+    return this.analyze({ errorMessage, stackTrace })
+  }
+
+  getCacheKey(request: ErrorAnalysisRequest): string {
+    return this.hashError(request.errorMessage, request.stackTrace)
+  }
+
+  canMakeCall(): boolean {
+    if (this.callCount >= this.maxCallsPerSession) {
+      return false
+    }
+
+    if (this.lastCallTime > 0) {
+      const timeSinceLastCall = Date.now() - this.lastCallTime
+      if (timeSinceLastCall < this.cooldownMs) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  getCallCount(): number {
+    return this.callCount
+  }
+
+  resetCallCount(): void {
+    this.callCount = 0
+    this.lastCallTime = 0
+  }
+
+  getTimeUntilNextCall(): number {
+    if (this.callCount >= this.maxCallsPerSession) {
+      return Infinity
+    }
+
+    if (this.lastCallTime === 0) {
+      return 0
+    }
+
+    const timeSinceLastCall = Date.now() - this.lastCallTime
+    const remainingCooldown = this.cooldownMs - timeSinceLastCall
+
+    return Math.max(0, remainingCooldown)
+  }
+
+  clearCache(): void {
+    try {
+      if (fs.existsSync(this.cacheFile)) {
+        fs.unlinkSync(this.cacheFile)
+        logger.debug('Cache cleared')
+      }
+    } catch (error) {
+      logger.error(`Failed to clear cache: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  private analyzePattern(errorMessage: string): ErrorAnalysisResponse | null {
     const lowerMessage = errorMessage.toLowerCase()
 
     if (lowerMessage.includes('enoent') || lowerMessage.includes('no such file')) {
@@ -132,35 +204,15 @@ export class LLMAnalyzer {
     return null
   }
 
-  private canMakeCall(): boolean {
-    if (this.callCount >= this.maxCallsPerSession) {
-      logger.debug(`Call limit reached: ${this.callCount}/${this.maxCallsPerSession}`)
-      return false
-    }
-
-    if (this.lastCallTime > 0) {
-      const timeSinceLastCall = Date.now() - this.lastCallTime
-      if (timeSinceLastCall < this.cooldownMs) {
-        logger.debug(`Cooldown active: ${this.cooldownMs - timeSinceLastCall}ms remaining`)
-        return false
-      }
-    }
-
-    return true
-  }
-
-  private async callLLM(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysis> {
+  private async callLLM(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysisResponse | null> {
     const prompt = this.buildPrompt(errorMessage, stackTrace)
 
     try {
       const response = await this.invokeHaiku(prompt)
       return this.parseAnalysis(response)
     } catch (error) {
-      return {
-        rootCause: 'Unable to analyze error',
-        suggestedFixes: ['Check logs for more details', 'Review recent code changes'],
-        confidence: 0.1
-      }
+      logger.error(`LLM analysis failed: ${error instanceof Error ? error.message : String(error)}`)
+      return null
     }
   }
 
@@ -180,6 +232,7 @@ export class LLMAnalyzer {
       const message = await anthropic.messages.create({
         model,
         max_tokens: 500,
+        system: 'You are an expert Automated Error Analyzer & Code Debugger. Your goal is to analyze runtime errors and stack traces to identify the root cause and suggest specific fixes.',
         messages: [{
           role: 'user',
           content: prompt
@@ -223,33 +276,39 @@ export class LLMAnalyzer {
   }
 
   private buildPrompt(errorMessage: string, stackTrace?: string): string {
-    return `Analyze the following error and provide structured guidance:
+    return `You are an expert Automated Error Analyzer & Code Debugger.
+Your goal is to analyze runtime errors and stack traces to identify the root cause.
+
+Follow this analysis process:
+1. EXAMINE the provided error message and context.
+2. CATEGORIZE the error into one of: "SyntaxError", "LogicError", "Timeout", "RateLimit", "Hallucination", or "Unknown".
+3. ASSESS severity (Low/Medium/High/Critical).
+4. PROVIDE specific fix or fallback strategy.
 
 Error: ${errorMessage}
 ${stackTrace ? `\nStack Trace:\n${stackTrace}` : ''}
 
 Provide your analysis in this exact JSON format:
 {
-  "rootCause": "brief explanation of root cause",
+  "rootCause": "concise explanation of root cause",
   "suggestedFixes": ["fix1", "fix2", "fix3"],
   "confidence": 0.0-1.0
 }`
   }
 
-  private parseAnalysis(response: string): ErrorAnalysis {
+  private parseAnalysis(response: string): ErrorAnalysisResponse | null {
     try {
       const parsed = JSON.parse(response)
+      if (!parsed.rootCause || !Array.isArray(parsed.suggestedFixes)) {
+        return null
+      }
       return {
-        rootCause: parsed.rootCause || 'Unknown error',
-        suggestedFixes: Array.isArray(parsed.suggestedFixes) ? parsed.suggestedFixes : [],
+        rootCause: String(parsed.rootCause),
+        suggestedFixes: parsed.suggestedFixes.map(String),
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5
       }
     } catch {
-      return {
-        rootCause: 'Failed to parse analysis',
-        suggestedFixes: [],
-        confidence: 0.0
-      }
+      return null
     }
   }
 
@@ -269,7 +328,7 @@ Provide your analysis in this exact JSON format:
       .replace(/\s+/g, ' ')
   }
 
-  getCachedAnalysis(errorHash: string): ErrorAnalysis | null {
+  getCachedAnalysis(errorHash: string): ErrorAnalysisResponse | null {
     try {
       if (!fs.existsSync(this.cacheFile)) {
         return null
@@ -298,7 +357,7 @@ Provide your analysis in this exact JSON format:
     }
   }
 
-  cacheAnalysis(errorHash: string, analysis: ErrorAnalysis): void {
+  cacheAnalysis(errorHash: string, analysis: ErrorAnalysisResponse): void {
     try {
       let cache: Record<string, LLMCacheEntry> = {}
 
@@ -306,7 +365,7 @@ Provide your analysis in this exact JSON format:
         try {
           const content = fs.readFileSync(this.cacheFile, 'utf-8')
           cache = JSON.parse(content)
-        } catch (e) {
+        } catch {
           cache = {}
         }
       }
@@ -347,7 +406,7 @@ Provide your analysis in this exact JSON format:
       if (changed) {
         fs.writeFileSync(this.cacheFile, JSON.stringify(cache, null, 2))
       }
-    } catch (e) {}
+    } catch {}
   }
 
   private removeCacheEntry(errorHash: string): void {
@@ -364,41 +423,6 @@ Provide your analysis in this exact JSON format:
       fs.writeFileSync(this.cacheFile, JSON.stringify(cache, null, 2))
     } catch (error) {
       logger.debug(`Cache cleanup failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  getCallCount(): number {
-    return this.callCount
-  }
-
-  resetCallCount(): void {
-    this.callCount = 0
-    this.lastCallTime = 0
-  }
-
-  getTimeUntilNextCall(): number {
-    if (this.callCount >= this.maxCallsPerSession) {
-      return Infinity
-    }
-
-    if (this.lastCallTime === 0) {
-      return 0
-    }
-
-    const timeSinceLastCall = Date.now() - this.lastCallTime
-    const remainingCooldown = this.cooldownMs - timeSinceLastCall
-
-    return Math.max(0, remainingCooldown)
-  }
-
-  clearCache(): void {
-    try {
-      if (fs.existsSync(this.cacheFile)) {
-        fs.unlinkSync(this.cacheFile)
-        logger.debug('Cache cleared')
-      }
-    } catch (error) {
-      logger.error(`Failed to clear cache: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 }

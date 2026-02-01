@@ -562,6 +562,13 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
     })
 
     const result = await this.executor.executeAction(action)
+    
+    if (action.type === 'analyze') {
+      const throttle = this.executor.getThrottleState()
+      this.state.llmCallsCount = throttle.llmCallCount
+      this.state.lastLLMCall = throttle.lastLLMCall
+    }
+
     const errorPattern = getPatternByName(action.pattern)
 
     let success = false

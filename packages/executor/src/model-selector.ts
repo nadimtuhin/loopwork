@@ -47,6 +47,8 @@ export class ModelSelector {
   // Callbacks for when models become available
   private onModelAvailableCallbacks: ((model: ModelConfig) => void)[] = []
   private onValidationCompleteCallbacks: (() => void)[] = []
+  // Callbacks for when models wake up from sleep
+  private onModelWakeUpCallbacks: ((modelName: string) => void)[] = []
 
   constructor(
     primaryModels: ModelConfig[],
@@ -61,7 +63,7 @@ export class ModelSelector {
     
     this.circuitBreakers = new CircuitBreakerRegistry({
       failureThreshold: options.failureThreshold ?? 3,
-      resetTimeoutMs: options.resetTimeoutMs ?? 300000, // 5 minutes
+      resetTimeoutMs: options.resetTimeoutMs ?? 600000, // 10 minutes (model sleep duration)
     })
   }
 
@@ -196,6 +198,14 @@ export class ModelSelector {
     for (const modelName of this.disabledModels) {
       if (this.circuitBreakers.canExecute(modelName)) {
         this.disabledModels.delete(modelName)
+        // Notify wake-up callbacks
+        for (const callback of this.onModelWakeUpCallbacks) {
+          try {
+            callback(modelName)
+          } catch {
+            // Ignore callback errors
+          }
+        }
       }
     }
   }
@@ -294,9 +304,18 @@ export class ModelSelector {
   }
 
   /**
-   * Get list of currently disabled models
+   * Get list of currently disabled (sleeping) models
+   * @deprecated Use getSleepingModels() instead for clearer terminology
    */
   getDisabledModels(): string[] {
+    return this.getSleepingModels()
+  }
+
+  /**
+   * Get list of models that are currently "sleeping" (circuit breaker open)
+   * These models will automatically wake up after the cooldown period
+   */
+  getSleepingModels(): string[] {
     // Check if any can be re-enabled
     for (const modelName of this.disabledModels) {
       if (this.enableCircuitBreaker && this.circuitBreakers.canExecute(modelName)) {
@@ -304,6 +323,81 @@ export class ModelSelector {
       }
     }
     return Array.from(this.disabledModels)
+  }
+
+  /**
+   * Get wake-up time for a sleeping model
+   * Returns null if model is not sleeping or wake-up time unknown
+   */
+  getModelWakeUpTime(modelName: string): Date | null {
+    if (!this.enableCircuitBreaker || !this.disabledModels.has(modelName)) {
+      return null
+    }
+    
+    const breaker = this.circuitBreakers.get(modelName)
+    const state = breaker.getState()
+    
+    if (state.state !== 'open' || !state.lastFailureTime) {
+      return null
+    }
+    
+    // Get reset timeout from breaker (10 minutes)
+    const resetMs = 600000
+    return new Date(state.lastFailureTime + resetMs)
+  }
+
+  /**
+   * Get human-readable sleep status for a model
+   */
+  getModelSleepStatus(modelName: string): { 
+    isSleeping: boolean 
+    wakeUpTime: Date | null
+    timeRemaining: string 
+  } {
+    if (!this.enableCircuitBreaker) {
+      return { isSleeping: false, wakeUpTime: null, timeRemaining: '' }
+    }
+
+    const breaker = this.circuitBreakers.get(modelName)
+    const state = breaker.getState()
+
+    if (state.state !== 'open') {
+      return { isSleeping: false, wakeUpTime: null, timeRemaining: '' }
+    }
+
+    const wakeUpTime = this.getModelWakeUpTime(modelName)
+    const timeRemaining = breaker.getTimeUntilResetText()
+
+    return {
+      isSleeping: true,
+      wakeUpTime,
+      timeRemaining,
+    }
+  }
+
+  /**
+   * Get human-readable status for all models including sleep info
+   */
+  getModelStatus(): Array<{
+    name: string
+    status: 'available' | 'sleeping' | 'unavailable'
+    wakeUpTime?: Date
+    failures: number
+  }> {
+    const allModels = [...this.primaryModels, ...this.fallbackModels]
+    
+    return allModels.map(model => {
+      const state = this.getCircuitBreakerState(model.name)
+      const isSleeping = this.disabledModels.has(model.name) && !this.isModelAvailable(model.name)
+      const isUnavailable = this.unavailableModels.has(model.name)
+      
+      return {
+        name: model.name,
+        status: isUnavailable ? 'unavailable' : isSleeping ? 'sleeping' : 'available',
+        wakeUpTime: isSleeping ? this.getModelWakeUpTime(model.name) || undefined : undefined,
+        failures: state?.failures || 0,
+      }
+    })
   }
 
   /**
@@ -542,6 +636,20 @@ export class ModelSelector {
       const index = this.onValidationCompleteCallbacks.indexOf(callback)
       if (index >= 0) {
         this.onValidationCompleteCallbacks.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * Register callback for when a model wakes up from sleep
+   * Returns unsubscribe function
+   */
+  onModelWakeUp(callback: (modelName: string) => void): () => void {
+    this.onModelWakeUpCallbacks.push(callback)
+    return () => {
+      const index = this.onModelWakeUpCallbacks.indexOf(callback)
+      if (index >= 0) {
+        this.onModelWakeUpCallbacks.splice(index, 1)
       }
     }
   }

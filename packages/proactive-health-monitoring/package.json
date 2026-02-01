@@ -1,0 +1,19 @@
+{
+  "name": "@loopwork-ai/proactive-health-monitoring",
+  "version": "0.1.0",
+  "description": "System resource monitoring for Loopwork",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/loopwork": "workspace:*",
+    "@loopwork-ai/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  }
+}

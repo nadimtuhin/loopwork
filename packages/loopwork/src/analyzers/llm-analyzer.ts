@@ -1,38 +1,22 @@
-/**
- * LLM-Based Output Analyzer
- *
- * Uses an LLM to intelligently analyze CLI output and detect follow-up tasks
- */
-
-import type { Task, Priority } from '../contracts/task'
-import type { PluginTaskResult } from '../contracts/plugin'
-import type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from '../contracts/analysis'
+import type { Task, Priority, PluginTaskResult } from '../contracts'
+import type {
+  ITaskOutputAnalyzer,
+  TaskOutputAnalysisRequest,
+  TaskOutputAnalysisResponse,
+  SuggestedTask,
+} from '../contracts/llm-analyzer'
+import type { TaskAnalysisResult as LegacyTaskAnalysisResult } from '../contracts/analysis'
 import { PatternAnalyzer, type PatternAnalyzerConfig } from './pattern-analyzer'
 import { LoopworkError } from '../core/errors'
 
-/**
- * Configuration for LLM analyzer
- */
 export interface LLMAnalyzerOptions {
-  /** Model to use for analysis (default: haiku for cost-efficiency) */
   model?: string
-
-  /** Timeout in milliseconds for LLM calls (default: 30000) */
   timeout?: number
-
-  /** Fallback to pattern analyzer if LLM fails (default: true) */
   fallbackToPattern?: boolean
-
-  /** Pattern analyzer config for fallback */
   patternConfig?: PatternAnalyzerConfig
-
-  /** Custom system prompt for LLM analysis */
   systemPrompt?: string
 }
 
-/**
- * Parsed LLM response structure
- */
 interface LLMAnalysisResponse {
   shouldCreateTasks: boolean
   suggestedTasks: Array<{
@@ -44,13 +28,12 @@ interface LLMAnalysisResponse {
   reason: string
 }
 
-/**
- * Implementation of TaskAnalyzer using LLM-based analysis
- */
-export class LLMAnalyzer implements TaskAnalyzer {
+export class LLMAnalyzer implements ITaskOutputAnalyzer {
+  readonly name = 'task-output-analyzer' as const
+  readonly fallbackToPattern: boolean
   private options: Required<LLMAnalyzerOptions>
   private patternAnalyzer: PatternAnalyzer
-  private analysisCache: Map<string, TaskAnalysisResult> = new Map()
+  private analysisCache: Map<string, TaskOutputAnalysisResponse> = new Map()
 
   private readonly defaultSystemPrompt = `You are an AI task analyzer. Your job is to analyze CLI execution output and identify follow-up work needed.
 
@@ -85,37 +68,41 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
       patternConfig: options.patternConfig ?? {},
       systemPrompt: options.systemPrompt ?? this.defaultSystemPrompt
     }
+    this.fallbackToPattern = this.options.fallbackToPattern
 
     this.patternAnalyzer = new PatternAnalyzer(this.options.patternConfig)
   }
 
-  async analyze(task: Task, result: PluginTaskResult): Promise<TaskAnalysisResult> {
-    // Check cache first
-    const cacheKey = this.getCacheKey(task.id, result.output ?? null)
+  async analyze(
+    requestOrTask: TaskOutputAnalysisRequest | Task,
+    result?: PluginTaskResult
+  ): Promise<TaskOutputAnalysisResponse> {
+    let request: TaskOutputAnalysisRequest
+
+    if (result !== undefined) {
+      request = { task: requestOrTask as Task, result }
+    } else {
+      request = requestOrTask as TaskOutputAnalysisRequest
+    }
+
+    const cacheKey = this.getCacheKey(request)
     const cached = this.analysisCache.get(cacheKey)
     if (cached) {
       return cached
     }
 
     try {
-      // Try LLM analysis
-      const analysis = await this.analyzeLLM(task, result)
+      const analysis = await this.analyzeWithLLM(request)
       this.analysisCache.set(cacheKey, analysis)
       return analysis
     } catch (error) {
-      // Fallback to pattern analyzer on error
       if (this.options.fallbackToPattern) {
-        const fallbackAnalysis = await this.patternAnalyzer.analyze(task, result)
-        // Add info about fallback
-        const fallbackResult: TaskAnalysisResult = {
-          ...fallbackAnalysis,
-          reason: `LLM analysis failed, falling back to pattern analyzer: ${fallbackAnalysis.reason}`
-        }
+        const legacyResult = await this.patternAnalyzer.analyze(request.task, request.result)
+        const fallbackResult = this.convertLegacyToUnified(legacyResult)
         this.analysisCache.set(cacheKey, fallbackResult)
         return fallbackResult
       }
 
-      // No fallback, re-throw error
       throw new LoopworkError(
         'ERR_UNKNOWN',
         `LLM analysis failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -128,11 +115,28 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
     }
   }
 
-  /**
-   * Perform LLM-based analysis
-   */
-  private async analyzeLLM(task: Task, result: PluginTaskResult): Promise<TaskAnalysisResult> {
-    if (!result.output) {
+  async analyzeTask(task: Task, result: PluginTaskResult): Promise<LegacyTaskAnalysisResult> {
+    const unifiedResult = await this.analyze({ task, result })
+    return this.convertUnifiedToLegacy(unifiedResult, task.id)
+  }
+
+  getCacheKey(request: TaskOutputAnalysisRequest): string {
+    const outputHash = request.result.output
+      ? Math.abs(request.result.output.split('').reduce((acc, char) => acc * 31 + char.charCodeAt(0), 0))
+      : 0
+    return `${request.task.id}:${outputHash}`
+  }
+
+  clearCache(): void {
+    this.analysisCache.clear()
+  }
+
+  getCacheSize(): number {
+    return this.analysisCache.size
+  }
+
+  private async analyzeWithLLM(request: TaskOutputAnalysisRequest): Promise<TaskOutputAnalysisResponse> {
+    if (!request.result.output) {
       return {
         shouldCreateTasks: false,
         suggestedTasks: [],
@@ -140,19 +144,13 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
       }
     }
 
-    // Prepare the prompt
-    const prompt = this.buildAnalysisPrompt(task, result)
-
-    // Call LLM via fetch (using anthropic/openai API)
+    const prompt = this.buildAnalysisPrompt(request)
     const llmResponse = await this.callLLM(prompt)
-
-    // Parse and validate response
     const parsed = this.parseResponse(llmResponse)
 
-    // Validate and enhance the response
     const suggestedTasks = parsed.suggestedTasks.map(t => ({
       ...t,
-      parentId: t.isSubTask ? task.id : undefined
+      parentId: t.isSubTask ? request.task.id : undefined
     }))
 
     return {
@@ -162,26 +160,22 @@ Be concise. Suggest at most 5 tasks. Only suggest tasks that are genuinely neede
     }
   }
 
-  /**
-   * Build the analysis prompt with context
-   */
-  private buildAnalysisPrompt(task: Task, result: PluginTaskResult): string {
-    // Truncate very long outputs to avoid token explosion
+  private buildAnalysisPrompt(request: TaskOutputAnalysisRequest): string {
     const maxOutputLength = 2000
-    const truncatedOutput = result.output && result.output.length > maxOutputLength
-      ? result.output.substring(0, maxOutputLength) + '\n...(truncated)'
-      : result.output || ''
+    const truncatedOutput = request.result.output && request.result.output.length > maxOutputLength
+      ? request.result.output.substring(0, maxOutputLength) + '\n...(truncated)'
+      : request.result.output || ''
 
     return `Analyze this task execution result and suggest follow-up work if needed.
 
 Original Task:
-- ID: ${task.id}
-- Title: ${task.title}
-- Description: ${task.description}
+- ID: ${request.task.id}
+- Title: ${request.task.title}
+- Description: ${request.task.description}
 
-    Execution Result:
-- Success: ${result.success}
-- Duration: ${result.duration}ms
+Execution Result:
+- Success: ${request.result.success}
+- Duration: ${request.result.duration}ms
 
 Output:
 ${truncatedOutput}
@@ -189,15 +183,10 @@ ${truncatedOutput}
 Provide your analysis in JSON format as specified in the system prompt.`
   }
 
-  /**
-   * Call the LLM with timeout protection
-   */
   private async callLLM(prompt: string): Promise<string> {
-    // Check for API key and make actual LLM call
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GOOGLE_API_KEY
 
     if (apiKey) {
-      // Determine which provider to use based on available key
       if (process.env.ANTHROPIC_API_KEY) {
         return this.callAnthropicAPI(prompt, apiKey)
       } else if (process.env.OPENAI_API_KEY) {
@@ -207,13 +196,9 @@ Provide your analysis in JSON format as specified in the system prompt.`
       }
     }
 
-    // Fallback to simulation if no API key available
     return this.simulateLLMAnalysis(prompt)
   }
 
-  /**
-   * Call Anthropic API for LLM analysis
-   */
   private async callAnthropicAPI(prompt: string, apiKey: string): Promise<string> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
@@ -252,14 +237,10 @@ Provide your analysis in JSON format as specified in the system prompt.`
       return data.content[0]?.text || ''
     } catch {
       clearTimeout(timeoutId)
-      // Fallback to simulation on API error
       return this.simulateLLMAnalysis(prompt)
     }
   }
 
-  /**
-   * Call OpenAI API for LLM analysis
-   */
   private async callOpenAIAPI(prompt: string, apiKey: string): Promise<string> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
@@ -296,14 +277,10 @@ Provide your analysis in JSON format as specified in the system prompt.`
       return data.choices[0]?.message?.content || ''
     } catch {
       clearTimeout(timeoutId)
-      // Fallback to simulation on API error
       return this.simulateLLMAnalysis(prompt)
     }
   }
 
-  /**
-   * Call Google API for LLM analysis
-   */
   private async callGoogleAPI(prompt: string, apiKey: string): Promise<string> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.options.timeout)
@@ -341,17 +318,11 @@ Provide your analysis in JSON format as specified in the system prompt.`
       return data.candidates[0]?.content?.parts[0]?.text || ''
     } catch {
       clearTimeout(timeoutId)
-      // Fallback to simulation on API error
       return this.simulateLLMAnalysis(prompt)
     }
   }
 
-  /**
-   * Simulate LLM analysis (for cases where API is not available)
-   * In production, this would call an actual LLM API
-   */
   private simulateLLMAnalysis(prompt: string): string {
-    // Look for common patterns that would indicate follow-up work
     const tasks: Array<{
       title: string
       description: string
@@ -359,7 +330,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       isSubTask: boolean
     }> = []
 
-    // Check for incomplete work indicators
     if (prompt.match(/partial|incomplete|WIP|work in progress/i)) {
       tasks.push({
         title: 'Complete remaining implementation',
@@ -369,7 +339,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       })
     }
 
-    // Check for error indicators
     if (prompt.match(/error|failed|exception/i) && !prompt.match(/error handling added|handled/i)) {
       tasks.push({
         title: 'Add error handling for edge cases',
@@ -379,7 +348,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       })
     }
 
-    // Check for testing needs
     if (prompt.match(/test|verify|validate/i) && !prompt.match(/tests? (pass|complete|all)/i)) {
       tasks.push({
         title: 'Add comprehensive tests',
@@ -389,7 +357,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       })
     }
 
-    // Check for deployment/integration needs
     if (prompt.match(/deploy|production|staging|release/i) && !prompt.match(/deployed|released/i)) {
       tasks.push({
         title: 'Deploy to production',
@@ -399,7 +366,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       })
     }
 
-    // Check for documentation needs
     if (prompt.match(/document|readme|comment|docs/i) && !prompt.match(/documented|documented/i)) {
       tasks.push({
         title: 'Update documentation',
@@ -409,7 +375,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
       })
     }
 
-    // Limit to 5 tasks
     const suggestedTasks = tasks.slice(0, 5)
 
     const response: LLMAnalysisResponse = {
@@ -423,14 +388,10 @@ Provide your analysis in JSON format as specified in the system prompt.`
     return JSON.stringify(response)
   }
 
-  /**
-   * Parse and validate LLM response
-   */
   private parseResponse(response: string): LLMAnalysisResponse {
     try {
       const parsed = JSON.parse(response)
 
-      // Validate structure
       if (!parsed || typeof parsed !== 'object') {
         throw new LoopworkError(
           'ERR_UNKNOWN',
@@ -442,7 +403,6 @@ Provide your analysis in JSON format as specified in the system prompt.`
         )
       }
 
-      // Ensure required fields exist
       const tasks = Array.isArray(parsed.suggestedTasks) ? parsed.suggestedTasks : []
 
       return {
@@ -467,39 +427,41 @@ Provide your analysis in JSON format as specified in the system prompt.`
     }
   }
 
-  /**
-   * Validate and normalize priority
-   */
   private validatePriority(value: unknown): Priority {
     const validPriorities: Priority[] = ['high', 'medium', 'low']
     if (validPriorities.includes(value as Priority)) {
       return value as Priority
     }
-    return 'medium' // default priority
+    return 'medium'
   }
 
-  /**
-   * Generate cache key from task and output
-   */
-  private getCacheKey(taskId: string, output: string | null): string {
-    // Create a simple hash-like key (in production, use proper hashing)
-    const outputHash = output
-      ? Math.abs(output.split('').reduce((acc, char) => acc * 31 + char.charCodeAt(0), 0))
-      : 0
-    return `${taskId}:${outputHash}`
+  private convertLegacyToUnified(legacy: LegacyTaskAnalysisResult): TaskOutputAnalysisResponse {
+    return {
+      shouldCreateTasks: legacy.shouldCreateTasks,
+      suggestedTasks: legacy.suggestedTasks.map(t => ({
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        isSubTask: t.isSubTask,
+        parentId: t.parentId,
+        dependsOn: t.dependsOn,
+      })),
+      reason: legacy.reason,
+    }
   }
 
-  /**
-   * Clear the cache
-   */
-  clearCache(): void {
-    this.analysisCache.clear()
-  }
-
-  /**
-   * Get cache size for debugging
-   */
-  getCacheSize(): number {
-    return this.analysisCache.size
+  private convertUnifiedToLegacy(unified: TaskOutputAnalysisResponse, taskId: string): LegacyTaskAnalysisResult {
+    return {
+      shouldCreateTasks: unified.shouldCreateTasks,
+      suggestedTasks: unified.suggestedTasks.map(t => ({
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        isSubTask: t.isSubTask,
+        parentId: t.parentId,
+        dependsOn: t.dependsOn,
+      })),
+      reason: unified.reason,
+    }
   }
 }

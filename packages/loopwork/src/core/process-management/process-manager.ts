@@ -11,6 +11,7 @@ import { ProcessRegistry } from './registry'
 import { OrphanDetector } from './orphan-detector'
 import { ProcessCleaner } from './cleaner'
 import { createSpawner } from '@loopwork-ai/executor'
+import { ProcessResourceMonitor, type ResourceLimits } from './monitor'
 
 /**
  * ProcessManager - Orchestrates process lifecycle, tracking, and cleanup
@@ -26,12 +27,23 @@ import { createSpawner } from '@loopwork-ai/executor'
  * - Persistence: State survives crashes via registry persistence
  */
 export class ProcessManager implements IProcessManager {
+  private resourceMonitor?: ProcessResourceMonitor
+
   constructor(
     private registry: ProcessRegistry,
     private detector: OrphanDetector,
     private cleaner: ProcessCleaner,
-    private spawner: ISpawner
-  ) {}
+    private spawner: ISpawner,
+    resourceLimits?: ResourceLimits
+  ) {
+    if (resourceLimits?.enabled) {
+      this.resourceMonitor = new ProcessResourceMonitor(
+        registry,
+        spawner,
+        resourceLimits
+      )
+    }
+  }
 
   /**
    * Spawn a child process and track it automatically
@@ -45,6 +57,11 @@ export class ProcessManager implements IProcessManager {
    * @returns ChildProcess-like object (may be PTY process)
    */
   spawn(command: string, args: string[], options?: ISpawnOptions): ChildProcess {
+    // Start resource monitoring if enabled and not already running
+    if (this.resourceMonitor && !this.resourceMonitor.isRunning()) {
+      this.resourceMonitor.start()
+    }
+
     // Delegate to spawner
     const proc = this.spawner.spawn(command, args, {
       cwd: options?.cwd,
@@ -60,7 +77,8 @@ export class ProcessManager implements IProcessManager {
         command,
         args,
         namespace: 'loopwork',
-        startTime: Date.now()
+        startTime: Date.now(),
+        resourceLimits: options?.resourceLimits
       }
 
       this.track(proc.pid, metadata)
@@ -239,12 +257,14 @@ export function createProcessManager(options?: {
   patterns?: string[]
   staleTimeoutMs?: number
   gracePeriodMs?: number
+  resourceLimits?: ResourceLimits
 }): IProcessManager {
   const storageDir = options?.storageDir ?? '.loopwork'
   const spawner = options?.spawner ?? createSpawner()
   const patterns = options?.patterns ?? ['claude', 'opencode', 'loopwork', 'bun run']
   const staleTimeoutMs = options?.staleTimeoutMs ?? 300000 // 5 minutes
   const gracePeriodMs = options?.gracePeriodMs ?? 5000 // 5 seconds
+  const resourceLimits = options?.resourceLimits
 
   // Create dependencies
   const registry = new ProcessRegistry(storageDir)
@@ -252,7 +272,7 @@ export function createProcessManager(options?: {
   const cleaner = new ProcessCleaner(registry, gracePeriodMs)
 
   // Compose into ProcessManager
-  return new ProcessManager(registry, detector, cleaner, spawner)
+  return new ProcessManager(registry, detector, cleaner, spawner, resourceLimits)
 }
 
 // Export both the class and factory function

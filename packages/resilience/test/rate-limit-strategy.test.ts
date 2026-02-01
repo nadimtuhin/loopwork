@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { RateLimitBackoffStrategy, isRateLimitOutput, RateLimitError } from '../src/rate-limit'
-import { ExponentialBackoff } from '../src/backoff'
+import { RateLimitBackoffStrategy, ExponentialBackoff, isRateLimitOutput, RateLimitError, isRateLimitError } from '../src/backoff'
+import { createResilienceRunner } from '../src/retry'
 
 describe('RateLimitBackoffStrategy', () => {
   test('isRateLimitOutput detects various patterns', () => {
@@ -13,7 +13,6 @@ describe('RateLimitBackoffStrategy', () => {
   })
 
   test('detects RateLimitError instance', () => {
-    const { isRateLimitError } = require('../src/rate-limit')
     const error = new RateLimitError('Too many requests')
     expect(isRateLimitError(error)).toBe(true)
   })
@@ -110,7 +109,6 @@ describe('RateLimitBackoffStrategy', () => {
   })
 
   test('integrates with ResilienceRunner for rate limit handling', async () => {
-    const { createResilienceRunner } = await import('../src/runner')
     const runner = createResilienceRunner({
       maxAttempts: 3,
       retryOnRateLimit: true,

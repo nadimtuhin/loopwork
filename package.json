@@ -16,11 +16,22 @@
     "dev:dashboard": "turbo run dev --filter @loopwork-ai/dashboard",
     "dev:web": "turbo run dev --filter @loopwork-ai/dashboard-web",
     "publish:all": "bun run build && bun run --filter './packages/*' publish",
-    "prepare": "husky"
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bun run check:circular && bunx lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "lint-staged": "^16.2.7",
     "madge": "^8.0.0",
+    "simple-git-hooks": "^2.13.1",
     "turbo": "^2.7.6",
     "typescript": "^5.0.0"
   },

@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### 2026-02-01 - CHECKPOI-002
+- CHECKPOI-002: Implement Auto-Checkpoint Integration
+
+### 2026-02-01 - FALLBACK-003
+- FALLBACK-003: Implement Offline Operation Queue
+
+### 2026-02-01 - BULKHEAD-002
+- BULKHEAD-002: Integrate Worker Pools into CLI Executor
+
+### 2026-02-01 - ROLLBACK-003
+- ROLLBACK-003: Implement Interactive & Selective Rollback
+
+### 2026-02-01 - CHAOS-003
+- CHAOS-003: Implement Network Interception for API Simulation
+
+### 2026-02-01 - HEALTHCH-004
+- HEALTHCH-004: Add Webhook Notification System
+
+### 2026-02-01 - CHAOS-002
+- CHAOS-002: Implement Task-Level Fault Injection
+
+### 2026-02-01 - HEALTHCH-003
+- HEALTHCH-003: Implement Connectivity and Quota Monitors
+
+### 2026-02-01 - HEALTHCH-002
+- HEALTHCH-002: Implement System Resource Monitors
+
+### 2026-02-01 - RETRY-003
+- RETRY-003: Integrate Retry Logic into Task Runner
+
+### 2026-02-01 - PROC-001g
+- PROC-001g: Process Management: E2E Tests (Full Loop Scenario)
+
 ### 2026-02-01 - DYNAMICT-004
 - DYNAMICT-004: Add AI-powered task analysis using LLM
 

@@ -22,7 +22,6 @@ export interface ProcessMetadata {
     cpuUsage?: number
   }
 }
-}
 
 /**
  * Process information including status
@@ -63,6 +62,13 @@ export interface ISpawnOptions {
    * Range: -20 to 19
    */
   nice?: number
+  /**
+   * Resource limits for the spawned process
+   */
+  resourceLimits?: {
+    memoryMB?: number
+    cpuUsage?: number
+  }
 }
 
 /**

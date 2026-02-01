@@ -48,6 +48,7 @@
     "@loopwork-ai/common": "workspace:*",
     "@loopwork-ai/contracts": "workspace:*",
     "@loopwork-ai/executor": "workspace:*",
+    "@loopwork-ai/proactive-health-monitoring": "workspace:*",
     "@loopwork-ai/result-parser": "workspace:*",
     "@loopwork-ai/resilience": "workspace:*",
     "@loopwork-ai/state": "workspace:*",

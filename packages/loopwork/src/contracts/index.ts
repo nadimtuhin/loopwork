@@ -49,6 +49,23 @@ export type { Checkpoint, CheckpointConfig } from './checkpoint'
 
 // Analysis types
 export type { TaskAnalysisResult, SuggestedTask, TaskAnalyzer } from './analysis'
+export type {
+  ILLMAnalyzer,
+  LLMAnalyzerConfig,
+  ErrorAnalysisRequest,
+  ErrorAnalysisResponse,
+  IErrorAnalyzer,
+  TaskOutputAnalysisRequest,
+  TaskOutputAnalysisResponse,
+  ITaskOutputAnalyzer,
+  AnyLLMAnalyzer,
+  AnyAnalyzerRequest,
+  AnyAnalyzerResponse,
+  IAnalyzerRegistry,
+  AnalyzerFactory,
+  ErrorAnalyzerFactoryConfig,
+  TaskOutputAnalyzerFactoryConfig,
+} from './llm-analyzer'
 
 // Plugin types
 export type {

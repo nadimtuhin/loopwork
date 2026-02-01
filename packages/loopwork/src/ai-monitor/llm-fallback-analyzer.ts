@@ -5,6 +5,7 @@
  * Features rate limiting and response caching to minimize API costs.
  */
 
+import fsSync from 'fs'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
@@ -98,42 +99,64 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
       lastCallTime: 0,
       sessionStartTime: Date.now(),
     }
+
+    // Load session synchronously so getSessionStats() returns accurate data immediately
+    this.loadSessionSync()
+
+    // Initialize Anthropic client if API key is available
+    if (this.config.apiKey) {
+      try {
+        this.anthropic = new Anthropic({
+          apiKey: this.config.apiKey,
+          timeout: this.config.timeout,
+        })
+        logger.debug('[LLMFallbackAnalyzer] Anthropic client initialized')
+      } catch (error) {
+        logger.error(`[LLMFallbackAnalyzer] Failed to initialize Anthropic client: ${error}`)
+      }
+    } else {
+      logger.warn('[LLMFallbackAnalyzer] No API key found. LLM analysis will use mock fallback.')
+    }
+
+    // Load cache asynchronously (doesn't affect session stats)
+    if (this.config.cacheEnabled) {
+      this.loadCache().catch((error) => {
+        logger.debug(`[LLMFallbackAnalyzer] Failed to load cache: ${error}`)
+      })
+    }
+
+    this.initialized = true
   }
 
-  private async initialize(): Promise<void> {
-    if (this.initialized) {
-      return
-    }
-
-    if (!this.config.apiKey) {
-      logger.warn('[LLMFallbackAnalyzer] No API key found. LLM analysis will be disabled.')
-      this.initialized = true
-      return
-    }
-
+  private loadSessionSync(): void {
     try {
-      this.anthropic = new Anthropic({
-        apiKey: this.config.apiKey,
-        timeout: this.config.timeout,
-      })
+      const sessionFile = path.resolve(this.config.sessionPath)
+      const content = fsSync.readFileSync(sessionFile, 'utf-8')
+      const savedState = JSON.parse(content)
 
-      if (this.config.cacheEnabled) {
-        await this.loadCache()
+      if (
+        typeof savedState.callsThisSession === 'number' &&
+        typeof savedState.lastCallTime === 'number' &&
+        typeof savedState.sessionStartTime === 'number'
+      ) {
+        const SESSION_TIMEOUT = 24 * 60 * 60 * 1000
+        if (savedState.sessionStartTime > 0 && Date.now() - savedState.sessionStartTime > SESSION_TIMEOUT) {
+          logger.debug('[LLMFallbackAnalyzer] Saved session expired, starting new')
+          return
+        }
+
+        this.sessionState = savedState
+        logger.debug(
+          `[LLMFallbackAnalyzer] Restored session: ${this.sessionState.callsThisSession}/${this.config.maxCallsPerSession} calls`
+        )
       }
-
-      await this.loadSession()
-
-      this.initialized = true
-      logger.debug('[LLMFallbackAnalyzer] Initialized successfully')
     } catch (error) {
-      logger.error(`[LLMFallbackAnalyzer] Initialization failed: ${error}`)
-      this.initialized = true
+      logger.debug(`[LLMFallbackAnalyzer] Failed to load session: ${error}`)
     }
   }
 
   async analyzeError(error: string, context?: Record<string, unknown>): Promise<LLMAnalysis | null> {
-    await this.initialize()
-
+    // Session is already loaded synchronously in constructor
     const statsBeforeRateLimit = this.sessionState
     logger.info(`[LLMFallbackAnalyzer] Before rate limit check: calls=${statsBeforeRateLimit.callsThisSession}, max=${this.config.maxCallsPerSession}`)
 
@@ -212,7 +235,7 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     return true
   }
 
-  private async recordCall(): Promise<void> {
+  private recordCall(): void {
     const now = Date.now()
 
     this.sessionState.callsThisSession++
@@ -223,7 +246,7 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     )
 
     try {
-      await this.saveSession()
+      this.saveSession()
     } catch (error) {
       logger.warn(`[LLMFallbackAnalyzer] Failed to save session state: ${error}`)
     }
@@ -243,8 +266,13 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
       ) {
         // Check if session is too old (e.g., > 24 hours), then reset
         const SESSION_TIMEOUT = 24 * 60 * 60 * 1000
-        if (Date.now() - savedState.sessionStartTime > SESSION_TIMEOUT) {
+        if (savedState.sessionStartTime > 0 && Date.now() - savedState.sessionStartTime > SESSION_TIMEOUT) {
           logger.debug('[LLMFallbackAnalyzer] Saved session expired, starting new')
+          this.sessionState = {
+            callsThisSession: 0,
+            lastCallTime: 0,
+            sessionStartTime: Date.now(),
+          }
           return
         }
 
@@ -256,16 +284,21 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     } catch (error) {
       // Ignore errors (file not found, invalid JSON), start fresh
       logger.debug('[LLMFallbackAnalyzer] Starting new session (no saved state)')
+      this.sessionState = {
+        callsThisSession: 0,
+        lastCallTime: 0,
+        sessionStartTime: Date.now(),
+      }
     }
   }
 
-  private async saveSession(): Promise<void> {
+  private saveSession(): void {
     try {
       const sessionFile = path.resolve(this.config.sessionPath)
       const sessionDir = path.dirname(sessionFile)
 
-      await fs.mkdir(sessionDir, { recursive: true })
-      await fs.writeFile(sessionFile, JSON.stringify(this.sessionState, null, 2), 'utf-8')
+      fsSync.mkdirSync(sessionDir, { recursive: true })
+      fsSync.writeFileSync(sessionFile, JSON.stringify(this.sessionState, null, 2), 'utf-8')
     } catch (error) {
       logger.error(`[LLMFallbackAnalyzer] Failed to save session: ${error}`)
       throw error
@@ -460,6 +493,7 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     lastCallTime: number
     cooldownRemaining: number
   } {
+    // Return current session state (initPromise may still be pending)
     const now = Date.now()
     const cooldownRemaining = Math.max(
       0,

@@ -2,7 +2,8 @@ import * as git from './git'
 import { logger } from '../core/utils'
 import type { TaskContext } from '../contracts'
 import { join } from 'path'
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { execSync } from 'child_process'
 
 /**
  * Git Snapshot Utilities
@@ -90,6 +91,71 @@ export async function rollbackToSnapshot(snapshot: GitSnapshot): Promise<boolean
   }
 
   return true
+}
+
+/**
+ * Get list of files changed since snapshot was taken
+ */
+export function getChangesSinceSnapshot(snapshot: GitSnapshot): string[] {
+  const workDir = process.cwd()
+  return git.getDiffNames(snapshot.hash, workDir)
+}
+
+/**
+ * Rollback specific files to snapshot state
+ * Warning: This will overwrite changes in these files.
+ * For files that didn't exist in snapshot, they should be deleted (TODO).
+ * Currently git checkout <hash> -- <file> will fail if file didn't exist.
+ */
+export async function rollbackFiles(snapshot: GitSnapshot, files: string[]): Promise<boolean> {
+  const workDir = process.cwd()
+  logger.info(`Rolling back ${files.length} files to snapshot ${snapshot.id}`)
+  
+  // We need to handle files that were added (didn't exist in snapshot).
+  // git checkout ref -- file fails if file is not in ref.
+  
+  const existingFiles: string[] = []
+  const newFiles: string[] = []
+
+  for (const file of files) {
+    try {
+      // Check if file exists in snapshot hash
+      // git cat-file -e hash:path returns 0 if exists
+      // We need to export a helper for this in git.ts or use execSync here
+      execSync(`git cat-file -e ${snapshot.hash}:"${file}"`, { 
+        stdio: 'ignore', 
+        cwd: workDir 
+      })
+      existingFiles.push(file)
+    } catch {
+      newFiles.push(file)
+    }
+  }
+
+  let success = true
+
+  if (existingFiles.length > 0) {
+    if (!git.checkoutFiles(snapshot.hash, existingFiles, workDir)) {
+      success = false
+    }
+  }
+
+  if (newFiles.length > 0) {
+    for (const file of newFiles) {
+      try {
+        const fullPath = join(workDir, file)
+        if (existsSync(fullPath)) {
+          unlinkSync(fullPath)
+          logger.debug(`Deleted new file: ${file}`)
+        }
+      } catch (e) {
+        logger.error(`Failed to delete new file ${file}: ${e}`)
+        success = false
+      }
+    }
+  }
+
+  return success
 }
 
 /**

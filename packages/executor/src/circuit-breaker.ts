@@ -32,8 +32,8 @@ export class CircuitBreaker {
 
   constructor(options: Partial<CircuitBreakerOptions> = {}) {
     this.options = {
-      failureThreshold: options.failureThreshold ?? 5,
-      resetTimeoutMs: options.resetTimeoutMs ?? 300000, // 5 minutes
+      failureThreshold: options.failureThreshold ?? 3,
+      resetTimeoutMs: options.resetTimeoutMs ?? 600000, // 10 minutes (model sleep duration)
       halfOpenMaxCalls: options.halfOpenMaxCalls ?? 3,
     }
 
@@ -182,6 +182,22 @@ export class CircuitBreaker {
     }
     const elapsed = Date.now() - this.state.lastFailureTime
     return Math.max(0, this.options.resetTimeoutMs - elapsed)
+  }
+
+  /**
+   * Get human-readable time until reset
+   */
+  getTimeUntilResetText(): string {
+    const ms = this.getTimeUntilReset()
+    if (ms === 0) return 'soon'
+    
+    const minutes = Math.floor(ms / 60000)
+    const seconds = Math.floor((ms % 60000) / 1000)
+    
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`
+    }
+    return `${seconds}s`
   }
 
   /**
