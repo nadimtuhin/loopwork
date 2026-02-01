@@ -61,8 +61,10 @@ describe('LLMFallbackAnalyzer', () => {
         cooldownRemaining: expect.any(Number),
       })
 
-      expect(stats.callsThisSession).toBeGreaterThanOrEqual(0)
-      expect(stats.callsRemaining).toBeLessThanOrEqual(10)
+      expect(typeof stats.callsThisSession).toBe('number')
+      expect(stats.callsThisSession).toBe(0)
+      expect(typeof stats.callsRemaining).toBe('number')
+      expect(stats.callsRemaining).toBe(10)
     })
 
     test('should reset session state on resetSession()', () => {
@@ -82,10 +84,10 @@ describe('LLMFallbackAnalyzer', () => {
 
       expect(cacheStats).toMatchObject({
         size: expect.any(Number),
-        enabled: expect.any(Boolean),
         ttl: expect.any(Number),
       })
 
+      expect(typeof cacheStats.enabled).toBe('boolean')
       expect(cacheStats.enabled).toBe(true)
       expect(cacheStats.ttl).toBe(86400000)
     })

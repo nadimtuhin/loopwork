@@ -67,6 +67,10 @@ export interface TaskContext {
    * Display name for the CLI/model combination
    */
   modelDisplayName?: string
+  /**
+   * Worker ID for parallel execution (0, 1, 2, etc.)
+   */
+  workerId?: number
 }
 
 export type LoopworkContext = TaskContext

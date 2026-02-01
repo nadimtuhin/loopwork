@@ -560,6 +560,7 @@ export class ParallelRunner {
       cli: modelInfo?.cli,
       model: modelInfo?.model,
       modelDisplayName: modelInfo?.displayName,
+      workerId,
     }
 
     this.activeContexts.set(task.id, taskContext)

@@ -36,6 +36,10 @@ interface DashboardTask {
    * Display name for CLI/model combination
    */
   modelDisplayName?: string
+  /**
+   * Worker ID for parallel execution (0, 1, 2, etc.)
+   */
+  workerId?: number
 }
 
 interface TaskEvent {
@@ -97,7 +101,7 @@ function Header({ namespace }: { namespace: string }) {
   )
 }
 
-function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
+export function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
   // Timer component for individual tasks
   const TaskTimer = ({ startTime }: { startTime?: Date }) => {
     const [elapsed, setElapsed] = useState(0)
@@ -147,6 +151,9 @@ function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
           </Box>
           <Box>
             <Text color="gray">  📟 </Text>
+            {task.workerId !== undefined && (
+              <Text color="yellow">w{task.workerId} </Text>
+            )}
             <Text color="magenta">{task.modelDisplayName || task.cli || 'unknown'}</Text>
             <TaskTimer startTime={task.startedAt} />
           </Box>
@@ -351,6 +358,7 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
         cli: context.cli,
         model: context.model,
         modelDisplayName: context.modelDisplayName,
+        workerId: context.workerId,
       }
       
       updateState({

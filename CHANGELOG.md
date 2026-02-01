@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### 2026-02-01 - HEALTH-002
+- HEALTH-002: Add unit tests for health check endpoint
+
 ### 2026-02-01 - PROC-001e
 - PROC-001e: Process Management: Unit Tests (Mocked Dependencies)
 
