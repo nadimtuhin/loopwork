@@ -1,5 +1,5 @@
 import { describe, expect, test, mock, beforeEach, afterEach } from 'bun:test'
-import { TodoistTaskBackend } from '../src/adapter'
+// Removed type-only import from '../src/adapter'
 import { TodoistClient } from '../src'
 import type { Task } from '../../loopwork/src/contracts'
 

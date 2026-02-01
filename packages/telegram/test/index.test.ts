@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { TelegramTaskBot } from '../src/bot'
+// Removed type-only import from '../src/bot'
 import { SessionManager } from '../src/session'
 
 describe('Telegram Package Exports', () => {

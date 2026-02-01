@@ -1,7 +1,7 @@
-import { expect, test, describe, mock, beforeEach } from "bun:test";
-import { NotionClient } from "../src/client";
-import { NotionTaskAdapter } from "../src/adapter";
-import { withNotionBackend } from "../src/plugin";
+import { expect, test, describe, mock, beforeEach } from 'bun:test';
+import { NotionClient } from '../src/client';
+// Removed type-only import from '../src/adapter';
+import { withNotionBackend } from '../src/plugin';
 
 const mockQuery = mock(() => Promise.resolve({ results: [] }));
 const mockUpdate = mock(() => Promise.resolve({}));

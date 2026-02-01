@@ -1,11 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
-import {
-  GenericNameRegistry,
-  getGenericNameRegistry,
-  resetGenericNameRegistry,
-  toGenericName,
-  resolveBrandName,
-} from '../../src/invokers/model-resolver'
+import { GenericNameRegistry, getGenericNameRegistry, resetGenericNameRegistry, toGenericName, resolveBrandName,  } from '../../src/invokers/model-resolver'
 
 describe('GenericNameRegistry', () => {
   let registry: GenericNameRegistry

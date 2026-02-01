@@ -1,6 +1,6 @@
-import { expect, test, describe, beforeEach, mock } from "bun:test";
-import { TrelloClient } from "../src/client";
-import { TrelloTaskAdapter } from "../src/adapter";
+import { expect, test, describe, beforeEach, mock } from 'bun:test';
+import { TrelloClient } from '../src/client';
+// Removed type-only import from '../src/adapter';
 import type { TrelloList, TrelloCard } from "../src/types";
 
 // Mock fetch

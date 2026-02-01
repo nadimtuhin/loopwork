@@ -7,12 +7,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import {
-  extractTaskInfo,
-  generatePRDTemplate,
-  createPRDFile,
-  executeCreatePRD
-} from '../src/actions/create-prd'
+import { generatePRDTemplate, createPRDFile, executeCreatePRD } from '../src/actions/create-prd'
 import type { AutoFixAction } from '../src/actions'
 
 describe('Create PRD Action', () => {

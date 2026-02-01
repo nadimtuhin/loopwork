@@ -3,19 +3,7 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import {
-  getStatusColor,
-  getStatusIcon,
-  formatDuration,
-  formatRelativeTime,
-  createProgressBar,
-  formatPercentage,
-  truncate,
-  padRight,
-  center,
-  formatTaskId,
-  getConnectionStatus
-} from '../src/tui/utils';
+import { getStatusColor, getStatusIcon, formatDuration, formatRelativeTime, createProgressBar, formatPercentage, truncate, padRight, center, getConnectionStatus } from '../src/tui/utils';
 
 describe('TUI Utils', () => {
   describe('getStatusColor', () => {

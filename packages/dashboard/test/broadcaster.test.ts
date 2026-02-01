@@ -1,6 +1,6 @@
 
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { DashboardBroadcaster } from "../src/plugin/broadcaster";
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { DashboardBroadcaster } from '../src/plugin/broadcaster';
 import type { DashboardEvent } from "../src/plugin/types";
 
 describe("DashboardBroadcaster", () => {

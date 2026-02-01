@@ -1,5 +1,5 @@
-import { expect, test, describe, beforeEach, mock } from "bun:test";
-import { NotionTaskAdapter } from "../src/adapter";
+import { expect, test, describe, beforeEach, mock } from 'bun:test';
+// Removed type-only import from '../src/adapter';
 import type { NotionBackendConfig } from "../src/types";
 
 // Mock the Notion client

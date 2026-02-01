@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
-import { MemoryTaskBackend } from '../src/mocks/backend'
+// Removed type-only import from '../src/mocks/backend'
 
 describe('MemoryTaskBackend', () => {
   let backend: MemoryTaskBackend

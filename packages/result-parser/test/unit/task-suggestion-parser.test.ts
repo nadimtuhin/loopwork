@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { TaskSuggestionParser } from '../../src/parsers/task-suggestion-parser'
+// Removed type-only import from '../../src/parsers/task-suggestion-parser'
 import type { ParseContext } from '../../src/contracts'
 
 describe('TaskSuggestionParser', () => {

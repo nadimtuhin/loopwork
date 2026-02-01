@@ -1,13 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
-import {
-  ModelConfigRegistry,
-  ModelPresets,
-  getModelConfigRegistry,
-  resetModelConfigRegistry,
-  getModelString,
-  getModelCli,
-  getModelConfig,
-} from '../../src/models'
+import { ModelConfigRegistry, ModelPresets, getModelConfigRegistry, resetModelConfigRegistry, getModelString, getModelCli, getModelConfig,  } from '../../src/models'
 import type { ModelConfig } from '../../src/models'
 
 describe('ModelConfigRegistry', () => {

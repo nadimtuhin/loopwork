@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
-import { TelegramTaskBot } from '../src/bot'
+// Removed type-only import from '../src/bot'
 
 describe('Voice-to-Task Feature', () => {
   let bot: TelegramTaskBot

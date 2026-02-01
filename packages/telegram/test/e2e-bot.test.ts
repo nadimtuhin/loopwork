@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, mock, afterEach } from 'bun:test'
-import { TelegramTaskBot } from '../src/bot'
+// Removed type-only import from '../src/bot'
 import type { TaskBackend, Task } from '../../loopwork/src/contracts'
 
 // Mock backend implementation
