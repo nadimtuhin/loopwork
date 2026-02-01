@@ -836,6 +836,10 @@ export class CliExecutor {
       const writeStream = fs.createWriteStream(outputFile)
       let timedOut = false
       const startTime = Date.now()
+      let progressInterval: NodeJS.Timeout | null = null
+      let lastStreamOutputTime = 0
+      const STREAM_SILENCE_THRESHOLD = 3000
+      
       const streamLogger = new StreamLogger(options.prefix, (event) => {
         this.debugger?.onEvent({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -882,31 +886,40 @@ export class CliExecutor {
         this.poolManager.trackProcess(child.pid, options.poolName || 'medium', options.taskId, options.workerId)
       }
 
-      const progressInterval = setInterval(() => {
-        // Skip progress update if StreamLogger output happened recently (within 500ms)
-        // This prevents progress bar from overwriting streaming CLI output
-        if (Date.now() - logger.lastOutputTime < 500) {
-          return
+      const startProgressInterval = () => {
+        if (progressInterval) return
+        
+        progressInterval = setInterval(() => {
+          const timeSinceLastOutput = Date.now() - lastStreamOutputTime
+          
+          if (lastStreamOutputTime > 0 && timeSinceLastOutput < STREAM_SILENCE_THRESHOLD) {
+            return
+          }
+
+          const elapsed = Math.floor((Date.now() - startTime) / 1000)
+
+          const workerInfo = options.workerId !== undefined ? ` | worker ${options.workerId}` : ''
+          const message = `${options.prefix || 'CLI'} | ${elapsed}s elapsed (timeout ${timeoutSecs}s)${workerInfo}`
+          logger.update(message)
+        }, this.progressIntervalMs)
+      }
+      
+      const stopProgressInterval = () => {
+        if (progressInterval !== null) {
+          clearInterval(progressInterval)
+          progressInterval = null
         }
-
-        const elapsed = Math.floor((Date.now() - startTime) / 1000)
-        const _remaining = Math.max(0, timeoutSecs - elapsed)
-        const percent = Math.min(100, Math.floor((elapsed / timeoutSecs) * 100))
-
-        const barWidth = 10
-        const filledWidth = Math.max(0, Math.floor((percent / 100) * barWidth) - 1)
-        const bar = '[' + '='.repeat(filledWidth) + '>' + ' '.repeat(Math.max(0, barWidth - filledWidth - 1)) + ']'
-
-        const workerInfo = options.workerId !== undefined ? ` | worker ${options.workerId}` : ''
-        logger.update(`${bar} ${percent}% | ${options.prefix || 'CLI'} | ${elapsed}s elapsed (timeout ${timeoutSecs}s)${workerInfo}`)
-      }, this.progressIntervalMs)
+      }
+      
+      logger.startSpinner(`${options.prefix || 'CLI'} starting...`)
+      startProgressInterval()
 
       // Handle stdout (always available)
       child.stdout?.on('data', (data) => {
+        lastStreamOutputTime = Date.now()
         writeStream.write(data)
         streamLogger.log(data)
 
-        // Emit agent response event for captured output
         const responseText = data.toString('utf-8')
         plugins.runHook('onAgentResponse', {
           responseText,
@@ -922,10 +935,10 @@ export class CliExecutor {
       // Handle stderr (may be null for PTY spawner - stderr merged into stdout)
       if (child.stderr) {
         child.stderr.on('data', (data) => {
+          lastStreamOutputTime = Date.now()
           writeStream.write(data)
           streamLogger.log(data)
 
-          // Emit agent response event for stderr
           const responseText = data.toString('utf-8')
           plugins.runHook('onAgentResponse', {
             responseText,
@@ -953,7 +966,8 @@ export class CliExecutor {
       }, timeoutSecs * 1000)
 
       child.on('close', (code) => {
-        clearInterval(progressInterval)
+        stopProgressInterval()
+        logger.stopSpinner()
         clearTimeout(timer)
         this.debugger?.removeListener(debuggerListener)
         streamLogger.flush()
@@ -1015,7 +1029,8 @@ export class CliExecutor {
       })
 
       child.on('error', (err: NodeJS.ErrnoException) => {
-        clearInterval(progressInterval)
+        stopProgressInterval()
+        logger.stopSpinner()
         clearTimeout(timer)
         this.debugger?.removeListener(debuggerListener)
         streamLogger.flush()

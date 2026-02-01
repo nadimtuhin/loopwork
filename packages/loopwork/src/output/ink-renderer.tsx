@@ -353,7 +353,7 @@ export class InkRenderer extends BaseRenderer {
   private handleProgressStart(event: ProgressStartEvent): void {
     updateState({
       progressMessage: event.message,
-      progressPercent: null,
+      progressPercent: event.percent ?? null,
     })
   }
 

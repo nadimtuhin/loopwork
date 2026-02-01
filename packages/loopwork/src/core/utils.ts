@@ -161,18 +161,20 @@ export const logger = {
     })
     logger._logToFile('TRACE', msg)
   },
-  update: (msg: string) => {
+  update: (msg: string, percent?: number) => {
     logger.renderer.render({
       type: 'progress:update',
       message: msg,
+      percent,
       timestamp: Date.now()
     })
   },
 
-  startSpinner: (msg: string) => {
+  startSpinner: (msg: string, percent?: number) => {
     logger.renderer.render({
       type: 'progress:start',
       message: msg,
+      percent,
       timestamp: Date.now()
     })
   },
@@ -327,22 +329,18 @@ export class StreamLogger {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
       const isLast = i === lines.length - 1
+      const cleanedLine = line.replace(/^\s*\|\s*/, '')
       
-      if (line.length > 0) {
+      if (cleanedLine.length > 0) {
         if (this.isAtStartOfLine) {
           this.printPrefix()
           this.isAtStartOfLine = false
         }
-        // Clean up the line: remove leading | and extra spaces from tool output
-        let cleanedLine = line.replace(/^\s*\|\s*/, '')
         logger.raw(chalk.dim(cleanedLine), true)
       }
       
-      if (!isLast) {
-        if (this.isAtStartOfLine) {
-          this.printPrefix()
-        }
-        logger.raw('') 
+      if (!isLast && !this.isAtStartOfLine) {
+        logger.raw('')
         this.isAtStartOfLine = true
       }
     }

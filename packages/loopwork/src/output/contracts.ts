@@ -130,6 +130,7 @@ export interface ProgressStartEvent extends BaseOutputEvent {
   type: 'progress:start'
   message: string
   id?: string
+  percent?: number
 }
 
 export interface ProgressUpdateEvent extends BaseOutputEvent {

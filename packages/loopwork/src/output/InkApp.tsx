@@ -133,10 +133,13 @@ export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit 
                   <Text color="yellow">⏱ {formatTime(currentTaskElapsed)}</Text>
                   {state.progressMessage && (
                     <Box marginTop={1}>
-                      <Text color="blue">{state.progressMessage}</Text>
-                      {state.progressPercent !== null && (
-                         <Text> {state.progressPercent}%</Text>
-                      )}
+                      <ProgressBar
+                        message={state.progressMessage}
+                        current={state.progressPercent ?? 0}
+                        total={100}
+                        indeterminate={state.progressPercent === null}
+                        width={20}
+                      />
                     </Box>
                   )}
                 </Box>
@@ -215,10 +218,13 @@ export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit 
 
       {state.progressMessage && (
         <Box marginY={1}>
-          <Text color="blue">{state.progressMessage}</Text>
-          {state.progressPercent !== null && (
-            <Text color="gray"> {'('}{state.progressPercent}%)</Text>
-          )}
+          <ProgressBar
+            message={state.progressMessage}
+            current={state.progressPercent ?? 0}
+            total={100}
+            indeterminate={state.progressPercent === null}
+            width={30}
+          />
         </Box>
       )}
 

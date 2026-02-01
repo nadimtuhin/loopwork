@@ -23,6 +23,9 @@ describe('CliExecutor', () => {
       timeout: 30,
       debug: false,
       resume: false,
+      cliConfig: {
+        progressIntervalMs: 50
+      }
     } as Config
 
     // Mock logger
@@ -31,6 +34,8 @@ describe('CliExecutor', () => {
     spyOn(logger, 'error').mockImplementation(() => {})
     spyOn(logger, 'debug').mockImplementation(() => {})
     spyOn(logger, 'update').mockImplementation(() => {})
+    spyOn(logger, 'startSpinner').mockImplementation(() => {})
+    spyOn(logger, 'stopSpinner').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -100,6 +105,37 @@ describe('CliExecutor', () => {
     const call = spawnSpy.mock.calls[0]
     const fullCommand = [call[0], ...(call[1] as string[])].join(' ')
     expect(fullCommand).toContain('opencode')
+  })
+
+  test('execute starts and stops spinner', async () => {
+    spyOn(child_process, 'spawnSync').mockImplementation(() => ({ status: 0, stdout: '/bin/cli' } as any))
+    spyOn(fs, 'existsSync').mockReturnValue(true)
+    
+    const mockChild = new EventEmitter() as any
+    mockChild.stdout = new EventEmitter()
+    mockChild.stderr = new EventEmitter()
+    mockChild.stdin = { write: mock(), end: mock() }
+    mockChild.kill = mock()
+    spyOn(child_process, 'spawn').mockReturnValue(mockChild)
+
+    const startSpinnerSpy = spyOn(logger, 'startSpinner')
+    const stopSpinnerSpy = spyOn(logger, 'stopSpinner')
+    const updateSpy = spyOn(logger, 'update')
+
+    const executor = new CliExecutor(config)
+    const outFile = path.join(tempDir, 'out.md')
+    
+    const promise = executor.execute('Test prompt', outFile, 10)
+    
+    await new Promise(r => setTimeout(r, 150))
+    
+    mockChild.emit('close', 0)
+    
+    await promise
+    
+    expect(startSpinnerSpy).toHaveBeenCalled()
+    expect(stopSpinnerSpy).toHaveBeenCalled()
+    expect(updateSpy).toHaveBeenCalled()
   })
 
   test('retry logic switches to fallback after exhausting primary models', async () => {
