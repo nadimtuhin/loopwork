@@ -293,7 +293,9 @@ export class CliExecutor {
   }
 
   getNextModel(): { cli: string; model: string; displayName?: string } | null {
-    const modelConfig = this.modelSelector.getNext()
+    // Use peek() to get the next model without advancing the selector
+    // The actual execution will call getNext() to advance
+    const modelConfig = this.modelSelector.peek()
     if (!modelConfig) {
       return null
     }

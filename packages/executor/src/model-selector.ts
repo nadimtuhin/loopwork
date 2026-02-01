@@ -38,8 +38,10 @@ export class ModelSelector {
 
   // Retry tracking per model
   private retryCount = new Map<string, number>()
-  // Track disabled models
+  // Track disabled models (circuit breaker opened)
   private disabledModels = new Set<string>()
+  // Track explicitly unavailable models (manual disable)
+  private unavailableModels = new Set<string>()
   // Track pending models (still being validated)
   private pendingModels = new Set<string>()
   // Callbacks for when models become available
@@ -61,6 +63,33 @@ export class ModelSelector {
       failureThreshold: options.failureThreshold ?? 3,
       resetTimeoutMs: options.resetTimeoutMs ?? 300000, // 5 minutes
     })
+  }
+
+  /**
+   * Peek at the next model without advancing the selector
+   * Returns null if no healthy models are available
+   */
+  peek(): ModelConfig | null {
+    const maxAttempts = this.getTotalModelCount()
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      const model = this.peekNextInternal()
+      if (!model) {
+        return null
+      }
+
+      // Check if model is disabled by circuit breaker
+      if (this.enableCircuitBreaker && !this.circuitBreakers.canExecute(model.name)) {
+        attempts++
+        continue
+      }
+
+      return model
+    }
+
+    // All models exhausted
+    return null
   }
 
   /**
@@ -88,6 +117,43 @@ export class ModelSelector {
 
     // All models exhausted
     return null
+  }
+
+  /**
+   * Internal peek without advancing indices or circuit breaker check
+   */
+  private peekNextInternal(): ModelConfig | null {
+    const pool = this.useFallback ? this.fallbackModels : this.primaryModels
+    
+    // Filter out disabled models
+    const availablePool = pool.filter(m => !this.disabledModels.has(m.name))
+    
+    if (availablePool.length === 0) {
+      // Try fallback if not already using it
+      if (!this.useFallback && this.fallbackModels.length > 0) {
+        // Don't actually switch, just check if fallback has models
+        const fallbackAvailable = this.fallbackModels.filter(m => !this.disabledModels.has(m.name))
+        if (fallbackAvailable.length > 0) {
+          return fallbackAvailable[0]
+        }
+      }
+      return null
+    }
+
+    switch (this.strategy) {
+      case 'round-robin': {
+        const index = this.useFallback ? this.fallbackIndex : this.primaryIndex
+        return pool[index % pool.length]
+      }
+      case 'priority':
+        return pool[0]
+      case 'cost-aware':
+        return this.selectCostAware(availablePool)
+      case 'random':
+        return this.selectRandom(availablePool)
+      default:
+        return pool[0]
+    }
   }
 
   /**
@@ -196,9 +262,14 @@ export class ModelSelector {
   }
 
   /**
-   * Check if a model is currently available (not circuit-broken)
+   * Check if a model is currently available (not circuit-broken or explicitly unavailable)
    */
   isModelAvailable(modelName: string): boolean {
+    // Check if explicitly marked unavailable
+    if (this.unavailableModels.has(modelName)) {
+      return false
+    }
+    
     if (this.disabledModels.has(modelName)) {
       // Check if circuit breaker has reset
       if (this.enableCircuitBreaker && this.circuitBreakers.canExecute(modelName)) {
@@ -332,6 +403,7 @@ export class ModelSelector {
     this.useFallback = false
     this.retryCount.clear()
     this.disabledModels.clear()
+    this.unavailableModels.clear()
     this.circuitBreakers.resetAll()
   }
 
@@ -340,6 +412,7 @@ export class ModelSelector {
    */
   resetModel(modelName: string): void {
     this.disabledModels.delete(modelName)
+    this.unavailableModels.delete(modelName)
     this.circuitBreakers.reset(modelName)
     this.retryCount.set(modelName, 0)
   }
@@ -418,9 +491,11 @@ export class ModelSelector {
    */
   markModelUnavailable(modelName: string): void {
     this.pendingModels.delete(modelName)
-    // Add to disabled models set (checked by isModelAvailable)
+    // Add to unavailable models set (explicit disable, won't auto-recover)
+    this.unavailableModels.add(modelName)
+    // Also add to disabled models for consistency
     this.disabledModels.add(modelName)
-    // Also disable the model config
+    // Disable the model config
     const model = this.primaryModels.find(m => m.name === modelName)
     if (model) {
       model.enabled = false
