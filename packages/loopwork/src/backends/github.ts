@@ -1,4 +1,5 @@
 import { $ } from 'bun'
+import { createResilienceRunner, DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
 import type { TaskBackend, Task, FindTaskOptions, UpdateResult, BackendConfig } from './types'
 import { LABELS } from '../contracts/task'
 import { GITHUB_RETRY_BASE_DELAY_MS, GITHUB_MAX_RETRIES } from '../core/constants'
@@ -34,6 +35,7 @@ export class GitHubTaskAdapter implements TaskBackend {
   private repo?: string
   private maxRetries = GITHUB_MAX_RETRIES
   private baseDelayMs = GITHUB_RETRY_BASE_DELAY_MS
+  private rateLimitWaitMs = DEFAULT_RATE_LIMIT_WAIT_MS
 
   constructor(config: BackendConfig) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,39 +47,22 @@ export class GitHubTaskAdapter implements TaskBackend {
   }
 
   private async withRetry<T>(fn: () => Promise<T>, retries = this.maxRetries): Promise<T> {
-    let lastError: Error | null = null
+    const runner = createResilienceRunner({
+      maxAttempts: retries + 1,
+      retryOnRateLimit: true,
+      retryOnTransient: true,
+      rateLimitWaitMs: this.rateLimitWaitMs,
+      exponentialBackoff: true,
+      exponentialBackoffBaseDelay: this.baseDelayMs,
+    })
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        return await fn()
-      } catch (e: unknown) {
-        lastError = e instanceof Error ? e : new Error(String(e))
-        const isRetryable = this.isRetryableError(e)
-        if (!isRetryable || attempt === retries) throw e
-        const delay = this.baseDelayMs * Math.pow(2, attempt)
-        await new Promise(r => setTimeout(r, delay))
-      }
+    const result = await runner.execute(fn)
+
+    if (result.success) {
+      return result.result as T
     }
 
-    throw lastError || new Error('Retry failed')
-  }
-
-  private isRetryableError(error: unknown): boolean {
-    let message = ''
-    if (error instanceof Error) {
-      message = error.message
-    } else if (typeof error === 'string') {
-      message = error
-    } else if (error && typeof error === 'object' && 'message' in error) {
-      message = String((error as { message?: unknown }).message)
-    }
-    message = message.toLowerCase()
-    if (message.includes('network') || message.includes('timeout')) return true
-    if (message.includes('econnreset') || message.includes('econnrefused')) return true
-    if (message.includes('socket hang up')) return true
-    if (message.includes('rate limit') || message.includes('429')) return true
-    if (message.includes('502') || message.includes('503') || message.includes('504')) return true
-    return false
+    throw result.finalError || new Error('Retry failed')
   }
 
   private extractIssueNumber(taskId: string): number | null {

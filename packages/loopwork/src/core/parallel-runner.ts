@@ -543,8 +543,11 @@ export class ParallelRunner {
     const retryPolicy = getRetryPolicy(task, this.config)
     const currentRetryAttempt = this.retryCount.get(task.id) || 0
 
-    // Get model info from CLI executor
+    // Get model info from CLI executor (if available) or use config CLI as fallback
     const modelInfo = this.cliExecutor.getNextModel?.()
+    const cli = modelInfo?.cli || this.config.cli || 'unknown'
+    const model = modelInfo?.model
+    const displayName = modelInfo?.displayName || (model ? `${cli}/${model}` : cli)
 
     // Create task context
     const taskContext: TaskContext = {
@@ -557,9 +560,9 @@ export class ParallelRunner {
       retryAttempt: currentRetryAttempt,
       retryPolicy,
       lastError: this.lastErrors.get(task.id),
-      cli: modelInfo?.cli,
-      model: modelInfo?.model,
-      modelDisplayName: modelInfo?.displayName,
+      cli,
+      model,
+      modelDisplayName: displayName,
       workerId,
     }
 

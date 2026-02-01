@@ -11,7 +11,8 @@ describe('LLMFallbackAnalyzer', () => {
 
   beforeEach(async () => {
     try {
-      await fs.unlink(path.join(TEST_DIR, 'llm-cache.json'))
+      await fs.rm(TEST_DIR, { recursive: true, force: true })
+      await fs.mkdir(TEST_DIR, { recursive: true })
     } catch (e) {
     }
 
@@ -19,17 +20,19 @@ describe('LLMFallbackAnalyzer', () => {
       apiKey: MOCK_API_KEY,
       model: 'claude-3-haiku-20240307',
       maxCallsPerSession: 10,
-      cooldownMs: 300000,
+      cooldownMs: 0,
       cacheEnabled: true,
       cacheTTL: 86400000,
       timeout: 30000,
       cachePath: path.join(TEST_DIR, 'llm-cache.json'),
+      sessionPath: path.join(TEST_DIR, 'llm-session.json'),
+      useMock: true,
     })
   })
 
   afterEach(async () => {
     try {
-      await fs.unlink(path.join(TEST_DIR, 'llm-cache.json'))
+      await fs.rm(TEST_DIR, { recursive: true, force: true })
     } catch (e) {
     }
   })
@@ -54,17 +57,10 @@ describe('LLMFallbackAnalyzer', () => {
     test('should track session statistics correctly', () => {
       const stats = analyzer.getSessionStats()
 
-      expect(stats).toMatchObject({
-        callsThisSession: expect.any(Number),
-        callsRemaining: expect.any(Number),
-        lastCallTime: expect.any(Number),
-        cooldownRemaining: expect.any(Number),
-      })
-
-      expect(typeof stats.callsThisSession).toBe('number')
       expect(stats.callsThisSession).toBe(0)
-      expect(typeof stats.callsRemaining).toBe('number')
       expect(stats.callsRemaining).toBe(10)
+      expect(stats.lastCallTime).toBe(0)
+      expect(stats.cooldownRemaining).toBe(0)
     })
 
     test('should reset session state on resetSession()', () => {
@@ -76,18 +72,116 @@ describe('LLMFallbackAnalyzer', () => {
       expect(stats.callsRemaining).toBe(10)
       expect(stats.cooldownRemaining).toBe(0)
     })
+
+    test('should persist session state across instances', async () => {
+      await analyzer.analyzeError('Test error 1')
+      const stats1 = analyzer.getSessionStats()
+      expect(stats1.callsThisSession).toBe(1)
+
+      const analyzer2 = new LLMFallbackAnalyzer({
+        apiKey: MOCK_API_KEY,
+        cacheEnabled: true,
+        cachePath: path.join(TEST_DIR, 'llm-cache.json'),
+        sessionPath: path.join(TEST_DIR, 'llm-session.json'),
+        useMock: true,
+        cooldownMs: 0,
+      })
+
+      await analyzer2.analyzeError('Test error 2')
+
+      const stats2 = analyzer2.getSessionStats()
+      expect(stats2.callsThisSession).toBe(2)
+    })
+  })
+
+  describe('Rate Limiting', () => {
+    test('should block calls when max calls per session reached', async () => {
+      const testDir = path.join(TEST_DIR, 'rate-limit-test')
+      await fs.mkdir(testDir, { recursive: true })
+
+      const limitedAnalyzer = new LLMFallbackAnalyzer({
+        apiKey: MOCK_API_KEY,
+        maxCallsPerSession: 3,
+        cooldownMs: 0,
+        cacheEnabled: false,
+        useMock: true,
+        sessionPath: path.join(testDir, 'llm-session.json'),
+      })
+
+      // Make 3 calls (should succeed)
+      const result1 = await limitedAnalyzer.analyzeError('Error 1')
+      expect(result1).not.toBeNull()
+
+      const result2 = await limitedAnalyzer.analyzeError('Error 2')
+      expect(result2).not.toBeNull()
+
+      const result3 = await limitedAnalyzer.analyzeError('Error 3')
+      expect(result3).not.toBeNull()
+
+      // 4th call should be blocked
+      const result4 = await limitedAnalyzer.analyzeError('Error 4')
+      expect(result4).toBeNull()
+
+      const stats = limitedAnalyzer.getSessionStats()
+      expect(stats.callsThisSession).toBe(3)
+      expect(stats.callsRemaining).toBe(0)
+    })
+
+    test('should enforce cooldown period between calls', async () => {
+      const testDir = path.join(TEST_DIR, 'cooldown-test')
+      await fs.mkdir(testDir, { recursive: true })
+
+      const cooldownAnalyzer = new LLMFallbackAnalyzer({
+        apiKey: MOCK_API_KEY,
+        maxCallsPerSession: 10,
+        cooldownMs: 1000, // 1 second cooldown
+        cacheEnabled: false,
+        useMock: true,
+        sessionPath: path.join(testDir, 'llm-session.json'),
+      })
+
+      // First call
+      const result1 = await cooldownAnalyzer.analyzeError('Error 1')
+      expect(result1).not.toBeNull()
+
+      // Immediate second call should be blocked by cooldown
+      const result2 = await cooldownAnalyzer.analyzeError('Error 2')
+      expect(result2).toBeNull()
+
+      const stats = cooldownAnalyzer.getSessionStats()
+      expect(stats.cooldownRemaining).toBeGreaterThan(0)
+    })
+
+    test('should allow calls after cooldown expires', async () => {
+      const testDir = path.join(TEST_DIR, 'cooldown-expire-test')
+      await fs.mkdir(testDir, { recursive: true })
+
+      const cooldownAnalyzer = new LLMFallbackAnalyzer({
+        apiKey: MOCK_API_KEY,
+        maxCallsPerSession: 10,
+        cooldownMs: 50, // Short cooldown for testing
+        cacheEnabled: false,
+        useMock: true,
+        sessionPath: path.join(testDir, 'llm-session.json'),
+      })
+
+      // First call
+      await cooldownAnalyzer.analyzeError('Error 1')
+
+      // Wait for cooldown
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Should be able to call again
+      const result = await cooldownAnalyzer.analyzeError('Error 2')
+      expect(result).not.toBeNull()
+    })
   })
 
   describe('Cache Statistics', () => {
     test('should provide cache statistics', () => {
       const cacheStats = analyzer.getCacheStats()
 
-      expect(cacheStats).toMatchObject({
-        size: expect.any(Number),
-        ttl: expect.any(Number),
-      })
-
-      expect(typeof cacheStats.enabled).toBe('boolean')
+      expect(cacheStats.size).toBe(0)
       expect(cacheStats.enabled).toBe(true)
       expect(cacheStats.ttl).toBe(86400000)
     })

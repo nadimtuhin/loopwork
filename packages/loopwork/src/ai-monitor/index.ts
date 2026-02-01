@@ -23,6 +23,9 @@ export class AIMonitor {
   private stats: MonitorStats
   private healingHistory: HealingAttempt[] = []
   private onLogLineCallbacks: Set<(event: LogEvent) => void> = new Set()
+  private errorBuffer: string[] = []
+  private errorBufferTimeout: NodeJS.Timeout | null = null
+  private readonly ERROR_BUFFER_DELAY_MS = 500
 
   constructor(config: Partial<AIMonitorConfig> = {}) {
     this.config = {
@@ -125,6 +128,9 @@ export class AIMonitor {
       const level = this.detectLogLevel(event.line)
 
       if (match) {
+        // If we have an active error buffer, flush it immediately as we found a known pattern
+        this.flushErrorBuffer()
+        
         const logEvent: LogEvent = {
           timestamp: event.timestamp,
           level,
@@ -134,7 +140,12 @@ export class AIMonitor {
         }
         this.handlePatternMatch(match, logEvent)
       } else if (level === 'error' && this.llmAnalyzer) {
-        this.analyzeUnknownError(event.line, { file: event.file })
+        // Start buffering unknown errors to capture stack traces
+        this.bufferErrorLine(event.line, event.file)
+      } else if (this.errorBuffer.length > 0 && this.llmAnalyzer) {
+        // Continue buffering context (stack trace lines often appear as INFO)
+        // We capture subsequent lines if we have an active error buffer
+        this.bufferErrorLine(event.line, event.file)
       }
     })
 
@@ -155,6 +166,31 @@ export class AIMonitor {
         }
       }
     })
+  }
+
+  private bufferErrorLine(line: string, file?: string): void {
+    if (!this.errorBufferTimeout) {
+      // Start new buffer window
+      this.errorBufferTimeout = setTimeout(() => {
+        this.flushErrorBuffer(file)
+      }, this.ERROR_BUFFER_DELAY_MS)
+    }
+    
+    this.errorBuffer.push(line)
+  }
+
+  private async flushErrorBuffer(file?: string): Promise<void> {
+    if (this.errorBufferTimeout) {
+      clearTimeout(this.errorBufferTimeout)
+      this.errorBufferTimeout = null
+    }
+
+    if (this.errorBuffer.length === 0) return
+
+    const fullError = this.errorBuffer.join('\n')
+    this.errorBuffer = [] // Clear immediately
+
+    await this.analyzeUnknownError(fullError, { file })
   }
 
   private async analyzeUnknownError(line: string, context?: Record<string, unknown>): Promise<void> {

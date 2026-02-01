@@ -36,7 +36,9 @@ export interface LLMFallbackAnalyzerConfig {
   cacheTTL?: number
   cacheEnabled?: boolean
   cachePath?: string
+  sessionPath?: string
   timeout?: number
+  useMock?: boolean
 }
 
 interface SessionState {
@@ -60,7 +62,9 @@ export class LLMFallbackAnalyzer {
     cacheTTL: CACHE_TTL_MS,
     cacheEnabled: true,
     cachePath: '.loopwork/ai-monitor/llm-cache.json',
+    sessionPath: '.loopwork/ai-monitor/llm-session.json',
     timeout: REQUEST_TIMEOUT_MS,
+    useMock: false,
   }
 
   private readonly systemPrompt = `You are an error analysis assistant. Analyze the provided error and stack trace to identify:
@@ -79,6 +83,15 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
 
   constructor(config: LLMFallbackAnalyzerConfig = {}) {
     this.config = { ...this.defaultConfig, ...config }
+
+    // Map common aliases to full model IDs
+    if (this.config.model === 'haiku') {
+      this.config.model = 'claude-3-haiku-20240307'
+    } else if (this.config.model === 'sonnet') {
+      this.config.model = 'claude-3-5-sonnet-20240620'
+    } else if (this.config.model === 'opus') {
+      this.config.model = 'claude-3-opus-20240229'
+    }
 
     this.sessionState = {
       callsThisSession: 0,
@@ -108,6 +121,8 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
         await this.loadCache()
       }
 
+      await this.loadSession()
+
       this.initialized = true
       logger.debug('[LLMFallbackAnalyzer] Initialized successfully')
     } catch (error) {
@@ -119,7 +134,10 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
   async analyzeError(error: string, context?: Record<string, unknown>): Promise<LLMAnalysis | null> {
     await this.initialize()
 
-    if (!this.anthropic) {
+    const statsBeforeRateLimit = this.sessionState
+    logger.info(`[LLMFallbackAnalyzer] Before rate limit check: calls=${statsBeforeRateLimit.callsThisSession}, max=${this.config.maxCallsPerSession}`)
+
+    if (!this.anthropic && !this.config.useMock) {
       logger.debug('[LLMFallbackAnalyzer] LLM not available, skipping analysis')
       return null
     }
@@ -147,9 +165,14 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
       try {
         analysis = await this.callLLM(prompt)
       } catch (callError) {
-        // If LLM call fails (e.g., invalid API key), use mock fallback for development/testing
-        logger.debug(`[LLMFallbackAnalyzer] LLM call failed, using mock fallback: ${callError}`)
-        analysis = this.mockLLMResponse(prompt)
+        // Only use mock fallback if explicitly enabled
+        if (this.config.useMock) {
+          logger.debug(`[LLMFallbackAnalyzer] LLM call failed, using mock fallback: ${callError}`)
+          analysis = this.mockLLMResponse(prompt)
+        } else {
+          logger.error(`[LLMFallbackAnalyzer] LLM call failed: ${callError}`)
+          return null
+        }
       }
 
       if (this.config.cacheEnabled && analysis) {
@@ -189,7 +212,7 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     return true
   }
 
-  private recordCall(): void {
+  private async recordCall(): Promise<void> {
     const now = Date.now()
 
     this.sessionState.callsThisSession++
@@ -198,6 +221,55 @@ Be specific and actionable. Limit suggested fixes to 3-5 items.`
     logger.debug(
       `[LLMFallbackAnalyzer] Session: ${this.sessionState.callsThisSession}/${this.config.maxCallsPerSession} calls`
     )
+
+    try {
+      await this.saveSession()
+    } catch (error) {
+      logger.warn(`[LLMFallbackAnalyzer] Failed to save session state: ${error}`)
+    }
+  }
+
+  private async loadSession(): Promise<void> {
+    try {
+      const sessionFile = path.resolve(this.config.sessionPath)
+      const content = await fs.readFile(sessionFile, 'utf-8')
+      const savedState = JSON.parse(content)
+
+      // Only restore if it looks valid
+      if (
+        typeof savedState.callsThisSession === 'number' &&
+        typeof savedState.lastCallTime === 'number' &&
+        typeof savedState.sessionStartTime === 'number'
+      ) {
+        // Check if session is too old (e.g., > 24 hours), then reset
+        const SESSION_TIMEOUT = 24 * 60 * 60 * 1000
+        if (Date.now() - savedState.sessionStartTime > SESSION_TIMEOUT) {
+          logger.debug('[LLMFallbackAnalyzer] Saved session expired, starting new')
+          return
+        }
+
+        this.sessionState = savedState
+        logger.debug(
+          `[LLMFallbackAnalyzer] Restored session: ${this.sessionState.callsThisSession}/${this.config.maxCallsPerSession} calls`
+        )
+      }
+    } catch (error) {
+      // Ignore errors (file not found, invalid JSON), start fresh
+      logger.debug('[LLMFallbackAnalyzer] Starting new session (no saved state)')
+    }
+  }
+
+  private async saveSession(): Promise<void> {
+    try {
+      const sessionFile = path.resolve(this.config.sessionPath)
+      const sessionDir = path.dirname(sessionFile)
+
+      await fs.mkdir(sessionDir, { recursive: true })
+      await fs.writeFile(sessionFile, JSON.stringify(this.sessionState, null, 2), 'utf-8')
+    } catch (error) {
+      logger.error(`[LLMFallbackAnalyzer] Failed to save session: ${error}`)
+      throw error
+    }
   }
 
   private generateCacheKey(error: string, context?: Record<string, unknown>): string {

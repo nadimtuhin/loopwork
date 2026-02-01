@@ -63,12 +63,12 @@ export function isRateLimitError(error: unknown): boolean {
     return isRateLimitOutput(error)
   }
 
-  if (typeof error !== 'object') {
+  if (typeof error !== 'object' || error === null) {
     return false
   }
 
-  const err = error as RetryableErrorInternal
-  const errorMessage = (err.message || '').toLowerCase()
+  const err = error as Record<string, unknown>
+  const errorMessage = String(err.message || '').toLowerCase()
 
   if (isRateLimitOutput(errorMessage)) {
     return true

@@ -529,4 +529,104 @@ describe('makeResilient', () => {
 
     expect(callCount).toBe(3)
   })
+
+  test('executeSync succeeds', async () => {
+    const runner = createResilienceRunner({ maxAttempts: 1 })
+    const result = await runner.executeSync(() => 'sync-success')
+
+    expect(result.success).toBe(true)
+    expect(result.result).toBe('sync-success')
+  })
+
+  test('executeSync retries on error', async () => {
+    const runner = createResilienceRunner({ 
+      maxAttempts: 2, 
+      exponentialBackoffBaseDelay: 1,
+      retryOnAllErrors: true 
+    })
+    let count = 0
+    const result = await runner.executeSync(() => {
+      count++
+      if (count === 1) throw new Error('sync-fail')
+      return 'sync-retry-success'
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.attempts).toBe(2)
+    expect(result.result).toBe('sync-retry-success')
+  })
+
+  test('stats tracking and reset', async () => {
+    const runner = createResilienceRunner({ maxAttempts: 1 })
+    
+    await runner.execute(async () => 'ok')
+    await runner.execute(async () => { throw new Error('fail') }).catch(() => {})
+    
+    const stats = runner.getStats()
+    expect(stats.totalOperations).toBe(2)
+    expect(stats.successfulOperations).toBe(1)
+    expect(stats.failedOperations).toBe(1)
+    expect(stats.totalAttempts).toBe(2)
+    
+    runner.resetStats()
+    const resetStats = runner.getStats()
+    expect(resetStats.totalOperations).toBe(0)
+    expect(resetStats.successfulOperations).toBe(0)
+  })
+
+  test('setDefaultConfig and getDefaultConfig', () => {
+    const runner = createResilienceRunner()
+    const initialConfig = runner.getDefaultConfig()
+    
+    const newBackoff = new ConstantBackoff(500)
+    runner.setDefaultConfig({ backoffPolicy: newBackoff })
+    
+    const updatedConfig = runner.getDefaultConfig()
+    expect(updatedConfig.backoffPolicy).toBe(newBackoff)
+    expect(updatedConfig.retryStrategy).toBe(initialConfig.retryStrategy)
+  })
+})
+
+describe('Backoff Policies Extra', () => {
+  test('Backoff strategy getBaseDelay works', () => {
+    const exp = exponentialBackoff({ baseDelayMs: 123 })
+    expect(exp.getBaseDelay()).toBe(123)
+    
+    const lin = new LinearBackoff({ baseDelayMs: 456 })
+    expect(lin.getBaseDelay()).toBe(456)
+    
+    const con = new ConstantBackoff(789)
+    expect(con.getBaseDelay()).toBe(789)
+  })
+
+  test('linearBackoff factory works', () => {
+    const { linearBackoff } = require('../src/backoff')
+    const strategy = linearBackoff({ baseDelayMs: 1000, jitter: false })
+    expect(strategy.calculateDelay(1)).toBe(1000)
+  })
+})
+
+describe('RateLimitBackoffStrategy Extra', () => {
+  test('fallback works', () => {
+    const fallback = new ConstantBackoff(100)
+    const strategy = new (require('../src/rate-limit').RateLimitBackoffStrategy)(30000, fallback)
+    
+    expect(strategy.calculateDelay(1, new Error('normal'))).toBe(100)
+    expect(strategy.calculateDelay(1, new Error('rate limit'))).toBe(30000)
+    expect(strategy.calculateDelay(1)).toBe(100)
+    expect(strategy.getBaseDelay()).toBe(30000)
+  })
+
+  test('without fallback returns 0 for non-rate errors', () => {
+    const strategy = new (require('../src/rate-limit').RateLimitBackoffStrategy)(30000)
+    expect(strategy.calculateDelay(1, new Error('normal'))).toBe(0)
+  })
+})
+
+describe('Error Detection', () => {
+  test('isOpenCodeCacheCorruption detection works', () => {
+    const { isOpenCodeCacheCorruption } = require('../src/rate-limit')
+    expect(isOpenCodeCacheCorruption('ENOENT reading .cache/opencode')).toBe(true)
+    expect(isOpenCodeCacheCorruption('Normal error')).toBe(false)
+  })
 })

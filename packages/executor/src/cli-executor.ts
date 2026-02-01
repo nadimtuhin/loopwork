@@ -7,6 +7,7 @@ import {
   isRateLimitOutput, 
   createResilienceRunner, 
   RateLimitError,
+  DEFAULT_RATE_LIMIT_WAIT_MS,
 } from '@loopwork-ai/resilience'
 import type { 
   ILogger, 
@@ -141,7 +142,7 @@ export class CliExecutor {
     protected options: CliExecutorOptions = {}
   ) {
     this.retryConfig = {
-      rateLimitWaitMs: 30000,
+      rateLimitWaitMs: DEFAULT_RATE_LIMIT_WAIT_MS,
       exponentialBackoff: true,
       baseDelayMs: 1000,
       maxDelayMs: 60000,

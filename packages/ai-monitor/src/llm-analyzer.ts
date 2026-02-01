@@ -27,6 +27,7 @@ export interface LLMAnalyzerOptions {
   cacheDir?: string
   maxCallsPerSession?: number
   cooldownMs?: number
+  projectRoot?: string
 }
 
 export class LLMAnalyzer {
@@ -36,49 +37,53 @@ export class LLMAnalyzer {
   private callCount: number = 0
   private lastCallTime: number = 0
   private cacheFile: string
+  private projectRoot: string
 
   constructor(options: LLMAnalyzerOptions = {}) {
-    this.cacheDir = options.cacheDir || '.loopwork/ai-monitor'
+    this.projectRoot = options.projectRoot || process.cwd()
+    this.cacheDir = options.cacheDir || path.join(this.projectRoot, '.loopwork/ai-monitor')
     this.maxCallsPerSession = options.maxCallsPerSession ?? 10
-    this.cooldownMs = options.cooldownMs ?? 5 * 60 * 1000 // 5 minutes
+    this.cooldownMs = options.cooldownMs ?? 5 * 60 * 1000
     this.cacheFile = path.join(this.cacheDir, 'llm-cache.json')
 
-    // Ensure cache directory exists
     try {
-      fs.mkdirSync(this.cacheDir, { recursive: true })
+      if (!fs.existsSync(this.cacheDir)) {
+        fs.mkdirSync(this.cacheDir, { recursive: true })
+      }
     } catch (e) {
-      // Directory may already exist
     }
   }
 
-  /**
-   * Analyze an unknown error using LLM
-   * First checks cache, then rate limiting, then calls LLM
-   */
+  syncState(callCount: number, lastCallTime: number): void {
+    this.callCount = callCount
+    this.lastCallTime = lastCallTime
+  }
+
   async analyzeError(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysis | null> {
     const errorHash = this.hashError(errorMessage, stackTrace)
 
-    // Check cache first
     const cached = this.getCachedAnalysis(errorHash)
     if (cached) {
       logger.debug(`Using cached analysis for error: ${errorHash}`)
       return cached
     }
 
-    // Check rate limiting
+    const patternResult = this.analyzePattern(errorMessage)
+    if (patternResult) {
+      this.cacheAnalysis(errorHash, patternResult)
+      return patternResult
+    }
+
     if (!this.canMakeCall()) {
       logger.warn('LLM analyzer throttled: max calls/session reached or cooldown active')
       return null
     }
 
-    // Make LLM call
     try {
       const analysis = await this.callLLM(errorMessage, stackTrace)
 
-      // Cache the response
       this.cacheAnalysis(errorHash, analysis)
 
-      // Update call tracking
       this.callCount++
       this.lastCallTime = Date.now()
 
@@ -89,17 +94,50 @@ export class LLMAnalyzer {
     }
   }
 
-  /**
-   * Check if we can make an LLM call
-   */
+  private analyzePattern(errorMessage: string): ErrorAnalysis | null {
+    const lowerMessage = errorMessage.toLowerCase()
+
+    if (lowerMessage.includes('enoent') || lowerMessage.includes('no such file')) {
+      return {
+        rootCause: 'File or directory not found',
+        suggestedFixes: ['Verify file path exists', 'Check for typos in path', 'Check working directory'],
+        confidence: 0.9
+      }
+    }
+
+    if (lowerMessage.includes('eacces') || lowerMessage.includes('permission denied')) {
+      return {
+        rootCause: 'Permission denied',
+        suggestedFixes: ['Check file permissions', 'Run with appropriate privileges', 'Verify ownership'],
+        confidence: 0.9
+      }
+    }
+
+    if (lowerMessage.includes('etimedout') || lowerMessage.includes('timeout')) {
+      return {
+        rootCause: 'Operation timed out',
+        suggestedFixes: ['Check network connection', 'Increase timeout value', 'Check service availability'],
+        confidence: 0.9
+      }
+    }
+
+    if (lowerMessage.includes('429') || lowerMessage.includes('rate limit')) {
+      return {
+        rootCause: 'Rate limit exceeded',
+        suggestedFixes: ['Wait before retrying', 'Implement exponential backoff', 'Check API quota'],
+        confidence: 0.9
+      }
+    }
+
+    return null
+  }
+
   private canMakeCall(): boolean {
-    // Check call count
     if (this.callCount >= this.maxCallsPerSession) {
       logger.debug(`Call limit reached: ${this.callCount}/${this.maxCallsPerSession}`)
       return false
     }
 
-    // Check cooldown
     if (this.lastCallTime > 0) {
       const timeSinceLastCall = Date.now() - this.lastCallTime
       if (timeSinceLastCall < this.cooldownMs) {
@@ -111,19 +149,13 @@ export class LLMAnalyzer {
     return true
   }
 
-  /**
-   * Call Claude Haiku for error analysis
-   */
   private async callLLM(errorMessage: string, stackTrace?: string): Promise<ErrorAnalysis> {
     const prompt = this.buildPrompt(errorMessage, stackTrace)
 
-    // In a real implementation, this would call the Anthropic API
-    // For now, return a structured response
     try {
       const response = await this.invokeHaiku(prompt)
       return this.parseAnalysis(response)
     } catch (error) {
-      // Graceful fallback
       return {
         rootCause: 'Unable to analyze error',
         suggestedFixes: ['Check logs for more details', 'Review recent code changes'],
@@ -132,33 +164,21 @@ export class LLMAnalyzer {
     }
   }
 
-  /**
-   * Invoke Haiku model via Anthropic SDK
-   * Falls back to deterministic mock when API key is not available
-   */
   private async invokeHaiku(prompt: string): Promise<string> {
     const apiKey = process.env.ANTHROPIC_API_KEY
 
-    // If no API key, use deterministic fallback for testing/development
     if (!apiKey) {
       logger.debug('ANTHROPIC_API_KEY not set, using deterministic fallback')
       return this.mockHaikuResponse(prompt)
     }
 
-    // Model mapping following the pattern from analyze.ts
-    const modelMap: Record<string, string> = {
-      'haiku': 'claude-3-haiku-20240307',
-      'sonnet': 'claude-3-5-sonnet-20241022',
-      'opus': 'claude-3-opus-20240229'
-    }
-
-    const anthropicModel = modelMap['haiku']
+    const model = 'claude-3-haiku-20240307'
 
     try {
       const anthropic = new Anthropic({ apiKey })
 
       const message = await anthropic.messages.create({
-        model: anthropicModel,
+        model,
         max_tokens: 500,
         messages: [{
           role: 'user',
@@ -166,23 +186,14 @@ export class LLMAnalyzer {
         }]
       })
 
-      const responseText = message.content[0].type === 'text'
-        ? message.content[0].text
-        : ''
-
-      return responseText
+      return message.content[0].type === 'text' ? message.content[0].text : ''
     } catch (error) {
       logger.error(`Anthropic API call failed: ${error instanceof Error ? error.message : String(error)}`)
       throw error
     }
   }
 
-  /**
-   * Mock Haiku response for testing/development (when API key not available)
-   * Returns deterministic but varying responses based on prompt content
-   */
   private mockHaikuResponse(prompt: string): string {
-    // Use multiple characters to get better hash distribution
     let seed = 0
     for (let i = 0; i < prompt.length; i++) {
       seed += prompt.charCodeAt(i)
@@ -204,17 +215,13 @@ export class LLMAnalyzer {
       ['Validate config file', 'Check environment variables', 'Review defaults']
     ]
 
-    const mockResponse = `{
-      "rootCause": "${causes[seed]}",
-      "suggestedFixes": ${JSON.stringify(fixes[seed])},
-      "confidence": ${0.6 + seed * 0.08}
-    }`
-    return mockResponse
+    return JSON.stringify({
+      rootCause: causes[seed],
+      suggestedFixes: fixes[seed],
+      confidence: 0.6 + seed * 0.08
+    })
   }
 
-  /**
-   * Build analysis prompt for LLM
-   */
   private buildPrompt(errorMessage: string, stackTrace?: string): string {
     return `Analyze the following error and provide structured guidance:
 
@@ -229,9 +236,6 @@ Provide your analysis in this exact JSON format:
 }`
   }
 
-  /**
-   * Parse LLM response into structured format
-   */
   private parseAnalysis(response: string): ErrorAnalysis {
     try {
       const parsed = JSON.parse(response)
@@ -249,18 +253,23 @@ Provide your analysis in this exact JSON format:
     }
   }
 
-  /**
-   * Hash error for cache key
-   */
-  private hashError(message: string, stackTrace?: string): string {
-    const combined = `${message}${stackTrace || ''}`
-    return crypto.createHash('sha256').update(combined).digest('hex')
+  hashError(message: string, stackTrace?: string): string {
+    const normalized = this.normalizeError(message + (stackTrace || ''))
+    return crypto.createHash('sha256').update(normalized).digest('hex')
   }
 
-  /**
-   * Get cached analysis if valid
-   */
-  private getCachedAnalysis(errorHash: string): ErrorAnalysis | null {
+  private normalizeError(error: string): string {
+    return error
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/g, '[TIMESTAMP]')
+      .replace(/\d{4}-\d{2}-\d{2}(?:\s+(?:at\s+)?\d{2}:\d{2}:\d{2})?/g, '[TIMESTAMP]')
+      .replace(/\/[a-zA-Z0-9._\-\/]+\/[a-zA-Z0-9._\-\/]+/g, '[PATH]')
+      .replace(/[a-zA-Z]:\\[a-zA-Z0-9._\-\\]+\\[a-zA-Z0-9._\-\\]+/g, '[PATH]')
+      .replace(/0x[a-fA-F0-9]+/g, '[HEX]')
+      .trim()
+      .replace(/\s+/g, ' ')
+  }
+
+  getCachedAnalysis(errorHash: string): ErrorAnalysis | null {
     try {
       if (!fs.existsSync(this.cacheFile)) {
         return null
@@ -274,7 +283,6 @@ Provide your analysis in this exact JSON format:
         return null
       }
 
-      // Check expiry
       const expiresAt = new Date(entry.expiresAt).getTime()
       if (Date.now() > expiresAt) {
         logger.debug(`Cache entry expired: ${errorHash}`)
@@ -290,20 +298,21 @@ Provide your analysis in this exact JSON format:
     }
   }
 
-  /**
-   * Cache analysis response
-   */
-  private cacheAnalysis(errorHash: string, analysis: ErrorAnalysis): void {
+  cacheAnalysis(errorHash: string, analysis: ErrorAnalysis): void {
     try {
       let cache: Record<string, LLMCacheEntry> = {}
 
       if (fs.existsSync(this.cacheFile)) {
-        const content = fs.readFileSync(this.cacheFile, 'utf-8')
-        cache = JSON.parse(content)
+        try {
+          const content = fs.readFileSync(this.cacheFile, 'utf-8')
+          cache = JSON.parse(content)
+        } catch (e) {
+          cache = {}
+        }
       }
 
       const now = new Date()
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000) // 24 hours
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
 
       cache[errorHash] = {
         errorHash,
@@ -319,9 +328,28 @@ Provide your analysis in this exact JSON format:
     }
   }
 
-  /**
-   * Remove expired cache entry
-   */
+  cleanupExpired(): void {
+    try {
+      if (!fs.existsSync(this.cacheFile)) return
+
+      const content = fs.readFileSync(this.cacheFile, 'utf-8')
+      const cache = JSON.parse(content) as Record<string, LLMCacheEntry>
+      const now = Date.now()
+      let changed = false
+
+      for (const [hash, entry] of Object.entries(cache)) {
+        if (new Date(entry.expiresAt).getTime() < now) {
+          delete cache[hash]
+          changed = true
+        }
+      }
+
+      if (changed) {
+        fs.writeFileSync(this.cacheFile, JSON.stringify(cache, null, 2))
+      }
+    } catch (e) {}
+  }
+
   private removeCacheEntry(errorHash: string): void {
     try {
       if (!fs.existsSync(this.cacheFile)) {
@@ -339,31 +367,22 @@ Provide your analysis in this exact JSON format:
     }
   }
 
-  /**
-   * Get current call count
-   */
   getCallCount(): number {
     return this.callCount
   }
 
-  /**
-   * Reset call counter (typically done at session start)
-   */
   resetCallCount(): void {
     this.callCount = 0
     this.lastCallTime = 0
   }
 
-  /**
-   * Get time until next call is available
-   */
   getTimeUntilNextCall(): number {
     if (this.callCount >= this.maxCallsPerSession) {
-      return Infinity // Can't make calls until next session
+      return Infinity
     }
 
     if (this.lastCallTime === 0) {
-      return 0 // Can make call immediately
+      return 0
     }
 
     const timeSinceLastCall = Date.now() - this.lastCallTime
@@ -372,9 +391,6 @@ Provide your analysis in this exact JSON format:
     return Math.max(0, remainingCooldown)
   }
 
-  /**
-   * Clear all cache
-   */
   clearCache(): void {
     try {
       if (fs.existsSync(this.cacheFile)) {

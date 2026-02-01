@@ -58,8 +58,9 @@ export function isRetryable(
     return true
   }
 
-  const errorMessage = (typeof error === 'string' ? error : (error as any).message || '').toLowerCase()
-  const errorCode = typeof error === 'object' && error !== null && 'code' in error ? String((error as any).code).toLowerCase() : undefined
+  const err = error as Record<string, unknown>
+  const errorMessage = (typeof error === 'string' ? error : String(err.message || '')).toLowerCase()
+  const errorCode = typeof error === 'object' && error !== null && 'code' in err ? String(err.code).toLowerCase() : undefined
 
   if (retryableErrors && retryableErrors.length > 0) {
     if (retryableErrors.some(pattern => errorMessage.includes(pattern.toLowerCase()))) {
@@ -96,6 +97,7 @@ export function isRetryable(
       'gateway timeout',
       'bad gateway',
       'service unavailable',
+      'timeout', // Generic timeout
     ]
 
     const isTransientMessage = transientErrors.some((transient) => errorMessage.includes(transient))

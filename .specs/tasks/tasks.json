@@ -2751,12 +2751,123 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T17:42:34.563Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T17:43:15.695Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:05:01.827Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:13:10.050Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:37:39.024Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:41:13.263Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:41:13.273Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:41:13.284Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T18:42:27.223Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T11:33:39.637Z",
-        "updatedAt": "2026-02-01T17:22:59.558Z",
-        "startedAt": "2026-02-01T17:22:59.558Z"
+        "updatedAt": "2026-02-01T18:42:27.223Z",
+        "startedAt": "2026-02-01T18:42:27.223Z"
       }
     },
     {
@@ -3239,7 +3350,7 @@
     },
     {
       "id": "PROC-001f",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Process Management: Integration Tests (Real Processes)",
       "feature": "process-management",
@@ -3358,13 +3469,27 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "PROC-001f",
+          "timestamp": "2026-02-01T17:32:22.862Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T17-21-36-61794\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T15:07:37.724Z",
-        "updatedAt": "2026-02-01T17:22:59.570Z",
-        "startedAt": "2026-02-01T17:22:59.570Z"
-      }
+        "updatedAt": "2026-02-01T17:32:22.862Z",
+        "startedAt": "2026-02-01T17:22:59.570Z",
+        "completedAt": "2026-02-01T17:32:22.862Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001g",
@@ -3415,12 +3540,123 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T17:33:04.628Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T17:43:15.706Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T17:43:21.242Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:13:10.063Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:23:15.114Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:41:13.266Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:41:13.276Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:41:13.287Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PROC-001g",
+          "timestamp": "2026-02-01T18:42:27.238Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T17:22:59.584Z",
-        "updatedAt": "2026-02-01T17:22:59.584Z",
-        "startedAt": "2026-02-01T17:22:59.584Z"
+        "updatedAt": "2026-02-01T18:42:27.238Z",
+        "startedAt": "2026-02-01T18:42:27.238Z"
       }
     },
     {
@@ -3597,7 +3833,7 @@
     },
     {
       "id": "CLIOUTPU-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Standardize output method across all commands",
       "feature": "cli-output-design",
@@ -3614,12 +3850,118 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T17:43:15.721Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T17:43:21.406Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:13:10.073Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:23:15.136Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:41:13.279Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:41:13.290Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:42:27.252Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-002",
+          "timestamp": "2026-02-01T18:44:48.100Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T18-41-14-26132\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T17:43:15.721Z",
+        "updatedAt": "2026-02-01T18:44:48.100Z",
+        "startedAt": "2026-02-01T18:42:27.252Z",
+        "completedAt": "2026-02-01T18:44:48.100Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CLIOUTPU-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Add progress bar and completion summary components",
       "feature": "cli-output-design",
@@ -3636,12 +3978,44 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CLIOUTPU-003",
+          "timestamp": "2026-02-01T17:43:15.735Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-003",
+          "timestamp": "2026-02-01T17:48:10.335Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T17-21-36-61794\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T17:43:15.735Z",
+        "updatedAt": "2026-02-01T17:48:10.335Z",
+        "startedAt": "2026-02-01T17:43:15.735Z",
+        "completedAt": "2026-02-01T17:48:10.335Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CLIOUTPU-004",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Add JSON output mode support",
       "feature": "cli-output-design",
@@ -3658,8 +4032,63 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CLIOUTPU-004",
+          "timestamp": "2026-02-01T18:13:10.088Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-004",
+          "timestamp": "2026-02-01T18:13:15.182Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-004",
+          "timestamp": "2026-02-01T18:41:13.292Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "CLIOUTPU-004",
+          "timestamp": "2026-02-01T18:42:27.280Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T18:13:10.088Z",
+        "updatedAt": "2026-02-01T18:42:27.280Z",
+        "startedAt": "2026-02-01T18:42:27.280Z"
+      }
     },
     {
       "id": "CLIOUTPU-005",
@@ -14604,7 +15033,7 @@
     },
     {
       "id": "ARCHWAVE-092",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "high",
       "title": "Implement Resilience Strategies",
       "feature": "ARCH-WAVE-7",
@@ -14613,8 +15042,7 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T17:22:59.458Z",
-        "startedAt": "2026-02-01T17:22:59.458Z"
+        "updatedAt": "2026-02-01T18:42:33.533Z"
       },
       "events": [
         {
@@ -15483,6 +15911,117 @@
             "oldStatus": "pending",
             "newStatus": "in-progress",
             "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T17:43:13.582Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T17:43:15.593Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:13:07.938Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:13:09.948Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:41:13.259Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:41:13.269Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:41:13.281Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:42:27.122Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T18:42:33.533Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
           }
         }
       ]

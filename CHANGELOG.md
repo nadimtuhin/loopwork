@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-02-01 - CLIOUTPU-003
+- CLIOUTPU-003: Add progress bar and completion summary components
+
+### 2026-02-01 - PROC-001f
+- PROC-001f: Process Management: Integration Tests (Real Processes)
+
 ### 2026-02-01 - HEALTH-002
 - HEALTH-002: Add unit tests for health check endpoint
 

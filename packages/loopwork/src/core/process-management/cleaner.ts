@@ -13,7 +13,7 @@ export class ProcessCleaner {
   async cleanup(orphans: OrphanInfo[]): Promise<CleanupResult> {
     const result: CleanupResult = {
       cleaned: [],
-      failed: [],
+      errors: [],
       alreadyGone: []
     }
 
@@ -28,13 +28,13 @@ export class ProcessCleaner {
           result.cleaned.push(orphan.pid)
           this.registry.remove(orphan.pid)
         } else {
-          result.failed.push({
+          result.errors.push({
             pid: orphan.pid,
             error: 'Failed to terminate process'
           })
         }
       } catch (error: unknown) {
-        result.failed.push({
+        result.errors.push({
           pid: orphan.pid,
           error: (error as Error).message || 'Unknown error'
         })

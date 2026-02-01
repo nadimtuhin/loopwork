@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-// Removed type-only import from '../src/backends/github'
+import { GitHubTaskAdapter } from '../src/backends/github'
 import { $ } from 'bun'
 
 // Note: GitHubIssue is internal to the adapter, so we define it here for testing
@@ -17,6 +17,9 @@ describe('GitHubTaskAdapter', () => {
 
   beforeEach(() => {
     manager = new GitHubTaskAdapter({ type: 'github' })
+    // Reduce delay for testing to avoid timeouts
+    ;(manager as any).baseDelayMs = 1
+    ;(manager as any).rateLimitWaitMs = 1
   })
 
   describe('adaptIssue conversion', () => {
@@ -275,42 +278,6 @@ describe('GitHubTaskAdapter', () => {
       expect((manager as any).extractIssueNumber('TASK-001-01')).toBeNull()
       expect((manager as any).extractIssueNumber('invalid')).toBeNull()
       expect((manager as any).extractIssueNumber('')).toBeNull()
-    })
-  })
-
-  describe('isRetryableError', () => {
-    test('identifies network errors as retryable', () => {
-      expect((manager as any).isRetryableError({ message: 'network timeout' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: 'Network error occurred' })).toBe(true)
-    })
-
-    test('identifies connection errors as retryable', () => {
-      expect((manager as any).isRetryableError({ message: 'ECONNRESET' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: 'ECONNREFUSED' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: 'socket hang up' })).toBe(true)
-    })
-
-    test('identifies rate limit errors as retryable', () => {
-      expect((manager as any).isRetryableError({ message: 'rate limit exceeded' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: 'HTTP 429 Too Many Requests' })).toBe(true)
-    })
-
-    test('identifies server errors as retryable', () => {
-      expect((manager as any).isRetryableError({ message: '502 Bad Gateway' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: '503 Service Unavailable' })).toBe(true)
-      expect((manager as any).isRetryableError({ message: '504 Gateway Timeout' })).toBe(true)
-    })
-
-    test('identifies non-retryable errors', () => {
-      expect((manager as any).isRetryableError({ message: 'normal error' })).toBe(false)
-      expect((manager as any).isRetryableError({ message: 'validation failed' })).toBe(false)
-      expect((manager as any).isRetryableError({ message: '404 not found' })).toBe(false)
-    })
-
-    test('handles error objects and strings', () => {
-      expect((manager as any).isRetryableError(new Error('network timeout'))).toBe(true)
-      expect((manager as any).isRetryableError('ECONNRESET')).toBe(true)
-      expect((manager as any).isRetryableError({})).toBe(false)
     })
   })
 

@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { detectExitReason, findRelevantFiles, generateEnhancement, analyzeEarlyExit } from '../src/task-recovery'
+import { detectExitReason, findRelevantFiles, generateEnhancement, analyzeEarlyExit, enhanceTask } from '../src/task-recovery'
 import type { Task } from '@loopwork-ai/loopwork/contracts'
 import type { TaskBackend } from '@loopwork-ai/loopwork/contracts'
 import type { ExitReason } from '../src/types'
@@ -321,7 +321,7 @@ Content 3`
         exitReason: 'missing_tests' as ExitReason,
         evidence: [],
         enhancement: {
-          testScaffolding: 'import { test } from 'bun:test'\ntest("sample", () => {})'
+          testScaffolding: "import { test } from 'bun:test'\ntest('sample', () => {})"
         },
         timestamp: new Date()
       }

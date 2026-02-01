@@ -9,17 +9,19 @@ export interface ProcessMetadata {
   namespace: string
   taskId?: string
   startTime: number
+  parentPid?: number
   /**
    * Worker pool assignment
    */
   pool?: string
   /**
-   * Resource limits for the process
+   * Resource limits for process
    */
   resourceLimits?: {
     memoryMB?: number
     cpuUsage?: number
   }
+}
 }
 
 /**
@@ -45,7 +47,7 @@ export interface OrphanInfo {
  */
 export interface CleanupResult {
   cleaned: number[]
-  failed: Array<{ pid: number; error: string }>
+  errors: Array<{ pid: number; error: string }>
   alreadyGone: number[]
 }
 

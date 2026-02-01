@@ -14,7 +14,7 @@ import React from 'react'
 import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
-import { logger, separator, InkTable, InkCompletionSummary, renderInk, ProgressBar } from '../core/utils'
+import { logger, separator, InkTable, InkCompletionSummary, renderInk } from '../core/utils'
 import { getConfig } from '../core/config'
 import type { DecomposeJsonOutput } from '../contracts/output'
 import { LoopworkError } from '../core/errors'
@@ -149,13 +149,8 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
   try {
     aiResponse = await callAI(fullPrompt, options.cli || 'claude', options.model, !isJsonMode)
   } catch (error) {
-    if (isJsonMode) {
-      // eslint-disable-next-line no-console
-      console.error(JSON.stringify({
-        command: 'decompose',
-        timestamp: new Date().toISOString(),
-        error: `Failed to call AI: ${error}`,
-      }))
+  if (isJsonMode) {
+    logger.error(`Failed to call AI: ${error}`)
     } else {
       logger.error(`Failed to call AI: ${error}`)
     }
