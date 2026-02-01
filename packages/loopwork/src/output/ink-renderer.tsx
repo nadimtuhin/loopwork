@@ -37,6 +37,7 @@ import type {
   ProgressStopEvent,
   RawOutputEvent,
   JsonOutputEvent,
+  WorkerStatusEvent,
 } from './contracts'
 import { BaseRenderer } from './renderer'
 import { InkApp, type InkAppState, type LogLine, type TaskInfo } from './InkApp'
@@ -53,6 +54,14 @@ let globalState: InkAppState = {
   iteration: 0,
   maxIterations: 0,
   layout: 'inline',
+  workerStatus: {
+    totalWorkers: 0,
+    activeWorkers: 0,
+    pendingTasks: 0,
+    runningTasks: 0,
+    completedTasks: 0,
+    failedTasks: 0,
+  },
 }
 
 let logIdCounter = 0
@@ -180,6 +189,9 @@ export class InkRenderer extends BaseRenderer {
         break
       case 'json':
         this.handleJsonOutput(event as JsonOutputEvent)
+        break
+      case 'worker:status':
+        this.handleWorkerStatus(event as WorkerStatusEvent)
         break
     }
   }
@@ -395,6 +407,19 @@ export class InkRenderer extends BaseRenderer {
         data: event.data,
       }))
     }
+  }
+
+  private handleWorkerStatus(event: WorkerStatusEvent): void {
+    updateState({
+      workerStatus: {
+        totalWorkers: event.totalWorkers,
+        activeWorkers: event.activeWorkers,
+        pendingTasks: event.pendingTasks,
+        runningTasks: event.runningTasks,
+        completedTasks: event.completedTasks,
+        failedTasks: event.failedTasks,
+      },
+    })
   }
 
   private startInk(): void {

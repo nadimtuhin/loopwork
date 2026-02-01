@@ -166,6 +166,19 @@ export interface JsonOutputEvent extends BaseOutputEvent {
 }
 
 /**
+ * Worker status events
+ */
+export interface WorkerStatusEvent extends BaseOutputEvent {
+  type: 'worker:status'
+  totalWorkers: number
+  activeWorkers: number
+  pendingTasks: number
+  runningTasks: number
+  completedTasks: number
+  failedTasks: number
+}
+
+/**
  * Union type of all output events
  */
 export type OutputEvent =
@@ -185,6 +198,7 @@ export type OutputEvent =
   | ProgressStopEvent
   | RawOutputEvent
   | JsonOutputEvent
+  | WorkerStatusEvent
 
 /**
  * Event subscriber callback type

@@ -36,6 +36,15 @@ export interface InkAppState {
   iteration: number
   maxIterations: number
   layout: 'fullscreen' | 'inline'
+  // Worker status
+  workerStatus: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  }
 }
 
 export interface InkAppProps {
@@ -51,6 +60,60 @@ function formatTime(seconds: number): string {
   if (h > 0) return `${h}h ${m}m ${s}s`
   if (m > 0) return `${m}m ${s}s`
   return `${s}s`
+}
+
+/**
+ * Status Bar Component - Sticky at bottom showing worker/task stats
+ */
+const StatusBar: React.FC<{ workerStatus: InkAppState['workerStatus'] }> = ({ workerStatus }) => {
+  const { 
+    totalWorkers, 
+    activeWorkers, 
+    pendingTasks, 
+    runningTasks, 
+    completedTasks, 
+    failedTasks 
+  } = workerStatus
+
+  return (
+    <Box 
+      flexDirection="row" 
+      borderStyle="single" 
+      borderColor="blue" 
+      paddingX={1}
+      backgroundColor="blue"
+    >
+      {/* Workers section */}
+      <Box marginRight={2}>
+        <Text color="white" bold>Workers:</Text>
+        <Text color="yellow"> {activeWorkers}</Text>
+        <Text color="gray">/</Text>
+        <Text color="white">{totalWorkers}</Text>
+      </Box>
+
+      <Text color="gray">|</Text>
+
+      {/* Tasks section */}
+      <Box marginLeft={2} marginRight={2}>
+        <Text color="white" bold>Tasks:</Text>
+        <Text color="cyan"> {pendingTasks}</Text>
+        <Text color="gray"> pending</Text>
+        <Text color="gray"> · </Text>
+        <Text color="yellow">{runningTasks}</Text>
+        <Text color="gray"> running</Text>
+        <Text color="gray"> · </Text>
+        <Text color="green">{completedTasks}</Text>
+        <Text color="gray"> done</Text>
+        {failedTasks > 0 && (
+          <>
+            <Text color="gray"> · </Text>
+            <Text color="red">{failedTasks}</Text>
+            <Text color="gray"> failed</Text>
+          </>
+        )}
+      </Box>
+    </Box>
+  )
 }
 
 export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit }) => {
@@ -162,19 +225,14 @@ export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit 
            </Box>
         </Box>
 
-        <Box borderStyle="single" borderColor="gray" paddingX={1}>
-          <Text color="gray">Press </Text>
-          <Text color="yellow">q</Text>
-          <Text color="gray"> to quit | </Text>
-          <Text color="yellow">v</Text>
-          <Text color="gray"> toggle logs</Text>
-        </Box>
+        {/* Sticky Status Bar at bottom */}
+        <StatusBar workerStatus={state.workerStatus} />
       </Box>
     )
   }
 
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box flexDirection="column" padding={1} height="100%">
       <Box borderStyle="round" borderColor="cyan" paddingX={1}>
         <Text bold color="cyan">
           {'🤖 Loopwork'}
@@ -228,7 +286,7 @@ export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit 
         </Box>
       )}
 
-      <Box flexDirection="column" marginTop={1}>
+      <Box flexDirection="column" marginTop={1} flexGrow={1}>
         <Text bold color="white">Recent Logs:</Text>
         <Static items={state.logs.slice(-10)}>
           {(log) => (
@@ -241,10 +299,9 @@ export const InkApp: React.FC<InkAppProps> = ({ initialState, subscribe, onExit 
         </Static>
       </Box>
 
+      {/* Sticky Status Bar at bottom */}
       <Box marginTop={1}>
-        <Text color="gray">Press </Text>
-        <Text color="yellow">q</Text>
-        <Text color="gray"> to quit</Text>
+        <StatusBar workerStatus={state.workerStatus} />
       </Box>
     </Box>
   )
