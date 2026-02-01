@@ -101,7 +101,7 @@ export function isRetryable(
 /**
  * Standard Retry Strategy
  *
- * Implements the IRetryStrategy interface with support for rate limits,
+ * Implements IRetryStrategy interface with support for rate limits,
  * transient errors, and configurable max attempts.
  */
 export class StandardRetryStrategy implements IRetryStrategy {
@@ -112,7 +112,7 @@ export class StandardRetryStrategy implements IRetryStrategy {
   }
 
   /**
-   * Determines if the operation should be retried based on the current attempt
+   * Determines if the operation should be retried based on current attempt
    * and the error that occurred.
    */
   shouldRetry(attempt: number, error: Error): boolean {

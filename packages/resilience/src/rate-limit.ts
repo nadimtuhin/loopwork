@@ -5,6 +5,11 @@ export interface RetryableError {
   message: string
 }
 
+interface RetryableErrorInternal {
+  code?: string | number
+  message: string
+}
+
 export class RateLimitError extends Error {
   public readonly code: string | number
 
@@ -44,7 +49,7 @@ export function isRateLimitError(error: unknown): boolean {
     return false
   }
 
-  const err = error as RetryableError
+  const err = error as RetryableErrorInternal
   const errorMessage = (err.message || '').toLowerCase()
 
   if (isRateLimitOutput(errorMessage)) {
