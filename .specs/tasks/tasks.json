@@ -376,7 +376,7 @@
     },
     {
       "id": "PARALLEL-001h",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Parallel: Write unit tests for ParallelRunner",
       "feature": "parallel",
@@ -433,17 +433,31 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "PARALLEL-001h",
+          "timestamp": "2026-02-01T10:35:13.840Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T10-21-22-17790\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:21:22.242Z",
-        "updatedAt": "2026-02-01T10:31:29.440Z",
-        "startedAt": "2026-02-01T10:31:29.440Z"
-      }
+        "updatedAt": "2026-02-01T10:35:13.840Z",
+        "startedAt": "2026-02-01T10:31:29.440Z",
+        "completedAt": "2026-02-01T10:35:13.840Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PARALLEL-001i",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Parallel: Write integration tests",
       "feature": "parallel",
@@ -512,12 +526,40 @@
             "oldStatus": "in-progress",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:35:15.959Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PARALLEL-001i",
+          "timestamp": "2026-02-01T10:37:22.061Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T10-21-22-17790\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:21:22.251Z",
-        "updatedAt": "2026-02-01T10:31:31.437Z"
-      }
+        "updatedAt": "2026-02-01T10:37:22.061Z",
+        "startedAt": "2026-02-01T10:35:15.959Z",
+        "completedAt": "2026-02-01T10:37:22.061Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "IMPROVE-001",
@@ -609,7 +651,7 @@
     },
     {
       "id": "IMPROVE-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Add end-to-end integration test for init workflow",
       "description": "Create comprehensive integration test that runs init and verifies all generated files",
@@ -673,12 +715,40 @@
             "oldStatus": "in-progress",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:35:15.969Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-003",
+          "timestamp": "2026-02-01T10:37:51.204Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T10-21-22-17790\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:21:22.262Z",
-        "updatedAt": "2026-02-01T10:31:31.342Z"
-      }
+        "updatedAt": "2026-02-01T10:37:51.204Z",
+        "startedAt": "2026-02-01T10:35:15.969Z",
+        "completedAt": "2026-02-01T10:37:51.204Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "IMPROVE-004",
@@ -696,8 +766,62 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T10:35:15.978Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T10:35:18.174Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T10:37:53.321Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T10:37:55.235Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:35:15.978Z",
+        "updatedAt": "2026-02-01T10:37:55.235Z"
+      }
     },
     {
       "id": "IMPROVE-005",
@@ -800,12 +924,41 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TELE-011",
+          "timestamp": "2026-02-01T10:37:53.332Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "TELE-011",
+          "timestamp": "2026-02-01T10:37:55.459Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:37:53.332Z",
+        "updatedAt": "2026-02-01T10:37:55.459Z"
+      }
     },
     {
       "id": "TELE-012",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Teleloop: 'Vision' Bug Reporting",
       "feature": "teleloop",
@@ -829,8 +982,26 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T10:37:53.347Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T10:37:53.347Z",
+        "updatedAt": "2026-02-01T10:37:53.347Z",
+        "startedAt": "2026-02-01T10:37:53.347Z"
+      }
     },
     {
       "id": "TELE-013",
@@ -12929,7 +13100,7 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T10:31:30.953Z"
+        "updatedAt": "2026-02-01T10:37:54.930Z"
       },
       "events": [
         {
@@ -13035,6 +13206,56 @@
         {
           "taskId": "ARCHWAVE-092",
           "timestamp": "2026-02-01T10:31:30.953Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:35:15.847Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:35:18.051Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:37:53.209Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T10:37:54.930Z",
           "type": "reset",
           "message": "Task reset from in-progress to pending",
           "level": "info",
@@ -13611,7 +13832,7 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:31:29.429Z",
-        "updatedAt": "2026-02-01T10:31:31.399Z"
+        "updatedAt": "2026-02-01T10:37:55.038Z"
       },
       "events": [
         {
@@ -13630,6 +13851,56 @@
         {
           "taskId": "ARCHWAVE-104",
           "timestamp": "2026-02-01T10:31:31.399Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:35:15.948Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:35:18.081Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:37:53.311Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-104",
+          "timestamp": "2026-02-01T10:37:55.038Z",
           "type": "reset",
           "message": "Task reset from in-progress to pending",
           "level": "info",
