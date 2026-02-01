@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### 2026-02-01 - DEADLETT-003
+- DEADLETT-003: Implement Auto-Quarantine Logic
+
+### 2026-02-01 - BULKHEAD-003
+- BULKHEAD-003: Implement Process Resource Limits (CPU & Memory)
+
+### 2026-02-01 - TIMESTAM-003
+- TIMESTAM-003: Map GitHub Timestamps to Task Lifecycle
+
+### 2026-02-01 - PLUGINAR-002
+- PLUGINAR-002: Add Granular Lifecycle Hooks to Core
+
+### 2026-02-01 - CHECKPOI-003
+- CHECKPOI-003: Add Resume-from-Checkpoint Capabilities
+
 ### 2026-02-01 - TIMESTAM-002
 - TIMESTAM-002: Implement Lifecycle Tracking in JSON Backend
 

@@ -1,0 +1,28 @@
+{
+  "name": "@loopwork-ai/network-monitor",
+  "version": "1.0.0",
+  "description": "Internet connectivity and speed monitoring for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "loopwork",
+    "network",
+    "connectivity",
+    "monitoring",
+    "speed-test"
+  ],
+  "author": "Loopwork Team",
+  "license": "MIT",
+  "dependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

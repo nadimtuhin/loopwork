@@ -22,6 +22,7 @@ import {
   createModel,
 } from "@loopwork-ai/loopwork";
 import { withCostTracking } from "@loopwork-ai/cost-tracking";
+import { withNetworkMonitor } from "@loopwork-ai/network-monitor";
 
 export default compose(
   // Choose your backend
@@ -211,6 +212,20 @@ export default compose(
     maxRetries: 3, // Max recovery attempts per task
     cli: "opencode", // Use OpenCode CLI
     model: "zai-coding-plan/glm-4.7", // Use GLM 4.7 for failure analysis
+  }),
+
+  // Network Monitor - Internet connectivity and speed monitoring
+  withNetworkMonitor({
+    enabled: true,
+    checkInterval: 30000, // Check every 30 seconds
+    blockWhenOffline: true, // Don't run tasks when offline
+    adjustWorkerPool: true, // Adjust parallel workers based on speed
+    speedThresholds: {
+      minimum: 1, // Minimum 1 Mbps to run tasks
+      good: 10, // 10 Mbps = good connection (3 workers)
+      excellent: 50, // 50 Mbps = excellent (5 workers)
+    },
+    offlineRetryDelay: 60000, // Retry every minute when offline
   }),
 
   // Documentation Plugin - Auto-update CHANGELOG.md after each task

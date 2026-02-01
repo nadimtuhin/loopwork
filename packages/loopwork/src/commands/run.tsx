@@ -17,6 +17,7 @@ import type { RunLogger } from '../contracts/logger'
 import { LoopworkError, handleError } from '../core/errors'
 import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
 import { RetryBudget } from '../core/retry-budget'
+import { failureState } from '../core/failure-state'
 import { LoopworkMonitor } from '../monitor'
 import type { JsonEvent } from '../contracts/output'
 
@@ -574,6 +575,10 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       
       if (task) {
         activeLogger.stopSpinner(`Found task ${task.id}: ${task.title}`)
+        // Sync failure state from backend
+        if (task.failureCount) {
+          failureState.setFailureState(task.id, task.failureCount, task.lastError || 'Previously failed')
+        }
       } else {
         activeLogger.stopSpinner('No more pending tasks')
       }
@@ -766,6 +771,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       tasksCompleted++
       consecutiveFailures = 0
       retryCount.delete(task.id)
+      failureState.clearFailure(task.id)
 
       if (isJsonMode) {
         activeLogger.emitJsonEvent('success', 'run', {
@@ -843,7 +849,17 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           : `Max retries (${maxRetries}) reached\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
 
         try {
-          await backend.markFailed(task.id, errorMsg)
+          // Record failure in state manager
+          failureState.recordFailure(task.id, errorMsg)
+          const failureCount = failureState.getFailureCount(task.id)
+          const quarantineThreshold = config.quarantineThreshold ?? 3
+
+          if (failureCount >= quarantineThreshold) {
+            activeLogger.warn(`⚠️ Task ${task.id} has failed ${failureCount} times. Moving to quarantine (DLQ).`)
+            await backend.markQuarantined(task.id, `Exceeded quarantine threshold (${quarantineThreshold}). Last error: ${errorMsg}`)
+          } else {
+            await backend.markFailed(task.id, errorMsg)
+          }
         } catch (error: unknown) {
           handleLoopworkError(new LoopworkError(
             'ERR_BACKEND_INVALID',
