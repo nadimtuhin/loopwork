@@ -98,8 +98,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
   })
 
@@ -119,8 +118,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should log debug for LOW risk tasks', async () => {
@@ -172,8 +170,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = pluginWithMediumMax.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await pluginWithMediumMax.onTaskStart!(context)
     })
   })
 
@@ -193,8 +190,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should allow HIGH risk when max is CRITICAL', async () => {
@@ -222,8 +218,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = pluginWithCriticalMax.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await pluginWithCriticalMax.onTaskStart!(context)
     })
   })
 
@@ -254,8 +249,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = autoRejectPlugin.onTaskStart!(context)
-      await expect(promise).rejects.toThrow('blocked by safety policy')
+      await expect(autoRejectPlugin.onTaskStart!(context)).rejects.toThrow('blocked by safety policy')
     })
 
     test('should log error when auto-rejecting', async () => {
@@ -317,8 +311,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = autoRejectPlugin.onTaskStart!(context)
-      await expect(promise).rejects.toThrow('blocked by safety policy')
+      await expect(autoRejectPlugin.onTaskStart!(context)).rejects.toThrow('blocked by safety policy')
     })
   })
 
@@ -349,8 +342,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = autoRejectPlugin.onTaskStart!(context)
-      await expect(promise).rejects.toThrow('blocked by safety policy')
+      await expect(autoRejectPlugin.onTaskStart!(context)).rejects.toThrow('blocked by safety policy')
     })
   })
 
@@ -370,10 +362,8 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-
       // In non-interactive mode (CI, -y flag), this will auto-confirm
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should request confirmation for HIGH risk when max is MEDIUM', async () => {
@@ -401,10 +391,8 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = mediumMaxPlugin.onTaskStart!(context)
-
       // In non-interactive mode, this will auto-confirm
-      await expect(promise).resolves.not.toThrow()
+      await mediumMaxPlugin.onTaskStart!(context)
     })
   })
 
@@ -426,8 +414,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should re-throw safety policy errors', async () => {
@@ -456,8 +443,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = autoRejectPlugin.onTaskStart!(context)
-      await expect(promise).rejects.toThrow('blocked by safety policy')
+      await expect(autoRejectPlugin.onTaskStart!(context)).rejects.toThrow('blocked by safety policy')
     })
 
     test('should re-throw confirmation errors', async () => {
@@ -476,10 +462,8 @@ describe('Safety Plugin', () => {
       }
 
       // If confirmation fails, it should throw
-      const promise = plugin.onTaskStart!(context)
-
       // In non-interactive mode, this won't fail
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
   })
 
@@ -601,8 +585,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should pass task context to risk engine', async () => {
@@ -621,8 +604,7 @@ describe('Safety Plugin', () => {
         namespace: 'test-namespace',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
   })
 
@@ -642,8 +624,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
 
     test('should use custom timeout from config', async () => {
@@ -671,8 +652,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = customTimeoutPlugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await customTimeoutPlugin.onTaskStart!(context)
     })
 
     test('should check non-interactive mode before prompting', async () => {
@@ -690,8 +670,7 @@ describe('Safety Plugin', () => {
         namespace: 'default',
       }
 
-      const promise = plugin.onTaskStart!(context)
-      await expect(promise).resolves.not.toThrow()
+      await plugin.onTaskStart!(context)
     })
   })
 })

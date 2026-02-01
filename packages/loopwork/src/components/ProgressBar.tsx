@@ -51,7 +51,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
     const unsubscribe = renderer.subscribe((event) => {
       // If id is provided, only respond to events with matching id
-      if (id && 'id' in event && event.id !== id) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (id && (!('id' in event) || (event as any).id !== id)) return
 
       switch (event.type) {
         case 'progress:start': {

@@ -64,7 +64,11 @@ describe('CliExecutor Granular Lifecycle Hooks', () => {
     } as any))
     
     plugins.clear()
-    executor = new CliExecutor(config, { spawner: mockSpawner })
+    executor = new CliExecutor(config, { 
+      spawner: mockSpawner,
+      pluginRegistry: plugins,
+      logger: require('../src/core/utils').logger
+    })
   })
 
   afterEach(async () => {

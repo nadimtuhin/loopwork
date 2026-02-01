@@ -57,6 +57,9 @@ export { withSafety } from './safety'
 export { withFeatureFlags } from './feature-flags'
 export { withAgents } from './agents'
 export { createGitAutoCommitPlugin, withGitAutoCommit } from './git-autocommit'
+export { createDebuggerPlugin, withDebugger } from './debugger'
+export { withDynamicPlugins } from './loader'
+export type { DebuggerConfig } from './debugger'
 // export { createControlApi, withControlApi } from '@loopwork-ai/control-api'
 export {
   createGovernancePlugin,
@@ -116,7 +119,17 @@ export {
   withEmbeddings,
   withVectorStore,
   withEmbeddingAndVectorStore,
+  type EmbeddingPluginOptions,
+  type VectorStorePluginOptions,
 } from './embeddings'
+
+export {
+  createSemanticCodeIndexerPlugin,
+  withSemanticCodeIndexer,
+  getSemanticCodeIndexer,
+  type SemanticIndexerPluginOptions,
+  type CodeIndexState,
+} from './semantic-indexer'
 
 // CLI configuration plugins
 export {
@@ -299,6 +312,7 @@ class PluginRegistry {
         'onConfigLoad',
         'onTaskComplete',
         'onTaskFailed',
+        'onTaskQuarantined',
         'onLoopEnd',
         'onTaskStart',
         'onBackendReady',

@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { logger } from './core/utils'
+import { logger } from './core/utils' // TODO: Will be moved to @loopwork-ai/common after utils refactor
 import { handleError, LoopworkError } from './core/errors'
 import packageJson from '../package.json'
 
@@ -27,7 +27,7 @@ export {
   ModelPresets,
   RetryPresets,
 } from './plugins'
-export { logger } from './core/utils'
+export { logger } from './core/utils' // TODO: Will be moved to @loopwork-ai/common after utils refactor
 export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper, DynamicTasksConfig } from './contracts'
 export type {
   ModelConfig,
@@ -36,6 +36,24 @@ export type {
   CliPathConfig,
   ModelSelectionStrategy,
   CliType,
+} from './contracts'
+export type {
+  ModelCapabilityLevel,
+  ExtendedModelCapabilityLevel,
+  ModelRoleType,
+  TaskCategory,
+  ModelCapability,
+  ModelRole,
+  CapabilityModelConfig,
+  CapabilityCriteria,
+  CapabilityMatchResult,
+  ModelCapabilityRegistry,
+  CapabilityBasedModelSelector,
+} from './contracts'
+export {
+  DEFAULT_CAPABILITIES,
+  DEFAULT_ROLES,
+  TASK_CATEGORY_CAPABILITY_MAP,
 } from './contracts'
 export type { IPCMessage, IPCEventType, IPCPluginOptions, DynamicTasksOptions, GitAutoCommitOptions } from './plugins'
 export type {
@@ -137,7 +155,7 @@ export type { AgentDefinition as SubagentDefinition } from '@loopwork-ai/agents'
 export type { Task } from './contracts'
 
 // Ink-based UI components (recommended for all new code)
-// See packages/loopwork/docs/MIGRATION-OUTPUT.md for migration guide
+// See docs/guides/migration-output.md for migration guide
 export {
   Banner,
   ProgressBar,
@@ -890,6 +908,24 @@ if (import.meta.main) {
             dryRun: options.dryRun,
             json: options.json,
           })
+        } catch (err) {
+          handleError(err)
+          process.exit(1)
+        }
+      })
+
+    // Scaffold command
+    program
+      .command('scaffold <template> <name>')
+      .description('Generate files from a template')
+      .option('-o, --output <path>', 'Output directory')
+      .option('--dry-run', 'Show what would be created')
+      .option('--force', 'Overwrite existing files')
+      .allowUnknownOption()
+      .action(async (template, name, options) => {
+        try {
+          const { scaffold } = await import('./commands/scaffold')
+          await scaffold(template, name, options)
         } catch (err) {
           handleError(err)
           process.exit(1)

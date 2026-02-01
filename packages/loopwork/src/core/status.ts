@@ -13,7 +13,7 @@
 /**
  * Task status types
  */
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled'
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled' | 'quarantined'
 
 /**
  * Status style for different output modes
@@ -62,6 +62,12 @@ export const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
     blessed: '{gray-fg}',
     tailwind: 'text-gray-500',
     icon: '×',
+  },
+  quarantined: {
+    chalk: 'magenta',
+    blessed: '{magenta-fg}',
+    tailwind: 'text-purple-500',
+    icon: '☣',
   },
 }
 
@@ -167,6 +173,7 @@ export function getStatusLabel(status: TaskStatus): string {
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
+    quarantined: 'Quarantined',
   }
   return labels[status] || status
 }
@@ -187,6 +194,7 @@ export function getStatusBackgroundColor(status: TaskStatus): string {
     completed: 'bgGreen',
     failed: 'bgRed',
     cancelled: 'bgGray',
+    quarantined: 'bgMagenta',
   }
   return bgColors[status] || 'bgWhite'
 }

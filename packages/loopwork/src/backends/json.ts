@@ -42,6 +42,7 @@ interface JsonTaskEntry {
   dependsOn?: string[]    // Task IDs this task depends on
   metadata?: Record<string, unknown>
   failureCount?: number
+  lastError?: string
   scheduledFor?: string | null
   timestamps?: TaskTimestamps
   events?: TaskEvent[]
@@ -452,15 +453,18 @@ export class JsonTaskAdapter implements TaskBackend {
         // Clear timestamps related to execution (keep createdAt)
         if (entry.timestamps) {
           const { createdAt } = entry.timestamps
-          entry.timestamps = { createdAt }
+          entry.timestamps = { createdAt, updatedAt: now }
         }
 
         // Record reset event
         if (!entry.events) entry.events = []
         entry.events.push({
+          taskId: entry.id,
           timestamp: now,
           type: 'reset',
           message: `Task reset from ${oldStatus} to pending`,
+          level: 'info',
+          actor: 'system',
           metadata: {
             oldStatus,
             newStatus: 'pending',
@@ -469,6 +473,88 @@ export class JsonTaskAdapter implements TaskBackend {
 
         if (this.saveTasksFile(data)) {
           return { success: true }
+        }
+
+        return { success: false, error: 'Failed to save tasks file' }
+      })
+    } catch (e: unknown) {
+      return { success: false, error: getErrorMessage(e) }
+    }
+  }
+
+  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    try {
+      return await this.withLock(() => {
+        let data = this.loadTasksFile()
+        if (!data) {
+          data = { tasks: [] }
+          if (!this.saveTasksFile(data)) {
+            return { success: false, error: 'Failed to create tasks file' }
+          }
+        }
+
+        const entry = data.tasks.find(t => t.id === taskId)
+        if (!entry) {
+          return { success: false, error: `Task ${taskId} not found` }
+        }
+
+        if (entry.status !== 'completed') {
+          return {
+            success: false,
+            error: `Task ${taskId} is not completed (current status: ${entry.status})`,
+          }
+        }
+
+        const now = new Date().toISOString()
+        const oldStatus = entry.status
+        entry.status = 'pending'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ('completedAt' in (entry as any)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          delete (entry as any).completedAt
+        }
+
+        if (entry.timestamps) {
+          if (entry.timestamps.completedAt) delete entry.timestamps.completedAt
+          entry.timestamps.updatedAt = now
+        }
+
+        entry.scheduledFor = scheduledFor || null
+
+        if (scheduledFor) {
+          if (!entry.metadata) entry.metadata = {}
+          entry.metadata.scheduledFor = scheduledFor
+        } else {
+          if (entry.metadata && entry.metadata.scheduledFor) {
+            delete entry.metadata.scheduledFor
+            if (Object.keys(entry.metadata).length === 0) {
+              delete entry.metadata
+            }
+          }
+        }
+
+        if (!entry.events) entry.events = []
+        entry.events.push({
+          taskId: entry.id,
+          timestamp: now,
+          type: 'rescheduled',
+          message: `Task rescheduled from ${oldStatus} to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`,
+          level: 'info',
+          actor: 'system',
+          metadata: {
+            oldStatus,
+            newStatus: 'pending',
+            scheduledFor: scheduledFor || null,
+          },
+        })
+
+        if (this.saveTasksFile(data)) {
+          const result: UpdateResult = { success: true }
+          if (scheduledFor) {
+            result.scheduledFor = scheduledFor
+          }
+          return result
         }
 
         return { success: false, error: 'Failed to save tasks file' }
@@ -509,55 +595,6 @@ export class JsonTaskAdapter implements TaskBackend {
     }
   }
 
-  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
-    try {
-      return await this.withLock(() => {
-        const data = this.loadTasksFile()
-        if (!data) {
-          return { success: false, error: 'Tasks file not found' }
-        }
-
-        const entry = data.tasks.find(t => t.id === taskId)
-        if (!entry) {
-          return { success: false, error: `Task ${taskId} not found` }
-        }
-
-        if (entry.status !== 'completed') {
-          return { success: false, error: `Task ${taskId} is not completed (status: ${entry.status})` }
-        }
-
-        const now = new Date().toISOString()
-        const oldStatus = entry.status
-        entry.status = 'pending'
-        entry.scheduledFor = scheduledFor || null
-
-        // Clear completedAt from timestamps
-        if (entry.timestamps) {
-          delete entry.timestamps.completedAt
-        }
-
-        if (!entry.events) entry.events = []
-        entry.events.push({
-          timestamp: now,
-          type: 'rescheduled',
-          message: `Task rescheduled from ${oldStatus} to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`,
-          metadata: {
-            oldStatus,
-            newStatus: 'pending',
-            scheduledFor,
-          },
-        })
-
-        if (this.saveTasksFile(data)) {
-          return { success: true }
-        }
-
-        return { success: false, error: 'Failed to save tasks file' }
-      })
-    } catch (e: unknown) {
-      return { success: false, error: getErrorMessage(e) }
-    }
-  }
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<UpdateResult> {
     try {
@@ -570,6 +607,11 @@ export class JsonTaskAdapter implements TaskBackend {
 
         if (updates.status) {
           this.updateTaskEntryLifecycle(entry, updates.status, 'Updated via updateTask', updates.metadata as Record<string, unknown>)
+        } else {
+          if (!entry.timestamps) {
+            entry.timestamps = { createdAt: new Date().toISOString() }
+          }
+          entry.timestamps.updatedAt = new Date().toISOString()
         }
 
         if (updates.priority) entry.priority = updates.priority
@@ -746,14 +788,15 @@ export class JsonTaskAdapter implements TaskBackend {
       metadata: {
         ...entry.metadata,
         prdFile,
-        featureName: typeof featureInfo === 'object' ? featureInfo?.name : undefined,
-        prdWarning,
-      },
-      failureCount: entry.failureCount,
-      timestamps: entry.timestamps,
-      events: entry.events,
-    }
+      featureName: typeof featureInfo === 'object' ? featureInfo?.name : undefined,
+      prdWarning,
+    },
+    failureCount: entry.failureCount,
+    lastError: entry.lastError,
+    timestamps: entry.timestamps,
+    events: entry.events,
   }
+}
 
   // Sub-task and dependency methods
 
@@ -850,11 +893,14 @@ export class JsonTaskAdapter implements TaskBackend {
         parentId: task.parentId,
         dependsOn: task.dependsOn,
         metadata: task.metadata,
-        timestamps: task.timestamps || { createdAt: now },
+        timestamps: task.timestamps || { createdAt: now, updatedAt: now },
         events: task.events || [{
+          taskId: newId,
           timestamp: now,
           type: 'created',
           message: 'Task created',
+          level: 'info',
+          actor: 'system',
           metadata: {
             priority: task.priority || 'medium',
             feature: task.feature,
@@ -933,11 +979,14 @@ export class JsonTaskAdapter implements TaskBackend {
         parentId,
         dependsOn: task.dependsOn,
         metadata: task.metadata,
-        timestamps: task.timestamps || { createdAt: now },
+        timestamps: task.timestamps || { createdAt: now, updatedAt: now },
         events: task.events || [{
+          taskId: newId,
           timestamp: now,
           type: 'created',
           message: `Sub-task created under ${parentId}`,
+          level: 'info',
+          actor: 'system',
           metadata: {
             priority: task.priority,
             feature: task.feature,
@@ -1033,6 +1082,7 @@ export class JsonTaskAdapter implements TaskBackend {
     if (!entry.timestamps) {
       entry.timestamps = { createdAt: now }
     }
+    entry.timestamps.updatedAt = now
 
     let eventType = 'status_change'
     let eventMessage = comment || `Status changed from ${oldStatus} to ${status}`
@@ -1047,27 +1097,43 @@ export class JsonTaskAdapter implements TaskBackend {
         eventType = 'resumed'
         eventMessage = comment || 'Task resumed'
       }
-    } else if (status === 'completed') {
-      entry.timestamps.completedAt = now
-      eventType = 'completed'
-      eventMessage = comment || 'Task completed'
-      entry.failureCount = 0
     } else if (status === 'failed') {
       entry.timestamps.failedAt = now
       eventType = 'failed'
       eventMessage = comment || 'Task failed'
       entry.failureCount = (entry.failureCount || 0) + 1
+      entry.lastError = (metadata?.error as string) || comment || 'Unknown error'
     } else if (status === 'quarantined') {
       entry.timestamps.quarantinedAt = now
       eventType = 'quarantined'
       eventMessage = comment || 'Task quarantined'
+      entry.lastError = (metadata?.reason as string) || comment || 'Task moved to DLQ'
+    } else if (status === 'completed') {
+      entry.timestamps.completedAt = now
+      eventType = 'completed'
+      eventMessage = comment || 'Task completed'
+      entry.failureCount = 0
+      delete entry.lastError
+    } else if (status === 'pending') {
+      // Clear failure state when reset to pending if not currently failing
+      if (oldStatus !== 'in-progress') {
+        entry.failureCount = 0
+        delete entry.lastError
+      }
+    } else if (status === 'cancelled') {
+      entry.timestamps.cancelledAt = now
+      eventType = 'cancelled'
+      eventMessage = comment || 'Task cancelled'
     }
 
     if (!entry.events) entry.events = []
     entry.events.push({
+      taskId: entry.id,
       timestamp: now,
       type: eventType,
       message: eventMessage,
+      level: status === 'failed' ? 'error' : 'info',
+      actor: 'system',
       metadata: {
         oldStatus,
         newStatus: status,

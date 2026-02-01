@@ -5,7 +5,7 @@
  */
 
 // Task types
-export type { Task, TaskStatus, Priority, TaskResult, GitHubLabel, GitHubIssue, TaskTimestamps, TaskEvent } from './task'
+export type { Task, TaskStatus, Priority, TaskResult, GitHubLabel, GitHubIssue, TaskTimestamps, TaskEvent, TaskEventType, EventLog } from './task'
 export { LABELS, STATUS_LABELS, PRIORITY_LABELS } from './task'
 
 // Checkpoint types
@@ -19,6 +19,7 @@ export type {
   LoopworkPlugin,
   PluginTask,
   TaskMetadata,
+  SchedulingMetadata,
   PluginContext,
   TaskContext,
   PluginTaskResult,
@@ -162,3 +163,23 @@ export type {
   IDebugger,
   IDebuggerTUI,
 } from './debugger'
+
+// Model capability types
+export type {
+  ModelCapabilityLevel,
+  ExtendedModelCapabilityLevel,
+  ModelRoleType,
+  TaskCategory,
+  ModelCapability,
+  ModelRole,
+  CapabilityModelConfig,
+  CapabilityCriteria,
+  CapabilityMatchResult,
+  ModelCapabilityRegistry,
+  CapabilityBasedModelSelector,
+} from './model-capability'
+export {
+  DEFAULT_CAPABILITIES,
+  DEFAULT_ROLES,
+  TASK_CATEGORY_CAPABILITY_MAP,
+} from './model-capability'

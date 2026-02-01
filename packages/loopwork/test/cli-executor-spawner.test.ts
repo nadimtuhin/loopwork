@@ -8,7 +8,7 @@ import { CliExecutor } from '../src/core/cli'
 import type { Config } from '../src/core/config'
 import { logger } from '../src/core/utils'
 import type { ProcessSpawner, SpawnedProcess, SpawnOptions } from '../src/contracts/spawner'
-import { StandardSpawner } from '../src/core/spawners/standard-spawner'
+import { StandardSpawner } from '@loopwork-ai/executor'
 
 /**
  * Mock spawner for testing CliExecutor's spawner injection
@@ -63,6 +63,8 @@ function createMockProcess(exitCode: number = 0): SpawnedProcess {
   return process
 }
 
+import { plugins } from '../src/plugins'
+
 describe('CliExecutor Spawner Integration', () => {
   let config: Config
   let tempDir: string
@@ -104,7 +106,11 @@ describe('CliExecutor Spawner Integration', () => {
       })
 
       const mockSpawner = new MockSpawner()
-      const executor = new CliExecutor(config, { spawner: mockSpawner })
+      const executor = new CliExecutor(config, { 
+        spawner: mockSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
 
       expect(executor).toBeDefined()
     })
@@ -117,7 +123,11 @@ describe('CliExecutor Spawner Integration', () => {
       })
 
       const mockSpawner = new MockSpawner()
-      const executor = new CliExecutor(config, { spawner: mockSpawner })
+      const executor = new CliExecutor(config, { 
+        spawner: mockSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
 
       const outFile = path.join(tempDir, 'output', 'out.md')
       await executor.execute('Test prompt', outFile, 10)
@@ -135,7 +145,7 @@ describe('CliExecutor Spawner Integration', () => {
       })
 
       // No spawner provided - should use default
-      const executor = new CliExecutor(config)
+      const executor = new CliExecutor(config, { pluginRegistry: plugins, logger })
 
       expect(executor).toBeDefined()
     })
@@ -164,7 +174,11 @@ describe('CliExecutor Spawner Integration', () => {
           fallbackModels: [],
         },
       }
-      const executor = new CliExecutor(opencodeConfig, { spawner: mockSpawner })
+      const executor = new CliExecutor(opencodeConfig, { 
+        spawner: mockSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
 
       const outFile = path.join(tempDir, 'output', 'out.md')
       await executor.execute('Test prompt', outFile, 10)
@@ -198,7 +212,11 @@ describe('CliExecutor Spawner Integration', () => {
           fallbackModels: [],
         },
       }
-      const executor = new CliExecutor(opencodeConfig, { spawner: mockSpawner })
+      const executor = new CliExecutor(opencodeConfig, { 
+        spawner: mockSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
 
       const outFile = path.join(tempDir, 'output', 'out.md')
       await executor.execute('Test prompt', outFile, 10)
@@ -217,7 +235,7 @@ describe('CliExecutor Spawner Integration', () => {
         return { status: 1 } as any
       })
 
-      const executor = new CliExecutor(config)
+      const executor = new CliExecutor(config, { pluginRegistry: plugins, logger })
       expect(executor).toBeDefined()
       // The executor should prefer PTY by default when available
     })
@@ -236,7 +254,7 @@ describe('CliExecutor Spawner Integration', () => {
         },
       }
 
-      const executor = new CliExecutor(configWithPtyFalse)
+      const executor = new CliExecutor(configWithPtyFalse, { pluginRegistry: plugins, logger })
       expect(executor).toBeDefined()
     })
   })
@@ -273,7 +291,11 @@ describe('CliExecutor Spawner Integration', () => {
         },
       }
 
-      const executor = new CliExecutor(config, { spawner: errorSpawner })
+      const executor = new CliExecutor(config, { 
+        spawner: errorSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
       const outFile = path.join(tempDir, 'output', 'out.md')
 
       // Should handle error and not crash
@@ -347,7 +369,11 @@ describe('CliExecutor Spawner Integration', () => {
         },
       }
 
-      const executor = new CliExecutor(claudeConfig, { spawner: stdinTrackingSpawner })
+      const executor = new CliExecutor(claudeConfig, { 
+        spawner: stdinTrackingSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
       const outFile = path.join(tempDir, 'output', 'out.md')
 
       await executor.execute('Test stdin prompt', outFile, 10)
@@ -398,13 +424,16 @@ describe('CliExecutor Spawner Integration', () => {
         },
       }
 
-      const executor = new CliExecutor(config, { spawner: ptyLikeSpawner })
+      const executor = new CliExecutor(config, { 
+        spawner: ptyLikeSpawner,
+        pluginRegistry: plugins,
+        logger
+      })
       const outFile = path.join(tempDir, 'output', 'out.md')
 
       const exitCode = await executor.execute('Test prompt', outFile, 10)
       expect(exitCode).toBe(0)
 
-      // Check output was captured
       const output = fs.readFileSync(outFile, 'utf-8')
       expect(output).toContain('Hello from PTY')
     })

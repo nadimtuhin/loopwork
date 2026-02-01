@@ -179,7 +179,7 @@ export class MockProcessManager implements IProcessManager {
       }
     }
 
-    return { cleaned, failed, errors }
+    return { cleaned, failed: errors, alreadyGone: [] }
   }
 
   /**

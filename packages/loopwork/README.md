@@ -421,6 +421,49 @@ interface ConfigReloadEvent {
 }
 ```
 
+#### Manual Config Reload
+
+You can programmatically trigger a config reload using the `reloadConfig` function. This is useful for:
+
+- CLI commands that need to apply new config immediately
+- Integration with external config management systems
+- Testing purposes
+
+```typescript
+import { reloadConfig } from 'loopwork'
+
+// After making changes to loopwork.config.ts
+const newConfig = await reloadConfig()
+if (newConfig) {
+  console.log('Config reloaded successfully')
+  console.log('New maxIterations:', newConfig.maxIterations)
+} else {
+  console.log('Config reload failed or hot reload is not active')
+}
+```
+
+**Returns:** The reloaded configuration, or `null` if:
+- Hot reload is not active (call `getConfig({ hotReload: true })` first)
+- No config is currently loaded
+- Config reload failed due to errors
+
+**Example with Error Handling:**
+```typescript
+import { reloadConfig, getConfigHotReloadManager } from 'loopwork'
+
+// Start with hot reload enabled
+await getConfig({ hotReload: true })
+
+// Later, trigger a manual reload
+const newConfig = await reloadConfig()
+if (!newConfig) {
+  console.warn('Config reload failed')
+  // Check logs for details
+} else {
+  console.log('Config applied:', newConfig)
+}
+```
+
 #### Error Handling
 
 Hot reload includes built-in error handling:

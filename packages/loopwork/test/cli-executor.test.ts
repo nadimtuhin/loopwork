@@ -7,6 +7,7 @@ import * as child_process from 'node:child_process'
 import { CliExecutor } from '../src/core/cli'
 import type { Config } from '../src/core/config'
 import { logger } from '../src/core/utils'
+import { plugins } from '../src/plugins'
 
 describe('CliExecutor', () => {
   let config: Config
@@ -51,7 +52,7 @@ describe('CliExecutor', () => {
       return { status: 1 } as any
     })
 
-    new CliExecutor(config)
+    new CliExecutor(config, { pluginRegistry: plugins, logger })
     expect(spawnSyncSpy).toHaveBeenCalledWith('which', ['opencode'], expect.any(Object))
   })
 
@@ -61,7 +62,7 @@ describe('CliExecutor', () => {
       return p.toString().includes('bin/opencode')
     })
 
-    new CliExecutor(config)
+    new CliExecutor(config, { pluginRegistry: plugins, logger })
     expect(existsSpy).toHaveBeenCalled()
   })
 
@@ -69,7 +70,7 @@ describe('CliExecutor', () => {
     spyOn(child_process, 'spawnSync').mockReturnValue({ status: 1 } as any)
     spyOn(fs, 'existsSync').mockReturnValue(false)
 
-    expect(() => new CliExecutor(config)).toThrow(/No AI CLI tools found/)
+    expect(() => new CliExecutor(config, { pluginRegistry: plugins, logger })).toThrow(/No AI CLI tools found/)
   })
 
   test('execute calls spawn with correct arguments for opencode', async () => {
@@ -101,7 +102,11 @@ describe('CliExecutor', () => {
       load: mock(async () => {})
     }
 
-    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
+    const executor = new CliExecutor(config, { 
+      processManager: mockProcessManager as any,
+      pluginRegistry: plugins,
+      logger
+    })
     const outFile = path.join(tempDir, 'out.md')
     
     const promise = executor.execute('Test prompt', outFile, 10)
@@ -137,7 +142,11 @@ describe('CliExecutor', () => {
       load: mock(async () => {})
     }
 
-    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
+    const executor = new CliExecutor(config, { 
+      processManager: mockProcessManager as any,
+      pluginRegistry: plugins,
+      logger
+    })
     const outFile = path.join(tempDir, 'out.md')
     
     const promise = executor.execute('Test prompt', outFile, 10)
@@ -180,7 +189,11 @@ describe('CliExecutor', () => {
       load: mock(async () => {})
     }
 
-    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
+    const executor = new CliExecutor(config, { 
+      processManager: mockProcessManager as any,
+      pluginRegistry: plugins,
+      logger
+    })
     // Force many failures to trigger fallback
     // We need to mock spawn to fail multiple times
     

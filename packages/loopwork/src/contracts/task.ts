@@ -2,17 +2,41 @@
  * Task Types and Constants
  */
 
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'quarantined'
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'quarantined' | 'cancelled'
 export type Priority = 'high' | 'medium' | 'low' | 'background'
+
+export type TaskEventType = 
+  | 'created' 
+  | 'started' 
+  | 'completed' 
+  | 'failed' 
+  | 'cancelled' 
+  | 'paused' 
+  | 'resumed' 
+  | 'quarantined'
+  | 'reset'
+  | 'rescheduled'
+  | 'status_change'
+  | 'log'
+  | 'tool_call'
 
 /**
  * Task event for logging history
  */
 export interface TaskEvent {
+  id?: string
+  taskId?: string
   timestamp: string
-  type: string
+  type: TaskEventType | string
+  level?: 'info' | 'warn' | 'error' | 'debug'
+  actor?: 'system' | 'user' | 'ai'
   message: string
   metadata?: Record<string, unknown>
+}
+
+export interface EventLog {
+  taskId: string
+  events: TaskEvent[]
 }
 
 /**
@@ -20,11 +44,13 @@ export interface TaskEvent {
  */
 export interface TaskTimestamps {
   createdAt: string
+  updatedAt?: string
   startedAt?: string
   completedAt?: string
   failedAt?: string
   resumedAt?: string
   quarantinedAt?: string
+  cancelledAt?: string
 }
 
 /**
@@ -41,6 +67,7 @@ export interface Task {
   dependsOn?: string[]
   metadata?: Record<string, unknown>
   failureCount?: number
+  lastError?: string
   scheduledFor?: string | null
   timestamps?: TaskTimestamps
   events?: TaskEvent[]

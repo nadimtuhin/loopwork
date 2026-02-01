@@ -24,6 +24,15 @@ export class FailureStateManager {
     })
   }
 
+  setFailureState(taskId: string, retryCount: number, error: string): void {
+    this.failures.set(taskId, {
+      taskId,
+      error,
+      timestamp: Date.now(),
+      retryCount
+    })
+  }
+
   getFailure(taskId: string): FailureState | undefined {
     return this.failures.get(taskId)
   }

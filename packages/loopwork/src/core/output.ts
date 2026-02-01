@@ -3,7 +3,7 @@
  *
  * @deprecated This legacy output system is being replaced by Ink-based React components.
  * See `packages/loopwork/src/components/` for the new implementation.
- * Migration guide: `packages/loopwork/docs/MIGRATION-OUTPUT.md`
+ * Migration guide: `docs/guides/migration-output.md`
  *
  * Provides consistent, well-formatted output components:
  * - Table: Unicode box-drawing tables with flexible columns

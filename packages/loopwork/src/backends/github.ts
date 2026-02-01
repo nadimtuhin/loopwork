@@ -298,7 +298,7 @@ export class GitHubTaskAdapter implements TaskBackend {
         const msg = `Task rescheduled to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`
         await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${msg}"`.quiet()
       })
-      return { success: true }
+      return { success: true, scheduledFor }
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
@@ -654,6 +654,9 @@ export class GitHubTaskAdapter implements TaskBackend {
       })
     }
 
+    const lastFailureEvent = events.slice().reverse().find(e => e.type === 'failed' || e.type === 'quarantined')
+    const lastError = lastFailureEvent?.message
+
     return {
       id,
       title: issue.title,
@@ -665,6 +668,7 @@ export class GitHubTaskAdapter implements TaskBackend {
       dependsOn,
       scheduledFor,
       metadata: { issueNumber: issue.number, url: issue.url, labels },
+      lastError,
       timestamps,
       events,
     }

@@ -202,6 +202,11 @@ export interface LoopworkConfig {
    */
   dynamicTasks?: DynamicTasksConfig
 
+  /**
+   * List of plugin names or paths to load dynamically
+   */
+  dynamicPlugins?: string[]
+
   // Registered plugins
   plugins?: LoopworkPlugin[]
 

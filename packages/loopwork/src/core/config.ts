@@ -768,8 +768,8 @@ class ConfigHotReloadManager {
   private currentConfigPath: string | null = null
 
   /**
-   * Start watching for config changes
-   */
+    * Start watching for config changes
+    */
   start(configPath: string, initialConfig: Config): void {
     if (this.watcher) {
       logger.debug('Config watcher already running')
@@ -778,6 +778,7 @@ class ConfigHotReloadManager {
 
     this.currentConfig = initialConfig
     this.currentConfigPath = configPath
+    currentConfigPath = configPath  // Store for reloadConfig function
 
     logger.debug(`Starting config watcher: ${configPath}`)
 
@@ -815,9 +816,9 @@ class ConfigHotReloadManager {
   }
 
   /**
-   * Reload configuration from file
-   */
-  private async reloadConfig(configPath: string): Promise<Config | null> {
+    * Reload configuration from file
+    */
+  async reloadConfig(configPath: string): Promise<Config | null> {
     try {
       // Clear module cache to force re-import
       const resolvedPath = path.resolve(configPath)
@@ -919,3 +920,48 @@ export function resetConfigHotReloadManager(): void {
   }
   hotReloadManager = null
 }
+
+/**
+ * Manually trigger a config reload
+ *
+ * This function allows users to programmatically reload the configuration
+ * without waiting for file system changes. It is useful for:
+ * - CLI commands that need to apply new config immediately
+ * - Integration with external config management systems
+ * - Testing purposes
+ *
+ * @returns The reloaded configuration, or null if reload failed or watcher not active
+ *
+ * @example
+ * ```typescript
+ * import { reloadConfig } from 'loopwork'
+ *
+ * // After making changes to loopwork.config.ts
+ * const newConfig = await reloadConfig()
+ * if (newConfig) {
+ *   console.log('Config reloaded successfully')
+ * }
+ * ```
+ */
+export async function reloadConfig(): Promise<Config | null> {
+  const manager = getConfigHotReloadManager()
+
+  if (!manager.isWatching()) {
+    logger.warn('Config hot reload is not active. Call getConfig({ hotReload: true }) first.')
+    return null
+  }
+
+  const currentConfig = manager.getCurrentConfig()
+  if (!currentConfig || !currentConfigPath) {
+    logger.warn('No active config to reload')
+    return null
+  }
+
+  const newConfig = await manager.reloadConfig(currentConfigPath)
+  return newConfig
+}
+
+/**
+ * Current config path being watched (for reloadConfig)
+ */
+let currentConfigPath: string | null = null

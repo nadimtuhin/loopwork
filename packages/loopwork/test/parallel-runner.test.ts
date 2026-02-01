@@ -158,6 +158,24 @@ const createMockLogger = () => ({
   setLogFile: mock(() => {}),
 })
 
+// Mock plugin registry
+function createMockPluginRegistry() {
+  return {
+    runHook: mock(async () => {}),
+    getCapabilityRegistry: mock(() => ({
+      getPromptInjection: mock(() => ''),
+      getCommands: mock(() => []),
+      getSkills: mock(() => []),
+      register: mock(() => {}),
+      getPluginCapabilities: mock(() => undefined),
+    })),
+    isDegradedMode: mock(() => false),
+    getDisabledPluginsReport: mock(() => []),
+    getActivePluginsReport: mock(() => []),
+    getDisabledPlugins: mock(() => []),
+  }
+}
+
 // Create test config
 function createTestConfig(overrides: Partial<Config> = {}): Config {
   const testDir = `/tmp/loopwork-test-${Date.now()}`
@@ -213,6 +231,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -233,6 +252,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -260,6 +280,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -282,6 +303,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -325,8 +347,10 @@ describe('ParallelRunner', () => {
       const runner = new ParallelRunner({
         config,
         backend,
-        cliExecutor: failingExecutor,
-        logger,
+        cliExecutor: createMockCliExecutor(),
+        logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -373,6 +397,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(exitCodes),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -408,6 +433,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(exitCodes),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -444,6 +470,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(exitCodes),
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -467,6 +494,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -492,6 +520,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -520,6 +549,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -540,6 +570,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createMockCliExecutor(),
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -564,6 +595,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor,
         logger: createMockLogger(),
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -611,6 +643,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createFailingExecutor('rate limit exceeded, 429 too many requests'),
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -650,6 +683,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createFailingExecutor('operation timed out ETIMEDOUT'),
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -688,6 +722,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createFailingExecutor('out of memory OOM killed'),
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -729,6 +764,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: createFailingExecutor('some random unknown error xyz'),
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 
@@ -790,6 +826,7 @@ describe('ParallelRunner', () => {
         backend,
         cliExecutor: healingExecutor,
         logger,
+        pluginRegistry: createMockPluginRegistry(),
         buildPrompt: (task) => `Test prompt for ${task.id}`,
       })
 

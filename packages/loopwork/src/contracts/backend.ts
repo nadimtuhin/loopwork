@@ -26,6 +26,8 @@ export interface UpdateResult {
   success: boolean
   error?: string
   queued?: boolean
+  /** ISO 8601 datetime when the task is scheduled for (if applicable) */
+  scheduledFor?: string
 }
 
 /**
@@ -142,7 +144,7 @@ export interface TaskBackend {
    * @param taskId Task ID to reschedule
    * @param scheduledFor Optional ISO 8601 datetime to schedule for
    */
-  rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult>
+  rescheduleCompleted?(taskId: string, scheduledFor?: string): Promise<UpdateResult>
 }
 
 /**

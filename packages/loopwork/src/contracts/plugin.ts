@@ -7,12 +7,32 @@ import type { Task } from './task'
 import type { TaskBackend } from './backend'
 
 /**
+ * Scheduling metadata for task scheduling
+ */
+export interface SchedulingMetadata {
+  /** ISO 8601 datetime string when the task is scheduled to run */
+  scheduledFor?: string
+  /** ISO 8601 datetime string for the earliest allowed execution time */
+  notBefore?: string
+  /** ISO 8601 datetime string for the deadline (must complete by) */
+  deadline?: string
+  /** Timezone for scheduling (e.g., 'America/New_York', 'UTC') */
+  timezone?: string
+  /** Whether the task should be rescheduled automatically on failure */
+  autoReschedule?: boolean
+  /** Minutes to wait before rescheduling (if autoReschedule is true) */
+  rescheduleDelay?: number
+}
+
+/**
  * Task metadata for external integrations
  */
 export interface TaskMetadata {
   asanaGid?: string
   everhourId?: string
   todoistId?: string
+  /** Scheduling information for the task */
+  scheduling?: SchedulingMetadata
   [key: string]: unknown
 }
 
@@ -197,6 +217,15 @@ export interface LoopworkPlugin {
 
   /** Called when task fails */
   onTaskFailed?: (context: TaskContext, error: string) => void | Promise<void>
+
+  /** Called when task is quarantined */
+  onTaskQuarantined?: (context: TaskContext, reason: string) => void | Promise<void>
+
+  /** Called when a task is about to be retried */
+  onTaskRetry?: (context: TaskContext, error: string) => void | Promise<void>
+
+  /** Called when a task is aborted due to interruption */
+  onTaskAbort?: (context: TaskContext) => void | Promise<void>
 
   /** Called at execution loop steps for fine-grained monitoring */
   onStep?: (event: StepEvent) => void | Promise<void>

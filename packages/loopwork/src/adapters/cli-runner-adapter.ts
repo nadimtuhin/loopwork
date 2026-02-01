@@ -34,9 +34,9 @@ export class CliRunnerAdapter implements ICliRunner {
         options.prompt,
         outputFile,
         options.timeout ?? DEFAULT_TIMEOUT_SECONDS,
-        undefined, // taskId
-        undefined, // workerId
-        options.env, // permissions/env
+        {
+          permissions: options.env, // permissions/env
+        }
       )
 
       // Read the output from the log file
