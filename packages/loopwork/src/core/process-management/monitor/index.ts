@@ -2,7 +2,7 @@ import { execSync } from 'child_process'
 import type { ProcessInfo, OrphanInfo } from '../../contracts/process-manager'
 import type { ProcessRegistry } from './registry'
 import type { ISpawner } from '@loopwork-ai/contracts'
-import { logger } from '../utils'
+import { logger } from '../../utils'
 
 export interface ResourceLimits {
   cpuLimit?: number

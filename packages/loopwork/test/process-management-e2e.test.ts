@@ -48,8 +48,8 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
   describe('Crash Recovery Test', () => {
     test('detects and cleans orphans after parent crash', async () => {
       // Stage 1: Start loopwork as subprocess with child processes
-      const childProcess1 = spawn('sleep', ['100'])
-      const childProcess2 = spawn('sleep', ['100'])
+      const childProcess1 = spawn('node', ['-e', 'setTimeout(() => {}, 100000)'])
+      const childProcess2 = spawn('node', ['-e', 'setTimeout(() => {}, 100000)'])
 
       expect(childProcess1.pid).toBeDefined()
       expect(childProcess2.pid).toBeDefined()
@@ -60,16 +60,16 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
 
       // Register processes with a parent that doesn't exist
       registry.add(pid1, {
-        command: 'sleep',
-        args: ['100'],
+        command: 'node',
+        args: ['-e', 'setTimeout(() => {}, 100000)'],
         namespace: 'test-session',
         startTime: Date.now() - 5000, // Started 5 seconds ago
         parentPid: parentPid // Parent doesn't exist
       })
 
       registry.add(pid2, {
-        command: 'sleep',
-        args: ['100'],
+        command: 'node',
+        args: ['-e', 'setTimeout(() => {}, 100000)'],
         namespace: 'test-session',
         startTime: Date.now() - 3000, // Started 3 seconds ago
         parentPid: parentPid // Same non-existent parent
@@ -93,7 +93,7 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
       // Create detector and scanner for orphans
       const detector = new OrphanDetector(
         newRegistry,
-        ['sleep', 'claude', 'loopwork'],
+        ['node', 'claude', 'loopwork'],
         300000 // 5 minute stale timeout
       )
 
@@ -172,8 +172,8 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
       })
 
       // Stage 1: Spawn some child processes
-      const proc1 = spawn('sleep', ['100'])
-      const proc2 = spawn('sleep', ['100'])
+      const proc1 = spawn('node', ['-e', 'setTimeout(() => {}, 100000)'])
+      const proc2 = spawn('node', ['-e', 'setTimeout(() => {}, 100000)'])
 
       expect(proc1.pid).toBeDefined()
       expect(proc2.pid).toBeDefined()
@@ -183,15 +183,15 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
 
       // Track processes
       manager.track(pid1, {
-        command: 'sleep',
-        args: ['100'],
+        command: 'node',
+        args: ['-e', 'setTimeout(() => {}, 100000)'],
         namespace: 'test-session',
         startTime: Date.now()
       })
 
       manager.track(pid2, {
-        command: 'sleep',
-        args: ['100'],
+        command: 'node',
+        args: ['-e', 'setTimeout(() => {}, 100000)'],
         namespace: 'test-session',
         startTime: Date.now()
       })
@@ -245,13 +245,13 @@ describe('Process Management E2E: Full Loop Scenarios', () => {
       // Create processes in different namespaces
       for (const ns of namespaces) {
         for (let i = 0; i < 2; i++) {
-          const proc = spawn('sleep', ['100'])
+          const proc = spawn('node', ['-e', 'setTimeout(() => {}, 100000)'])
           expect(proc.pid).toBeDefined()
           procs.push(proc)
 
           manager.track(proc.pid!, {
-            command: 'sleep',
-            args: ['100'],
+            command: 'node',
+            args: ['-e', 'setTimeout(() => {}, 100000)'],
             namespace: ns,
             startTime: Date.now()
           })

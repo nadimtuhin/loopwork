@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
-// Removed type-only import from '../src/backends/json'
+import { JsonTaskAdapter } from '../src/backends'
 import type { TaskStatus } from '../src/contracts/task'
 
 describe('Task Timestamps and Events', () => {

@@ -253,89 +253,176 @@ describe('InteractiveConfirmation', () => {
   })
 
   describe('displayRiskInfo', () => {
-    test('should display risk information for LOW risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
+    // Helper to create mock streams that work with readline
+    function createMockStreams() {
+      const writes: string[] = []
+      const stdinHandlers: Record<string, Function[]> = {}
+      const stdoutHandlers: Record<string, Function[]> = {}
 
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const mockStdin = {
+        isTTY: true,
+        on: (event: string, handler: Function) => {
+          if (!stdinHandlers[event]) stdinHandlers[event] = []
+          stdinHandlers[event].push(handler)
+          return mockStdin
+        },
+        once: (event: string, handler: Function) => {
+          if (!stdinHandlers[event]) stdinHandlers[event] = []
+          stdinHandlers[event].push(handler)
+          return mockStdin
+        },
+        listenerCount: () => 0,
+        removeListener: () => mockStdin,
+        removeAllListeners: () => mockStdin,
+        pause: () => {},
+        resume: () => {},
+      }
+
+      const mockStdout = {
+        isTTY: true,
+        write: (data: string) => {
+          writes.push(data)
+          return true
+        },
+        on: (event: string, handler: Function) => {
+          if (!stdoutHandlers[event]) stdoutHandlers[event] = []
+          stdoutHandlers[event].push(handler)
+          return mockStdout
+        },
+        once: (event: string, handler: Function) => {
+          if (!stdoutHandlers[event]) stdoutHandlers[event] = []
+          stdoutHandlers[event].push(handler)
+          return mockStdout
+        },
+        listenerCount: () => 0,
+        removeListener: () => mockStdout,
+        removeAllListeners: () => mockStdout,
+      }
+
+      return { mockStdin, mockStdout, writes, stdinHandlers, stdoutHandlers }
+    }
+
+    test('should display risk information for LOW risk', async () => {
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        // Start confirm but don't await it fully (it would wait for user input)
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-001',
           title: 'Simple task',
           riskLevel: RiskLevel.LOW,
           reasons: ['No significant risks'],
         })
 
-        expect(consoleSpy).toHaveBeenCalled()
+        // Give it a moment to display output, then verify
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(writes.length).toBeGreaterThan(0)
+        expect(writes.some((call: string) => call.includes('Safety Confirmation Required'))).toBe(true)
+        expect(writes.some((call: string) => call.includes('TASK-001'))).toBe(true)
+
+        // Clean up by triggering the timeout
+        confirmPromise.catch(() => {}) // Ignore timeout error
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should display risk information for MEDIUM risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-002',
           title: 'Database update',
           riskLevel: RiskLevel.MEDIUM,
           reasons: ['Database modification', 'Production environment'],
         })
 
-        expect(consoleSpy).toHaveBeenCalled()
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(writes.length).toBeGreaterThan(0)
+        expect(writes.some((call: string) => call.includes('MEDIUM'))).toBe(true)
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should display risk information for HIGH risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-003',
           title: 'Delete files',
           riskLevel: RiskLevel.HIGH,
           reasons: ['Contains risky operations: delete, remove'],
         })
 
-        expect(consoleSpy).toHaveBeenCalled()
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(writes.length).toBeGreaterThan(0)
+        expect(writes.some((call: string) => call.includes('HIGH'))).toBe(true)
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should display risk information for CRITICAL risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-004',
           title: 'Drop production table',
           riskLevel: RiskLevel.CRITICAL,
           reasons: ['Contains critical keywords: drop table', 'Production environment'],
         })
 
-        expect(consoleSpy).toHaveBeenCalled()
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(writes.length).toBeGreaterThan(0)
+        expect(writes.some((call: string) => call.includes('CRITICAL'))).toBe(true)
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should display multiple risk reasons', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-005',
           title: 'Complex task',
           riskLevel: RiskLevel.HIGH,
@@ -346,95 +433,176 @@ describe('InteractiveConfirmation', () => {
           ],
         })
 
-        expect(consoleSpy).toHaveBeenCalled()
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(writes.length).toBeGreaterThan(0)
+        expect(writes.some((call: string) => call.includes('Database modification'))).toBe(true)
+        expect(writes.some((call: string) => call.includes('Production environment'))).toBe(true)
+        expect(writes.some((call: string) => call.includes('delete'))).toBe(true)
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
   })
 
   describe('getRiskEmoji', () => {
-    test('should return green emoji for LOW risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
+    // Helper to create mock streams that work with readline
+    function createMockStreams() {
+      const writes: string[] = []
+      const stdinHandlers: Record<string, Function[]> = {}
+      const stdoutHandlers: Record<string, Function[]> = {}
 
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const mockStdin = {
+        isTTY: true,
+        on: (event: string, handler: Function) => {
+          if (!stdinHandlers[event]) stdinHandlers[event] = []
+          stdinHandlers[event].push(handler)
+          return mockStdin
+        },
+        once: (event: string, handler: Function) => {
+          if (!stdinHandlers[event]) stdinHandlers[event] = []
+          stdinHandlers[event].push(handler)
+          return mockStdin
+        },
+        listenerCount: () => 0,
+        removeListener: () => mockStdin,
+        removeAllListeners: () => mockStdin,
+        pause: () => {},
+        resume: () => {},
+      }
+
+      const mockStdout = {
+        isTTY: true,
+        write: (data: string) => {
+          writes.push(data)
+          return true
+        },
+        on: (event: string, handler: Function) => {
+          if (!stdoutHandlers[event]) stdoutHandlers[event] = []
+          stdoutHandlers[event].push(handler)
+          return mockStdout
+        },
+        once: (event: string, handler: Function) => {
+          if (!stdoutHandlers[event]) stdoutHandlers[event] = []
+          stdoutHandlers[event].push(handler)
+          return mockStdout
+        },
+        listenerCount: () => 0,
+        removeListener: () => mockStdout,
+        removeAllListeners: () => mockStdout,
+      }
+
+      return { mockStdin, mockStdout, writes, stdinHandlers, stdoutHandlers }
+    }
+
+    test('should return green emoji for LOW risk', async () => {
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-001',
           title: 'Test',
           riskLevel: RiskLevel.LOW,
           reasons: [],
         })
 
-        const calls = consoleSpy.mock.calls as any[][]
-        const displayCall = calls.flat().find((call: string) => call.includes('Safety Confirmation Required'))
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        const displayCall = writes.find((call: string) => call.includes('Safety Confirmation Required'))
         expect(displayCall).toContain('🟢')
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should return yellow emoji for MEDIUM risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-002',
           title: 'Test',
           riskLevel: RiskLevel.MEDIUM,
           reasons: [],
         })
 
-        const calls = consoleSpy.mock.calls as any[][]
-        const displayCall = calls.flat().find((call: string) => call.includes('Safety Confirmation Required'))
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        const displayCall = writes.find((call: string) => call.includes('Safety Confirmation Required'))
         expect(displayCall).toContain('🟡')
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should return orange emoji for HIGH risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-003',
           title: 'Test',
           riskLevel: RiskLevel.HIGH,
           reasons: [],
         })
 
-        const calls = consoleSpy.mock.calls as any[][]
-        const displayCall = calls.flat().find((call: string) => call.includes('Safety Confirmation Required'))
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        const displayCall = writes.find((call: string) => call.includes('Safety Confirmation Required'))
         expect(displayCall).toContain('🟠')
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
 
     test('should return red emoji for CRITICAL risk', async () => {
-      process.env.LOOPWORK_NON_INTERACTIVE = 'true'
-
-      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {})
+      const { mockStdin, mockStdout, writes } = createMockStreams()
+      const originalStdin = process.stdin
+      const originalStdout = process.stdout
+      Object.defineProperty(process, 'stdin', { value: mockStdin, configurable: true })
+      Object.defineProperty(process, 'stdout', { value: mockStdout, configurable: true })
 
       try {
-        await confirmation.confirm({
+        const confirmPromise = confirmation.confirm({
           taskId: 'TASK-004',
           title: 'Test',
           riskLevel: RiskLevel.CRITICAL,
           reasons: [],
         })
 
-        const calls = consoleSpy.mock.calls as any[][]
-        const displayCall = calls.flat().find((call: string) => call.includes('Safety Confirmation Required'))
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        const displayCall = writes.find((call: string) => call.includes('Safety Confirmation Required'))
         expect(displayCall).toContain('🔴')
+
+        confirmPromise.catch(() => {})
       } finally {
-        consoleSpy.mockRestore()
+        Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true })
+        Object.defineProperty(process, 'stdout', { value: originalStdout, configurable: true })
       }
     })
   })

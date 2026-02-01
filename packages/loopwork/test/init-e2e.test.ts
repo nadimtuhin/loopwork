@@ -386,9 +386,9 @@ describe('Init E2E Integration Test', () => {
       // JSON backend should create local task files
       expect(fs.existsSync(resolvePath('.specs/tasks/tasks.json'))).toBe(true)
 
-      // Config should reference JSON backend
+      // Config should reference JSON backend (simple config format)
       const configContent = fs.readFileSync(resolvePath('loopwork.config.ts'), 'utf-8')
-      expect(configContent).toContain('withJSONBackend')
+      expect(configContent).toContain("backend: '.specs/tasks/tasks.json'")
       expect(configContent).not.toContain('withGitHubBackend')
     })
   })
@@ -399,12 +399,11 @@ describe('Init E2E Integration Test', () => {
 
       const configContent = fs.readFileSync(resolvePath('loopwork.config.ts'), 'utf-8')
 
-      // Verify import statements
-      expect(configContent).toMatch(/^import\s+{[^}]*defineConfig[^}]*}\s+from\s+['"]loopwork['"];?\s*$/m)
-      expect(configContent).toMatch(/^import\s+{[^}]*compose[^}]*}\s+from\s+['"]loopwork['"];?\s*$/m)
+      // Verify import statements (simple config format)
+      expect(configContent).toMatch(/^import\s+{[^}]*defineSimpleConfig[^}]*}\s+from\s+['"]loopwork['"];?\s*$/m)
 
       // Verify export statement
-      expect(configContent).toMatch(/^export\s+default\s+compose\(/m)
+      expect(configContent).toMatch(/^export\s+default\s+defineSimpleConfig\(/m)
 
       // Verify closing parentheses balance
       const openParens = (configContent.match(/\(/g) || []).length

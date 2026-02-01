@@ -1,4 +1,5 @@
 import path from 'path'
+import { pathToFileURL } from 'url'
 import { LoopworkError } from './errors'
 import { logger } from './utils'
 import type { LoopworkPlugin } from '../contracts/plugin'
@@ -21,6 +22,8 @@ export async function loadDynamicPlugins(
       // Resolve relative paths
       if (name.startsWith('.') || name.startsWith('/')) {
         pluginPath = path.resolve(projectRoot, name)
+        // Convert to file URL for dynamic import
+        pluginPath = pathToFileURL(pluginPath).href
       }
 
       // Dynamic import

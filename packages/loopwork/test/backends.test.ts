@@ -2,9 +2,11 @@ import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { createBackend, type BackendConfig,  } from '../src/backends'
+import { createBackend, type BackendConfig, type TaskBackend, JsonTaskAdapter, GitHubTaskAdapter } from '../src/backends'
+import type { Task } from '../src/contracts/task'
 import * as utils from '../src/core/utils'
 import { LoopworkError } from '../src/core/errors'
+import { isRetryableError } from '../src/core/retry'
 
 describe('Backend Factory', () => {
   let tempTasksFile: string
@@ -773,13 +775,11 @@ describe('Error Scenarios', () => {
     })
 
     test('isRetryableError identifies retryable errors', () => {
-      const adapter = new GitHubTaskAdapter({ type: 'github' })
-
-      expect((adapter as any).isRetryableError({ message: 'network timeout' })).toBe(true)
-      expect((adapter as any).isRetryableError({ message: 'ECONNRESET' })).toBe(true)
-      expect((adapter as any).isRetryableError({ message: 'rate limit exceeded' })).toBe(true)
-      expect((adapter as any).isRetryableError({ message: '502 Bad Gateway' })).toBe(true)
-      expect((adapter as any).isRetryableError({ message: 'normal error' })).toBe(false)
+      expect(isRetryableError(new Error('network timeout'))).toBe(true)
+      expect(isRetryableError(new Error('ECONNRESET'))).toBe(true)
+      expect(isRetryableError(new Error('rate limit exceeded'))).toBe(true)
+      expect(isRetryableError(new Error('502 Bad Gateway'))).toBe(true)
+      expect(isRetryableError(new Error('normal error'))).toBe(false)
     })
   })
 })

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import { spawn } from 'child_process'
-import { promises as fs } from 'fs'
+import { promises as fs, existsSync, mkdirSync } from 'fs'
 import path from 'path'
 import { createProcessManager } from '../src/core/process-management/process-manager'
 import type { IProcessManager } from '../src/contracts/process-manager'
@@ -23,6 +23,11 @@ describe('ProcessManager Integration (Real Processes)', () => {
   let spawnedPids: number[] = []
 
   beforeEach(async () => {
+    // Ensure test directory exists (sync check first to avoid ENOENT)
+    if (!existsSync(testDir)) {
+      mkdirSync(testDir, { recursive: true })
+    }
+
     // Clean up test directory
     await fs.rm(testDir, { recursive: true, force: true })
     await fs.mkdir(testDir, { recursive: true })

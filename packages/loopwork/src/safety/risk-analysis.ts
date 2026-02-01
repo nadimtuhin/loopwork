@@ -55,8 +55,10 @@ export class RiskAnalysisEngine {
     const dangerousMatches = DANGEROUS_KEYWORDS.filter(kw =>
       text.includes(kw.toLowerCase()) && !criticalMatches.includes(kw)
     )
-    if (dangerousMatches.length > 0 && riskLevel !== RiskLevel.CRITICAL) {
-      riskLevel = RiskLevel.HIGH
+    if (dangerousMatches.length > 0) {
+      if (riskLevel !== RiskLevel.CRITICAL) {
+        riskLevel = RiskLevel.HIGH
+      }
       reasons.push(`Contains risky operations: ${dangerousMatches.join(', ')}`)
     }
 

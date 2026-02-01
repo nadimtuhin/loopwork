@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-02-01 - TIMESTAM-002
+- TIMESTAM-002: Implement Lifecycle Tracking in JSON Backend
+
+### 2026-02-01 - AI-MONITOR-001h
+- AI-MONITOR-001h: AI Monitor: LLM Fallback Analyzer
+
 ### 2026-02-01 - FALLBACK-004
 - FALLBACK-004: Implement Reduced Functionality Mode
 

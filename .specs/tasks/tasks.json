@@ -5920,7 +5920,7 @@
     },
     {
       "id": "BULKHEAD-003",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Implement Process Resource Limits (CPU & Memory)",
       "feature": "bulkhead",
@@ -6099,17 +6099,31 @@
             "oldStatus": "in-progress",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "BULKHEAD-003",
+          "timestamp": "2026-02-01T22:23:03.015Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T20:46:14.015Z",
-        "updatedAt": "2026-02-01T22:18:28.774Z"
+        "updatedAt": "2026-02-01T22:23:03.026Z",
+        "startedAt": "2026-02-01T22:23:03.015Z"
       },
       "metadata": {
         "cli": "opencode",
         "model": "antigravity-gemini-3-flash",
         "modelDisplayName": "opencode/antigravity-gemini-3-flash",
-        "workerId": 2
+        "workerId": 1
       }
     },
     {
@@ -6413,7 +6427,7 @@
     },
     {
       "id": "CHECKPOI-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Add Resume-from-Checkpoint Capabilities",
       "feature": "checkpoint",
@@ -6430,8 +6444,46 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CHECKPOI-003",
+          "timestamp": "2026-02-01T22:23:03.047Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CHECKPOI-003",
+          "timestamp": "2026-02-01T22:30:15.793Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T22-08-23-45496\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T22:23:03.047Z",
+        "updatedAt": "2026-02-01T22:30:15.793Z",
+        "startedAt": "2026-02-01T22:23:03.047Z",
+        "completedAt": "2026-02-01T22:30:15.793Z"
+      },
+      "metadata": {
+        "cli": "opencode",
+        "model": "cerebras-qwen-3",
+        "modelDisplayName": "opencode/cerebras-qwen-3",
+        "workerId": 2
+      },
+      "failureCount": 0
     },
     {
       "id": "CHECKPOI-004",
@@ -6879,7 +6931,7 @@
     },
     {
       "id": "DEADLETT-003",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Implement Auto-Quarantine Logic",
       "feature": "deadletter",
@@ -6896,8 +6948,32 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "DEADLETT-003",
+          "timestamp": "2026-02-01T22:23:03.072Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T22:23:03.072Z",
+        "updatedAt": "2026-02-01T22:23:03.081Z",
+        "startedAt": "2026-02-01T22:23:03.072Z"
+      },
+      "metadata": {
+        "cli": "opencode",
+        "model": "minimax-m2.1-free",
+        "modelDisplayName": "opencode/minimax-m2.1-free",
+        "workerId": 3
+      }
     },
     {
       "id": "DEADLETT-004",
@@ -7013,7 +7089,7 @@
     },
     {
       "id": "TIMESTAM-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement Lifecycle Tracking in JSON Backend",
       "feature": "timestamps",
@@ -7030,8 +7106,46 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TIMESTAM-002",
+          "timestamp": "2026-02-01T22:23:03.115Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "TIMESTAM-002",
+          "timestamp": "2026-02-01T22:29:36.526Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T22-08-23-45496\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T22:23:03.115Z",
+        "updatedAt": "2026-02-01T22:29:36.526Z",
+        "startedAt": "2026-02-01T22:23:03.115Z",
+        "completedAt": "2026-02-01T22:29:36.526Z"
+      },
+      "metadata": {
+        "cli": "opencode",
+        "model": "glm-4.7",
+        "modelDisplayName": "opencode/glm-4.7",
+        "workerId": 4
+      },
+      "failureCount": 0
     },
     {
       "id": "TIMESTAM-003",
@@ -16636,8 +16750,8 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T22:08:23.507Z",
-        "startedAt": "2026-02-01T22:08:23.504Z"
+        "updatedAt": "2026-02-01T22:23:02.917Z",
+        "startedAt": "2026-02-01T22:23:02.913Z"
       },
       "events": [
         {
@@ -18994,13 +19108,38 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T22:23:00.900Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T22:23:02.913Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "metadata": {
         "cli": "opencode",
-        "modelDisplayName": "opencode/glm-4.7",
+        "modelDisplayName": "opencode/antigravity-gemini-3-flash",
         "workerId": 0,
-        "model": "glm-4.7"
+        "model": "antigravity-gemini-3-flash"
       }
     },
     {
