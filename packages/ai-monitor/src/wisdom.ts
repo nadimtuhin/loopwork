@@ -1,28 +1,12 @@
-/**
- * Wisdom System for AI Monitor
- *
- * Stores learned error patterns and healing actions across sessions.
- * Tracks what fixes work, accumulates knowledge, and expires old patterns.
- *
- * Storage Structure:
- * .loopwork/ai-monitor/
- *   ├── wisdom.json          - Main wisdom store
- *   ├── patterns/            - Individual pattern files
- *   │   └── {hash}.json
- *   └── sessions/            - Session history
- *       └── {sessionId}.json
- */
-
 import fs from 'fs'
 import path from 'path'
 import { createHash } from 'crypto'
 import type { ErrorPattern, WisdomPattern } from './types'
+export type { WisdomPattern }
 import { logger } from './utils'
 
-// Import LoopworkState from @loopwork-ai/loopwork if available, otherwise use fallback
 let LoopworkState: any
 
-// Fallback implementation when loopwork is not available
 class FallbackLoopworkState {
   paths: any
   constructor(options?: { projectRoot?: string } | string) {
@@ -42,6 +26,8 @@ try {
   LoopworkState = FallbackLoopworkState
 }
 
+export type LearnedPattern = WisdomPattern
+
 export interface WisdomStore {
   lastUpdated: string
   patterns: WisdomPattern[]
@@ -58,9 +44,6 @@ export interface WisdomConfig {
   minSuccessForTrust?: number
 }
 
-/**
- * WisdomSystem - Learn and remember successful healing patterns
- */
 export class WisdomSystem {
   private config: Required<WisdomConfig>
   private stateDir: string
@@ -85,20 +68,13 @@ export class WisdomSystem {
     this.sessionId = this.generateSessionId()
     this.sessionStartTime = Date.now()
 
-    // Initialize store
     this.store = this.loadWisdom()
   }
 
-  /**
-   * Generate a unique session ID
-   */
   private generateSessionId(): string {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
-  /**
-   * Generate a hash for an error pattern
-   */
   private hashPattern(pattern: ErrorPattern): string {
     const content = JSON.stringify({
       name: pattern.name,
@@ -108,9 +84,6 @@ export class WisdomSystem {
     return createHash('sha256').update(content).digest('hex').substr(0, 16)
   }
 
-  /**
-   * Load wisdom store from disk
-   */
   private loadWisdom(): WisdomStore {
     if (!fs.existsSync(this.wisdomFile)) {
       logger.debug('Creating new wisdom store')
@@ -157,14 +130,10 @@ export class WisdomSystem {
     }
   }
 
-  /**
-   * Save wisdom store to disk
-   */
   private saveWisdom(): void {
     if (!this.config.enabled) return
 
     try {
-      // Ensure directories exist
       if (!fs.existsSync(this.stateDir)) {
         fs.mkdirSync(this.stateDir, { recursive: true })
       }
@@ -221,85 +190,6 @@ export class WisdomSystem {
     this.saveWisdom()
   }
 
-  getPatterns(): WisdomPattern[] {
-    return [...this.store.patterns].sort((a, b) => b.successCount - a.successCount)
-  }
-
-  getStats() {
-    return {
-      sessionId: this.sessionId,
-      uptime: Date.now() - this.sessionStartTime,
-      totalPatterns: this.store.patterns.length,
-      trustworthyPatterns: this.store.patterns.filter(
-        p => p.successCount >= this.config.minSuccessForTrust
-      ).length,
-      totalHeals: this.store.totalHeals,
-      totalFailures: this.store.totalFailures
-    }
-  }
-
-  clearExpired(): number {
-    const expiryMs = this.config.patternExpiryDays * 24 * 60 * 60 * 1000
-    const now = Date.now()
-    const before = this.store.patterns.length
-    
-    this.store.patterns = this.store.patterns.filter(p => {
-      const lastSeen = new Date(p.lastSeen).getTime()
-      return (now - lastSeen) < expiryMs
-    })
-
-    const removed = before - this.store.patterns.length
-    if (removed > 0) {
-      this.saveWisdom()
-      logger.info(`AI Monitor: Removed ${removed} expired patterns`)
-    }
-
-    return removed
-  }
-
-  reset(): void {
-    if (!this.config.enabled) return
-
-    this.store = {
-      lastUpdated: new Date().toISOString(),
-      patterns: [],
-      version: '1.0',
-      sessionCount: 0,
-      totalHeals: 0,
-      totalFailures: 0
-    }
-    this.saveWisdom()
-    logger.warn('AI Monitor: Wisdom store reset')
-  }
-      this.store.patterns.push(learned)
-      logger.info(`AI Monitor: Learned new successful healing pattern: ${pattern.name} via ${actionName}`)
-    } else {
-      learned.successCount++
-      learned.lastSeen = now
-      if (context) {
-        learned.context = {
-          fileTypes: Array.from(new Set([...(learned.context?.fileTypes || []), ...(context.fileTypes || [])])),
-          errorTypes: Array.from(new Set([...(learned.context?.errorTypes || []), ...(context.errorTypes || [])]))
-        }
-      }
-      logger.debug(`AI Monitor: Pattern ${pattern.name} recorded success (${learned.successCount} total)`)
-    }
-
-    if (this.store.totalHeals !== undefined) this.store.totalHeals++
-    this.saveWisdom()
-    return true
-  }
-
-  /**
-   * Record a failed healing action
-   */
-  recordFailure(pattern: ErrorPattern, actionName: string): void {
-    if (!this.config.enabled) return
-
-    if (this.store.totalFailures !== undefined) this.store.totalFailures++
-    this.saveWisdom()
-  }
-
   findPattern(pattern: ErrorPattern): WisdomPattern | null {
     if (!this.config.enabled) return null
 
@@ -312,6 +202,15 @@ export class WisdomSystem {
 
     const best = matches[0]
 
+    const expiryMs = this.config.patternExpiryDays * 24 * 60 * 60 * 1000
+    const now = Date.now()
+    const lastSeen = new Date(best.lastSeen).getTime()
+
+    if ((now - lastSeen) >= expiryMs) {
+      logger.debug(`Pattern ${pattern.name} has expired`)
+      return null
+    }
+
     if (best.successCount < this.config.minSuccessForTrust) {
       logger.debug(`Pattern ${pattern.name} not yet trustworthy (${best.successCount}/${this.config.minSuccessForTrust} successes)`)
       return null
@@ -320,16 +219,10 @@ export class WisdomSystem {
     return best
   }
 
-  /**
-   * Get all learned patterns
-   */
   getPatterns(): WisdomPattern[] {
     return [...this.store.patterns].sort((a, b) => b.successCount - a.successCount)
   }
 
-  /**
-   * Get wisdom statistics
-   */
   getStats() {
     return {
       sessionId: this.sessionId,
@@ -343,9 +236,6 @@ export class WisdomSystem {
     }
   }
 
-  /**
-   * Clear expired patterns
-   */
   clearExpired(): number {
     const expiryMs = this.config.patternExpiryDays * 24 * 60 * 60 * 1000
     const now = Date.now()
@@ -365,9 +255,6 @@ export class WisdomSystem {
     return removed
   }
 
-  /**
-   * Reset wisdom store
-   */
   reset(): void {
     if (!this.config.enabled) return
 
@@ -384,9 +271,6 @@ export class WisdomSystem {
   }
 }
 
-/**
- * Factory function to create WisdomSystem
- */
 export function createWisdomSystem(config?: WisdomConfig): WisdomSystem {
   return new WisdomSystem(config)
 }

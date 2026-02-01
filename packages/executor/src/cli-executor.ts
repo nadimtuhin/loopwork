@@ -128,6 +128,10 @@ const CLI_PATH_ENV_VARS: Record<CliType, string> = {
   claude: 'LOOPWORK_CLAUDE_PATH',
   opencode: 'LOOPWORK_OPENCODE_PATH',
   gemini: 'LOOPWORK_GEMINI_PATH',
+  droid: 'LOOPWORK_DROID_PATH',
+  crush: 'LOOPWORK_CRUSH_PATH',
+  kimi: 'LOOPWORK_KIMI_PATH',
+  kilocode: 'LOOPWORK_KILOCODE_PATH',
 }
 
 export interface CliExecutorOptions {
@@ -221,6 +225,25 @@ export class CliExecutor {
         `${home}/.local/bin/gemini`,
         '/usr/local/bin/gemini',
       ],
+      droid: [
+        `${home}/.npm/bin/droid`,
+        `${home}/.npm/bin/factory`,
+        '/usr/local/bin/droid',
+        '/usr/local/bin/factory',
+      ],
+      crush: [
+        '/opt/homebrew/bin/crush',
+        '/usr/local/bin/crush',
+        `${home}/.npm/bin/crush`,
+      ],
+      kimi: [
+        `${home}/.local/bin/kimi`,
+        '/usr/local/bin/kimi',
+      ],
+      kilocode: [
+        `${home}/.npm/bin/kilocode`,
+        '/usr/local/bin/kilocode',
+      ],
     }
 
     for (const [cli, defaultPaths] of Object.entries(defaultCandidates)) {
@@ -267,6 +290,20 @@ export class CliExecutor {
 
   getNextCliConfig(): any {
     return this.modelSelector.getNext()
+  }
+
+  getNextModel(): { cli: string; model: string; displayName?: string } | null {
+    const modelConfig = this.modelSelector.getNext()
+    if (!modelConfig) {
+      return null
+    }
+    const modelName = modelConfig.displayName || modelConfig.name
+    const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
+    return {
+      cli: modelConfig.cli,
+      model: modelName,
+      displayName,
+    }
   }
 
   killCurrent(): void {
@@ -318,16 +355,6 @@ export class CliExecutor {
     )
 
     if (healthy.length > 0) {
-      // Create a new model selector with only healthy models
-      const healthySet = new Set(healthy.map(h => h.name))
-      
-      // Filter primary and fallback models to only include healthy ones
-      const primaryHealthy = allModels
-        .filter(m => healthySet.has(m.name))
-        .filter(m => !this.modelSelector.isUsingFallback() || 
-          !this.modelSelector.getAllModels().slice(0, this.modelSelector.getTotalModelCount() - 
-            this.modelSelector.getAllModels().filter(x => x.cli === m.cli && x.model === m.model).length).includes(m))
-      
       this.logger.info(
         `[Preflight] ${summary.healthy}/${summary.total} models healthy` +
           (summary.cacheCleared > 0 ? ` (${summary.cacheCleared} cache cleared)` : '')
@@ -386,6 +413,140 @@ export class CliExecutor {
     this.preflightValidated = false
     this.healthChecker.clearCache()
     this.modelSelector.reset()
+  }
+
+  /**
+   * Start progressive validation that enables immediate work with available models
+   * Returns immediately with initial available models, continues validating in background
+   */
+  async startProgressiveValidation(
+    minimumRequired: number = 1
+  ): Promise<{
+    success: boolean
+    initiallyAvailable: number
+    message: string
+    waitForAll: () => Promise<{ totalHealthy: number; totalUnhealthy: number }>
+  }> {
+    if (this.preflightValidated) {
+      const healthStatus = this.modelSelector.getHealthStatus()
+      return {
+        success: healthStatus.available >= minimumRequired,
+        initiallyAvailable: healthStatus.available,
+        message: `Using cached validation: ${healthStatus.available}/${healthStatus.total} models available`,
+        waitForAll: async () => ({ 
+          totalHealthy: healthStatus.available, 
+          totalUnhealthy: healthStatus.disabled 
+        }),
+      }
+    }
+
+    this.logger.info('[Preflight] Starting progressive CLI validation...')
+    
+    const allModels = this.modelSelector.getAllModels()
+    
+    // Mark all models as pending
+    allModels.forEach(m => this.modelSelector.markPending(m.name))
+    
+    // Track validation progress
+    let totalHealthy = 0
+    let totalUnhealthy = 0
+    let validationComplete = false
+    let resolveValidationComplete: (value: { totalHealthy: number; totalUnhealthy: number }) => void
+    const validationPromise = new Promise<{ totalHealthy: number; totalUnhealthy: number }>((resolve) => {
+      resolveValidationComplete = resolve
+    })
+
+    // Set up progressive health checker
+    const progressiveHealthChecker = new CliHealthChecker({
+      testTimeoutMs: 30000,
+      maxRetries: 1,
+      autoClearCache: true,
+      logger: this.logger,
+      delayBetweenValidationsMs: 2000,
+      // Called immediately when a model passes validation
+      onModelHealthy: (validatedModel) => {
+        totalHealthy++
+        this.modelSelector.addModel(validatedModel)
+        this.logger.info(
+          `[Preflight] ✓ ${validatedModel.cli}/${validatedModel.name} ready (${totalHealthy} models available)`
+        )
+      },
+      // Called immediately when a model fails validation
+      onModelUnhealthy: (validatedModel) => {
+        totalUnhealthy++
+        this.modelSelector.markModelUnavailable(validatedModel.name)
+        this.logger.warn(
+          `[Preflight] ✗ ${validatedModel.cli}/${validatedModel.name} failed` +
+          (validatedModel.lastError ? `: ${validatedModel.lastError.slice(0, 60)}` : '')
+        )
+      },
+      // Called when all validations are complete
+      onValidationComplete: (summary) => {
+        validationComplete = true
+        this.preflightValidated = true
+        this.modelSelector.signalValidationComplete()
+        this.logger.info(
+          `[Preflight] Validation complete: ${summary.healthy}/${summary.total} models healthy`
+        )
+        resolveValidationComplete({ totalHealthy, totalUnhealthy })
+      },
+    })
+
+    // Start validation in background (don't await)
+    const validationTask = progressiveHealthChecker.validateAllModels(
+      this.cliPaths,
+      allModels
+    )
+
+    // Wait for at least one model to be available or timeout
+    const hasAvailable = await this.modelSelector.waitForAvailableModels(30000)
+    
+    const { sufficient, canContinue } = this.healthChecker.hasMinimumHealthyModels(
+      this.modelSelector.getAvailableModelCount(),
+      minimumRequired
+    )
+
+    const initialAvailable = this.modelSelector.getAvailableModelCount()
+
+    if (!hasAvailable && !canContinue) {
+      // No models available and none pending - wait a bit more
+      await new Promise(r => setTimeout(r, 5000))
+    }
+
+    if (initialAvailable > 0) {
+      this.logger.info(
+        `[Preflight] Starting work with ${initialAvailable} available model(s)...` +
+        (this.modelSelector.hasPendingModels() ? ' (more coming online)' : '')
+      )
+    }
+
+    const success = initialAvailable >= minimumRequired || canContinue
+    const message = initialAvailable >= minimumRequired
+      ? `Starting with ${initialAvailable} models available`
+      : canContinue
+        ? `Only ${initialAvailable} models available (minimum ${minimumRequired} recommended)`
+        : `CRITICAL: No models available`
+
+    return {
+      success,
+      initiallyAvailable: initialAvailable,
+      message,
+      waitForAll: async () => validationPromise,
+    }
+  }
+
+  /**
+   * Check if models are still being validated
+   */
+  isValidationInProgress(): boolean {
+    return this.modelSelector.hasPendingModels()
+  }
+
+  /**
+   * Wait for at least one model to become available
+   */
+  async waitForAvailableModels(timeoutMs?: number): Promise<boolean> {
+    return this.modelSelector.waitForAvailableModels(timeoutMs)
   }
 
   private getPoolForTask(priority?: string, feature?: string): string {

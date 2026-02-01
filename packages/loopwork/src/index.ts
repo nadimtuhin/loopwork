@@ -168,8 +168,12 @@ export {
   LoopworkError,
   handleError,
   ERROR_CODES,
+  type ErrorCode,
+  createCliNotFoundError,
+  createNoTasksError,
+  createRateLimitError,
+  createTaskFailureError,
 } from './core/errors'
-export type { ErrorCode } from './core/errors'
 
 // Export centralized state management
 export {

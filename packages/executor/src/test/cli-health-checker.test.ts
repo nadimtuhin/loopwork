@@ -120,6 +120,61 @@ describe('CliHealthChecker', () => {
     })
   })
 
+  describe('progressive validation callbacks', () => {
+    test('should call onModelUnhealthy when model fails validation', async () => {
+      const callbackModels: any[] = []
+      
+      const checker = new CliHealthChecker({
+        logger: mockLogger,
+        onModelUnhealthy: (model) => {
+          callbackModels.push(model)
+        },
+      })
+      
+      const cliPaths = new Map<string, string>()
+      const models: ModelConfig[] = [
+        { name: 'test-model', cli: 'claude', model: 'sonnet' },
+      ]
+      
+      const result = await checker.validateAllModels(cliPaths, models)
+      
+      // Debug: log what we got
+      console.log('Callback models:', callbackModels.length, JSON.stringify(callbackModels.map(m => m.name)))
+      console.log('Result unhealthy:', result.unhealthy.length)
+      
+      // Should have called onModelUnhealthy since CLI path is missing
+      expect(callbackModels.length).toBeGreaterThanOrEqual(1)
+      expect(callbackModels[0]?.healthStatus).toBe('unhealthy')
+    })
+
+    test('should call onValidationComplete when all validations done', async () => {
+      let completeCallCount = 0
+      let receivedSummary: any = null
+      
+      const checker = new CliHealthChecker({
+        logger: mockLogger,
+        onValidationComplete: (s) => {
+          completeCallCount++
+          receivedSummary = s
+        },
+      })
+      
+      const cliPaths = new Map<string, string>()
+      const models: ModelConfig[] = [
+        { name: 'model1', cli: 'claude', model: 'sonnet' },
+        { name: 'model2', cli: 'claude', model: 'opus' },
+      ]
+      
+      const result = await checker.validateAllModels(cliPaths, models)
+      
+      // onValidationComplete should be called exactly once
+      expect(completeCallCount).toBe(1)
+      expect(receivedSummary).not.toBeNull()
+      expect(receivedSummary.total).toBe(2)
+      expect(result.summary.total).toBe(2)
+    })
+  })
+
   describe('createHealthChecker factory', () => {
     test('should create health checker with default options', () => {
       const checker = createHealthChecker()

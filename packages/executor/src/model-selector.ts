@@ -358,6 +358,7 @@ export class ModelSelector {
     total: number
     available: number
     disabled: number
+    pending: number
     circuitBreakersOpen: number
   } {
     const states = this.getAllCircuitBreakerStates()
@@ -372,8 +373,175 @@ export class ModelSelector {
       total: this.getTotalModelCount(),
       available: this.getAvailableModelCount(),
       disabled: this.getDisabledModels().length,
+      pending: this.pendingModels.size,
       circuitBreakersOpen: openCount,
     }
+  }
+
+  /**
+   * Mark a model as pending (being validated)
+   */
+  markPending(modelName: string): void {
+    this.pendingModels.add(modelName)
+  }
+
+  /**
+   * Mark a model as available (validation complete)
+   * This adds the model to the primary pool and notifies listeners
+   */
+  addModel(modelConfig: ModelConfig): void {
+    // Remove from pending if it was there
+    this.pendingModels.delete(modelConfig.name)
+    
+    // Check if model already exists
+    const existingIndex = this.primaryModels.findIndex(m => m.name === modelConfig.name)
+    if (existingIndex >= 0) {
+      // Update existing model
+      this.primaryModels[existingIndex] = { ...modelConfig, enabled: true }
+    } else {
+      // Add new model to primary pool
+      this.primaryModels.push({ ...modelConfig, enabled: true })
+    }
+    
+    // Notify listeners
+    this.onModelAvailableCallbacks.forEach(cb => {
+      try {
+        cb(modelConfig)
+      } catch {
+        // Ignore callback errors
+      }
+    })
+  }
+
+  /**
+   * Mark a model as unavailable/invalid
+   */
+  markModelUnavailable(modelName: string): void {
+    this.pendingModels.delete(modelName)
+    // Add to disabled models set (checked by isModelAvailable)
+    this.disabledModels.add(modelName)
+    // Also disable the model config
+    const model = this.primaryModels.find(m => m.name === modelName)
+    if (model) {
+      model.enabled = false
+    }
+    // Record failure in circuit breaker to prevent immediate re-enable
+    if (this.enableCircuitBreaker) {
+      this.circuitBreakers.recordFailure(modelName)
+    }
+  }
+
+  /**
+   * Register callback for when a model becomes available
+   * Returns unsubscribe function
+   */
+  onModelAvailable(callback: (model: ModelConfig) => void): () => void {
+    this.onModelAvailableCallbacks.push(callback)
+    return () => {
+      const index = this.onModelAvailableCallbacks.indexOf(callback)
+      if (index >= 0) {
+        this.onModelAvailableCallbacks.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * Register callback for when all pending validations are complete
+   * Returns unsubscribe function
+   */
+  onValidationComplete(callback: () => void): () => void {
+    this.onValidationCompleteCallbacks.push(callback)
+    return () => {
+      const index = this.onValidationCompleteCallbacks.indexOf(callback)
+      if (index >= 0) {
+        this.onValidationCompleteCallbacks.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * Signal that all validations are complete
+   */
+  signalValidationComplete(): void {
+    this.pendingModels.clear()
+    this.onValidationCompleteCallbacks.forEach(cb => {
+      try {
+        cb()
+      } catch {
+        // Ignore callback errors
+      }
+    })
+  }
+
+  /**
+   * Check if there are any pending models being validated
+   */
+  hasPendingModels(): boolean {
+    return this.pendingModels.size > 0
+  }
+
+  /**
+   * Get list of pending model names
+   */
+  getPendingModels(): string[] {
+    return Array.from(this.pendingModels)
+  }
+
+  /**
+   * Check if any models are available (including already validated ones)
+   */
+  hasAvailableModels(): boolean {
+    return this.getAvailableModelCount() > 0
+  }
+
+  /**
+   * Wait for at least one model to become available
+   * Returns immediately if models are already available
+   */
+  async waitForAvailableModels(timeoutMs: number = 30000): Promise<boolean> {
+    // If already have available models, return immediately
+    if (this.hasAvailableModels()) {
+      return true
+    }
+    
+    // If no pending models and none available, we'll never get any
+    if (!this.hasPendingModels()) {
+      return false
+    }
+    
+    return new Promise((resolve) => {
+      let resolved = false
+      
+      // Set timeout
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          unsubscribeAvailable()
+          unsubscribeComplete()
+          resolve(this.hasAvailableModels())
+        }
+      }, timeoutMs)
+      
+      // Subscribe to model availability
+      const unsubscribeAvailable = this.onModelAvailable(() => {
+        if (!resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          unsubscribeComplete()
+          resolve(true)
+        }
+      })
+      
+      // Also resolve if validation completes
+      const unsubscribeComplete = this.onValidationComplete(() => {
+        if (!resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          unsubscribeAvailable()
+          resolve(this.hasAvailableModels())
+        }
+      })
+    })
   }
 }
 

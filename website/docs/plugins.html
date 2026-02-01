@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugins - Loopwork Documentation</title>
+    <meta name="description" content="Built-in plugins for Loopwork - Telegram, Discord, Asana, and more.">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html#docs" class="nav-link">Documentation</a></li>
+                <li><a href="../index.html#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-layout">
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Documentation</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Getting Started</span>
+                    <ul>
+                        <li><a href="getting-started.html">Installation</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Core Concepts</span>
+                    <ul>
+                        <li><a href="backends.html">Task Backends</a></li>
+                        <li><a href="plugins.html" class="active">Plugins</a></li>
+                        <li><a href="cli-execution.html">CLI Execution</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Reference</span>
+                    <ul>
+                        <li><a href="api-reference.html">API Reference</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <div class="content-header">
+                <span class="breadcrumb">Documentation / Core Concepts</span>
+                <h1 class="page-title glitch" data-text="PLUGINS">PLUGINS</h1>
+                <p class="page-description">Extend Loopwork with composable plugins</p>
+            </div>
+
+            <article class="content-body">
+                <div class="callout callout-info">
+                    <div class="callout-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="callout-content">
+                        Loopwork uses a <strong>Next.js-style composable plugin architecture</strong>. Each plugin is a function that returns configuration enhancements.
+                    </div>
+                </div>
+
+                <h2 id="notification-plugins">Notification Plugins</h2>
+                
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fab fa-telegram"></i></div>
+                    <div class="plugin-info">
+                        <h4>Telegram</h4>
+                        <p>Get task completion and failure notifications via Telegram bot.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Built-in</span>
+                            <span class="plugin-tag">Notification</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="telegram-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="telegram-code"><span class="keyword">import</span> { withTelegram } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withTelegram</span>({
+  botToken: process.env.TELEGRAM_BOT_TOKEN,
+  chatId: process.env.TELEGRAM_CHAT_ID,
+  notifyOnComplete: <span class="keyword">true</span>,
+  notifyOnFail: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fab fa-discord"></i></div>
+                    <div class="plugin-info">
+                        <h4>Discord</h4>
+                        <p>Send notifications to Discord channels via webhooks.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Built-in</span>
+                            <span class="plugin-tag">Notification</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="discord-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="discord-code"><span class="keyword">import</span> { withDiscord } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withDiscord</span>({
+  webhookUrl: process.env.DISCORD_WEBHOOK_URL,
+  notifyOnComplete: <span class="keyword">true</span>,
+  notifyOnFail: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <h2 id="project-management">Project Management Plugins</h2>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fas fa-tasks"></i></div>
+                    <div class="plugin-info">
+                        <h4>Asana</h4>
+                        <p>Sync task status with Asana projects automatically.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Integration</span>
+                            <span class="plugin-tag">Sync</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="asana-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="asana-code"><span class="keyword">import</span> { withAsana } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withAsana</span>({
+  projectId: process.env.ASANA_PROJECT_ID,
+  syncStatus: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fas fa-check-square"></i></div>
+                    <div class="plugin-info">
+                        <h4>Todoist</h4>
+                        <p>Keep Todoist projects in sync with Loopwork tasks.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Integration</span>
+                            <span class="plugin-tag">Sync</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 id="time-tracking">Time Tracking</h2>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fas fa-clock"></i></div>
+                    <div class="plugin-info">
+                        <h4>Everhour</h4>
+                        <p>Track time spent on tasks with automatic timer start/stop.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Time Tracking</span>
+                            <span class="plugin-tag">Analytics</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="everhour-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="everhour-code"><span class="keyword">import</span> { withEverhour } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withEverhour</span>({
+  autoStartTimer: <span class="keyword">true</span>,
+  autoStopTimer: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <h2 id="cost-tracking">Cost Tracking</h2>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fas fa-dollar-sign"></i></div>
+                    <div class="plugin-info">
+                        <h4>Cost Tracking</h4>
+                        <p>Monitor token usage and enforce daily budgets to control AI spending.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Monitoring</span>
+                            <span class="plugin-tag">Budget</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="cost-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="cost-code"><span class="keyword">import</span> { withCostTracking } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withCostTracking</span>({
+  enabled: <span class="keyword">true</span>,
+  dailyBudget: <span class="number">10.00</span>,  <span class="comment">// Stop if over $10/day</span>
+})</code></pre>
+                </div>
+
+                <h2 id="git-integration">Git Integration</h2>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fab fa-git-alt"></i></div>
+                    <div class="plugin-info">
+                        <h4>Git Auto-Commit</h4>
+                        <p>Automatically commit changes after each successful task completion.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">Git</span>
+                            <span class="plugin-tag">Automation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="git-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="git-code"><span class="keyword">import</span> { withGitAutoCommit } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withGitAutoCommit</span>({
+  enabled: <span class="keyword">true</span>,
+  addAll: <span class="keyword">true</span>,
+  coAuthor: <span class="string">'Loopwork AI &lt;noreply@loopwork.ai&gt;'</span>,
+  skipIfNoChanges: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <h2 id="dynamic-tasks">Dynamic Tasks</h2>
+
+                <div class="plugin-card">
+                    <div class="plugin-icon"><i class="fas fa-magic"></i></div>
+                    <div class="plugin-info">
+                        <h4>Dynamic Task Creation</h4>
+                        <p>Automatically create follow-up tasks based on AI output analysis.</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-tag">AI</span>
+                            <span class="plugin-tag">Automation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="dynamic-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="dynamic-code"><span class="keyword">import</span> { withDynamicTasks } <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="function">withDynamicTasks</span>({
+  enabled: <span class="keyword">true</span>,
+  analyzer: <span class="string">'pattern'</span>,  <span class="comment">// or 'llm' for smarter analysis</span>
+  createSubTasks: <span class="keyword">true</span>,
+  maxTasksPerExecution: <span class="number">5</span>,
+  autoApprove: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <h2 id="complete-example">Complete Example</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="complete-code"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="complete-code"><span class="keyword">import</span> { compose, defineConfig } <span class="keyword">from</span> <span class="string">'loopwork'</span>
+<span class="keyword">import</span> { withJSONBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+<span class="keyword">import</span> { 
+  withTelegram, 
+  withCostTracking, 
+  withGitAutoCommit,
+  withDynamicTasks 
+} <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span>
+
+<span class="keyword">export default</span> <span class="function">compose</span>(
+  <span class="function">withJSONBackend</span>({
+    tasksFile: <span class="string">'.specs/tasks/tasks.json'</span>
+  }),
+  <span class="function">withTelegram</span>({
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    chatId: process.env.TELEGRAM_CHAT_ID,
+    notifyOnComplete: <span class="keyword">true</span>,
+    notifyOnFail: <span class="keyword">true</span>,
+  }),
+  <span class="function">withCostTracking</span>({
+    enabled: <span class="keyword">true</span>,
+    dailyBudget: <span class="number">10.00</span>,
+  }),
+  <span class="function">withGitAutoCommit</span>({
+    enabled: <span class="keyword">true</span>,
+    addAll: <span class="keyword">true</span>,
+  }),
+  <span class="function">withDynamicTasks</span>({
+    enabled: <span class="keyword">true</span>,
+    analyzer: <span class="string">'pattern'</span>,
+  }),
+)(<span class="function">defineConfig</span>({
+  cli: <span class="string">'claude'</span>,
+  maxIterations: <span class="number">50</span>,
+}))</code></pre>
+                </div>
+            </article>
+
+            <!-- Page Navigation -->
+            <nav class="page-nav">
+                <a href="backends.html" class="page-nav-prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Task Backends</span>
+                </a>
+                <a href="api-reference.html" class="page-nav-next">
+                    <span>API Reference</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>

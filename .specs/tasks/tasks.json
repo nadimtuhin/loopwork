@@ -752,7 +752,7 @@
     },
     {
       "id": "IMPROVE-004",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "medium",
       "title": "Improve CLI error handling and user feedback",
       "description": "Add better error messages and recovery suggestions for common failure scenarios",
@@ -1152,12 +1152,48 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T11:16:49.886Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T11:23:55.998Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "IMPROVE-004",
+          "timestamp": "2026-02-01T11:23:57.567Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:35:15.978Z",
-        "updatedAt": "2026-02-01T11:06:44.842Z",
-        "startedAt": "2026-02-01T11:06:44.842Z"
+        "updatedAt": "2026-02-01T11:23:57.567Z"
       }
     },
     {
@@ -1497,7 +1533,7 @@
     },
     {
       "id": "TELE-012",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Teleloop: 'Vision' Bug Reporting",
       "feature": "teleloop",
@@ -1658,13 +1694,52 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T11:17:01.195Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T11:23:56.008Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "TELE-012",
+          "timestamp": "2026-02-01T11:30:52.302Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T11-05-32-67373\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:37:53.347Z",
-        "updatedAt": "2026-02-01T11:06:44.853Z",
-        "startedAt": "2026-02-01T11:06:44.853Z"
-      }
+        "updatedAt": "2026-02-01T11:30:52.302Z",
+        "startedAt": "2026-02-01T11:23:56.008Z",
+        "completedAt": "2026-02-01T11:30:52.302Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "TELE-013",
@@ -2023,7 +2098,7 @@
     },
     {
       "id": "AI-MONITOR-001f",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: Verification Engine",
       "feature": "ai-monitor",
@@ -2110,16 +2185,44 @@
             "oldStatus": "in-progress",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001f",
+          "timestamp": "2026-02-01T11:23:56.020Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "AI-MONITOR-001f",
+          "timestamp": "2026-02-01T11:27:31.697Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T11-05-32-67373\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T10:52:02.547Z",
-        "updatedAt": "2026-02-01T11:06:47.010Z"
-      }
+        "updatedAt": "2026-02-01T11:27:31.697Z",
+        "startedAt": "2026-02-01T11:23:56.020Z",
+        "completedAt": "2026-02-01T11:27:31.697Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "AI-MONITOR-001g",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "medium",
       "title": "AI Monitor: Wisdom System (Learn from Healing)",
       "feature": "ai-monitor",
@@ -2158,12 +2261,23 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001g",
+          "timestamp": "2026-02-01T11:16:49.946Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T11:06:44.889Z",
-        "updatedAt": "2026-02-01T11:06:44.889Z",
-        "startedAt": "2026-02-01T11:06:44.889Z"
+        "updatedAt": "2026-02-01T11:16:49.946Z"
       }
     },
     {
@@ -13879,8 +13993,8 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T11:06:44.743Z",
-        "startedAt": "2026-02-01T11:06:44.743Z"
+        "updatedAt": "2026-02-01T11:23:55.896Z",
+        "startedAt": "2026-02-01T11:23:55.896Z"
       },
       "events": [
         {
@@ -14383,6 +14497,31 @@
         {
           "taskId": "ARCHWAVE-092",
           "timestamp": "2026-02-01T11:06:44.743Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T11:23:23.884Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T11:23:55.896Z",
           "type": "started",
           "message": "Status changed to in-progress (claimed)",
           "level": "info",

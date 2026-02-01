@@ -55,6 +55,18 @@ export interface TaskContext {
   lastError?: string
   getPluginState?: <T = unknown>(pluginName: string) => T | null
   setPluginState?: <T = unknown>(pluginName: string, state: T) => void
+  /**
+   * CLI tool being used for this task (e.g., 'claude', 'opencode', 'gemini')
+   */
+  cli?: string
+  /**
+   * Model being used for this task (e.g., 'claude-sonnet-4-5', 'gpt-4')
+   */
+  model?: string
+  /**
+   * Display name for the CLI/model combination
+   */
+  modelDisplayName?: string
 }
 
 export type LoopworkContext = TaskContext

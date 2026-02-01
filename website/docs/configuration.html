@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - Loopwork Documentation</title>
+    <meta name="description" content="Learn how to configure Loopwork with the plugin system.">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html#docs" class="nav-link">Documentation</a></li>
+                <li><a href="../index.html#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-layout">
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Documentation</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Getting Started</span>
+                    <ul>
+                        <li><a href="getting-started.html">Installation</a></li>
+                        <li><a href="configuration.html" class="active">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Core Concepts</span>
+                    <ul>
+                        <li><a href="backends.html">Task Backends</a></li>
+                        <li><a href="plugins.html">Plugins</a></li>
+                        <li><a href="cli-execution.html">CLI Execution</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Reference</span>
+                    <ul>
+                        <li><a href="api-reference.html">API Reference</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <div class="content-header">
+                <span class="breadcrumb">Documentation / Getting Started</span>
+                <h1 class="page-title glitch" data-text="CONFIGURATION">CONFIGURATION</h1>
+                <p class="page-description">Master the Loopwork configuration system</p>
+            </div>
+
+            <article class="content-body">
+                <h2 id="config-file">Configuration File</h2>
+                <p>Loopwork uses a <code>loopwork.config.ts</code> (or <code>.js</code>) file for configuration. The configuration follows a composable pattern similar to Next.js.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="basic-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="basic-config"><span class="keyword">import</span> { compose, defineConfig } <span class="keyword">from</span> <span class="string">'loopwork'</span>
+<span class="keyword">import</span> { withJSONBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+
+<span class="keyword">export default</span> <span class="function">compose</span>(
+  <span class="function">withJSONBackend</span>({
+    tasksFile: <span class="string">'.specs/tasks/tasks.json'</span>
+  }),
+)(<span class="function">defineConfig</span>({
+  cli: <span class="string">'claude'</span>,
+  maxIterations: <span class="number">50</span>,
+}))</code></pre>
+                </div>
+
+                <h2 id="compose-pattern">The Compose Pattern</h2>
+                <p>The <code>compose()</code> function allows you to chain multiple plugins together. Each plugin wraps and enhances the configuration.</p>
+
+                <div class="callout callout-tip">
+                    <div class="callout-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="callout-content">
+                        Plugins are applied in order - the first plugin in the compose chain wraps the base config, and subsequent plugins wrap around that.
+                    </div>
+                </div>
+
+                <h2 id="core-options">Core Configuration Options</h2>
+
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>cli</code></td>
+                            <td><code>string</code></td>
+                            <td><code>'claude'</code></td>
+                            <td>CLI command to use (claude, opencode, gemini)</td>
+                        </tr>
+                        <tr>
+                            <td><code>maxIterations</code></td>
+                            <td><code>number</code></td>
+                            <td><code>10</code></td>
+                            <td>Maximum number of tasks to process</td>
+                        </tr>
+                        <tr>
+                            <td><code>timeout</code></td>
+                            <td><code>number</code></td>
+                            <td><code>600</code></td>
+                            <td>Timeout per task in seconds</td>
+                        </tr>
+                        <tr>
+                            <td><code>namespace</code></td>
+                            <td><code>string</code></td>
+                            <td><code>'default'</code></td>
+                            <td>Namespace for task isolation</td>
+                        </tr>
+                        <tr>
+                            <td><code>dryRun</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>false</code></td>
+                            <td>Preview tasks without executing</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="cli-configuration">CLI Configuration</h2>
+                <p>Configure multiple AI models with automatic failover:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="cli-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="cli-config"><span class="keyword">import</span> { compose, defineConfig, withCli, ModelPresets } <span class="keyword">from</span> <span class="string">'loopwork'</span>
+
+<span class="keyword">export default</span> <span class="function">compose</span>(
+  <span class="function">withCli</span>({
+    models: [
+      <span class="function">ModelPresets.claudeSonnet</span>({ timeout: <span class="number">300</span> }),
+      <span class="function">ModelPresets.geminiFlash</span>({ timeout: <span class="number">300</span> }),
+    ],
+    fallbackModels: [
+      <span class="function">ModelPresets.claudeOpus</span>({ timeout: <span class="number">600</span> }),
+    ],
+  }),
+)(<span class="function">defineConfig</span>({}))</code></pre>
+                </div>
+
+                <h2 id="environment-variables">Environment Variables</h2>
+                <p>Create a <code>.env</code> file in your project root:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">env</span>
+                        <button class="copy-btn" data-clipboard="env-file"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="env-file"><span class="comment"># AI API Keys</span>
+ANTHROPIC_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+GOOGLE_API_KEY=your_key_here
+
+<span class="comment"># Telegram Notifications</span>
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+<span class="comment"># Discord Notifications</span>
+DISCORD_WEBHOOK_URL=your_webhook_url
+
+<span class="comment"># Asana Integration</span>
+ASANA_ACCESS_TOKEN=your_token
+ASANA_PROJECT_ID=your_project_id
+
+<span class="comment"># GitHub Backend</span>
+GITHUB_TOKEN=your_token</code></pre>
+                </div>
+
+                <h2 id="advanced-example">Advanced Configuration Example</h2>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="advanced-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="advanced-config"><span class="keyword">import</span> { 
+  compose, 
+  defineConfig, 
+  withCli, 
+  withGitHubBackend,
+  withTelegram,
+  withCostTracking,
+  withGitAutoCommit,
+  ModelPresets 
+} <span class="keyword">from</span> <span class="string">'loopwork'</span>
+
+<span class="keyword">export default</span> <span class="function">compose</span>(
+  <span class="comment">// Use GitHub Issues as task source</span>
+  <span class="function">withGitHubBackend</span>({
+    repo: <span class="string">'myorg/myrepo'</span>,
+    label: <span class="string">'loopwork-task'</span>,
+  }),
+  
+  <span class="comment">// Configure AI models with failover</span>
+  <span class="function">withCli</span>({
+    models: [
+      <span class="function">ModelPresets.claudeSonnet</span>({ timeout: <span class="number">300</span> }),
+      <span class="function">ModelPresets.geminiFlash</span>({ timeout: <span class="number">300</span> }),
+    ],
+    fallbackModels: [
+      <span class="function">ModelPresets.claudeOpus</span>({ timeout: <span class="number">600</span> }),
+    ],
+  }),
+  
+  <span class="comment">// Enable notifications</span>
+  <span class="function">withTelegram</span>({
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    chatId: process.env.TELEGRAM_CHAT_ID,
+    notifyOnComplete: <span class="keyword">true</span>,
+    notifyOnFail: <span class="keyword">true</span>,
+  }),
+  
+  <span class="comment">// Track costs</span>
+  <span class="function">withCostTracking</span>({
+    enabled: <span class="keyword">true</span>,
+    dailyBudget: <span class="number">10.00</span>,
+  }),
+  
+  <span class="comment">// Auto-commit changes</span>
+  <span class="function">withGitAutoCommit</span>({
+    enabled: <span class="keyword">true</span>,
+    addAll: <span class="keyword">true</span>,
+  }),
+)(<span class="function">defineConfig</span>({
+  maxIterations: <span class="number">100</span>,
+  timeout: <span class="number">900</span>,
+}))</code></pre>
+                </div>
+            </article>
+
+            <!-- Page Navigation -->
+            <nav class="page-nav">
+                <a href="getting-started.html" class="page-nav-prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Getting Started</span>
+                </a>
+                <a href="backends.html" class="page-nav-next">
+                    <span>Task Backends</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>

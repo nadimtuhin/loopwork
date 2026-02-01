@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
-// Removed type-only import from '../src/bot'
+import { TelegramTaskBot } from '../src/bot'
 
 describe('Vision Bug Report Feature (TELE-012)', () => {
   let bot: TelegramTaskBot
@@ -388,8 +388,7 @@ describe('Vision Bug Report Feature (TELE-012)', () => {
       expect(createTaskSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           title: expect.stringContaining('Dashboard layout broken on mobile'),
-          description: expect.stringContaining('Dashboard layout broken on mobile'),
-          description: expect.stringContaining('.specs/attachments'),
+          description: expect.stringContaining('Dashboard layout broken on mobile\n\nImage: .specs/attachments'),
           feature: 'bug-report',
           priority: 'medium',
           metadata: expect.objectContaining({

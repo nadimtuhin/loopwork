@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Backends - Loopwork Documentation</title>
+    <meta name="description" content="Learn about Loopwork task backends - JSON files, GitHub Issues, and custom backends.">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html#docs" class="nav-link">Documentation</a></li>
+                <li><a href="../index.html#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-layout">
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Documentation</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Getting Started</span>
+                    <ul>
+                        <li><a href="getting-started.html">Installation</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Core Concepts</span>
+                    <ul>
+                        <li><a href="backends.html" class="active">Task Backends</a></li>
+                        <li><a href="plugins.html">Plugins</a></li>
+                        <li><a href="cli-execution.html">CLI Execution</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Reference</span>
+                    <ul>
+                        <li><a href="api-reference.html">API Reference</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <div class="content-header">
+                <span class="breadcrumb">Documentation / Core Concepts</span>
+                <h1 class="page-title glitch" data-text="TASK BACKENDS">TASK BACKENDS</h1>
+                <p class="page-description">Flexible task sources for your automation</p>
+            </div>
+
+            <article class="content-body">
+                <h2 id="overview">Backend Overview</h2>
+                <p>Loopwork supports multiple task backends. A backend is responsible for storing and retrieving tasks, tracking their status, and managing dependencies.</p>
+
+                <h2 id="json-backend">JSON Backend</h2>
+                <p>The JSON backend stores tasks in a local JSON file with accompanying Markdown description files.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="json-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="json-config"><span class="keyword">import</span> { withJSONBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+
+<span class="function">withJSONBackend</span>({
+  tasksFile: <span class="string">'.specs/tasks/tasks.json'</span>,
+})</code></pre>
+                </div>
+
+                <h3>JSON Task Structure</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">json</span>
+                        <button class="copy-btn" data-clipboard="json-structure"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="json-structure">{
+  <span class="string">"tasks"</span>: [
+    {
+      <span class="string">"id"</span>: <span class="string">"TASK-001"</span>,
+      <span class="string">"status"</span>: <span class="string">"pending"</span>,
+      <span class="string">"priority"</span>: <span class="string">"high"</span>,
+      <span class="string">"dependencies"</span>: []
+    },
+    {
+      <span class="string">"id"</span>: <span class="string">"TASK-002"</span>,
+      <span class="string">"status"</span>: <span class="string">"pending"</span>,
+      <span class="string">"priority"</span>: <span class="string">"medium"</span>,
+      <span class="string">"dependencies"</span>: [<span class="string">"TASK-001"</span>]
+    }
+  ]
+}</code></pre>
+                </div>
+
+                <h3>Task Description Format</h3>
+                <p>Each task has a corresponding Markdown file with the detailed description:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">markdown</span>
+                        <button class="copy-btn" data-clipboard="task-md"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="task-md"><span class="comment"># TASK-001: Create Hello World function</span>
+
+<span class="comment">## Goal</span>
+Create a simple hello world function in TypeScript.
+
+<span class="comment">## Requirements</span>
+- Function should accept a name parameter
+- Return "Hello, {name}!"
+- Include TypeScript types
+- Add basic tests
+
+<span class="comment">## Success Criteria</span>
+- Function compiles without errors
+- Tests pass
+- Code follows project style</code></pre>
+                </div>
+
+                <h2 id="github-backend">GitHub Backend</h2>
+                <p>Use GitHub Issues as your task source. Perfect for teams already using GitHub for project management.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="github-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="github-config"><span class="keyword">import</span> { withGitHubBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+
+<span class="function">withGitHubBackend</span>({
+  repo: <span class="string">'myorg/myrepo'</span>,
+  label: <span class="string">'loopwork-task'</span>,
+  state: <span class="string">'open'</span>,
+})</code></pre>
+                </div>
+
+                <h3>GitHub Issue Labels</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>loopwork-task</code></td>
+                            <td>Marks issue as a Loopwork task</td>
+                        </tr>
+                        <tr>
+                            <td><code>priority:high</code></td>
+                            <td>Sets high priority</td>
+                        </tr>
+                        <tr>
+                            <td><code>priority:medium</code></td>
+                            <td>Sets medium priority</td>
+                        </tr>
+                        <tr>
+                            <td><code>priority:low</code></td>
+                            <td>Sets low priority</td>
+                        </tr>
+                        <tr>
+                            <td><code>feature:*</code></td>
+                            <td>Feature area for filtering</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="notion-backend">Notion Backend</h2>
+                <p>Sync tasks with a Notion database for teams using Notion as their knowledge base.</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="notion-config"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="notion-config"><span class="keyword">import</span> { withNotionBackend } <span class="keyword">from</span> <span class="string">'loopwork/backends'</span>
+
+<span class="function">withNotionBackend</span>({
+  databaseId: <span class="string">'your-database-id'</span>,
+  statusProperty: <span class="string">'Status'</span>,
+  pendingStatus: <span class="string">'Not started'</span>,
+  completedStatus: <span class="string">'Done'</span>,
+})</code></pre>
+                </div>
+
+                <h2 id="custom-backend">Custom Backend</h2>
+                <p>Build your own backend by implementing the <code>TaskBackend</code> interface:</p>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="custom-backend"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="custom-backend"><span class="keyword">import</span> { TaskBackend, Task } <span class="keyword">from</span> <span class="string">'loopwork/contracts'</span>
+
+<span class="keyword">class</span> <span class="function">MyCustomBackend</span> <span class="keyword">implements</span> TaskBackend {
+  <span class="keyword">async</span> <span class="function">findNextTask</span>(): Promise&lt;Task | <span class="keyword">null</span>&gt; {
+    <span class="comment">// Find and return the next pending task</span>
+  }
+
+  <span class="keyword">async</span> <span class="function">getTask</span>(id: <span class="keyword">string</span>): Promise&lt;Task | <span class="keyword">null</span>&gt; {
+    <span class="comment">// Get a specific task by ID</span>
+  }
+
+  <span class="keyword">async</span> <span class="function">markCompleted</span>(id: <span class="keyword">string</span>): Promise&lt;<span class="keyword">void</span>&gt; {
+    <span class="comment">// Mark a task as completed</span>
+  }
+
+  <span class="keyword">async</span> <span class="function">markFailed</span>(id: <span class="keyword">string</span>, error: <span class="keyword">string</span>): Promise&lt;<span class="keyword">void</span>&gt; {
+    <span class="comment">// Mark a task as failed with error</span>
+  }
+
+  <span class="keyword">async</span> <span class="function">getDependencies</span>(id: <span class="keyword">string</span>): Promise&lt;<span class="keyword">string</span>[]&gt; {
+    <span class="comment">// Get task dependencies</span>
+  }
+
+  <span class="keyword">async</span> <span class="function">areDependenciesMet</span>(id: <span class="keyword">string</span>): Promise&lt;<span class="keyword">boolean</span>&gt; {
+    <span class="comment">// Check if all dependencies are completed</span>
+  }
+}</code></pre>
+                </div>
+
+                <div class="callout callout-tip">
+                    <div class="callout-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="callout-content">
+                        The backend system is designed to be extensible. You can integrate with Jira, Linear, ClickUp, or any other task management system.
+                    </div>
+                </div>
+            </article>
+
+            <!-- Page Navigation -->
+            <nav class="page-nav">
+                <a href="configuration.html" class="page-nav-prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Configuration</span>
+                </a>
+                <a href="plugins.html" class="page-nav-next">
+                    <span>Plugins</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>

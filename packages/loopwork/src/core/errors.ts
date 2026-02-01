@@ -259,3 +259,82 @@ export function handleError(error: unknown): void {
     logger.debug(`Non-Error thrown: ${String(error)}`)
   }
 }
+
+/**
+ * Create a user-friendly error for missing CLI tool
+ */
+export function createCliNotFoundError(cliName: string, suggestedInstall: string): LoopworkError {
+  const suggestions: string[] = [
+    `Install ${cliName} from: ${suggestedInstall}`,
+    `Or update your config to use a different CLI: loopwork.config.ts`,
+  ]
+
+  // Add path check suggestion
+  if (cliName === 'claude') {
+    suggestions.push('Ensure Claude Code is in your PATH: which claude')
+  } else if (cliName === 'opencode') {
+    suggestions.push('Ensure OpenCode is in your PATH: which opencode')
+  }
+
+  return new LoopworkError(
+    'ERR_CLI_NOT_FOUND',
+    `AI CLI '${cliName}' not found in PATH`,
+    suggestions,
+    ERROR_CODES.ERR_CLI_NOT_FOUND
+  )
+}
+
+/**
+ * Create a user-friendly error for no tasks available
+ */
+export function createNoTasksError(tasksFile: string): LoopworkError {
+  return new LoopworkError(
+    'ERR_TASK_NOT_FOUND',
+    'No pending tasks found',
+    [
+      `Create tasks in ${tasksFile}`,
+      'Or run: loopwork task-new --title "Your task" --priority high',
+      'Example: Add a task with status "pending" in the tasks array',
+    ],
+    ERROR_CODES.ERR_TASK_NOT_FOUND
+  )
+}
+
+/**
+ * Create a user-friendly error for rate limiting with wait info
+ */
+export function createRateLimitError(waitSeconds: number, retryAfter?: number): LoopworkError {
+  const actualWait = retryAfter || waitSeconds
+  return new LoopworkError(
+    'ERR_CLI_EXEC',
+    `Rate limit reached, waiting ${actualWait} seconds...`,
+    [
+      `Consider upgrading your API tier for higher limits`,
+      'Rate limits are per-minute, waiting will automatically retry',
+      'You can also reduce concurrency with: --parallel 1',
+    ],
+    ERROR_CODES.ERR_CLI_EXEC
+  )
+}
+
+/**
+ * Create a user-friendly error for task execution failure
+ */
+export function createTaskFailureError(
+  taskId: string,
+  command: string,
+  exitCode: number,
+  prdPath: string
+): LoopworkError {
+  return new LoopworkError(
+    'ERR_CLI_EXEC',
+    `Task ${taskId} failed: Command '${command}' exited with code ${exitCode}`,
+    [
+      `Check task requirements in ${prdPath}`,
+      `Run manually: ${command}`,
+      `Skip task: loopwork deadletter retry ${taskId}`,
+      `View logs: loopwork logs --task ${taskId.replace('TASK-', '')}`,
+    ],
+    ERROR_CODES.ERR_CLI_EXEC
+  )
+}

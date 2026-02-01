@@ -65,6 +65,7 @@ export {
   WisdomSystem,
   createWisdomSystem,
   type LearnedPattern,
+  type WisdomPattern,
   type WisdomStore,
   type WisdomConfig
 } from './wisdom'
@@ -340,12 +341,13 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
     }
   }
 
-  async onConfigLoad(config: LoopworkConfig): Promise<LoopworkConfig> {
+  async onConfigLoad(config: unknown): Promise<unknown> {
+    const cfg = config as any
     if (!this.config.enabled) {
       return config
     }
 
-    const projectRoot = (config.projectRoot as string) || process.cwd()
+    const projectRoot = (cfg.projectRoot as string) || process.cwd()
     this.projectRoot = projectRoot
     const loopworkState = new LoopworkState({ projectRoot })
     this.stateFile = loopworkState.paths.aiMonitor()
@@ -593,7 +595,13 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
 
     let success = false
     if (result.success) {
-      if (errorPattern) this.wisdomSystem.recordSuccess(errorPattern, `${action.type} action succeeded`)
+      if (errorPattern) {
+        const context = action.context as any
+        this.wisdomSystem.recordSuccess(errorPattern, action.type, {
+          fileTypes: context?.file ? [path.extname(context.file)] : undefined,
+          errorTypes: context?.errorType ? [context.errorType] : undefined
+        })
+      }
       if (action.type === 'auto-fix') {
         await this.verifyHealingAction(action)
       } else {
@@ -601,7 +609,7 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
       }
       success = true
     } else {
-      if (errorPattern) this.wisdomSystem.recordFailure(errorPattern, result.error || 'Unknown error')
+      if (errorPattern) this.wisdomSystem.recordFailure(errorPattern, action.type)
       this.circuitBreaker.recordFailure()
     }
 

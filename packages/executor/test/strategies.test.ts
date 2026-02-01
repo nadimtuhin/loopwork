@@ -2,6 +2,10 @@ import { describe, test, expect } from 'bun:test'
 import { ClaudeStrategy } from '../src/strategies/claude-strategy'
 import { OpenCodeStrategy } from '../src/strategies/opencode-strategy'
 import { GeminiStrategy } from '../src/strategies/gemini-strategy'
+import { DroidStrategy } from '../src/strategies/droid-strategy'
+import { CrushStrategy } from '../src/strategies/crush-strategy'
+import { KimiStrategy } from '../src/strategies/kimi-strategy'
+import { KilocodeStrategy } from '../src/strategies/kilocode-strategy'
 import { CliStrategyRegistry, createDefaultRegistry } from '../src/strategies/registry'
 import type { ICliStrategyContext, ModelConfig } from '@loopwork-ai/contracts'
 
@@ -174,6 +178,10 @@ describe('createDefaultRegistry', () => {
     expect(registry.has('claude')).toBe(true)
     expect(registry.has('opencode')).toBe(true)
     expect(registry.has('gemini')).toBe(true)
+    expect(registry.has('droid')).toBe(true)
+    expect(registry.has('crush')).toBe(true)
+    expect(registry.has('kimi')).toBe(true)
+    expect(registry.has('kilocode')).toBe(true)
   })
 
   test('strategies are correct types', () => {
@@ -182,5 +190,173 @@ describe('createDefaultRegistry', () => {
     expect(registry.get('claude').cliType).toBe('claude')
     expect(registry.get('opencode').cliType).toBe('opencode')
     expect(registry.get('gemini').cliType).toBe('gemini')
+    expect(registry.get('droid').cliType).toBe('droid')
+    expect(registry.get('crush').cliType).toBe('crush')
+    expect(registry.get('kimi').cliType).toBe('kimi')
+    expect(registry.get('kilocode').cliType).toBe('kilocode')
+  })
+})
+
+describe('DroidStrategy', () => {
+  const strategy = new DroidStrategy()
+
+  test('has correct cliType', () => {
+    expect(strategy.cliType).toBe('droid')
+  })
+
+  test('prepare builds droid exec args', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'factory-droid', cli: 'droid', model: 'default' },
+      prompt: 'refactor auth',
+      env: { HOME: '/home/user' },
+    }
+
+    const result = strategy.prepare(context)
+
+    expect(result.args).toEqual(['exec', 'refactor auth'])
+    expect(result.stdinInput).toBeUndefined()
+    expect(result.displayName).toBe('droid/factory-droid')
+  })
+
+  test('prepare includes modelConfig.args', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'droid', cli: 'droid', model: 'default', args: ['--verbose'] },
+      prompt: 'test',
+      env: {},
+    }
+
+    const result = strategy.prepare(context)
+    expect(result.args).toContain('--verbose')
+  })
+
+  test('getRateLimitPatterns returns patterns', () => {
+    const patterns = strategy.getRateLimitPatterns()
+    expect(patterns.length).toBeGreaterThan(0)
+  })
+
+  test('getQuotaExceededPatterns includes token limit', () => {
+    const patterns = strategy.getQuotaExceededPatterns()
+    expect(patterns.some(p => p.test('token limit reached'))).toBe(true)
+  })
+})
+
+describe('CrushStrategy', () => {
+  const strategy = new CrushStrategy()
+
+  test('has correct cliType', () => {
+    expect(strategy.cliType).toBe('crush')
+  })
+
+  test('prepare builds crush run args with model', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'crush-sonnet', cli: 'crush', model: 'claude-3-5-sonnet' },
+      prompt: 'explain context in Go',
+      env: { HOME: '/home/user' },
+    }
+
+    const result = strategy.prepare(context)
+
+    expect(result.args).toEqual(['run', '-m', 'claude-3-5-sonnet', 'explain context in Go'])
+    expect(result.stdinInput).toBeUndefined()
+    expect(result.displayName).toBe('crush/crush-sonnet')
+  })
+
+  test('prepare without model still works', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'crush', cli: 'crush', model: '' },
+      prompt: 'test',
+      env: {},
+    }
+
+    const result = strategy.prepare(context)
+    expect(result.args[0]).toBe('run')
+  })
+
+  test('prepare includes modelConfig.args', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'crush', cli: 'crush', model: 'gpt-4o', args: ['--quiet'] },
+      prompt: 'test',
+      env: {},
+    }
+
+    const result = strategy.prepare(context)
+    expect(result.args).toContain('--quiet')
+  })
+})
+
+describe('KimiStrategy', () => {
+  const strategy = new KimiStrategy()
+
+  test('has correct cliType', () => {
+    expect(strategy.cliType).toBe('kimi')
+  })
+
+  test('prepare uses stdin for prompt', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'kimi-k2', cli: 'kimi', model: 'k2.5' },
+      prompt: 'analyze this code',
+      env: { HOME: '/home/user' },
+    }
+
+    const result = strategy.prepare(context)
+
+    expect(result.args).toEqual([])
+    expect(result.stdinInput).toBe('analyze this code')
+    expect(result.displayName).toBe('kimi/kimi-k2')
+  })
+
+  test('prepare copies MOONSHOT_API_KEY from permissions', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'kimi', cli: 'kimi', model: 'k2.5' },
+      prompt: 'test',
+      env: {},
+      permissions: { 'MOONSHOT_API_KEY': 'secret-key' },
+    }
+
+    const result = strategy.prepare(context)
+    expect(result.env['MOONSHOT_API_KEY']).toBe('secret-key')
+  })
+
+  test('getRateLimitPatterns includes message limit', () => {
+    const patterns = strategy.getRateLimitPatterns()
+    expect(patterns.some(p => p.test('message limit exceeded'))).toBe(true)
+  })
+})
+
+describe('KilocodeStrategy', () => {
+  const strategy = new KilocodeStrategy()
+
+  test('has correct cliType', () => {
+    expect(strategy.cliType).toBe('kilocode')
+  })
+
+  test('prepare uses stdin for prompt', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'kilocode-default', cli: 'kilocode', model: 'default' },
+      prompt: 'debug this function',
+      env: { HOME: '/home/user' },
+    }
+
+    const result = strategy.prepare(context)
+
+    expect(result.args).toEqual([])
+    expect(result.stdinInput).toBe('debug this function')
+    expect(result.displayName).toBe('kilocode/kilocode-default')
+  })
+
+  test('prepare includes modelConfig.args', () => {
+    const context: ICliStrategyContext = {
+      modelConfig: { name: 'kilocode', cli: 'kilocode', model: 'default', args: ['--mode', 'architect'] },
+      prompt: 'test',
+      env: {},
+    }
+
+    const result = strategy.prepare(context)
+    expect(result.args).toEqual(['--mode', 'architect'])
+  })
+
+  test('getRateLimitPatterns includes Free Tier Rate Limit', () => {
+    const patterns = strategy.getRateLimitPatterns()
+    expect(patterns.some(p => p.test('Free Tier Rate Limit Exceeded'))).toBe(true)
   })
 })

@@ -10,6 +10,7 @@ import type {
   ProgressStopEvent,
   RawOutputEvent,
   JsonOutputEvent,
+  WorkerStatusEvent,
 } from './contracts'
 
 function getTimestamp(): string {
@@ -26,6 +27,14 @@ export class ConsoleRenderer extends BaseRenderer {
   readonly name = 'console'
   readonly isSupported = true
   private activeSpinner: Ora | null = null
+  private lastStatus: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  } | null = null
 
   constructor(config: OutputConfig) {
     super(config)
@@ -52,6 +61,9 @@ export class ConsoleRenderer extends BaseRenderer {
         break
       case 'json':
         this.handleJson(event as JsonOutputEvent)
+        break
+      case 'worker:status':
+        this.handleWorkerStatus(event as WorkerStatusEvent)
         break
     }
   }
@@ -185,5 +197,64 @@ export class ConsoleRenderer extends BaseRenderer {
       data: event.data
     }
     process.stdout.write(JSON.stringify(output) + '\n')
+  }
+
+  private handleWorkerStatus(event: WorkerStatusEvent): void {
+    this.lastStatus = {
+      totalWorkers: event.totalWorkers,
+      activeWorkers: event.activeWorkers,
+      pendingTasks: event.pendingTasks,
+      runningTasks: event.runningTasks,
+      completedTasks: event.completedTasks,
+      failedTasks: event.failedTasks,
+    }
+
+    // Only show status bar in non-JSON mode
+    if (this.config.mode === 'json') return
+
+    // Don't show status if no workers configured yet
+    if (event.totalWorkers === 0) return
+
+    this.stopActiveSpinner()
+    
+    // Clear line and render status bar
+    process.stdout.write('\r\x1b[K')
+    
+    const statusLine = this.formatStatusBar(event)
+    process.stdout.write(chalk.blue('│ ') + statusLine + '\n')
+  }
+
+  private formatStatusBar(status: WorkerStatusEvent): string {
+    const parts: string[] = []
+    
+    // Workers section
+    parts.push(chalk.bold('Workers:'))
+    parts.push(chalk.yellow(String(status.activeWorkers)) + chalk.gray('/') + String(status.totalWorkers))
+    
+    parts.push(chalk.gray('│'))
+    
+    // Tasks section
+    parts.push(chalk.bold('Tasks:'))
+    
+    if (status.pendingTasks > 0) {
+      parts.push(chalk.cyan(String(status.pendingTasks)) + chalk.gray(' pending'))
+    }
+    
+    if (status.runningTasks > 0) {
+      if (status.pendingTasks > 0) parts.push(chalk.gray('·'))
+      parts.push(chalk.yellow(String(status.runningTasks)) + chalk.gray(' running'))
+    }
+    
+    if (status.completedTasks > 0) {
+      if (status.pendingTasks > 0 || status.runningTasks > 0) parts.push(chalk.gray('·'))
+      parts.push(chalk.green(String(status.completedTasks)) + chalk.gray(' done'))
+    }
+    
+    if (status.failedTasks > 0) {
+      parts.push(chalk.gray('·'))
+      parts.push(chalk.red(String(status.failedTasks)) + chalk.gray(' failed'))
+    }
+    
+    return parts.join(' ')
   }
 }

@@ -1,4 +1,8 @@
 export { ClaudeStrategy } from './claude-strategy'
 export { OpenCodeStrategy } from './opencode-strategy'
 export { GeminiStrategy } from './gemini-strategy'
+export { DroidStrategy } from './droid-strategy'
+export { CrushStrategy } from './crush-strategy'
+export { KimiStrategy } from './kimi-strategy'
+export { KilocodeStrategy } from './kilocode-strategy'
 export { CliStrategyRegistry, createDefaultRegistry } from './registry'

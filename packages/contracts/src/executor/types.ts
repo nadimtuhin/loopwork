@@ -1,4 +1,4 @@
-export type CliType = 'claude' | 'opencode' | 'gemini'
+export type CliType = 'claude' | 'opencode' | 'gemini' | 'droid' | 'crush' | 'kimi' | 'kilocode'
 export type ModelSelectionStrategy = 'round-robin' | 'priority' | 'cost-aware' | 'random'
 
 export interface ModelConfig {
@@ -98,6 +98,10 @@ export interface CliPathConfig {
   claude?: string
   opencode?: string
   gemini?: string
+  droid?: string
+  crush?: string
+  kimi?: string
+  kilocode?: string
 }
 
 export interface CliExecutorConfig {

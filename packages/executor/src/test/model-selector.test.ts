@@ -372,6 +372,168 @@ describe('ModelSelector', () => {
       expect(selector.hasExhaustedAllModels(2)).toBe(false)
     })
   })
+
+  describe('progressive validation', () => {
+    test('should mark models as pending', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      selector.markPending('model1')
+      expect(selector.hasPendingModels()).toBe(true)
+      expect(selector.getPendingModels()).toContain('model1')
+    })
+
+    test('should dynamically add models', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      const newModel: ModelConfig = {
+        name: 'dynamic-model',
+        cli: 'opencode',
+        model: 'new-model',
+      }
+      
+      selector.addModel(newModel)
+      
+      expect(selector.getTotalModelCount()).toBe(4)
+      // The new model should be in the pool
+      const allModels = selector.getAllModels()
+      expect(allModels.some(m => m.name === 'dynamic-model')).toBe(true)
+    })
+
+    test('should update existing model when adding duplicate', () => {
+      const models: ModelConfig[] = [
+        { name: 'model1', cli: 'claude', model: 'old-model', enabled: false },
+      ]
+      const selector = new ModelSelector(models)
+      
+      const updatedModel: ModelConfig = {
+        name: 'model1',
+        cli: 'claude',
+        model: 'new-model',
+        enabled: true,
+      }
+      
+      selector.addModel(updatedModel)
+      
+      expect(selector.getTotalModelCount()).toBe(1)
+      const next = selector.getNext()
+      expect(next?.model).toBe('new-model')
+    })
+
+    test('should mark models as unavailable', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      selector.markModelUnavailable('model1')
+      
+      expect(selector.isModelAvailable('model1')).toBe(false)
+    })
+
+    test('should notify when model becomes available', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      let notified = false
+      let notifiedModel: ModelConfig | null = null
+      
+      selector.onModelAvailable((model) => {
+        notified = true
+        notifiedModel = model
+      })
+      
+      const newModel: ModelConfig = { name: 'new', cli: 'claude', model: 'sonnet' }
+      selector.addModel(newModel)
+      
+      expect(notified).toBe(true)
+      expect(notifiedModel?.name).toBe('new')
+    })
+
+    test('should allow unsubscribing from model availability', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      let callCount = 0
+      const unsubscribe = selector.onModelAvailable(() => {
+        callCount++
+      })
+      
+      unsubscribe()
+      
+      selector.addModel({ name: 'new', cli: 'claude', model: 'sonnet' })
+      expect(callCount).toBe(0)
+    })
+
+    test('should notify when validation is complete', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      let notified = false
+      selector.onValidationComplete(() => {
+        notified = true
+      })
+      
+      selector.signalValidationComplete()
+      expect(notified).toBe(true)
+    })
+
+    test('should check if any models are available', () => {
+      const selector = new ModelSelector([])
+      expect(selector.hasAvailableModels()).toBe(false)
+      
+      selector.addModel({ name: 'new', cli: 'claude', model: 'sonnet' })
+      expect(selector.hasAvailableModels()).toBe(true)
+    })
+
+    test('should wait for available models with timeout', async () => {
+      const selector = new ModelSelector([])
+      
+      // Should timeout if no models available
+      const result = await selector.waitForAvailableModels(50)
+      expect(result).toBe(false)
+    })
+
+    test('should resolve wait immediately if models already available', async () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      const start = Date.now()
+      const result = await selector.waitForAvailableModels(5000)
+      const elapsed = Date.now() - start
+      
+      expect(result).toBe(true)
+      expect(elapsed).toBeLessThan(100) // Should return immediately
+    })
+
+    test('should resolve wait when model becomes available', async () => {
+      const selector = new ModelSelector([])
+      
+      // Mark a model as pending first
+      selector.markPending('upcoming-model')
+      
+      // Start waiting
+      const waitPromise = selector.waitForAvailableModels(5000)
+      
+      // Add model after short delay
+      setTimeout(() => {
+        selector.addModel({ name: 'upcoming-model', cli: 'claude', model: 'sonnet' })
+      }, 50)
+      
+      const result = await waitPromise
+      expect(result).toBe(true)
+    })
+
+    test('health status should include pending count', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      selector.markPending('model1')
+      selector.markPending('model2')
+      
+      const status = selector.getHealthStatus()
+      expect(status.pending).toBe(2)
+    })
+  })
 })
 
 describe('calculateBackoffDelay', () => {

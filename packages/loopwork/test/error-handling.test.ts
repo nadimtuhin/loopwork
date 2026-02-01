@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach, spyOn } from 'bun:test'
-import { LoopworkError, handleError } from '../src/core/errors'
+import { LoopworkError, handleError, createCliNotFoundError, createNoTasksError, createRateLimitError, createTaskFailureError } from '../src/core/errors'
 import { logger } from '../src/core/utils'
 import chalk from 'chalk'
 
@@ -133,6 +133,74 @@ describe('error-handling', () => {
       handleError(error)
       expect(debugSpy).toHaveBeenCalled()
       debugSpy.mockRestore()
+    })
+  })
+
+  describe('createCliNotFoundError', () => {
+    test('creates helpful error for missing claude', () => {
+      const error = createCliNotFoundError('claude', 'https://claude.com/code')
+
+      expect(error).toBeInstanceOf(LoopworkError)
+      expect(error.code).toBe('ERR_CLI_NOT_FOUND')
+      expect(error.message).toContain("AI CLI 'claude' not found in PATH")
+      expect(error.suggestions).toContainEqual('Install claude from: https://claude.com/code')
+      expect(error.suggestions).toContainEqual('Ensure Claude Code is in your PATH: which claude')
+    })
+
+    test('creates helpful error for missing opencode', () => {
+      const error = createCliNotFoundError('opencode', 'https://opencode.sh')
+
+      expect(error).toBeInstanceOf(LoopworkError)
+      expect(error.code).toBe('ERR_CLI_NOT_FOUND')
+      expect(error.message).toContain("AI CLI 'opencode' not found in PATH")
+      expect(error.suggestions).toContainEqual('Install opencode from: https://opencode.sh')
+      expect(error.suggestions).toContainEqual('Ensure OpenCode is in your PATH: which opencode')
+    })
+  })
+
+  describe('createNoTasksError', () => {
+    test('creates helpful error with task creation suggestions', () => {
+      const error = createNoTasksError('.specs/tasks/tasks.json')
+
+      expect(error).toBeInstanceOf(LoopworkError)
+      expect(error.code).toBe('ERR_TASK_NOT_FOUND')
+      expect(error.message).toBe('No pending tasks found')
+      expect(error.suggestions).toContainEqual('Create tasks in .specs/tasks/tasks.json')
+      expect(error.suggestions).toContainEqual('Or run: loopwork task-new --title "Your task" --priority high')
+    })
+  })
+
+  describe('createRateLimitError', () => {
+    test('creates error with wait info and upgrade suggestions', () => {
+      const error = createRateLimitError(60, 60)
+
+      expect(error).toBeInstanceOf(LoopworkError)
+      expect(error.code).toBe('ERR_CLI_EXEC')
+      expect(error.message).toContain('Rate limit reached, waiting 60 seconds...')
+      expect(error.suggestions).toContainEqual('Consider upgrading your API tier for higher limits')
+      expect(error.suggestions).toContainEqual('Rate limits are per-minute, waiting will automatically retry')
+      expect(error.suggestions).toContainEqual('You can also reduce concurrency with: --parallel 1')
+    })
+
+    test('uses default wait time when retryAfter not provided', () => {
+      const error = createRateLimitError(30)
+
+      expect(error.message).toContain('Rate limit reached, waiting 30 seconds...')
+    })
+  })
+
+  describe('createTaskFailureError', () => {
+    test('creates helpful error with recovery options', () => {
+      const error = createTaskFailureError('TASK-001', 'npm test', 1, '.specs/tasks/TASK-001.md')
+
+      expect(error).toBeInstanceOf(LoopworkError)
+      expect(error.code).toBe('ERR_CLI_EXEC')
+      expect(error.message).toContain('Task TASK-001 failed')
+      expect(error.message).toContain("Command 'npm test' exited with code 1")
+      expect(error.suggestions).toContainEqual('Check task requirements in .specs/tasks/TASK-001.md')
+      expect(error.suggestions).toContainEqual('Run manually: npm test')
+      expect(error.suggestions).toContainEqual('Skip task: loopwork deadletter retry TASK-001')
+      expect(error.suggestions).toContainEqual('View logs: loopwork logs --task 001')
     })
   })
 })

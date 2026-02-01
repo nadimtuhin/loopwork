@@ -145,6 +145,10 @@ export const DEFAULT_CLI_PATH_CONFIG: ICliPathConfig = {
     claude: 'LOOPWORK_CLAUDE_PATH',
     opencode: 'LOOPWORK_OPENCODE_PATH',
     gemini: 'LOOPWORK_GEMINI_PATH',
+    droid: 'LOOPWORK_DROID_PATH',
+    crush: 'LOOPWORK_CRUSH_PATH',
+    kimi: 'LOOPWORK_KIMI_PATH',
+    kilocode: 'LOOPWORK_KILOCODE_PATH',
   },
   defaultPaths: {
     claude: [
@@ -160,6 +164,25 @@ export const DEFAULT_CLI_PATH_CONFIG: ICliPathConfig = {
     gemini: [
       '~/.local/bin/gemini',
       '/usr/local/bin/gemini',
+    ],
+    droid: [
+      '~/.npm/bin/droid',
+      '~/.npm/bin/factory',
+      '/usr/local/bin/droid',
+      '/usr/local/bin/factory',
+    ],
+    crush: [
+      '/opt/homebrew/bin/crush',
+      '/usr/local/bin/crush',
+      '~/.npm/bin/crush',
+    ],
+    kimi: [
+      '~/.local/bin/kimi',
+      '/usr/local/bin/kimi',
+    ],
+    kilocode: [
+      '~/.npm/bin/kilocode',
+      '/usr/local/bin/kilocode',
     ],
   },
 }

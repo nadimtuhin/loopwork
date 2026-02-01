@@ -24,6 +24,18 @@ interface DashboardTask {
   status?: string
   priority?: string
   startedAt?: Date
+  /**
+   * CLI tool being used (e.g., 'claude', 'opencode', 'gemini')
+   */
+  cli?: string
+  /**
+   * Model being used (e.g., 'claude-sonnet-4-5')
+   */
+  model?: string
+  /**
+   * Display name for CLI/model combination
+   */
+  modelDisplayName?: string
 }
 
 interface TaskEvent {
@@ -134,6 +146,8 @@ function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
             <Text color="gray">: {task.title.slice(0, 50)}</Text>
           </Box>
           <Box>
+            <Text color="gray">  📟 </Text>
+            <Text color="magenta">{task.modelDisplayName || task.cli || 'unknown'}</Text>
             <TaskTimer startTime={task.startedAt} />
           </Box>
         </Box>
@@ -333,7 +347,10 @@ export function createDashboardPlugin(options: { totalTasks?: number } = {}): Lo
         id: context.task.id,
         title: context.task.title,
         status: 'in-progress',
-        startedAt: new Date()
+        startedAt: new Date(),
+        cli: context.cli,
+        model: context.model,
+        modelDisplayName: context.modelDisplayName,
       }
       
       updateState({

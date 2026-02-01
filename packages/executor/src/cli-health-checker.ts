@@ -38,6 +38,19 @@ export interface CliHealthCheckerOptions {
    * @default 2000 (2 seconds)
    */
   delayBetweenValidationsMs?: number
+  /**
+   * Callback invoked when a model passes validation and becomes available.
+   * Enables progressive/background validation where work can start immediately.
+   */
+  onModelHealthy?: (model: ValidatedModelConfig) => void
+  /**
+   * Callback invoked when a model fails validation.
+   */
+  onModelUnhealthy?: (model: ValidatedModelConfig) => void
+  /**
+   * Callback invoked when all validations are complete.
+   */
+  onValidationComplete?: (summary: { total: number; healthy: number; unhealthy: number }) => void
 }
 
 /**
@@ -184,6 +197,7 @@ export class CliHealthChecker {
 
   /**
    * Validate all models in parallel and return healthy ones
+   * Supports progressive validation with callbacks for immediate action
    */
   async validateAllModels(
     cliPaths: Map<string, string>,
@@ -219,49 +233,54 @@ export class CliHealthChecker {
         await new Promise(resolve => setTimeout(resolve, this.options.delayBetweenValidationsMs))
       }
       
-      const batchResults = await Promise.all(
+      // Process each model in the batch and invoke callbacks immediately
+      await Promise.all(
         batch.map(async (model) => {
           const cliPath = cliPaths.get(model.cli)
+          
+          let validatedConfig: ValidatedModelConfig
+          
           if (!cliPath) {
-            return {
+            validatedConfig = {
               ...model,
               healthStatus: 'unhealthy' as const,
               lastError: `CLI ${model.cli} not found in paths`,
               validationTime: 0,
             }
+          } else {
+            const result = await this.validateModel(cliPath, model)
+            
+            if (result.cacheCleared) {
+              cacheClearedCount++
+            }
+
+            validatedConfig = {
+              ...model,
+              healthStatus: result.healthy ? 'healthy' : 'unhealthy' as const,
+              lastError: result.error,
+              validationTime: result.responseTimeMs,
+            }
           }
 
-          const result = await this.validateModel(cliPath, model)
-          
-          if (result.cacheCleared) {
-            cacheClearedCount++
+          // Add to appropriate list
+          if (validatedConfig.healthStatus === 'healthy') {
+            healthy.push(validatedConfig)
+            // Invoke progressive callback immediately
+            this.options.onModelHealthy?.(validatedConfig)
+          } else {
+            unhealthy.push(validatedConfig)
+            // Invoke progressive callback immediately
+            this.options.onModelUnhealthy?.(validatedConfig)
           }
 
-          return {
-            ...model,
-            healthStatus: result.healthy ? 'healthy' : 'unhealthy' as const,
-            lastError: result.error,
-            validationTime: result.responseTimeMs,
-          }
+          // Log progress immediately
+          const icon = validatedConfig.healthStatus === 'healthy' ? '✓' : '✗'
+          const displayName = `${validatedConfig.cli}/${validatedConfig.name}`
+          this.options.logger?.info?.(
+            `[HealthCheck] ${icon} ${displayName}${validatedConfig.lastError ? ` - ${validatedConfig.lastError.slice(0, 60)}` : ''}`
+          )
         })
       )
-
-      for (const config of batchResults) {
-        if (config.healthStatus === 'healthy') {
-          healthy.push(config)
-        } else {
-          unhealthy.push(config)
-        }
-      }
-
-      // Log progress
-      for (const config of batchResults) {
-        const icon = config.healthStatus === 'healthy' ? '✓' : '✗'
-        const displayName = `${config.cli}/${config.name}`
-        this.options.logger?.info?.(
-          `[HealthCheck] ${icon} ${displayName}${config.lastError ? ` - ${config.lastError.slice(0, 60)}` : ''}`
-        )
-      }
     }
 
     const summary = {
@@ -275,6 +294,9 @@ export class CliHealthChecker {
       `[HealthCheck] Validation complete: ${summary.healthy}/${summary.total} healthy` +
         (summary.cacheCleared > 0 ? ` (${summary.cacheCleared} cache clears)` : '')
     )
+
+    // Invoke completion callback
+    this.options.onValidationComplete?.(summary)
 
     return { healthy, unhealthy, summary }
   }

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - Loopwork Documentation</title>
+    <meta name="description" content="Complete API reference for Loopwork core modules and plugins.">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="scanlines"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">🔁</span>
+                <span class="logo-text glitch" data-text="LOOPWORK">LOOPWORK</span>
+            </a>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span class="hamburger"></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html#docs" class="nav-link">Documentation</a></li>
+                <li><a href="../index.html#quickstart" class="nav-link">Quick Start</a></li>
+                <li><a href="https://github.com/nadimtuhin/loopwork" class="nav-link" target="_blank"><i class="fab fa-github"></i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Docs Layout -->
+    <div class="docs-layout">
+        <!-- Sidebar -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Documentation</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Getting Started</span>
+                    <ul>
+                        <li><a href="getting-started.html">Installation</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Core Concepts</span>
+                    <ul>
+                        <li><a href="backends.html">Task Backends</a></li>
+                        <li><a href="plugins.html">Plugins</a></li>
+                        <li><a href="cli-execution.html">CLI Execution</a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Reference</span>
+                    <ul>
+                        <li><a href="api-reference.html" class="active">API Reference</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <div class="content-header">
+                <span class="breadcrumb">Documentation / Reference</span>
+                <h1 class="page-title glitch" data-text="API REFERENCE">API REFERENCE</h1>
+                <p class="page-description">Complete API documentation</p>
+            </div>
+
+            <article class="content-body">
+                <h2 id="core-exports">Core Exports</h2>
+
+                <h3>Configuration Functions</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>defineConfig(config)</code></td>
+                            <td>Define base configuration object</td>
+                        </tr>
+                        <tr>
+                            <td><code>compose(...plugins)</code></td>
+                            <td>Compose multiple plugins together</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>CLI Configuration</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>withCli(options)</code></td>
+                            <td>Configure AI CLI models and fallbacks</td>
+                        </tr>
+                        <tr>
+                            <td><code>ModelPresets.claudeSonnet(opts)</code></td>
+                            <td>Claude Sonnet model preset</td>
+                        </tr>
+                        <tr>
+                            <td><code>ModelPresets.claudeOpus(opts)</code></td>
+                            <td>Claude Opus model preset</td>
+                        </tr>
+                        <tr>
+                            <td><code>ModelPresets.claudeHaiku(opts)</code></td>
+                            <td>Claude Haiku model preset</td>
+                        </tr>
+                        <tr>
+                            <td><code>ModelPresets.geminiFlash(opts)</code></td>
+                            <td>Gemini Flash model preset</td>
+                        </tr>
+                        <tr>
+                            <td><code>ModelPresets.geminiPro(opts)</code></td>
+                            <td>Gemini Pro model preset</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="backends-api">Backends API</h2>
+
+                <h3>Import</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="backends-import"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="backends-import"><span class="keyword">import</span> { 
+  withJSONBackend, 
+  withGitHubBackend,
+  withNotionBackend 
+} <span class="keyword">from</span> <span class="string">'loopwork/backends'</span></code></pre>
+                </div>
+
+                <h3>withJSONBackend Options</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tasksFile</code></td>
+                            <td><code>string</code></td>
+                            <td><code>'.specs/tasks/tasks.json'</code></td>
+                            <td>Path to tasks JSON file</td>
+                        </tr>
+                        <tr>
+                            <td><code>tasksDir</code></td>
+                            <td><code>string</code></td>
+                            <td><code>'.specs/tasks'</code></td>
+                            <td>Directory for task descriptions</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>withGitHubBackend Options</h3>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>repo</code></td>
+                            <td><code>string</code></td>
+                            <td>Yes</td>
+                            <td>Repository (owner/repo)</td>
+                        </tr>
+                        <tr>
+                            <td><code>label</code></td>
+                            <td><code>string</code></td>
+                            <td>No</td>
+                            <td>Filter by label</td>
+                        </tr>
+                        <tr>
+                            <td><code>state</code></td>
+                            <td><code>'open' | 'closed' | 'all'</code></td>
+                            <td>No</td>
+                            <td>Issue state filter</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="plugins-api">Plugins API</h2>
+
+                <h3>Import</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="plugins-import"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="plugins-import"><span class="keyword">import</span> { 
+  withTelegram,
+  withDiscord,
+  withAsana,
+  withTodoist,
+  withEverhour,
+  withCostTracking,
+  withGitAutoCommit,
+  withDynamicTasks,
+  withClaudeCode
+} <span class="keyword">from</span> <span class="string">'loopwork/plugins'</span></code></pre>
+                </div>
+
+                <h3>Notification Plugins</h3>
+                
+                <h4>withTelegram Options</h4>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>botToken</code></td>
+                            <td><code>string</code></td>
+                            <td>Required</td>
+                        </tr>
+                        <tr>
+                            <td><code>chatId</code></td>
+                            <td><code>string</code></td>
+                            <td>Required</td>
+                        </tr>
+                        <tr>
+                            <td><code>notifyOnComplete</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>notifyOnFail</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>withDiscord Options</h4>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>webhookUrl</code></td>
+                            <td><code>string</code></td>
+                            <td>Required</td>
+                        </tr>
+                        <tr>
+                            <td><code>notifyOnComplete</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>notifyOnFail</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Cost Tracking</h3>
+                
+                <h4>withCostTracking Options</h4>
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>enabled</code></td>
+                            <td><code>boolean</code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>dailyBudget</code></td>
+                            <td><code>number</code></td>
+                            <td><code>undefined</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>costFile</code></td>
+                            <td><code>string</code></td>
+                            <td><code>'.loopwork-costs.json'</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="cli-commands">CLI Commands</h2>
+
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Command</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>loopwork</code></td>
+                            <td>Run the task automation loop</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --dry-run</code></td>
+                            <td>Preview tasks without execution</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --resume</code></td>
+                            <td>Resume from saved state</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --reset</code></td>
+                            <td>Reset all task states</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --status</code></td>
+                            <td>Show current task status</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --debug</code></td>
+                            <td>Run with debug output</td>
+                        </tr>
+                        <tr>
+                            <td><code>loopwork --version</code></td>
+                            <td>Show version</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 id="types">TypeScript Types</h2>
+
+                <h3>Task Interface</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="task-interface"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="task-interface"><span class="keyword">interface</span> Task {
+  id: <span class="keyword">string</span>;
+  title?: <span class="keyword">string</span>;
+  description?: <span class="keyword">string</span>;
+  status: <span class="string">'pending'</span> | <span class="string">'in-progress'</span> | <span class="string">'completed'</span> | <span class="string">'failed'</span>;
+  priority?: <span class="string">'low'</span> | <span class="string">'medium'</span> | <span class="string">'high'</span>;
+  dependencies?: <span class="keyword">string</span>[];
+  parentId?: <span class="keyword">string</span>;
+  metadata?: Record&lt;<span class="keyword">string</span>, <span class="keyword">any</span>&gt;;
+  createdAt?: Date;
+  updatedAt?: Date;
+}</code></pre>
+                </div>
+
+                <h3>LoopworkConfig Interface</h3>
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-lang">typescript</span>
+                        <button class="copy-btn" data-clipboard="config-interface"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <pre><code id="config-interface"><span class="keyword">interface</span> LoopworkConfig {
+  cli?: <span class="keyword">string</span>;
+  maxIterations?: <span class="keyword">number</span>;
+  timeout?: <span class="keyword">number</span>;
+  namespace?: <span class="keyword">string</span>;
+  dryRun?: <span class="keyword">boolean</span>;
+  backend?: TaskBackend;
+  plugins?: LoopworkPlugin[];
+}</code></pre>
+                </div>
+            </article>
+
+            <!-- Page Navigation -->
+            <nav class="page-nav">
+                <a href="plugins.html" class="page-nav-prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Plugins</span>
+                </a>
+                <a href="troubleshooting.html" class="page-nav-next">
+                    <span>Troubleshooting</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p class="copyright">MIT License © 2024 <a href="https://github.com/nadimtuhin">Nadim Tuhin</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/docs.js"></script>
+</body>
+</html>

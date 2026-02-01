@@ -59,4 +59,10 @@ export interface ICliExecutor {
     disabled: number
     preflightComplete: boolean
   }
+
+  /**
+   * Get the next available model configuration
+   * Returns null if no models are available
+   */
+  getNextModel?(): { cli: string; model: string; displayName?: string } | null
 }
