@@ -1,35 +1,46 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ProcessManager, createProcessManager } from '../core/process-management/process-manager'
+import { describe, expect, test, beforeEach, spyOn, mock } from 'bun:test'
+import { ProcessManager } from '../process-manager'
+import { ProcessRegistry } from '../registry'
+import { OrphanDetector } from '../orphan-detector'
+import { ProcessCleaner } from '../cleaner'
 
-/**
- * process-manager Tests
- * 
- * Auto-generated test suite for process-manager
- */
+describe('ProcessManager', () => {
+  let manager: ProcessManager
+  let registry: ProcessRegistry
+  let detector: OrphanDetector
+  let cleaner: ProcessCleaner
+  let spawner: any
 
-describe('process-manager', () => {
-
-  describe('ProcessManager', () => {
-    test('should instantiate without errors', () => {
-      const instance = new ProcessManager()
-      expect(instance).toBeDefined()
-      expect(instance).toBeInstanceOf(ProcessManager)
-    })
-
-    test('should maintain instance identity', () => {
-      const instance1 = new ProcessManager()
-      const instance2 = new ProcessManager()
-      expect(instance1).not.toBe(instance2)
-    })
+  beforeEach(() => {
+    registry = new ProcessRegistry('.test-pm')
+    spyOn(registry, 'persist').mockResolvedValue(undefined)
+    
+    detector = new OrphanDetector(registry, [], 1000)
+    cleaner = new ProcessCleaner(registry)
+    spawner = {
+      spawn: () => ({ pid: 1234, on: () => {} })
+    }
+    manager = new ProcessManager(registry, detector, cleaner, spawner)
   })
 
-  describe('createProcessManager', () => {
-    test('should be a function', () => {
-      expect(typeof createProcessManager).toBe('function')
-    })
+  test('should instantiate without errors', () => {
+    expect(manager).toBeDefined()
+    expect(manager).toBeInstanceOf(ProcessManager)
+  })
 
-    test('should execute without throwing', () => {
-      expect(() => createProcessManager()).not.toThrow()
-    })
+  test('should track spawned processes', () => {
+    const trackSpy = spyOn(manager, 'track')
+    manager.spawn('node', ['script.js'])
+    expect(trackSpy).toHaveBeenCalled()
+  })
+
+  test('should cleanup orphans', async () => {
+    const scanSpy = spyOn(detector, 'scan').mockResolvedValue([])
+    const cleanupSpy = spyOn(cleaner, 'cleanup').mockResolvedValue({ cleaned: [], failed: [], alreadyGone: [] })
+    
+    await manager.cleanup()
+    
+    expect(scanSpy).toHaveBeenCalled()
+    expect(cleanupSpy).toHaveBeenCalled()
   })
 })

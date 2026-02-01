@@ -2,12 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import type { ICliStrategy, ICliStrategyContext, ICliPrepareResult, ILogger } from '@loopwork-ai/contracts'
-
-const CACHE_CORRUPTION_PATTERNS = [
-  /ENOENT.*reading.*\.cache\/opencode/i,
-  /ENOENT.*\.cache\/opencode\/node_modules/i,
-  /BuildMessage:.*ENOENT.*opencode/i,
-]
+import { isOpenCodeCacheCorruption } from '@loopwork-ai/resilience'
 
 export class OpenCodeStrategy implements ICliStrategy {
   readonly cliType = 'opencode' as const
@@ -41,7 +36,7 @@ export class OpenCodeStrategy implements ICliStrategy {
   }
 
   detectCacheCorruption(output: string): boolean {
-    return CACHE_CORRUPTION_PATTERNS.some(pattern => pattern.test(output))
+    return isOpenCodeCacheCorruption(output)
   }
 
   clearCache(): boolean {

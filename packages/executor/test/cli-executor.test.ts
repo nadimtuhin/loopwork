@@ -1,9 +1,10 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-import { CliExecutor, EXEC_MODELS, FALLBACK_MODELS, isOpenCodeCacheCorruption, OpenCodeCacheError } from '../src/cli-executor'
-import { ModelSelector, calculateBackoffDelay } from '../src/model-selector'
+import { CliExecutor, EXEC_MODELS, FALLBACK_MODELS, OpenCodeCacheError } from '../src/cli-executor'
+import { ModelSelector } from '../src/model-selector'
 import { WorkerPoolManager } from '../src/isolation/worker-pool-manager'
 import { createSpawner } from '../src/spawners'
 import type { IProcessManager, IPluginRegistry, ILogger, ISpawnedProcess, ModelConfig } from '@loopwork-ai/contracts'
+import { isOpenCodeCacheCorruption } from '@loopwork-ai/resilience'
 import { EventEmitter } from 'events'
 import { Readable, Writable } from 'stream'
 import fs from 'fs'
@@ -312,27 +313,6 @@ describe('ModelSelector', () => {
     expect(selected).not.toContain('disabled')
     expect(selected).toContain('enabled1')
     expect(selected).toContain('enabled2')
-  })
-})
-
-describe('calculateBackoffDelay', () => {
-  test('should calculate exponential backoff', () => {
-    expect(calculateBackoffDelay(0, 1000, 60000)).toBe(1000)
-    expect(calculateBackoffDelay(1, 1000, 60000)).toBe(2000)
-    expect(calculateBackoffDelay(2, 1000, 60000)).toBe(4000)
-    expect(calculateBackoffDelay(3, 1000, 60000)).toBe(8000)
-    expect(calculateBackoffDelay(4, 1000, 60000)).toBe(16000)
-  })
-
-  test('should cap at max delay', () => {
-    expect(calculateBackoffDelay(10, 1000, 60000)).toBe(60000)
-    expect(calculateBackoffDelay(100, 1000, 60000)).toBe(60000)
-  })
-
-  test('should use default values', () => {
-    expect(calculateBackoffDelay(0)).toBe(1000)
-    expect(calculateBackoffDelay(0, 500)).toBe(500)
-    expect(calculateBackoffDelay(10, 1000, 30000)).toBe(30000)
   })
 })
 

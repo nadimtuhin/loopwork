@@ -75,7 +75,10 @@ export class WisdomSystem {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private hashPattern(pattern: ErrorPattern): string {
+  private hashPattern(pattern: ErrorPattern | string): string {
+    if (typeof pattern === 'string') {
+      return createHash('sha256').update(pattern).digest('hex').substr(0, 16)
+    }
     const content = JSON.stringify({
       name: pattern.name,
       regex: pattern.regex.source,

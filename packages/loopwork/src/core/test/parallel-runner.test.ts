@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ParallelRunner, ParallelState, ParallelRunnerOptions, ParallelRunStats } from '../core/parallel-runner'
+import { ParallelRunner, ParallelState, ParallelRunnerOptions, ParallelRunStats } from '../parallel-runner'
 
 /**
  * parallel-runner Tests

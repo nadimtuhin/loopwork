@@ -100,7 +100,7 @@ The `CliExecutor` class (`packages/loopwork/src/core/cli.ts`) manages AI CLI exe
 
 - **Model pools**: Primary execution models (Sonnet, Gemini Flash) and fallback models (Opus, Gemini Pro)
 - **Auto-retry**: Automatically cycles through models on failure
-- **Rate limit handling**: Detects rate limits and waits 30s before retry
+- **Rate limit handling**: Handled by `@loopwork-ai/resilience` strategies (detected in `CliExecutor`, waits 30s by default)
 - **Timeout handling**: Kills processes that exceed timeout, tries next model
 - **Streaming output**: Real-time CLI output logged to console and files
 - **CLI detection**: Auto-discovers `claude` and `opencode` CLIs in PATH and common locations

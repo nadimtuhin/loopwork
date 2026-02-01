@@ -3,6 +3,7 @@ import { LogWatcher } from './watcher'
 import { PatternDetector } from './patterns'
 import { CircuitBreaker } from './circuit-breaker'
 import { VerificationEngine } from './verification'
+import { LLMFallbackAnalyzer } from './llm-fallback-analyzer'
 import type {
   AIMonitorConfig,
   PatternMatch as PatternMatchResult,
@@ -17,6 +18,7 @@ export class AIMonitor {
   private patternDetector: PatternDetector
   private circuitBreaker: CircuitBreaker
   private verificationEngine: VerificationEngine
+  private llmAnalyzer: LLMFallbackAnalyzer | null = null
   private running = false
   private stats: MonitorStats
   private healingHistory: HealingAttempt[] = []
@@ -103,6 +105,16 @@ export class AIMonitor {
       startTime: new Date(),
     }
 
+    if (this.config.llmAnalyzer?.enabled) {
+      this.llmAnalyzer = new LLMFallbackAnalyzer({
+        model: this.config.llmAnalyzer.model,
+        maxCallsPerSession: this.config.llmAnalyzer.maxCallsPerSession,
+        cooldownMs: this.config.llmAnalyzer.cooldownMs,
+        cacheEnabled: this.config.llmAnalyzer.cacheEnabled,
+        cacheTTL: this.config.llmAnalyzer.cacheTTL,
+      })
+    }
+
     this.setupEventHandlers()
   }
 
@@ -110,16 +122,19 @@ export class AIMonitor {
     this.logWatcher.on('line', (event) => {
       this.stats.patternsDetected++
       const match = this.patternDetector.detect(event.line)
+      const level = this.detectLogLevel(event.line)
 
       if (match) {
         const logEvent: LogEvent = {
           timestamp: event.timestamp,
-          level: this.detectLogLevel(event.line),
+          level,
           message: event.line,
           line: event.line,
           file: event.file,
         }
         this.handlePatternMatch(match, logEvent)
+      } else if (level === 'error' && this.llmAnalyzer) {
+        this.analyzeUnknownError(event.line, { file: event.file })
       }
     })
 
@@ -140,6 +155,20 @@ export class AIMonitor {
         }
       }
     })
+  }
+
+  private async analyzeUnknownError(line: string, context?: Record<string, unknown>): Promise<void> {
+    if (!this.llmAnalyzer) return
+
+    this.stats.llmCalls++
+    const analysis = await this.llmAnalyzer.analyzeError(line, context)
+
+    if (analysis) {
+      logger.info(`[AI-Monitor] Unknown error analysis: ${analysis.rootCause}`)
+      if (analysis.suggestedFixes.length > 0) {
+        logger.info(`[AI-Monitor] Suggested fixes:\n${analysis.suggestedFixes.map(f => `- ${f}`).join('\n')}`)
+      }
+    }
   }
 
   private detectLogLevel(line: string): LogEvent['level'] {
@@ -312,6 +341,6 @@ export class AIMonitor {
   }
 }
 
-export function createAIMonitor(config: AIMonitorConfig): AIMonitor {
-  return new AIMonitor(config)
+export function createAIMonitor(config: Partial<AIMonitorConfig> = {}): AIMonitor {
+  return new AIMonitor(config as AIMonitorConfig)
 }

@@ -1,5 +1,16 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { AnalysisResult, LLMCacheEntry, AnalysisCache, ThrottleState, loadAnalysisCache, saveAnalysisCache, hashError, getCachedAnalysis, cacheAnalysisResult, cleanupCache, shouldThrottleLLM, executeAnalyze } from '../actions/analyze'
+import { describe, expect, test } from 'bun:test'
+import {
+  executeAnalyze,
+  getCachedAnalysis,
+  cacheAnalysisResult,
+  hashError,
+  loadAnalysisCache,
+  saveAnalysisCache,
+  cleanupCache,
+  shouldThrottleLLM,
+  type AnalysisResult,
+  type ThrottleState
+} from '../analyze'
 
 /**
  * analyze Tests
@@ -8,30 +19,6 @@ import { AnalysisResult, LLMCacheEntry, AnalysisCache, ThrottleState, loadAnalys
  */
 
 describe('analyze', () => {
-
-  describe('AnalysisResult', () => {
-    test('should be defined', () => {
-      expect(AnalysisResult).toBeDefined()
-    })
-  })
-
-  describe('LLMCacheEntry', () => {
-    test('should be defined', () => {
-      expect(LLMCacheEntry).toBeDefined()
-    })
-  })
-
-  describe('AnalysisCache', () => {
-    test('should be defined', () => {
-      expect(AnalysisCache).toBeDefined()
-    })
-  })
-
-  describe('ThrottleState', () => {
-    test('should be defined', () => {
-      expect(ThrottleState).toBeDefined()
-    })
-  })
 
   describe('loadAnalysisCache', () => {
     test('should be a function', () => {
@@ -49,7 +36,7 @@ describe('analyze', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => saveAnalysisCache()).not.toThrow()
+      expect(() => saveAnalysisCache({})).not.toThrow()
     })
   })
 
@@ -59,7 +46,14 @@ describe('analyze', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => hashError()).not.toThrow()
+      expect(() => hashError('test error')).not.toThrow()
+    })
+
+    test('should return consistent hash for same error', () => {
+      const error = 'Test error message'
+      const hash1 = hashError(error)
+      const hash2 = hashError(error)
+      expect(hash1).toBe(hash2)
     })
   })
 
@@ -69,7 +63,7 @@ describe('analyze', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => getCachedAnalysis()).not.toThrow()
+      expect(() => getCachedAnalysis('test')).not.toThrow()
     })
   })
 
@@ -79,7 +73,13 @@ describe('analyze', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => cacheAnalysisResult()).not.toThrow()
+      const result: AnalysisResult = {
+        rootCause: 'Test',
+        suggestedFixes: ['Fix'],
+        confidence: 0.8,
+        timestamp: new Date()
+      }
+      expect(() => cacheAnalysisResult('test', result)).not.toThrow()
     })
   })
 
@@ -99,17 +99,41 @@ describe('analyze', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => shouldThrottleLLM()).not.toThrow()
+      const state: ThrottleState = {
+        llmCallCount: 0,
+        lastLLMCall: 0,
+        llmCooldown: 300000,
+        llmMaxPerSession: 10
+      }
+      expect(() => shouldThrottleLLM(state)).not.toThrow()
+    })
+
+    test('should throttle when max calls reached', () => {
+      const state: ThrottleState = {
+        llmCallCount: 10,
+        lastLLMCall: Date.now(),
+        llmCooldown: 300000,
+        llmMaxPerSession: 10
+      }
+      const result = shouldThrottleLLM(state)
+      expect(result.throttled).toBe(true)
+    })
+
+    test('should not throttle when below limit', () => {
+      const state: ThrottleState = {
+        llmCallCount: 5,
+        lastLLMCall: Date.now() - 400000,
+        llmCooldown: 300000,
+        llmMaxPerSession: 10
+      }
+      const result = shouldThrottleLLM(state)
+      expect(result.throttled).toBe(false)
     })
   })
 
   describe('executeAnalyze', () => {
     test('should be a function', () => {
       expect(typeof executeAnalyze).toBe('function')
-    })
-
-    test('should execute without throwing', () => {
-      expect(() => executeAnalyze()).not.toThrow()
     })
   })
 })

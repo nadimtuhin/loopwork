@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach } from 'bun:test'
-import { ModelSelector, calculateBackoffDelay, type ModelSelectorOptions } from '../model-selector'
+import { ModelSelector, type ModelSelectorOptions } from '../model-selector'
 import type { ModelConfig } from '@loopwork-ai/contracts'
 
 /**
@@ -533,30 +533,6 @@ describe('ModelSelector', () => {
       const status = selector.getHealthStatus()
       expect(status.pending).toBe(2)
     })
-  })
-})
-
-describe('calculateBackoffDelay', () => {
-  test('should calculate exponential backoff', () => {
-    expect(calculateBackoffDelay(0, 1000)).toBe(1000)
-    expect(calculateBackoffDelay(1, 1000)).toBe(2000)
-    expect(calculateBackoffDelay(2, 1000)).toBe(4000)
-    expect(calculateBackoffDelay(3, 1000)).toBe(8000)
-  })
-
-  test('should respect max delay cap', () => {
-    const delay = calculateBackoffDelay(10, 1000, 5000)
-    expect(delay).toBe(5000)
-  })
-
-  test('should use default values', () => {
-    const delay = calculateBackoffDelay(1)
-    expect(delay).toBe(2000) // Default baseDelayMs is 1000
-  })
-
-  test('should handle attempt 0', () => {
-    const delay = calculateBackoffDelay(0, 1000)
-    expect(delay).toBe(1000)
   })
 })
 

@@ -524,9 +524,15 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
     const match = matchPattern(logLine.line)
 
     if (!match) {
-      if (this.shouldAnalyzeUnknownError(logLine.line)) {
-        await this.analyzeUnknownError(logLine.line)
+      // Unknown error - let action executor handle LLM analysis with proper throttling and caching
+      const action: Action = {
+        type: 'analyze',
+        pattern: 'unknown-error',
+        context: { rawLine: logLine.line },
+        prompt: logLine.line
       }
+
+      await this.executeAction(action)
       return
     }
 
@@ -546,42 +552,7 @@ export class AIMonitor extends EventEmitter implements LoopworkPlugin {
     }
   }
 
-  private shouldAnalyzeUnknownError(line: string): boolean {
-    if (!line.match(/error|failed|exception|critical/i)) return false
-    if (this.config.cache.enabled && this.state.unknownErrorCache.has(line)) return false
-    if (this.state.llmCallsCount >= this.config.llm.maxPerSession) return false
 
-    const timeSinceLastCall = Date.now() - this.state.lastLLMCall
-    if (timeSinceLastCall < this.config.llm.cooldownMs) return false
-
-    return true
-  }
-
-  private async analyzeUnknownError(line: string): Promise<void> {
-    const key = `llm:${this.config.llm.model}`
-    try {
-      await this.concurrencyManager.acquire(key, 30000)
-      
-      this.state.llmCallsCount++
-      this.state.lastLLMCall = Date.now()
-      if (this.config.cache.enabled) {
-        this.state.unknownErrorCache.add(line)
-      }
-
-      const action: Action = {
-        type: 'analyze',
-        pattern: 'unknown-error',
-        context: { rawLine: line },
-        prompt: line
-      }
-
-      await this.executeAction(action)
-    } catch (error) {
-      logger.debug(`LLM concurrency error: ${error}`)
-    } finally {
-      this.concurrencyManager.release(key)
-    }
-  }
 
   private async executeAction(action: Action): Promise<void> {
     this.emit(AIMonitor.HEALING_STARTED, {

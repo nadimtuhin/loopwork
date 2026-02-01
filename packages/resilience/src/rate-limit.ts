@@ -85,6 +85,11 @@ export function isRateLimitError(error: unknown): boolean {
 }
 
 /**
+ * Default wait time when rate limit is detected (30 seconds)
+ */
+export const DEFAULT_RATE_LIMIT_WAIT_MS = 30000
+
+/**
  * Rate Limit Backoff Strategy
  *
  * A specific backoff strategy for handling rate limit errors.
@@ -99,7 +104,7 @@ export class RateLimitBackoffStrategy implements IBackoffPolicy {
    * @param fallbackPolicy - Optional fallback backoff policy for non-rate-limit errors
    */
   constructor(
-    rateLimitWaitMs: number = 30000,
+    rateLimitWaitMs: number = DEFAULT_RATE_LIMIT_WAIT_MS,
     fallbackPolicy?: IBackoffPolicy,
   ) {
     this.rateLimitWaitMs = rateLimitWaitMs

@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { AIMonitor, createAIMonitor } from '../ai-monitor/index'
+import { AIMonitor, createAIMonitor } from '../index'
 
 /**
  * index Tests

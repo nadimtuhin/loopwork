@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test'
-import { ModelSelector, calculateBackoffDelay } from '../src/core/model-selector'
+import { ModelSelector } from '../src/core/model-selector'
 import type { ModelConfig } from '../src/contracts/cli'
 
 describe('ModelSelector', () => {
@@ -207,32 +207,5 @@ describe('ModelSelector', () => {
       // Should still be on primary since fallback is empty
       expect(selector.isUsingFallback()).toBe(false)
     })
-  })
-})
-
-describe('calculateBackoffDelay', () => {
-  test('returns base delay for attempt 0', () => {
-    expect(calculateBackoffDelay(0, 1000, 60000)).toBe(1000)
-  })
-
-  test('doubles delay for each attempt', () => {
-    expect(calculateBackoffDelay(1, 1000, 60000)).toBe(2000)
-    expect(calculateBackoffDelay(2, 1000, 60000)).toBe(4000)
-    expect(calculateBackoffDelay(3, 1000, 60000)).toBe(8000)
-  })
-
-  test('caps at maxDelayMs', () => {
-    expect(calculateBackoffDelay(10, 1000, 60000)).toBe(60000)
-    expect(calculateBackoffDelay(100, 1000, 60000)).toBe(60000)
-  })
-
-  test('uses default values', () => {
-    expect(calculateBackoffDelay(0)).toBe(1000)
-    expect(calculateBackoffDelay(5)).toBeLessThanOrEqual(60000)
-  })
-
-  test('handles custom base and max', () => {
-    expect(calculateBackoffDelay(0, 500, 5000)).toBe(500)
-    expect(calculateBackoffDelay(4, 500, 5000)).toBe(5000) // 500 * 16 = 8000, capped to 5000
   })
 })

@@ -1,25 +1,23 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { MockProcessManager } from '../core/process-management/mock-process-manager'
+import { describe, expect, test } from 'bun:test'
+import { MockProcessManager } from '../mock-process-manager'
 
-/**
- * mock-process-manager Tests
- * 
- * Auto-generated test suite for mock-process-manager
- */
+describe('MockProcessManager', () => {
+  test('should track method calls', () => {
+    const manager = new MockProcessManager()
+    manager.spawn('node', ['test.js'])
+    
+    expect(manager.spawnCalls).toHaveLength(1)
+    expect(manager.spawnCalls[0].command).toBe('node')
+    expect(manager.listChildren()).toHaveLength(1)
+  })
 
-describe('mock-process-manager', () => {
-
-  describe('MockProcessManager', () => {
-    test('should instantiate without errors', () => {
-      const instance = new MockProcessManager()
-      expect(instance).toBeDefined()
-      expect(instance).toBeInstanceOf(MockProcessManager)
-    })
-
-    test('should maintain instance identity', () => {
-      const instance1 = new MockProcessManager()
-      const instance2 = new MockProcessManager()
-      expect(instance1).not.toBe(instance2)
-    })
+  test('should kill tracked process', () => {
+    const manager = new MockProcessManager()
+    const proc = manager.spawn('node', ['test.js'])
+    
+    expect(manager.listChildren()).toHaveLength(1)
+    manager.kill(proc.pid!)
+    expect(manager.listChildren()).toHaveLength(0)
+    expect(manager.killCalls).toHaveLength(1)
   })
 })

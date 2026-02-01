@@ -138,10 +138,6 @@ describe('CliHealthChecker', () => {
       
       const result = await checker.validateAllModels(cliPaths, models)
       
-      // Debug: log what we got
-      console.log('Callback models:', callbackModels.length, JSON.stringify(callbackModels.map(m => m.name)))
-      console.log('Result unhealthy:', result.unhealthy.length)
-      
       // Should have called onModelUnhealthy since CLI path is missing
       expect(callbackModels.length).toBeGreaterThanOrEqual(1)
       expect(callbackModels[0]?.healthStatus).toBe('unhealthy')

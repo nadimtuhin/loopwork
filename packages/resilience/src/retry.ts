@@ -1,7 +1,7 @@
 import {
   IRetryStrategy
 } from '@loopwork-ai/contracts'
-import { isRateLimitError, RetryableError } from './rate-limit'
+import { isRateLimitError, RetryableError, DEFAULT_RATE_LIMIT_WAIT_MS } from './rate-limit'
 
 export type { RetryableError }
 
@@ -33,7 +33,7 @@ export const DEFAULT_RETRY_OPTIONS: Partial<RetryOptions> = {
   retryOnRateLimit: true,
   retryOnTransient: true,
   retryOnAllErrors: false,
-  rateLimitWaitMs: 30000,
+  rateLimitWaitMs: DEFAULT_RATE_LIMIT_WAIT_MS,
 }
 
 /**

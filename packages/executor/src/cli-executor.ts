@@ -611,7 +611,8 @@ export class CliExecutor {
 
         const modelName = modelConfig.displayName || modelConfig.name
         currentModelName = modelConfig.name
-        const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
+        const workerPrefix = options.workerId !== undefined ? `[Worker ${options.workerId}] ` : ''
+        const displayName = `${workerPrefix}${modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`}`
         const cliPath = this.cliPaths.get(modelConfig.cli)
 
         if (!cliPath) {
@@ -665,7 +666,7 @@ export class CliExecutor {
           {
             env: prepared.env,
             input: prepared.stdinInput,
-            prefix: prepared.displayName,
+            prefix: displayName,
             taskId: options.taskId,
             workerId: options.workerId,
             poolName,

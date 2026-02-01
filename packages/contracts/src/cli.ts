@@ -186,3 +186,36 @@ export const DEFAULT_CLI_PATH_CONFIG: ICliPathConfig = {
     ],
   },
 }
+
+export type CliHealthStatus = 'healthy' | 'unhealthy' | 'not_found' | 'timeout' | 'error'
+
+export interface ICliHealthCheckResult {
+  type: CliType
+  status: CliHealthStatus
+  path?: string
+  version?: string
+  responseTimeMs?: number
+  error?: string
+  checkedAt: Date
+}
+
+export interface ICliDiscoveryResult {
+  clis: ICliHealthCheckResult[]
+  healthyCount: number
+  totalCount: number
+  summary: string
+}
+
+export interface ICliDiscoveryOptions {
+  timeoutMs?: number
+  parallel?: boolean
+  skipHealthCheck?: boolean
+}
+
+export interface ICliDiscoveryService {
+  discoverAll(options?: ICliDiscoveryOptions): Promise<ICliDiscoveryResult>
+  discoverOne(type: CliType, options?: ICliDiscoveryOptions): Promise<ICliHealthCheckResult>
+  getHealthy(): Promise<CliType[]>
+  isHealthy(type: CliType): Promise<boolean>
+  listModels(type: CliType): Promise<string[]>
+}

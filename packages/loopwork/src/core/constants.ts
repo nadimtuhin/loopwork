@@ -1,3 +1,5 @@
+import { DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
+
 /**
  * Application-wide constants
  *
@@ -38,7 +40,7 @@ export const LOCK_RETRY_DELAY_MS = 100
  * When the CLI output contains rate limit indicators (429, RESOURCE_EXHAUSTED, etc),
  * wait this long before retrying to avoid immediate re-failure
  */
-export const RATE_LIMIT_WAIT_MS = 30000
+export const RATE_LIMIT_WAIT_MS = DEFAULT_RATE_LIMIT_WAIT_MS
 
 /**
  * Progress update interval for CLI execution (2 seconds)

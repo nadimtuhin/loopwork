@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { OpenCodeCacheError, CliExecutor, isOpenCodeCacheCorruption, clearOpenCodeCache, EXEC_MODELS, FALLBACK_MODELS, type CliExecutorOptions } from '../cli-executor'
+import { OpenCodeCacheError, CliExecutor, clearOpenCodeCache, EXEC_MODELS, FALLBACK_MODELS, type CliExecutorOptions } from '../cli-executor'
+import { isOpenCodeCacheCorruption } from '@loopwork-ai/resilience'
 
 /**
  * cli-executor Tests

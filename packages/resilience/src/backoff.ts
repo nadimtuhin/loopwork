@@ -7,6 +7,25 @@ export interface ExponentialBackoffOptions {
   jitter?: boolean
 }
 
+export const DEFAULT_EXPONENTIAL_BACKOFF: Required<ExponentialBackoffOptions> = {
+  baseDelayMs: 1000,
+  maxDelayMs: 60000,
+  multiplier: 2,
+  jitter: true,
+}
+
+export interface LinearBackoffOptions {
+  baseDelayMs: number
+  maxDelayMs?: number
+  jitter?: boolean
+}
+
+export const DEFAULT_LINEAR_BACKOFF: Required<LinearBackoffOptions> = {
+  baseDelayMs: 1000,
+  maxDelayMs: 30000,
+  jitter: true,
+}
+
 export function calculateExponentialBackoff(
   attempt: number,
   options: ExponentialBackoffOptions,
@@ -59,25 +78,6 @@ export class ExponentialBackoff implements IBackoffPolicy {
  */
 export function exponentialBackoff(options: ExponentialBackoffOptions): ExponentialBackoff {
   return new ExponentialBackoff(options)
-}
-
-export const DEFAULT_EXPONENTIAL_BACKOFF: Required<ExponentialBackoffOptions> = {
-  baseDelayMs: 1000,
-  maxDelayMs: 60000,
-  multiplier: 2,
-  jitter: true,
-}
-
-export interface LinearBackoffOptions {
-  baseDelayMs: number
-  maxDelayMs?: number
-  jitter?: boolean
-}
-
-export const DEFAULT_LINEAR_BACKOFF: Required<LinearBackoffOptions> = {
-  baseDelayMs: 1000,
-  maxDelayMs: 30000,
-  jitter: true,
 }
 
 export class LinearBackoff implements IBackoffPolicy {

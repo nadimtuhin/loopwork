@@ -1,5 +1,5 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { LLMAnalyzer, ErrorAnalysis, LLMCacheEntry, LLMAnalyzerOptions, createLLMAnalyzer } from '../llm-analyzer'
+import { describe, expect, test } from 'bun:test'
+import { LLMAnalyzer, createLLMAnalyzer } from '../llm-analyzer'
 
 /**
  * llm-analyzer Tests
@@ -23,24 +23,6 @@ describe('llm-analyzer', () => {
     })
   })
 
-  describe('ErrorAnalysis', () => {
-    test('should be defined', () => {
-      expect(ErrorAnalysis).toBeDefined()
-    })
-  })
-
-  describe('LLMCacheEntry', () => {
-    test('should be defined', () => {
-      expect(LLMCacheEntry).toBeDefined()
-    })
-  })
-
-  describe('LLMAnalyzerOptions', () => {
-    test('should be defined', () => {
-      expect(LLMAnalyzerOptions).toBeDefined()
-    })
-  })
-
   describe('createLLMAnalyzer', () => {
     test('should be a function', () => {
       expect(typeof createLLMAnalyzer).toBe('function')
@@ -48,6 +30,15 @@ describe('llm-analyzer', () => {
 
     test('should execute without throwing', () => {
       expect(() => createLLMAnalyzer()).not.toThrow()
+    })
+
+    test('should create analyzer with options', () => {
+      const analyzer = createLLMAnalyzer({
+        cacheDir: '.loopwork/test-cache',
+        maxCallsPerSession: 5,
+        cooldownMs: 60000
+      })
+      expect(analyzer).toBeInstanceOf(LLMAnalyzer)
     })
   })
 })
