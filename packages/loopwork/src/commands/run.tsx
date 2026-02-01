@@ -320,6 +320,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   let currentTaskId: string | null = null
   let currentIteration = 0
+  let currentTaskContext: TaskContext | null = null
   let isCleaningUp = false
 
   const cleanup = async () => {
@@ -328,6 +329,11 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     }
     isCleaningUp = true
     activeLogger.warn('\nReceived interrupt signal. Saving state...')
+
+    // Notify plugins of task abort
+    if (currentTaskContext) {
+      await activePlugins.runHook('onTaskAbort', currentTaskContext)
+    }
 
     // Stop orphan watch if running
     if (monitor) {
@@ -373,6 +379,36 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   activeLogger.setLogFile(path.join(config.outputDir, 'loopwork.log'))
 
   const namespace = config.namespace || stateManager.getNamespace?.() || 'default'
+
+  // Register plugins from config
+  if (config.plugins && config.plugins.length > 0) {
+    for (const plugin of config.plugins) {
+      try {
+        activePlugins.register(plugin)
+        activeLogger.debug(`Registered plugin: ${plugin.name}`)
+      } catch (e) {
+        activeLogger.warn(`Failed to register plugin ${plugin.name}: ${e instanceof Error ? e.message : String(e)}`)
+      }
+    }
+  }
+
+  // Load and register dynamic plugins
+  if (config.dynamicPlugins && config.dynamicPlugins.length > 0) {
+    try {
+      const { loadDynamicPlugins } = await import('../core/plugin-loader')
+      const loadedPlugins = await loadDynamicPlugins(config.dynamicPlugins, config.projectRoot)
+      for (const plugin of loadedPlugins) {
+        activePlugins.register(plugin)
+        activeLogger.info(`Loaded dynamic plugin: ${plugin.name}`)
+      }
+    } catch (e) {
+      handleLoopworkError(new LoopworkError(
+        'ERR_PLUGIN_LOAD',
+        `Failed to load dynamic plugins: ${e instanceof Error ? e.message : String(e)}`,
+        ['Check your dynamicPlugins configuration in loopwork.config.ts']
+      ))
+    }
+  }
 
   try {
     await activePlugins.register(makeCostTrackingPlugin(config.projectRoot, namespace))
@@ -428,7 +464,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     }, activeLogger)
   } else {
     activeLogger.raw('')
-    const startupBannerOutput = renderInk(
+    const startupBannerOutput = await renderInk(
       <InkBanner
         title="Loopwork Starting"
         rows={[
@@ -641,10 +677,13 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
     const taskContext: TaskContext = {
       task,
+      config,
       iteration,
       startTime: new Date(),
       namespace,
+      retryAttempt: retryCount.get(task.id) || 0,
     }
+    currentTaskContext = taskContext
 
     await activePlugins.runHook('onTaskStart', taskContext)
 
@@ -710,6 +749,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
       const duration = (Date.now() - taskContext.startTime.getTime()) / 1000
       await activePlugins.runHook('onTaskComplete', taskContext, { output, duration, success: true })
+      currentTaskContext = null
 
       tasksCompleted++
       consecutiveFailures = 0
@@ -776,6 +816,8 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
         retryContext = `## Previous Attempt Failed\nAttempt ${currentRetries + 1} failed. Log excerpt:\n\`\`\`\n${logExcerpt}\n\`\`\``
 
+        await activePlugins.runHook('onTaskRetry', taskContext, `Attempt ${currentRetries + 1} failed.`)
+
         await new Promise(r => setTimeout(r, config.retryDelay ?? 3000))
         continue
       } else {
@@ -796,6 +838,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         }
 
         await activePlugins.runHook('onTaskFailed', taskContext, errorMsg)
+        currentTaskContext = null
 
         tasksFailed++
         consecutiveFailures++
@@ -882,7 +925,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       outputDir: config.outputDir,
     }, activeLogger)
   } else {
-    const summaryOutput = renderInk(
+    const summaryOutput = await renderInk(
       <InkCompletionSummary
         title="Loopwork Complete"
         stats={{
@@ -940,6 +983,12 @@ async function runParallel(
     onTaskFailed: async (context, error) => {
       await activePlugins.runHook('onTaskFailed', context, error)
     },
+    onTaskRetry: async (context, error) => {
+      await activePlugins.runHook('onTaskRetry', context, error)
+    },
+    onTaskAbort: async (context) => {
+      await activePlugins.runHook('onTaskAbort', context)
+    },
     buildPrompt,
   })
 
@@ -952,6 +1001,9 @@ async function runParallel(
     isCleaningUp = true
     activeLogger.warn('\nReceived interrupt signal. Saving parallel state...')
     parallelRunner.abort()
+
+    // Notify plugins of task abort
+    await parallelRunner.notifyAbort()
 
     // Clean up processes
     await cliExecutor.cleanup().catch(err => {
@@ -1029,7 +1081,7 @@ async function runParallel(
         mode: 'parallel',
       }, activeLogger)
     } else {
-      const parallelSummaryOutput = renderInk(
+      const parallelSummaryOutput = await renderInk(
         <InkCompletionSummary
           title="Loopwork Complete (Parallel Mode)"
           stats={{

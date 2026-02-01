@@ -14,7 +14,7 @@ import React from 'react'
 import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
-import { logger, separator, InkTable, InkCompletionSummary, renderInk } from '../core/utils'
+import { logger, separator, InkTable, InkCompletionSummary, renderInk, ProgressBar } from '../core/utils'
 import { getConfig } from '../core/config'
 import type { DecomposeJsonOutput } from '../contracts/output'
 import { LoopworkError } from '../core/errors'
@@ -147,7 +147,7 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
 
   let aiResponse: string
   try {
-    aiResponse = await callAI(fullPrompt, options.cli || 'claude', options.model)
+    aiResponse = await callAI(fullPrompt, options.cli || 'claude', options.model, !isJsonMode)
   } catch (error) {
     if (isJsonMode) {
       // eslint-disable-next-line no-console
@@ -243,7 +243,7 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
   logger.info('Generated Tasks:')
   logger.raw(separator('heavy'))
 
-  const tableOutput = renderInk(
+  const tableOutput = await renderInk(
     <InkTable
       headers={['ID', 'Title', 'Priority', 'Est', 'Cmplx', 'Depends']}
       rows={tasks.map(task => [
@@ -285,7 +285,7 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
 
   logger.raw('')
 
-  const summaryOutput = renderInk(
+  const summaryOutput = await renderInk(
     <InkCompletionSummary
       title="Task Decomposition Complete"
       stats={{
@@ -306,11 +306,16 @@ export async function decompose(prompt: string, options: DecomposeOptions): Prom
   logger.raw('')
 }
 
-async function callAI(prompt: string, cli: string, model?: string): Promise<string> {
+async function callAI(prompt: string, cli: string, model?: string, showSpinner: boolean = true): Promise<string> {
   return new Promise((resolve, reject) => {
     const args: string[] = []
     let useStdin = false
     const env = { ...process.env }
+
+    const spinner = showSpinner ? new ProgressBar(undefined, { mode: 'deterministic' }) : null
+    const spinnerInterval = showSpinner ? setInterval(() => {
+      spinner?.tick('Calling AI...')
+    }, 100) : null
 
     if (cli === 'claude') {
       // Match CliExecutor behavior: use -p mode with --dangerously-skip-permissions
@@ -339,6 +344,8 @@ async function callAI(prompt: string, cli: string, model?: string): Promise<stri
     // Timeout after 5 minutes (300 seconds)
     const timeoutMs = 300 * 1000
     const timer = setTimeout(() => {
+      if (spinnerInterval) clearInterval(spinnerInterval)
+      spinner?.complete('Timed out')
       child.kill('SIGTERM')
       setTimeout(() => child.kill('SIGKILL'), 5000)
       reject(new Error(`CLI timed out after ${timeoutMs / 1000}s`))
@@ -354,15 +361,20 @@ async function callAI(prompt: string, cli: string, model?: string): Promise<stri
 
     child.on('close', (code) => {
       clearTimeout(timer)
+      if (spinnerInterval) clearInterval(spinnerInterval)
       if (code === 0) {
+        spinner?.complete('Done')
         resolve(stdout)
       } else {
+        spinner?.complete('Failed')
         reject(new Error(`CLI exited with code ${code}: ${stderr || stdout}`))
       }
     })
 
     child.on('error', (error) => {
       clearTimeout(timer)
+      if (spinnerInterval) clearInterval(spinnerInterval)
+      spinner?.complete('Error')
       reject(error)
     })
 

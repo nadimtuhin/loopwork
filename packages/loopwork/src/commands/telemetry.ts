@@ -35,7 +35,7 @@ export async function telemetry(options: TelemetryOptions = {}): Promise<void> {
   // Ink mode (default)
   logger.raw('')
 
-  const bannerOutput = renderInk(
+  const bannerOutput = await renderInk(
     React.createElement(InkBanner, {
       title: 'Telemetry Report',
       rows: [
@@ -61,7 +61,7 @@ export async function telemetry(options: TelemetryOptions = {}): Promise<void> {
     ]
   }) as string[][]
 
-  const recentOutput = renderInk(
+  const recentOutput = await renderInk(
     React.createElement(InkTable, {
       headers: ['Task ID', 'Status', 'Model', 'Cost', 'Tokens'],
       rows: recentEntries,
@@ -77,7 +77,7 @@ export async function telemetry(options: TelemetryOptions = {}): Promise<void> {
     data.avgTokensPerSecond.toFixed(2),
   ]) as string[][]
 
-  const modelTableOutput = renderInk(
+  const modelTableOutput = await renderInk(
     React.createElement(InkTable, {
       headers: ['Model', 'Tasks', 'Total Cost', 'Avg Tokens/s'],
       rows: modelRows,

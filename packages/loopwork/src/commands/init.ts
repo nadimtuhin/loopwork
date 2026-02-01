@@ -785,7 +785,7 @@ Implement the first feature
     nextSteps.push(`View PRD templates: ${path.join(prdDir, 'templates')}`)
   }
 
-  const summaryOutput = renderInk(
+  const summaryOutput = await renderInk(
     React.createElement(InkCompletionSummary, {
       title: 'Initialization Complete',
       stats: {

@@ -125,7 +125,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
       // Use running process log file
       logFile = proc.logFile
       if (!isJsonMode) {
-        const bannerOutput = renderInk(
+        const bannerOutput = await renderInk(
           <InkBanner
             title="Session Info"
             rows={[
@@ -172,7 +172,7 @@ export async function logs(options: LogsOptions = {}, deps: LogsDeps = {}): Prom
           if (logFile) {
             rows.push({ key: 'Log', value: logFile })
           }
-          const bannerOutput = renderInk(
+          const bannerOutput = await renderInk(
             <InkBanner title="Session Info" rows={rows} />
           )
           activeLogger.raw(bannerOutput)

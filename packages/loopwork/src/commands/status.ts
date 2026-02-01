@@ -109,7 +109,7 @@ export async function status(deps: StatusDeps): Promise<void> {
       ]
     })
 
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       React.createElement(InkTable, {
         headers: ['CLI', 'Task', 'PID', 'Uptime', 'Namespace'],
         rows,
@@ -133,7 +133,7 @@ export async function status(deps: StatusDeps): Promise<void> {
       ]
     })
 
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       React.createElement(InkTable, {
         headers: ['Namespace', 'PID', 'Uptime', 'Log File'],
         rows,
@@ -164,7 +164,7 @@ export async function status(deps: StatusDeps): Promise<void> {
       ]
     })
 
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       React.createElement(InkTable, {
         headers: ['', 'Namespace', 'Last Run'],
         rows,

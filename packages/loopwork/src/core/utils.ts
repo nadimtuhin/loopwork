@@ -1,27 +1,21 @@
-import chalk from 'chalk'
 import fs from 'fs'
 import path from 'path'
-import crypto from 'crypto'
 import type { LogLevel } from '../contracts/config'
 import type { OutputFormat, JsonEvent } from '../contracts/output'
 import type { OutputRenderer } from '../output/renderer'
 import { ConsoleRenderer } from '../output/console-renderer'
+import { getTimestamp, StreamLogger as CommonStreamLogger } from '@loopwork-ai/common'
 
-export function getTimestamp(): string {
-  return new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  })
-}
+// Re-export core utilities from common
+export { getTimestamp, calculateChecksum } from '@loopwork-ai/common'
 
 /**
- * Calculate a SHA-256 checksum for an object
+ * StreamLogger wrapper that uses the global logger by default
  */
-export function calculateChecksum(data: unknown): string {
-  const content = typeof data === 'string' ? data : JSON.stringify(data)
-  return crypto.createHash('sha256').update(content).digest('hex')
+export class StreamLogger extends CommonStreamLogger {
+  constructor(prefix?: string, onEvent?: (event: { type: string; data: unknown }) => void) {
+    super(logger as any, prefix, onEvent)
+  }
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -276,130 +270,5 @@ export async function promptUser(
   })
 }
 
-export class StreamLogger {
-  private buffer: string = ''
-  private prefix: string = ''
-  private onEvent?: (event: { type: string; data: unknown }) => void
-  private isPaused: boolean = false
-  private isAtStartOfLine: boolean = true
-
-  constructor(prefix?: string, onEvent?: (event: { type: string; data: unknown }) => void) {
-    this.prefix = prefix || ''
-    this.onEvent = onEvent
-  }
-
-  pause() {
-    this.isPaused = true
-  }
-
-  resume() {
-    this.isPaused = false
-    if (this.buffer) {
-      const toLog = this.buffer
-      this.buffer = ''
-      this.log(toLog)
-    }
-  }
-
-  log(chunk: string | Buffer) {
-    const str = chunk.toString('utf8')
-    
-    if (this.onEvent) {
-      const eventLines = (this.buffer + str).split('\n')
-      for (let i = 0; i < eventLines.length - 1; i++) {
-        const line = eventLines[i]
-        if (this.isEventLine(line)) {
-          this.onEvent({
-            type: 'POST_TOOL',
-            data: { line: line.replace(/^\s*\|\s*/, '') }
-          })
-        }
-      }
-    }
-
-    if (this.isPaused) {
-      this.buffer += str
-      return
-    }
-
-    const fullContent = this.buffer + str
-    this.buffer = ''
-    
-    const lines = fullContent.split('\n')
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const isLast = i === lines.length - 1
-      const cleanedLine = line.replace(/^\s*\|\s*/, '')
-      
-      if (cleanedLine.length > 0) {
-        if (this.isAtStartOfLine) {
-          this.printPrefix()
-          this.isAtStartOfLine = false
-        }
-        logger.raw(chalk.dim(cleanedLine), true)
-      }
-      
-      if (!isLast && !this.isAtStartOfLine) {
-        logger.raw('')
-        this.isAtStartOfLine = true
-      }
-    }
-    
-    logger.lastOutputTime = Date.now()
-  }
-
-  private isEventLine(line: string): boolean {
-    return line.includes('Tool Call:') || 
-           line.includes('Running tool') || 
-           line.includes('Calling tool') ||
-           line.includes('✔ Tool output') ||
-           line.includes('✖ Tool error')
-  }
-
-  private printPrefix() {
-    // Stop spinner before outputting stream
-    logger.renderer.render({ type: 'progress:stop', timestamp: Date.now() })
-    
-    const timestamp = chalk.gray(getTimestamp())
-    const separatorStr = chalk.gray(' │')
-    const prefixStr = this.prefix ? ` ${chalk.magenta(`[${this.prefix}]`)}` : ''
-    
-    logger.raw(`${timestamp}${separatorStr}${prefixStr} `, true)
-  }
-
-  flush() {
-    if (this.isAtStartOfLine && this.buffer) {
-      this.log('\n')
-    } else if (this.buffer) {
-      this.log('') 
-    }
-    this.buffer = ''
-  }
-}
-
-// Re-export output utilities for convenience
-export { Table, Banner, ProgressBar, CompletionSummary, separator, supportsEmoji, getEmoji, BOX_CHARS } from './output'
-
-// Re-export Ink components from their individual files
-export { InkBanner } from '../components/InkBanner'
-export { InkCompletionSummary } from '../components/InkCompletionSummary'
-export { ProgressBar as InkProgressBar } from '../components/ProgressBar'
-export { InkTable } from '../components/InkTable'
-export { InkLog } from '../components/InkLog'
-export { InkSpinner } from '../components/InkSpinner'
-export { InkStream } from '../components/InkStream'
-
-// Helper function to render Ink components interactively (for TTY mode)
-export async function renderInkInteractive(element: React.ReactElement): Promise<void> {
-  const { render } = await import('ink')
-  render(element)
-}
-
-// Helper function to render Ink components to string (for non-TTY/JSON mode)
-export async function renderInk(element: React.ReactElement): Promise<string> {
-  const { render: renderToString } = await import('ink-testing-library')
-  const { lastFrame, unmount } = renderToString(element)
-  const output = lastFrame() || ''
-  unmount()
-  return output
-}
+// Export UI utilities from the new ui.ts file
+export * from './ui'

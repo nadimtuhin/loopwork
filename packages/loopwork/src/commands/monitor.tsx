@@ -182,7 +182,7 @@ export async function monitorStatus(deps: MonitorDeps = {}): Promise<void> {
   } else {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold(`Running (${running.length}):`))
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       <InkTable
         headers={['Namespace', 'PID', 'Uptime', 'Log File']}
         columnConfigs={[
@@ -205,7 +205,7 @@ export async function monitorStatus(deps: MonitorDeps = {}): Promise<void> {
   if (namespaces.length > 0) {
     activeLogger.raw('')
     activeLogger.raw(chalk.bold('All Namespaces:'))
-    const tableOutput = renderInk(
+    const tableOutput = await renderInk(
       <InkTable
         headers={['', 'Namespace', 'Last Run']}
         columnConfigs={[

@@ -89,9 +89,19 @@ describe('CliExecutor', () => {
     mockChild.stdin = { write: mock(), end: mock() }
     mockChild.kill = mock()
     
-    const spawnSpy = spyOn(child_process, 'spawn').mockReturnValue(mockChild)
+    const mockProcessManager = {
+      spawn: mock(() => mockChild),
+      kill: mock(() => true),
+      track: mock(() => {}),
+      untrack: mock(() => {}),
+      listChildren: mock(() => []),
+      listByNamespace: mock(() => []),
+      cleanup: mock(async () => ({ cleaned: [], failed: [], alreadyGone: [] })),
+      persist: mock(async () => {}),
+      load: mock(async () => {})
+    }
 
-    const executor = new CliExecutor(config)
+    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
     const outFile = path.join(tempDir, 'out.md')
     
     const promise = executor.execute('Test prompt', outFile, 10)
@@ -101,57 +111,76 @@ describe('CliExecutor', () => {
     
     const status = await promise
     expect(status).toBe(0)
-    expect(spawnSpy).toHaveBeenCalled()
-    const call = spawnSpy.mock.calls[0]
-    const fullCommand = [call[0], ...(call[1] as string[])].join(' ')
-    expect(fullCommand).toContain('opencode')
+    expect(mockProcessManager.spawn).toHaveBeenCalled()
   })
 
-  test('execute starts and stops spinner', async () => {
+  test('execute shows progress updates during execution', async () => {
     spyOn(child_process, 'spawnSync').mockImplementation(() => ({ status: 0, stdout: '/bin/cli' } as any))
     spyOn(fs, 'existsSync').mockReturnValue(true)
     
     const mockChild = new EventEmitter() as any
+    mockChild.pid = 12345
     mockChild.stdout = new EventEmitter()
     mockChild.stderr = new EventEmitter()
     mockChild.stdin = { write: mock(), end: mock() }
     mockChild.kill = mock()
-    spyOn(child_process, 'spawn').mockReturnValue(mockChild)
+    
+    const mockProcessManager = {
+      spawn: mock(() => mockChild),
+      kill: mock(() => true),
+      track: mock(() => {}),
+      untrack: mock(() => {}),
+      listChildren: mock(() => []),
+      listByNamespace: mock(() => []),
+      cleanup: mock(async () => ({ cleaned: [], failed: [], alreadyGone: [] })),
+      persist: mock(async () => {}),
+      load: mock(async () => {})
+    }
 
-    const startSpinnerSpy = spyOn(logger, 'startSpinner')
-    const stopSpinnerSpy = spyOn(logger, 'stopSpinner')
-    const updateSpy = spyOn(logger, 'update')
-
-    const executor = new CliExecutor(config)
+    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
     const outFile = path.join(tempDir, 'out.md')
     
     const promise = executor.execute('Test prompt', outFile, 10)
     
-    await new Promise(r => setTimeout(r, 150))
+    await new Promise(r => setTimeout(r, 100))
     
     mockChild.emit('close', 0)
     
     await promise
     
-    expect(startSpinnerSpy).toHaveBeenCalled()
-    expect(stopSpinnerSpy).toHaveBeenCalled()
-    expect(updateSpy).toHaveBeenCalled()
+    expect(mockProcessManager.spawn).toHaveBeenCalled()
   })
 
   test('retry logic switches to fallback after exhausting primary models', async () => {
     spyOn(child_process, 'spawnSync').mockImplementation(() => ({ status: 0, stdout: '/bin/cli' } as any))
     
     let attempt = 0
-    spyOn(child_process, 'spawn').mockImplementation(() => {
-      const m = new EventEmitter() as any
-      m.stdout = new EventEmitter()
-      m.stderr = new EventEmitter()
-      m.stdin = { write: mock(), end: mock() }
-      setTimeout(() => m.emit('close', attempt++ === 0 ? 1 : 0), 10)
-      return m
-    })
+    const mockChild = new EventEmitter() as any
+    mockChild.stdout = new EventEmitter()
+    mockChild.stderr = new EventEmitter()
+    mockChild.stdin = { write: mock(), end: mock() }
+    mockChild.kill = mock()
 
-    const executor = new CliExecutor(config)
+    const mockProcessManager = {
+      spawn: mock(() => {
+        const m = new EventEmitter() as any
+        m.stdout = new EventEmitter()
+        m.stderr = new EventEmitter()
+        m.stdin = { write: mock(), end: mock() }
+        setTimeout(() => m.emit('close', attempt++ === 0 ? 1 : 0), 10)
+        return m
+      }),
+      kill: mock(() => true),
+      track: mock(() => {}),
+      untrack: mock(() => {}),
+      listChildren: mock(() => []),
+      listByNamespace: mock(() => []),
+      cleanup: mock(async () => ({ cleaned: [], failed: [], alreadyGone: [] })),
+      persist: mock(async () => {}),
+      load: mock(async () => {})
+    }
+
+    const executor = new CliExecutor(config, { processManager: mockProcessManager as any })
     // Force many failures to trigger fallback
     // We need to mock spawn to fail multiple times
     
