@@ -1,0 +1,29 @@
+{
+  "name": "@loopwork-ai/analysis-engine",
+  "version": "0.1.0",
+  "description": "Analysis engine package for Loopwork",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "keywords": [
+    "loopwork",
+    "analysis",
+    "engine"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/loopwork/issues"
+  },
+  "homepage": "https://github.com/nadimtuhin/loopwork#readme",
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@loopwork-ai/process-manager",
+  "version": "0.1.0",
+  "description": "Process management utilities for Loopwork",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "keywords": [
+    "loopwork",
+    "process",
+    "manager",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nadimtuhin/loopwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/loopwork/issues"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@loopwork-ai/vector-store",
+  "version": "0.1.0",
+  "description": "Vector store package for Loopwork",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  }
+}
