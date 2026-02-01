@@ -73,7 +73,7 @@ describe('CliExecutor Worker Prefixing', () => {
     const modelSelectedHook = hooks.find((call: any) => call[0] === 'onStep' && call[1].stepId === 'model_selected')
     
     expect(modelSelectedHook).toBeDefined()
-    expect(modelSelectedHook[1].context.model).toBe('[Worker 5] test-model')
+    expect(modelSelectedHook[1].context.model).toBe('[W5] test-model')
   })
 
   test('should not prepend worker ID when undefined', async () => {
@@ -127,6 +127,6 @@ describe('CliExecutor Worker Prefixing', () => {
     const modelSelectedHook = hooks.find((call: any) => call[0] === 'onStep' && call[1].stepId === 'model_selected')
     
     expect(modelSelectedHook).toBeDefined()
-    expect(modelSelectedHook[1].context.model).toBe('[Worker 1] opencode/gpt4')
+    expect(modelSelectedHook[1].context.model).toBe('[W1] opencode/gpt4')
   })
 })

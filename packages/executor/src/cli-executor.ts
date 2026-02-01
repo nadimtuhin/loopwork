@@ -612,7 +612,7 @@ export class CliExecutor {
 
         const modelName = modelConfig.displayName || modelConfig.name
         currentModelName = modelConfig.name
-        const workerPrefix = options.workerId !== undefined ? `[Worker ${options.workerId}] ` : ''
+        const workerPrefix = options.workerId !== undefined ? `[W${options.workerId}] ` : ''
         const displayName = `${workerPrefix}${modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`}`
         const cliPath = this.cliPaths.get(modelConfig.cli)
 
