@@ -15,6 +15,7 @@ import type {
   CliPathConfig,
   ModelSelectionStrategy,
 } from '../contracts/cli'
+import { DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
 
 /**
  * Options for the withCli plugin
@@ -368,7 +369,7 @@ export const RetryPresets = {
    * Default: Fixed 30s wait, no backoff
    */
   default: (): RetryConfig => ({
-    rateLimitWaitMs: 30000,
+    rateLimitWaitMs: DEFAULT_RATE_LIMIT_WAIT_MS,
     exponentialBackoff: false,
   }),
 

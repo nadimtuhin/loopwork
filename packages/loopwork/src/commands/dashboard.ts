@@ -153,11 +153,15 @@ export async function dashboard(
           // First, use detailed backend tasks if available
           if (currentTasksFromBackend.length > 0) {
              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-             displayTasks = currentTasksFromBackend.map((t: any) => ({
-               id: t.id,
-               title: t.title,
-               startedAt: t.timestamps?.startedAt ? new Date(t.timestamps.startedAt) : undefined
-             }))
+              displayTasks = currentTasksFromBackend.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                startedAt: t.timestamps?.startedAt ? new Date(t.timestamps.startedAt) : undefined,
+                cli: t.metadata?.cli,
+                model: t.metadata?.model,
+                modelDisplayName: t.metadata?.modelDisplayName || t.metadata?.model || t.metadata?.cli,
+                workerId: t.metadata?.workerId,
+              }))
           } 
           
           // If we have more running processes than tasks, show them as idle/polling workers

@@ -508,6 +508,10 @@ export async function startInkTui(options: {
           status: 'in-progress',
           priority: 'medium',
           startedAt: t.startedAt,
+          cli: (t as any).cli,
+          model: (t as any).model,
+          modelDisplayName: (t as any).modelDisplayName,
+          workerId: (t as any).workerId,
         })),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         pendingTasks: state.pendingTasks as any,

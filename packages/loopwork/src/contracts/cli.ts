@@ -8,6 +8,8 @@
  * - CLI path overrides
  */
 
+import { DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
+
 /**
  * Supported CLI types
  */
@@ -227,7 +229,7 @@ export interface CliExecutorConfig {
  * Default retry configuration
  */
 export const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
-  rateLimitWaitMs: 30000,
+  rateLimitWaitMs: DEFAULT_RATE_LIMIT_WAIT_MS,
   exponentialBackoff: false,
   baseDelayMs: 1000,
   maxDelayMs: 60000,

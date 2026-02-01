@@ -655,6 +655,8 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       continue
     }
 
+    const nextModel = cliExecutor.getNextModel?.()
+    
     const taskContext: TaskContext = {
       task,
       config,
@@ -662,8 +664,21 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       startTime: new Date(),
       namespace,
       retryAttempt: retryCount.get(task.id) || 0,
+      cli: nextModel?.cli,
+      model: nextModel?.model,
+      modelDisplayName: nextModel?.displayName,
     }
     currentTaskContext = taskContext
+
+    if (backend.updateTask) {
+      await backend.updateTask(task.id, {
+        metadata: {
+          cli: nextModel?.cli,
+          model: nextModel?.model,
+          modelDisplayName: nextModel?.displayName,
+        }
+      })
+    }
 
     await activePlugins.runHook('onTaskStart', taskContext)
 

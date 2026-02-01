@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### 2026-02-01 - DYNAMICT-004
+- DYNAMICT-004: Add AI-powered task analysis using LLM
+
 ### 2026-02-01 - DYNAMICT-003
 - DYNAMICT-003: Create withDynamicTasks plugin for automatic task creation
 

@@ -567,8 +567,18 @@ export class ParallelRunner {
     }
 
     this.activeContexts.set(task.id, taskContext)
+    
+    if (this.backend.updateTask) {
+      await this.backend.updateTask(task.id, {
+        metadata: {
+          cli,
+          model,
+          modelDisplayName: displayName,
+          workerId,
+        }
+      })
+    }
 
-    // Notify task start
     if (this.onTaskStart) {
       await this.onTaskStart(taskContext)
     }

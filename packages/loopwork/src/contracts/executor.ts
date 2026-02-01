@@ -19,4 +19,5 @@ export interface ICliExecutor {
   killCurrent(): void
   resetFallback(): void
   cleanup(): Promise<void>
+  getNextModel?(): { cli: string; model: string; displayName?: string } | null
 }
