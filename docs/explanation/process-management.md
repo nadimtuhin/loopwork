@@ -517,6 +517,247 @@ The detector automatically cleans stale entries on read:
 const cleanedPids = tracked.pids.filter(p => processExists(p.pid))
 ```
 
+## Resource Limits (BULKHEAD-003)
+
+Loopwork can enforce CPU and memory limits on spawned processes to prevent resource exhaustion.
+
+### How Resource Limits Work
+
+The `ProcessResourceMonitor` periodically checks spawned processes and terminates those that exceed configured limits:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              ProcessResourceMonitor                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │  CPU Limit   │  │ Memory Limit │  │ Grace Period │      │
+│  │   (e.g. 50%) │  │  (e.g. 512MB)│  │  (e.g. 5s)   │      │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
+│         │                 │                 │              │
+│         └─────────────────┴─────────────────┘              │
+│                           │                                 │
+│                           ▼                                 │
+│              ┌─────────────────────────┐                   │
+│              │   Check Interval        │                   │
+│              │   (e.g. every 10s)      │                   │
+│              └───────────┬─────────────┘                   │
+│                          │                                  │
+│                          ▼                                  │
+│              ┌─────────────────────────┐                   │
+│              │   ps command            │                   │
+│              │   → CPU %               │                   │
+│              │   → Memory (RSS)        │                   │
+│              └───────────┬─────────────┘                   │
+│                          │                                  │
+│              ┌───────────┴───────────┐                     │
+│              │   Limits Exceeded?    │                     │
+│              └───────────┬───────────┘                     │
+│                          │                                  │
+│              ┌───────────┴───────────┐                     │
+│              │  Yes → Check Grace    │                     │
+│              │       Period          │                     │
+│              └───────────┬───────────┘                     │
+│                          │                                  │
+│              ┌───────────┴───────────┐                     │
+│              │  Grace Expired?       │                     │
+│              └───────────┬───────────┘                     │
+│                          │                                  │
+│              ┌───────────┴───────────┐                     │
+│              │  Yes → SIGTERM →      │                     │
+│              │       wait → SIGKILL  │                     │
+│              └───────────────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Configuration
+
+Resource limits can be configured in your `loopwork.config.ts`:
+
+```typescript
+// loopwork.config.ts
+import { defineConfig, compose, withJSONBackend } from 'loopwork'
+
+export default compose(
+  withJSONBackend({ tasksFile: '.specs/tasks/tasks.json' }),
+)(defineConfig({
+  cli: 'claude',
+
+  // Resource limit configuration
+  resourceLimits: {
+    enabled: true,           // Enable resource monitoring
+    cpuLimit: 80,           // Max CPU percentage (0-100)
+    memoryLimitMB: 1024,    // Max memory in MB
+    checkIntervalMs: 10000, // Check every 10 seconds
+    gracePeriodMs: 5000,    // Wait 5s before killing
+  },
+}))
+```
+
+**Configuration Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `false` | Enable resource limit monitoring |
+| `cpuLimit` | number | `100` | Maximum CPU percentage (0-100) |
+| `memoryLimitMB` | number | `2048` | Maximum memory in megabytes |
+| `checkIntervalMs` | number | `10000` | How often to check resource usage (ms) |
+| `gracePeriodMs` | number | `5000` | Grace period before terminating (ms) |
+
+### CLI Options
+
+Resource limits can also be set via CLI flags:
+
+```bash
+# Set memory limit to 512MB
+loopwork run --memory-limit 512
+
+# Set CPU limit to 50%
+loopwork run --cpu-limit 50
+
+# Combine with other options
+loopwork run --memory-limit 1024 --cpu-limit 80 --parallel 4
+```
+
+### How Limits Are Enforced
+
+1. **Monitoring**: The monitor runs at `checkIntervalMs` intervals
+2. **Measurement**: Uses `ps` command to get CPU and memory usage
+3. **Comparison**: Checks against configured `cpuLimit` and `memoryLimitMB`
+4. **Grace Period**: If limits exceeded, waits `gracePeriodMs` before action
+5. **Termination**: Sends SIGTERM, waits, then SIGKILL if needed
+
+### Platform Support
+
+| Platform | CPU Limits | Memory Limits |
+|----------|-----------|---------------|
+| macOS | ✅ Via `ps -o %cpu` | ✅ Via `ps -o rss` |
+| Linux | ✅ Via `ps -o %cpu` | ✅ Via `ps -o rss` |
+| Windows | ❌ Not supported | ✅ Via `tasklist` |
+
+### Per-Process Resource Limits
+
+You can also set resource limits for individual processes via spawn options:
+
+```typescript
+import { ProcessManager } from 'loopwork'
+
+const manager = createProcessManager({
+  resourceLimits: {
+    enabled: true,
+    cpuLimit: 50,
+    memoryLimitMB: 512,
+  }
+})
+
+// Spawn with specific limits
+const proc = manager.spawn('node', ['script.js'], {
+  resourceLimits: {
+    memoryMB: 256,
+    cpuUsage: 30,
+  }
+})
+```
+
+### Integration with ProcessManager
+
+The `ProcessResourceMonitor` is automatically integrated when you configure resource limits:
+
+```typescript
+// ProcessManager automatically starts monitoring when
+// resource limits are configured
+const manager = createProcessManager({
+  resourceLimits: {
+    enabled: true,
+    cpuLimit: 80,
+    memoryLimitMB: 1024,
+  }
+})
+
+// Monitoring starts automatically on first spawn
+const proc = manager.spawn('claude', ['-p', 'task'])
+```
+
+### Monitoring Statistics
+
+Access resource monitoring statistics:
+
+```typescript
+const monitor = createProcessResourceMonitor(registry, spawner, {
+  enabled: true,
+  cpuLimit: 50,
+  memoryLimitMB: 512,
+})
+
+monitor.start()
+
+// Later...
+const stats = monitor.getStats()
+console.log(stats)
+// {
+//   checkCount: 42,
+//   enabled: true,
+//   running: true,
+//   limits: {
+//     cpuLimit: 50,
+//     memoryLimitMB: 512,
+//     checkIntervalMs: 10000,
+//     gracePeriodMs: 5000,
+//     enabled: true
+//   }
+// }
+```
+
+### Best Practices
+
+1. **Set reasonable limits**: AI CLI tools need sufficient resources
+   - Memory: 512MB-2048MB depending on model
+   - CPU: 50-80% to allow other processes
+
+2. **Use grace periods**: Allow processes time to clean up
+   - 5-10 seconds is usually sufficient
+
+3. **Monitor first**: Start with monitoring enabled but high limits
+   ```typescript
+   resourceLimits: {
+     enabled: true,
+     cpuLimit: 95,        // Very high initially
+     memoryLimitMB: 4096, // Very high initially
+   }
+   ```
+
+4. **Adjust based on workload**: Different tasks need different limits
+   - Code analysis: Lower memory, higher CPU
+   - Large file processing: Higher memory, lower CPU
+
+### Troubleshooting
+
+#### Processes Killed Unexpectedly
+
+If processes are being killed:
+
+1. Check logs for limit exceeded messages
+2. Increase limits if legitimate usage
+3. Adjust grace period for longer cleanup
+
+```bash
+# View resource monitoring logs
+loopwork logs | grep "ProcessResourceMonitor"
+```
+
+#### Monitoring Not Starting
+
+If resource monitoring isn't working:
+
+1. Verify `enabled: true` in config
+2. Check that limits are reasonable (not 0)
+3. Ensure platform is supported
+
+```typescript
+const monitor = createProcessResourceMonitor(registry, spawner, limits)
+console.log(monitor.isEnabled())  // Should be true
+console.log(monitor.isRunning())  // Should be true after spawn
+```
+
 ## Related Documentation
 
 - **CLI Invocation**: [`cli-invocation-algorithm.md`](./cli-invocation-algorithm.md) - How loopwork spawns and manages CLI processes

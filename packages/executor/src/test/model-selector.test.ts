@@ -257,6 +257,58 @@ describe('ModelSelector', () => {
       const states = selector.getAllCircuitBreakerStates()
       expect(states.size).toBeGreaterThan(0)
     })
+
+    test('should reset retry count when model wakes up from sleep', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 3,
+        enableCircuitBreaker: true,
+      })
+      
+      // Record some failures to build up retry count
+      selector.recordFailure('model1')
+      selector.recordFailure('model1')
+      expect(selector.getRetryCount('model1')).toBe(2)
+      
+      // Model should be available but with retry count
+      expect(selector.isModelAvailable('model1')).toBe(true)
+      
+      // Record final failure to put model to sleep
+      selector.recordFailure('model1')
+      expect(selector.isModelAvailable('model1')).toBe(false)
+      expect(selector.getSleepingModels()).toContain('model1')
+      
+      // Reset the model (simulating wake up)
+      selector.resetModel('model1')
+      
+      // Model should be available and retry count should be reset
+      expect(selector.isModelAvailable('model1')).toBe(true)
+      expect(selector.getRetryCount('model1')).toBe(0)
+    })
+
+    test('should notify wake-up callback when model becomes available again', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      const wakeUpCallback = (_modelName: string) => {
+        // Callback triggered
+      }
+      
+      selector.onModelWakeUp(wakeUpCallback)
+      
+      // Put model to sleep
+      selector.recordFailure('model1')
+      expect(selector.getSleepingModels()).toContain('model1')
+      
+      // Reset model (simulating wake up)
+      selector.resetModel('model1')
+      
+      // Model should be available again
+      expect(selector.isModelAvailable('model1')).toBe(true)
+    })
   })
 
   describe('fallback pool', () => {

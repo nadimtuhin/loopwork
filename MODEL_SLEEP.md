@@ -18,7 +18,7 @@ Instead of permanently disabling models after 3 failures, Loopwork now puts mode
 
 ### When a Model Wakes Up
 ```
-04:02:49 ℹ️ INFO: [CircuitBreaker] Model antigravity-claude-sonnet-4-5 woke up from sleep and is available again
+04:02:49 ℹ️ INFO: [CircuitBreaker] Model antigravity-claude-sonnet-4-5 woke up from sleep with fresh state (retry count reset, ready for new workers)
 ```
 
 ### Checking Model Status
@@ -60,6 +60,7 @@ export default defineConfig({
 2. **Better UX**: Clear messaging about when models will be available again
 3. **No Manual Intervention**: Models automatically recover after sleep
 4. **Graceful Degradation**: Failed models don't block the entire workflow
+5. **Fresh Start**: Models wake up with reset retry count, ready for new workers
 
 ## Comparison: Old vs New
 
@@ -83,6 +84,18 @@ The sleep mechanism uses a circuit breaker pattern with:
 - **Auto-reset**: Timer-based wake-up after `resetTimeoutMs`
 - **Success tracking**: Successful calls decrement failure count
 - **Wake-up callbacks**: System logs when models become available
+- **Fresh start on wake-up**: Retry count is reset to 0, giving models a clean slate
+
+### Fresh Start Behavior
+
+When a model wakes up from sleep:
+
+1. **Retry count reset** to 0
+2. **Circuit breaker** transitions to `half-open` state
+3. **Model is available** for immediate use
+4. **First successful call** closes the circuit completely
+
+This ensures that models get a fair chance after waking up, rather than being penalized for past failures.
 
 ## API for Programmatic Access
 

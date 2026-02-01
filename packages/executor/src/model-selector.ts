@@ -198,6 +198,10 @@ export class ModelSelector {
     for (const modelName of this.disabledModels) {
       if (this.circuitBreakers.canExecute(modelName)) {
         this.disabledModels.delete(modelName)
+        
+        // Reset retry count for fresh start
+        this.retryCount.set(modelName, 0)
+        
         // Notify wake-up callbacks
         for (const callback of this.onModelWakeUpCallbacks) {
           try {

@@ -602,7 +602,8 @@ export async function init(deps: InitDeps = {}) {
   const useSimpleConfig = configStyle.toLowerCase().startsWith('s')
 
   let configContent = ''
-  
+  const pluginPackages: { name: string; package: string; imports: string[] }[] = []
+
   if (useSimpleConfig) {
     // NEW: Simple config style - much cleaner!
     const modelPreset = aiTool === 'claude' 
@@ -637,7 +638,6 @@ export default defineSimpleConfig({
     // Advanced config with compose pattern
     const coreImports: string[] = ['defineConfig', 'compose']
     const backendImports: string[] = []
-    const pluginPackages: { name: string; package: string; imports: string[] }[] = []
 
     if (backendType === 'github') {
       backendImports.push('withGitHubBackend')

@@ -23,6 +23,7 @@ export class CliExecutor extends BaseCliExecutor {
        spawner: options.spawner || createSpawner(cliConfig.preferPty ?? true),
        staleTimeoutMs: (config.timeout ?? 600) * 1000 * 2,
        gracePeriodMs: cliConfig.sigkillDelayMs || 5000,
+       resourceLimits: config.resourceLimits,
     })
 
     super(cliConfig, processManager as unknown as import('@loopwork-ai/contracts').IProcessManager, pluginRegistry, executorLogger, options)

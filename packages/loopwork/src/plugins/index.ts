@@ -105,6 +105,15 @@ export type { SystemMonitoringOptions } from '@loopwork-ai/proactive-health-moni
 export type { DynamicTasksOptions } from './dynamic-tasks'
 export type { RollbackPluginOptions } from './rollback'
 export type { GitAutoCommitOptions } from './git-autocommit'
+export {
+  withAnalyzerConfig,
+  withGLMAnalyzer,
+  withZaiGLM47,
+  withOpenCodeGLM47,
+  createErrorAnalyzerFromConfig,
+  configureAnalyzer,
+} from './analyzer-config'
+export type { AnalyzerConfigOptions } from './analyzer-config'
 
 // Embedding and Vector Store plugins
 export {

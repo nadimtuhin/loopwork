@@ -371,6 +371,8 @@ if (import.meta.main) {
       .option('--config <path>', 'Path to config file')
       .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
       .option('--sequential', 'Force sequential execution (parallel=1)')
+      .option('--memory-limit <mb>', 'Memory limit per process in MB')
+      .option('--cpu-limit <percent>', 'CPU limit per process in percent')
       .option('--with-ai-monitor', 'Enable AI Monitor for auto-healing')
       .option('--no-dynamic-tasks', 'Disable dynamic task creation')
       .option('--json', 'Output as newline-delimited JSON events')
@@ -650,6 +652,8 @@ if (import.meta.main) {
       .option('--no-dynamic-tasks', 'Disable dynamic task creation')
       .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)')
       .option('--sequential', 'Force sequential execution (parallel=1)')
+      .option('--memory-limit <mb>', 'Memory limit per process in MB')
+      .option('--cpu-limit <percent>', 'CPU limit per process in percent')
       .option('--json', 'Output as newline-delimited JSON events')
       .action(async (options) => {
         try {

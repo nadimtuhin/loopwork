@@ -8,6 +8,13 @@ export interface GLMAnalyzerOptions {
   cooldownMs?: number
 }
 
+export const ZAI_CONFIG = {
+  baseUrl: 'https://api.z.ai/api/anthropic/v1',
+  model: 'glm-4.7',
+} as const
+
+export const OPENCODE_ZAI_MODEL = 'zai-coding-plan/glm-4.7' as const
+
 export class GLMErrorAnalyzer implements IErrorAnalyzer {
   readonly name = 'error-analyzer' as const
   private apiKey: string

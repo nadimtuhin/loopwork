@@ -72,15 +72,13 @@ describe('Init E2E Integration Test', () => {
       expect(fs.existsSync(configPath)).toBe(true)
       const configContent = fs.readFileSync(configPath, 'utf-8')
 
-      // Verify config has correct imports
-      expect(configContent).toContain("import { defineConfig, compose } from 'loopwork'")
-      expect(configContent).toContain("import { withJSONBackend } from 'loopwork'")
+      // Verify config has correct imports (simple config format is now default)
+      expect(configContent).toContain("import { defineSimpleConfig } from 'loopwork'")
 
-      // Verify config composition
-      expect(configContent).toContain('export default compose(')
-      expect(configContent).toContain('withJSONBackend')
-      expect(configContent).toContain('defineConfig({')
-      expect(configContent).toContain("cli: 'opencode'") // Default CLI
+      // Verify simple config structure
+      expect(configContent).toContain('export default defineSimpleConfig({')
+      expect(configContent).toContain("backend: '.specs/tasks/tasks.json'")
+      expect(configContent).toContain('parallel: 1')
 
       // 2. Verify .gitignore created with required patterns
       const gitignorePath = resolvePath('.gitignore')
@@ -155,11 +153,11 @@ describe('Init E2E Integration Test', () => {
       // The default backend is 'json', not 'github'
       await init()
 
-      // Verify config uses JSON backend (the default)
+      // Verify config uses JSON backend (the default) - simple config format
       const configPath = resolvePath('loopwork.config.ts')
       expect(fs.existsSync(configPath)).toBe(true)
       const configContent = fs.readFileSync(configPath, 'utf-8')
-      expect(configContent).toContain('withJSONBackend')
+      expect(configContent).toContain("backend: '.specs/tasks/tasks.json'")
       expect(configContent).not.toContain('withGitHubBackend')
 
       // JSON backend creates tasks.json
@@ -178,21 +176,19 @@ describe('Init E2E Integration Test', () => {
       const configPath = resolvePath('loopwork.config.ts')
       expect(fs.existsSync(configPath)).toBe(true)
 
-      // Verify the config file is valid TypeScript
+      // Verify the config file is valid TypeScript (simple config format)
       const configContent = fs.readFileSync(configPath, 'utf-8')
 
       // Check for proper syntax
       expect(configContent).toMatch(/import\s+{[^}]+}\s+from\s+['"]loopwork['"]/)
-      expect(configContent).toMatch(/export\s+default\s+compose\(/)
+      expect(configContent).toMatch(/export\s+default\s+defineSimpleConfig\(/)
 
       // Check that imports are correctly formed
-      expect(configContent).toMatch(/defineConfig/)
-      expect(configContent).toMatch(/compose/)
-      expect(configContent).toMatch(/withJSONBackend|withGitHubBackend/)
+      expect(configContent).toMatch(/defineSimpleConfig/)
 
-      // Verify config structure
-      expect(configContent).toContain("cli: 'opencode'")
-      expect(configContent).toContain('maxIterations: 50')
+      // Verify simple config structure
+      expect(configContent).toContain("backend: '.specs/tasks/tasks.json'")
+      expect(configContent).toContain('parallel: 1')
     })
   })
 
@@ -201,10 +197,10 @@ describe('Init E2E Integration Test', () => {
       await init()
 
       const configContent = fs.readFileSync(resolvePath('loopwork.config.ts'), 'utf-8')
-      // Default includes cost tracking
-      expect(configContent).toContain("from '@loopwork-ai/cost-tracking'")
-      expect(configContent).toContain('withCostTracking')
-      expect(configContent).toMatch(/withCostTracking\(\{\s*dailyBudget:\s*10\.00?\s*\}\)/)
+      // Simple config format - plugins are commented out by default
+      expect(configContent).toContain('// autoCommit: true')
+      expect(configContent).toContain('// smartTests: true')
+      expect(configContent).toContain('// taskRecovery: true')
     })
 
     test('config is valid without plugins', async () => {
@@ -214,9 +210,9 @@ describe('Init E2E Integration Test', () => {
       await init()
 
       const configContent = fs.readFileSync(resolvePath('loopwork.config.ts'), 'utf-8')
-      expect(configContent).toContain("import { defineConfig, compose } from 'loopwork'")
-      expect(configContent).toContain('export default compose(')
-      expect(configContent).toContain('defineConfig({')
+      expect(configContent).toContain("import { defineSimpleConfig } from 'loopwork'")
+      expect(configContent).toContain('export default defineSimpleConfig({')
+      expect(configContent).toContain('parallel: 1')
     })
   })
 
@@ -226,11 +222,10 @@ describe('Init E2E Integration Test', () => {
 
       await init()
 
-      // Verify defaults were used
+      // Verify defaults were used (simple config format)
       const configContent = fs.readFileSync(resolvePath('loopwork.config.ts'), 'utf-8')
-      expect(configContent).toContain("cli: 'opencode'") // Default CLI
-      expect(configContent).toContain('withJSONBackend') // Default backend
-      expect(configContent).toContain('.specs/tasks/tasks.json') // Default tasks file
+      expect(configContent).toContain("backend: '.specs/tasks/tasks.json'") // Default backend path
+      expect(configContent).toContain('parallel: 1') // Default parallel setting
 
       // Verify all expected files created
       expect(fs.existsSync(resolvePath('loopwork.config.ts'))).toBe(true)

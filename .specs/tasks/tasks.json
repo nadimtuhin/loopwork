@@ -2488,7 +2488,7 @@
     },
     {
       "id": "AI-MONITOR-001h",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "AI Monitor: LLM Fallback Analyzer",
       "feature": "ai-monitor",
@@ -3285,19 +3285,33 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "AI-MONITOR-001h",
+          "timestamp": "2026-02-01T22:19:41.129Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T22-08-23-45496\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T11:33:39.637Z",
-        "updatedAt": "2026-02-01T22:08:23.637Z",
-        "startedAt": "2026-02-01T22:08:23.613Z"
+        "updatedAt": "2026-02-01T22:19:41.129Z",
+        "startedAt": "2026-02-01T22:08:23.613Z",
+        "completedAt": "2026-02-01T22:19:41.129Z"
       },
       "metadata": {
         "cli": "opencode",
         "model": "kimi-k2.5-tee",
         "modelDisplayName": "opencode/kimi-k2.5-tee",
         "workerId": 1
-      }
+      },
+      "failureCount": 0
     },
     {
       "id": "AI-MONITOR-001i",
@@ -5906,7 +5920,7 @@
     },
     {
       "id": "BULKHEAD-003",
-      "status": "in-progress",
+      "status": "pending",
       "priority": "medium",
       "title": "Implement Process Resource Limits (CPU & Memory)",
       "feature": "bulkhead",
@@ -6073,12 +6087,23 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "BULKHEAD-003",
+          "timestamp": "2026-02-01T22:18:28.774Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T20:46:14.015Z",
-        "updatedAt": "2026-02-01T22:08:23.698Z",
-        "startedAt": "2026-02-01T22:08:23.670Z"
+        "updatedAt": "2026-02-01T22:18:28.774Z"
       },
       "metadata": {
         "cli": "opencode",

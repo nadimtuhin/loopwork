@@ -57,6 +57,27 @@ export interface LoopworkConfig {
     persistence?: boolean
   }
   checkpoint?: import('../core/checkpoint-integrator').CheckpointConfig
+  /**
+   * Resource limits for spawned processes
+   */
+  resourceLimits?: {
+    enabled?: boolean
+    cpuLimit?: number
+    memoryLimitMB?: number
+    checkIntervalMs?: number
+    gracePeriodMs?: number
+  }
+  /**
+   * Error analyzer configuration
+   */
+  errorAnalyzer?: {
+    provider: 'claude' | 'glm' | 'mock'
+    model?: string
+    apiKey?: string
+    baseUrl?: string
+    maxCallsPerSession?: number
+    cooldownMs?: number
+  }
   [key: string]: unknown
 }
 

@@ -198,7 +198,7 @@ export class CliExecutor {
 
     // Register callback for when models wake up from sleep
     this.modelSelector.onModelWakeUp((modelName) => {
-      this.logger.info(`[CircuitBreaker] Model ${modelName} woke up from sleep and is available again`)
+      this.logger.info(`[CircuitBreaker] Model ${modelName} woke up from sleep with fresh state (retry count reset, ready for new workers)`)
     })
 
     this.healthChecker = new CliHealthChecker({

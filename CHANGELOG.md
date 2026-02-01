@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### 2026-02-01 - FALLBACK-004
+- FALLBACK-004: Implement Reduced Functionality Mode
+
 ### 2026-02-01 - CHECKPOI-002
 - CHECKPOI-002: Implement Auto-Checkpoint Integration
 
