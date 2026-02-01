@@ -1,6 +1,7 @@
 import { ModelConfig, ExecutionOptions, ITaskMinimal } from './types'
 
 export * from './types'
+export * from './strategy'
 
 export interface IModelSelector {
   getNext(): ModelConfig | null

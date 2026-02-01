@@ -86,6 +86,12 @@ export interface RetryConfig {
   backoffMultiplier?: number
   retrySameModel?: boolean
   maxRetriesPerModel?: number
+  /**
+   * Delay between model execution attempts in milliseconds.
+   * Useful for rate limiting and avoiding resource contention when switching models.
+   * @default 2000 (2 seconds)
+   */
+  delayBetweenModelAttemptsMs?: number
 }
 
 export interface CliPathConfig {
