@@ -101,6 +101,14 @@ export interface ParallelRunnerOptions {
   onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
   onTaskRetry?: (context: TaskContext, error: string) => Promise<void>
   onTaskAbort?: (context: TaskContext) => Promise<void>
+  onWorkerStatus?: (status: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  }) => Promise<void>
   buildPrompt: (task: Task, retryContext?: string) => string
   debugger?: Debugger
   messageBus?: IMessageBus
@@ -128,6 +136,14 @@ export class ParallelRunner {
   private onTaskFailed?: (context: TaskContext, error: string) => Promise<void>
   private onTaskRetry?: (context: TaskContext, error: string) => Promise<void>
   private onTaskAbort?: (context: TaskContext) => Promise<void>
+  private onWorkerStatus?: (status: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  }) => Promise<void>
   private buildPrompt: (task: Task, retryContext?: string) => string
   private debugger?: Debugger
   private retryBudget: RetryBudget
@@ -171,6 +187,7 @@ export class ParallelRunner {
     this.onTaskFailed = options.onTaskFailed
     this.onTaskRetry = options.onTaskRetry
     this.onTaskAbort = options.onTaskAbort
+    this.onWorkerStatus = options.onWorkerStatus
     this.buildPrompt = options.buildPrompt
     this.debugger = options.debugger
     this.circuitBreakerThreshold = options.config.circuitBreakerThreshold ?? 5
@@ -202,6 +219,22 @@ export class ParallelRunner {
     // Initialize checkpoint integrator
     if (this.config.checkpoint?.enabled) {
       this.checkpointIntegrator = new CheckpointIntegrator(this.config.checkpoint, this.config.projectRoot)
+    }
+  }
+
+  /**
+   * Emit worker status update
+   */
+  private async emitWorkerStatus(activeWorkers: number, pendingTasks: number, runningTasks: number): Promise<void> {
+    if (this.onWorkerStatus) {
+      await this.onWorkerStatus({
+        totalWorkers: this.workers,
+        activeWorkers,
+        pendingTasks,
+        runningTasks,
+        completedTasks: this.tasksCompleted,
+        failedTasks: this.tasksFailed,
+      })
     }
   }
 
@@ -290,6 +323,10 @@ export class ParallelRunner {
 
     // Main loop - runs until no more tasks or max iterations reached
     while (this.iterationCount < maxIterations && !this.isAborted) {
+      // Get pending count for status
+      const pendingCount = await this.backend.countPending().catch(() => 0)
+      await this.emitWorkerStatus(this.workers, pendingCount, this.activeContexts.size)
+
       // Trigger checkpoint at configured intervals if enabled
       if (this.checkpointIntegrator?.shouldCheckpoint(this.iterationCount)) {
         // Periodic checkpoints are non-blocking and safe

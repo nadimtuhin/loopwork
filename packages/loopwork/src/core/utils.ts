@@ -208,6 +208,24 @@ export const logger = {
       timestamp: Date.now()
     })
   },
+
+  /**
+   * Emit worker status update for the status bar
+   */
+  emitWorkerStatus: (status: {
+    totalWorkers: number
+    activeWorkers: number
+    pendingTasks: number
+    runningTasks: number
+    completedTasks: number
+    failedTasks: number
+  }) => {
+    logger.renderer.render({
+      type: 'worker:status',
+      ...status,
+      timestamp: Date.now()
+    })
+  },
 }
 
 export async function promptUser(
