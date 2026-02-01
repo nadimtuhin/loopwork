@@ -47,6 +47,9 @@ export const ERROR_CODES = {
   /** CLI tool exceeded timeout and was terminated */
   ERR_CLI_TIMEOUT: 'https://docs.loopwork.ai/errors/cli-timeout',
 
+  /** Pre-flight validation failed */
+  ERR_PREFLIGHT_FAILED: 'https://docs.loopwork.ai/errors/preflight-failed',
+
   /** Backend Errors - Issues with task backend initialization or validation */
 
   /** Backend configuration is invalid or incompatible */

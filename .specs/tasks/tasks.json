@@ -7067,7 +7067,7 @@
     },
     {
       "id": "DEADLETT-004",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Add Cooldown & Retry Policy",
       "feature": "deadletter",
@@ -7097,19 +7097,83 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "DEADLETT-004",
+          "timestamp": "2026-02-01T23:09:53.493Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "DEADLETT-004",
+          "timestamp": "2026-02-01T23:12:23.779Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "DEADLETT-004",
+          "timestamp": "2026-02-01T23:22:28.841Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "DEADLETT-004",
+          "timestamp": "2026-02-01T23:33:25.171Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "DEADLETT-004",
+          "timestamp": "2026-02-01T23:35:45.721Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T22:59:48.395Z",
-        "updatedAt": "2026-02-01T22:59:48.399Z",
-        "startedAt": "2026-02-01T22:59:48.395Z"
+        "updatedAt": "2026-02-01T23:35:45.721Z",
+        "startedAt": "2026-02-01T23:33:25.171Z",
+        "completedAt": "2026-02-01T23:35:45.721Z"
       },
       "metadata": {
         "cli": "opencode",
-        "model": "glm-4.7-free",
-        "modelDisplayName": "opencode/glm-4.7-free",
+        "model": "opencode-gemini-pro-low",
+        "modelDisplayName": "opencode/opencode-gemini-pro-low",
         "workerId": 1
-      }
+      },
+      "failureCount": 0
     },
     {
       "id": "DEADLETT-005",
@@ -7487,7 +7551,7 @@
     },
     {
       "id": "PLUGINAR-004",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement Persistent Plugin State",
       "feature": "plugin-arch",
@@ -7517,19 +7581,83 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "PLUGINAR-004",
+          "timestamp": "2026-02-01T23:09:53.543Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PLUGINAR-004",
+          "timestamp": "2026-02-01T23:12:23.796Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PLUGINAR-004",
+          "timestamp": "2026-02-01T23:22:28.932Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "PLUGINAR-004",
+          "timestamp": "2026-02-01T23:33:25.193Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "PLUGINAR-004",
+          "timestamp": "2026-02-01T23:33:41.895Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T22:59:48.444Z",
-        "updatedAt": "2026-02-01T22:59:48.451Z",
-        "startedAt": "2026-02-01T22:59:48.444Z"
+        "updatedAt": "2026-02-01T23:33:41.895Z",
+        "startedAt": "2026-02-01T23:33:25.193Z",
+        "completedAt": "2026-02-01T23:33:41.895Z"
       },
       "metadata": {
         "cli": "opencode",
-        "model": "opencode-gemini-flash",
-        "modelDisplayName": "opencode/opencode-gemini-flash",
-        "workerId": 3
-      }
+        "model": "glm-4.7",
+        "modelDisplayName": "opencode/glm-4.7",
+        "workerId": 2
+      },
+      "failureCount": 0
     },
     {
       "id": "DEBUGGER-001",
@@ -7657,7 +7785,7 @@
     },
     {
       "id": "DEBUGGER-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement 'Edit & Continue' for Prompts",
       "feature": "debugger",
@@ -7667,7 +7795,9 @@
       "timestamps": {
         "createdAt": "2026-01-31T06:33:13.906Z",
         "startedAt": "2026-01-31T06:33:13.906Z",
-        "resumedAt": "2026-01-31T08:26:12.682Z"
+        "resumedAt": "2026-02-01T23:12:23.826Z",
+        "updatedAt": "2026-02-01T23:17:54.452Z",
+        "completedAt": "2026-02-01T23:17:54.452Z"
       },
       "events": [
         {
@@ -7706,10 +7836,41 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "DEBUGGER-003",
+          "timestamp": "2026-02-01T23:12:23.826Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "DEBUGGER-003",
+          "timestamp": "2026-02-01T23:17:54.452Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "minimax-m2.1-free",
+        "modelDisplayName": "opencode/minimax-m2.1-free",
+        "workerId": 3
+      }
     },
     {
       "id": "DEBUGGER-004",
@@ -7803,7 +7964,7 @@
     },
     {
       "id": "MCPMANAG-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement MCP Client Connection & Tool Registry",
       "feature": "mcp-manager",
@@ -7813,7 +7974,9 @@
       "timestamps": {
         "createdAt": "2026-01-31T06:03:11.294Z",
         "startedAt": "2026-01-31T06:33:13.912Z",
-        "resumedAt": "2026-01-31T08:39:27.973Z"
+        "resumedAt": "2026-02-01T23:12:23.865Z",
+        "updatedAt": "2026-02-01T23:21:33.744Z",
+        "completedAt": "2026-02-01T23:21:33.744Z"
       },
       "events": [
         {
@@ -7871,14 +8034,45 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "MCPMANAG-002",
+          "timestamp": "2026-02-01T23:12:23.865Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "MCPMANAG-002",
+          "timestamp": "2026-02-01T23:21:33.744Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "opencode-gemini-flash",
+        "modelDisplayName": "opencode/opencode-gemini-flash",
+        "workerId": 4
+      }
     },
     {
       "id": "MCPMANAG-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Build Local Script Bridge Adapter",
       "feature": "mcp-manager",
@@ -7887,7 +8081,10 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T08:48:40.678Z",
-        "startedAt": "2026-01-31T08:48:40.678Z"
+        "startedAt": "2026-01-31T08:48:40.678Z",
+        "updatedAt": "2026-02-01T23:35:35.108Z",
+        "resumedAt": "2026-02-01T23:33:25.217Z",
+        "completedAt": "2026-02-01T23:35:35.108Z"
       },
       "events": [
         {
@@ -7916,14 +8113,45 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "MCPMANAG-003",
+          "timestamp": "2026-02-01T23:33:25.217Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "MCPMANAG-003",
+          "timestamp": "2026-02-01T23:35:35.108Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "opencode-gemini-pro-low",
+        "modelDisplayName": "opencode/opencode-gemini-pro-low",
+        "workerId": 3
+      }
     },
     {
       "id": "MCPMANAG-004",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement Task-Scoped Context Injection Logic",
       "feature": "mcp-manager",
@@ -7932,7 +8160,10 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T09:02:05.238Z",
-        "startedAt": "2026-01-31T09:02:05.238Z"
+        "startedAt": "2026-01-31T09:02:05.238Z",
+        "updatedAt": "2026-02-01T23:53:32.558Z",
+        "resumedAt": "2026-02-01T23:47:09.722Z",
+        "completedAt": "2026-02-01T23:53:32.558Z"
       },
       "events": [
         {
@@ -7961,10 +8192,41 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "MCPMANAG-004",
+          "timestamp": "2026-02-01T23:47:09.722Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "MCPMANAG-004",
+          "timestamp": "2026-02-01T23:53:32.558Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "cerebras-glm-4.7",
+        "modelDisplayName": "opencode/cerebras-glm-4.7",
+        "workerId": 1
+      }
     },
     {
       "id": "CONTROLA-001",
@@ -8059,7 +8321,7 @@
     },
     {
       "id": "CONTROLA-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Implement Real-time Event Streaming (SSE)",
       "feature": "control-api",
@@ -8068,7 +8330,10 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T09:31:55.876Z",
-        "startedAt": "2026-01-31T09:31:55.876Z"
+        "startedAt": "2026-01-31T09:31:55.876Z",
+        "updatedAt": "2026-02-01T23:33:33.017Z",
+        "resumedAt": "2026-02-01T23:33:25.260Z",
+        "completedAt": "2026-02-01T23:33:33.017Z"
       },
       "events": [
         {
@@ -8097,14 +8362,45 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CONTROLA-003",
+          "timestamp": "2026-02-01T23:33:25.260Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CONTROLA-003",
+          "timestamp": "2026-02-01T23:33:33.017Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 4",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "kimi-k2.5-free",
+        "modelDisplayName": "opencode/kimi-k2.5-free",
+        "workerId": 4
+      }
     },
     {
       "id": "CONTROLA-004",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "medium",
       "title": "Implement Task Query Endpoints",
       "feature": "control-api",
@@ -8113,7 +8409,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T09:51:05.938Z",
-        "startedAt": "2026-01-31T11:28:51.115Z"
+        "startedAt": "2026-01-31T11:28:51.115Z",
+        "updatedAt": "2026-02-01T23:47:09.773Z",
+        "resumedAt": "2026-02-01T23:47:09.765Z"
       },
       "events": [
         {
@@ -8265,14 +8563,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CONTROLA-004",
+          "timestamp": "2026-02-01T23:47:09.765Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "glm-4.7-flash",
+        "modelDisplayName": "opencode/glm-4.7-flash",
+        "workerId": 2
+      }
     },
     {
       "id": "CONTROLA-005",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Add Authentication Middleware",
       "feature": "control-api",
@@ -8282,7 +8599,10 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T10:28:47.131Z",
-        "startedAt": "2026-01-31T16:25:55.052Z"
+        "startedAt": "2026-01-31T16:25:55.052Z",
+        "updatedAt": "2026-02-01T23:47:18.286Z",
+        "resumedAt": "2026-02-01T23:47:09.814Z",
+        "completedAt": "2026-02-01T23:47:18.286Z"
       },
       "events": [
         {
@@ -8511,10 +8831,41 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "CONTROLA-005",
+          "timestamp": "2026-02-01T23:47:09.814Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "CONTROLA-005",
+          "timestamp": "2026-02-01T23:47:18.286Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "kimi-k2.5-coding",
+        "modelDisplayName": "opencode/kimi-k2.5-coding",
+        "workerId": 3
+      }
     },
     {
       "id": "VISUALIZ-001",
@@ -8562,7 +8913,7 @@
     },
     {
       "id": "VISUALIZ-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "title": "Build Mermaid and DOT Diagram Generators",
       "feature": "visualizer",
@@ -8571,7 +8922,10 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T11:01:46.414Z",
-        "startedAt": "2026-01-31T11:27:28.242Z"
+        "startedAt": "2026-01-31T11:27:28.242Z",
+        "updatedAt": "2026-02-01T23:47:24.663Z",
+        "resumedAt": "2026-02-01T23:47:09.848Z",
+        "completedAt": "2026-02-01T23:47:24.663Z"
       },
       "events": [
         {
@@ -8657,10 +9011,41 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "VISUALIZ-002",
+          "timestamp": "2026-02-01T23:47:09.848Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "VISUALIZ-002",
+          "timestamp": "2026-02-01T23:47:24.663Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T22-35-48-72476\nIteration: 5",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
-      "scheduledFor": null
+      "scheduledFor": null,
+      "metadata": {
+        "cli": "opencode",
+        "model": "cerebras-qwen-3",
+        "modelDisplayName": "opencode/cerebras-qwen-3",
+        "workerId": 4
+      }
     },
     {
       "id": "VISUALIZ-003",
@@ -17036,8 +17421,8 @@
       ],
       "timestamps": {
         "createdAt": "2026-02-01T06:58:46.117Z",
-        "updatedAt": "2026-02-01T22:59:48.299Z",
-        "startedAt": "2026-02-01T22:59:48.295Z"
+        "updatedAt": "2026-02-01T23:47:09.619Z",
+        "startedAt": "2026-02-01T23:47:09.613Z"
       },
       "events": [
         {
@@ -19481,13 +19866,88 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:12:21.668Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:12:23.678Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:33:23.053Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:33:25.070Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:47:07.593Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-092",
+          "timestamp": "2026-02-01T23:47:09.613Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
         }
       ],
       "metadata": {
         "cli": "opencode",
-        "modelDisplayName": "opencode/glm-4.7-flash",
+        "modelDisplayName": "opencode/opencode-gemini-flash",
         "workerId": 0,
-        "model": "glm-4.7-flash"
+        "model": "opencode-gemini-flash"
       }
     },
     {

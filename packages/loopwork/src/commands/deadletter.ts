@@ -11,11 +11,11 @@ export interface DeadletterDependencies {
   getConfig(): Promise<Config>
   createBackend(backendConfig: Config['backend']): TaskBackend
   logger: {
-    info: (...args: unknown[]) => void
-    success: (...args: unknown[]) => void
-    warn: (...args: unknown[]) => void
-    error: (...args: unknown[]) => void
-    raw: (...args: unknown[]) => void
+    info: (msg: string) => void
+    success: (msg: string) => void
+    warn: (msg: string) => void
+    error: (msg: string) => void
+    raw: (msg: string, noNewline?: boolean) => void
   }
 }
 
@@ -50,28 +50,45 @@ export async function list(options: DeadletterListOptions = {}, deps = defaultDe
   deps.logger.info(`Dead Letter Queue (${tasks.length} quarantined tasks)\n`)
 
   const table = new Table(
-    ['ID', 'Title', 'Feature', 'Failures', 'Last Error'],
+    ['ID', 'Title', 'Failures', 'Quarantined At', 'Last Error'],
     [
       { width: 12, align: 'left' },
       { width: 30, align: 'left' },
-      { width: 15, align: 'left' },
       { width: 10, align: 'center' },
-      { width: 40, align: 'left' },
+      { width: 25, align: 'left' },
+      { width: 35, align: 'left' },
     ]
   )
 
   for (const task of tasks) {
     const error = task.lastError || task.events?.find(e => e.type === 'quarantined')?.message || 'Unknown'
+    const quarantinedAt = task.timestamps?.quarantinedAt 
+      ? new Date(task.timestamps.quarantinedAt).toLocaleString() 
+      : '-'
+      
     table.addRow([
       task.id,
       task.title.substring(0, 29),
-      task.feature || '-',
       (task.failureCount || 0).toString(),
-      error.substring(0, 39)
+      quarantinedAt,
+      error.substring(0, 34)
     ])
   }
 
   deps.logger.raw(table.render())
+  
+  if (config.deadletter?.enabled) {
+    deps.logger.raw('')
+    deps.logger.info('Policy:')
+    deps.logger.info(`  Threshold:    ${config.deadletter.threshold || 3} failures`)
+    deps.logger.info(`  Retry CD:     ${(config.deadletter.retryCooldownMs || 60000) / 1000}s`)
+    if (config.deadletter.autoRetry) {
+      deps.logger.info(`  Auto-Retry:   Enabled (delay: ${(config.deadletter.autoRetryDelayMs || 3600000) / 3600000}h)`)
+    } else {
+      deps.logger.info('  Auto-Retry:   Disabled')
+    }
+  }
+
   deps.logger.raw('')
   deps.logger.info('Use `loopwork deadletter retry <id>` to move a task back to pending queue.')
 }

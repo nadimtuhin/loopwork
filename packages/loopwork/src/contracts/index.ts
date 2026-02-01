@@ -33,6 +33,7 @@ export type {
   OrphanWatchConfig,
   FeatureFlags,
   DynamicTasksConfig,
+  DeadletterPolicy,
   BackendConfig,
   JsonBackendConfig,
   GithubBackendConfig,

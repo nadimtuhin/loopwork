@@ -5,15 +5,9 @@
  */
 
 import { loopworkState } from './loopwork-state'
+import type { IRetryBudget, RetryBudgetConfig } from '../contracts/services'
 
-export interface RetryBudgetConfig {
-  maxRetries: number
-  windowMs: number
-  enabled?: boolean
-  persistence?: boolean
-}
-
-export class RetryBudget {
+export class RetryBudget implements IRetryBudget {
   private retryTimestamps: number[] = []
   private maxRetries: number
   private windowMs: number

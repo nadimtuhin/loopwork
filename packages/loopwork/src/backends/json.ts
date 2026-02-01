@@ -212,6 +212,15 @@ export class JsonTaskAdapter implements TaskBackend {
         const elapsed = Date.now() - new Date(failedAt).getTime()
         return elapsed > options.retryCooldown
       }
+      
+      // Auto-retry from quarantine if policy allows
+      if (t.status === 'quarantined' && options?.deadletterPolicy?.autoRetry) {
+        const quarantinedAt = t.timestamps?.quarantinedAt
+        if (!quarantinedAt) return false
+        const elapsed = Date.now() - new Date(quarantinedAt).getTime()
+        return elapsed > (options.deadletterPolicy.autoRetryDelayMs || 3600000)
+      }
+
       return false
     })
 
@@ -290,6 +299,7 @@ export class JsonTaskAdapter implements TaskBackend {
     if (!data) return []
 
     let entries = data.tasks.filter(t => {
+      // console.log(`Checking task ${t.id} (status: ${t.status}) against statuses:`, options?.status)
       // Filter by status
       if (options?.status) {
         const statuses = Array.isArray(options.status) ? options.status : [options.status]
@@ -297,11 +307,20 @@ export class JsonTaskAdapter implements TaskBackend {
       }
 
       // Handle retry cooldown for failed tasks if status includes 'failed'
-      if (t.status === 'failed' && options?.retryCooldown !== undefined) {
+      if (t.status === 'failed' && options?.retryCooldown !== undefined && options.retryCooldown > 0) {
         const failedAt = t.timestamps?.failedAt
         if (!failedAt) return false
         const elapsed = Date.now() - new Date(failedAt).getTime()
-        if (elapsed <= options.retryCooldown) return false
+        if (elapsed < options.retryCooldown) return false
+      }
+
+      // Handle auto-retry from quarantine
+      if (t.status === 'quarantined' && options?.deadletterPolicy?.autoRetry) {
+        const quarantinedAt = t.timestamps?.quarantinedAt
+        if (!quarantinedAt) return false
+        const elapsed = Date.now() - new Date(quarantinedAt).getTime()
+        const due = elapsed > (options.deadletterPolicy.autoRetryDelayMs || 3600000)
+        if (!due) return false
       }
 
       return true
@@ -349,7 +368,17 @@ export class JsonTaskAdapter implements TaskBackend {
   }
 
   async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
-    return this.listTasks({ ...options, status: 'pending' })
+    const statuses: TaskStatus[] = ['pending']
+    
+    if (options?.retryCooldown !== undefined) {
+      statuses.push('failed')
+    }
+    
+    if (options?.deadletterPolicy?.autoRetry) {
+      statuses.push('quarantined')
+    }
+
+    return this.listTasks({ ...options, status: statuses })
   }
 
   private loadTaskSummary(entry: JsonTaskEntry, data: JsonTasksFile): Task {

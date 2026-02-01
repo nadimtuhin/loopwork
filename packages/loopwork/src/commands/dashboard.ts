@@ -89,10 +89,12 @@ export async function dashboard(
       // Initialize backend to get task stats
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let backend: any = null
+      let config: any = null
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { backend: initializedBackend } = await getBackendAndConfig(options as any)
+        const { backend: initializedBackend, config: initializedConfig } = await getBackendAndConfig(options as any)
         backend = initializedBackend
+        config = initializedConfig
       } catch {
         // If backend fails to initialize, continue without task stats to show process status
       }
@@ -166,20 +168,19 @@ export async function dashboard(
           
           // If we have more running processes than tasks, show them as idle/polling workers
           // This ensures we show the full swarm capacity even if some workers haven't claimed tasks yet
-          const extraWorkersCount = Math.max(0, running.length - displayTasks.length)
+          const configParallel = (config as any)?.parallel || 0
+          const expectedWorkers = Math.max(running.length, configParallel)
+          const extraWorkersCount = Math.max(0, expectedWorkers - displayTasks.length)
           
           if (extraWorkersCount > 0) {
-             // We can't easily map PIDs to tasks, so we just take the last N processes
-             // This is a heuristic - it might double-list a process if we pick the wrong one,
-             // but it guarantees we show the correct *count* of active entities.
-             const extraWorkers = running.slice(running.length - extraWorkersCount)
-             extraWorkers.forEach(p => {
-               displayTasks.push({
-                 id: `PID-${p.pid}`,
-                 title: `Worker in ${p.namespace} (Polling)`,
-                 startedAt: new Date(p.startedAt)
-               })
-             })
+             // Fill remaining slots with idle workers
+             for (let i = 0; i < extraWorkersCount; i++) {
+                displayTasks.push({
+                  id: `WORKER-${displayTasks.length}`,
+                  title: `Worker ${displayTasks.length} (Polling)`,
+                  startedAt: new Date()
+                })
+             }
           }
           // If no backend tasks at all and no extra workers logic needed (count matches),
           // check if we fell through (0 tasks, some running) - logic above handles it (extraWorkersCount == running.length)

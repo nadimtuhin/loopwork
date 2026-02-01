@@ -123,6 +123,17 @@ Create a new task in the backlog.
 2. Create GitHub issue with appropriate labels
 3. Return issue URL
 
+## /loopwork:start-task
+
+Start working on a specific task with full context.
+
+**When invoked with a task ID (e.g. /loopwork:start-task TASK-001):**
+1. Call MCP tool \`loopwork_mark_in_progress(taskId)\`
+2. Call MCP tool \`loopwork_get_task_context(taskId)\`
+3. Review the returned context (PRD, criteria, dependencies)
+4. Create a plan based on the context
+5. Begin implementation
+
 ## /loopwork:config
 
 Show current loopwork configuration.
@@ -161,6 +172,7 @@ This project uses [Loopwork](https://github.com/nadimtuhin/loopwork) for AI-powe
 - \`/loopwork:resume\` - Resume a previous session
 - \`/loopwork:status\` - Check current state and progress
 - \`/loopwork:task-new\` - Create a new task
+- \`/loopwork:start-task\` - Start a task with full context
 - \`/loopwork:config\` - View configuration
 
 ### Configuration

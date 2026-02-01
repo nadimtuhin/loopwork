@@ -109,6 +109,22 @@ export class McpConnectionManager {
     }
   }
 
+  async reconnect(name: string): Promise<void> {
+    logger.info(`Reconnecting to MCP server: ${name}`)
+    const server = this.config.servers?.[name]
+
+    if (!server) {
+      throw new Error(`Server configuration not found: ${name}`)
+    }
+
+    const existingConn = this.connections.get(name)
+    if (existingConn && existingConn.status === 'connected') {
+      await this.disconnect(name)
+    }
+
+    await this.connect(name, server)
+  }
+
   getConnection(name: string): McpConnection | undefined {
     return this.connections.get(name)
   }

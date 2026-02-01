@@ -86,6 +86,7 @@ export class ControlServer {
       const order = c.req.query('order') || 'asc'
       const limit = parseInt(c.req.query('limit') || '50')
       const offset = parseInt(c.req.query('offset') || '0')
+      const fields = c.req.query('fields')
 
       const options: FindTaskOptions = {}
       if (status) options.status = status.split(',') as any
@@ -118,7 +119,7 @@ export class ControlServer {
 
             if (!valA) return 1
             if (!valB) return -1
-            
+
             if (valA < valB) return order === 'asc' ? -1 : 1
             if (valA > valB) return order === 'asc' ? 1 : -1
             return 0
@@ -126,7 +127,25 @@ export class ControlServer {
         }
 
         const total = allTasks.length
-        const tasks = allTasks.slice(offset, offset + limit)
+        let tasks = allTasks.slice(offset, offset + limit)
+
+        // Field selection support - filter response to only include requested fields
+        if (fields) {
+          const requestedFields = fields.split(',').map(f => f.trim())
+          tasks = tasks.map(task => {
+            const filtered: Record<string, unknown> = {}
+            for (const field of requestedFields) {
+              if (field in task) {
+                filtered[field] = (task as Record<string, unknown>)[field]
+              } else if (field === 'timestamps' && task.timestamps) {
+                filtered[field] = task.timestamps
+              } else if (field === 'metadata' && task.metadata) {
+                filtered[field] = task.metadata
+              }
+            }
+            return filtered
+          })
+        }
 
         return c.json({
           data: tasks,

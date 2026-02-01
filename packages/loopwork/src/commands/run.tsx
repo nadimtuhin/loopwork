@@ -4,7 +4,7 @@ import path from 'path'
 import chalk from 'chalk'
 import { getConfig, type Config } from '../core/config'
 import { StateManager } from '../core/state'
-import { createBackend, type TaskBackend, type Task } from '../backends'
+import { createBackend, type TaskBackend, type Task, type FindTaskOptions } from '../backends'
 import { CliExecutor } from '../core/cli'
 import { logger, separator, InkBanner, InkCompletionSummary, renderInk } from '../core/utils'
 import { plugins, createAIMonitor } from '../plugins'
@@ -20,112 +20,14 @@ import { RetryBudget } from '../core/retry-budget'
 import { failureState } from '../core/failure-state'
 import { LoopworkMonitor } from '../monitor'
 import type { JsonEvent } from '../contracts/output'
+import type { DeadletterPolicy } from '../contracts'
+import { generateSuccessCriteria, generateFailureCriteria, buildPrompt } from '../core/task-utils'
 
 
-
-function generateSuccessCriteria(task: Task): string[] {
-  const criteria: string[] = []
-  const desc = task.description.toLowerCase()
-  const title = task.title.toLowerCase()
-
-  if (desc.includes('test') || title.includes('test')) {
-    criteria.push('All related tests pass (`bun test` or `yarn test`)')
-  }
-
-  if (desc.includes('api') || desc.includes('endpoint') || desc.includes('graphql')) {
-    criteria.push('API endpoint is functional and returns expected responses')
-    criteria.push('GraphQL schema validates (no SDL errors)')
-  }
-
-  if (desc.includes('component') || desc.includes('page') || desc.includes('ui') || desc.includes('button')) {
-    criteria.push('Component renders without errors')
-    criteria.push('UI matches the requirements described in the PRD')
-  }
-
-  if (desc.includes('database') || desc.includes('migration') || desc.includes('prisma') || desc.includes('model')) {
-    criteria.push('Database migrations apply cleanly')
-    criteria.push('Prisma schema is valid (`yarn rw prisma validate`)')
-  }
-
-  if (desc.includes('fix') || desc.includes('bug') || title.includes('fix')) {
-    criteria.push('The bug is fixed and no longer reproducible')
-    criteria.push('No regression in related functionality')
-  }
-
-  if (desc.includes('refactor') || title.includes('refactor')) {
-    criteria.push('Code behavior is unchanged after refactoring')
-    criteria.push('Existing tests still pass')
-  }
-
-  if (criteria.length === 0) {
-    criteria.push('Implementation matches the PRD requirements')
-    criteria.push('No type errors (`yarn rw type-check`)')
-    criteria.push('Code follows project conventions')
-  }
-
-  return criteria
-}
-
-function generateFailureCriteria(task: Task): string[] {
-  const criteria: string[] = []
-  const desc = task.description.toLowerCase()
-
-  criteria.push('Type errors exist after changes')
-  criteria.push('Tests fail that were passing before')
-
-  if (desc.includes('auth') || desc.includes('password') || desc.includes('login') || desc.includes('security')) {
-    criteria.push('Security vulnerabilities introduced (injection, XSS, etc.)')
-  }
-
-  if (desc.includes('api') || desc.includes('interface') || desc.includes('contract')) {
-    criteria.push('Breaking changes to existing API contracts')
-  }
-
-  return criteria
-}
-
-function buildPrompt(task: Task, retryContext: string = ''): string {
-  const url = task.metadata?.url || task.metadata?.prdFile || ''
-  const urlLine = url ? `\nSource: ${url}` : ''
-
-  const successCriteria = generateSuccessCriteria(task)
-  const failureCriteria = generateFailureCriteria(task)
-
-  return `# Task: ${task.id}
-
-## Title
-${task.title}
-
-## PRD (Product Requirements)
-${task.description}
-
-## Success Criteria
-The task is considered COMPLETE when:
-${successCriteria.map(c => `- [ ] ${c}`).join('\n')}
-
-## Failure Criteria
-The task should be marked FAILED if:
-${failureCriteria.map(c => `- ${c}`).join('\n')}
-
-## Instructions
-1. Read the PRD carefully and understand the requirements
-2. Implement the task as described
-3. Verify against the success criteria above
-4. Run relevant tests to verify your changes
-5. If tests fail, fix the issues before marking complete
-
-${retryContext ? `## Previous Attempt Context\n${retryContext}` : ''}
-
-## Important
-- Follow the project's coding style (no semicolons, single quotes, 2-space indent)
-- Run \`yarn rw type-check\` before tests
-- Self-verify against success criteria before marking complete
-${urlLine}
-`
-}
 
 /**
  * Run command - core task execution loop
+
  *
  * This is the main entry point for programmatic usage.
  * For CLI registration, use createRunCommand() instead.
@@ -195,7 +97,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   const backend: TaskBackend = makeBackend(config.backend)
 
   // Initialize debugger if requested
-  let dbg: Record<string, unknown> | undefined
+  let dbg: any | undefined
   if (options.debugger) {
     const { Debugger } = await import('../core/debugger')
     dbg = new Debugger()
@@ -567,10 +469,18 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
     try {
       activeLogger.startSpinner('Searching for next task...')
+      const findTaskOptions: FindTaskOptions = { feature: config.feature }
+      if (config.deadletter?.enabled) {
+        findTaskOptions.deadletterPolicy = config.deadletter
+        if (config.deadletter.retryCooldownMs !== undefined) {
+          findTaskOptions.retryCooldown = config.deadletter.retryCooldownMs
+        }
+      }
+
       if (config.startTask && iteration === 1) {
         task = await backend.getTask(config.startTask)
       } else {
-        task = await backend.findNextTask({ feature: config.feature })
+        task = await backend.findNextTask(findTaskOptions)
       }
       
       if (task) {
@@ -687,8 +597,24 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
     await activePlugins.runHook('onTaskStart', taskContext)
 
-    const prompt = buildPrompt(task, retryContext)
+    let prompt = buildPrompt(task, retryContext)
     retryContext = ''
+
+    if (dbg) {
+      const dbgInstance = dbg as any
+      await dbgInstance.onEvent({
+        type: 'PRE_PROMPT',
+        taskId: task.id,
+        iteration,
+        timestamp: Date.now(),
+        prompt,
+      })
+
+      const modifiedPrompt = dbgInstance.getAndClearModifiedPrompt()
+      if (modifiedPrompt) {
+        prompt = modifiedPrompt
+      }
+    }
 
     const promptFile = path.join(config.outputDir, 'logs', `iteration-${iteration}-prompt.md`)
     fs.writeFileSync(promptFile, prompt)
@@ -852,9 +778,11 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           // Record failure in state manager
           failureState.recordFailure(task.id, errorMsg)
           const failureCount = failureState.getFailureCount(task.id)
-          const quarantineThreshold = config.quarantineThreshold ?? 3
+          
+          const deadletterPolicy = config.deadletter || { enabled: true, threshold: 3 }
+          const quarantineThreshold = deadletterPolicy.threshold ?? 3
 
-          if (failureCount >= quarantineThreshold) {
+          if (deadletterPolicy.enabled && failureCount >= quarantineThreshold) {
             activeLogger.warn(`⚠️ Task ${task.id} has failed ${failureCount} times. Moving to quarantine (DLQ).`)
             await backend.markQuarantined(task.id, `Exceeded quarantine threshold (${quarantineThreshold}). Last error: ${errorMsg}`)
           } else {

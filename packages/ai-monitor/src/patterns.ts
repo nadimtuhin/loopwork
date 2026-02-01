@@ -3,6 +3,7 @@
  */
 
 import type { MonitorAction } from './types'
+import { DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
 
 export type PatternSeverity = 'INFO' | 'WARN' | 'ERROR' | 'HIGH'
 
@@ -38,7 +39,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     name: 'rate-limit',
     regex: /rate limit|429|too many requests/i,
     severity: 'HIGH',
-    action: { type: 'pause', duration: 60000 },
+    action: { type: 'pause', duration: DEFAULT_RATE_LIMIT_WAIT_MS },
     extractContext: () => ({})
   },
   {
@@ -103,7 +104,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     name: 'circuit-breaker',
     regex: /circuit breaker|max retries exceeded|too many failures/i,
     severity: 'HIGH',
-    action: { type: 'pause', duration: 30000 },
+    action: { type: 'pause', duration: DEFAULT_RATE_LIMIT_WAIT_MS },
     extractContext: () => ({})
   },
   {

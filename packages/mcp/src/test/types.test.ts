@@ -1,17 +1,23 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { McpPluginOptions, McpStdioTransportSchema, McpSseTransportSchema, McpServerSchema, McpScriptSchema, McpConfigSchema, McpStdioTransport, McpSseTransport, McpServer, McpScript, McpConfig } from '../types'
-
-/**
- * types Tests
- * 
- * Auto-generated test suite for types
- */
+import { describe, expect, test } from 'bun:test'
+import {
+  type McpPluginOptions,
+  McpStdioTransportSchema,
+  McpSseTransportSchema,
+  McpServerSchema,
+  McpScriptSchema,
+  McpConfigSchema,
+  type McpStdioTransport,
+  type McpSseTransport,
+  type McpServer,
+  type McpScript,
+  type McpConfig,
+} from '../types'
 
 describe('types', () => {
-
-  describe('McpPluginOptions', () => {
+  describe('McpPluginOptions type', () => {
     test('should be defined', () => {
-      expect(McpPluginOptions).toBeDefined()
+      const options: McpPluginOptions = {}
+      expect(options).toBeDefined()
     })
   })
 
@@ -45,33 +51,49 @@ describe('types', () => {
     })
   })
 
-  describe('McpStdioTransport', () => {
+  describe('McpStdioTransport type', () => {
     test('should be defined', () => {
-      expect(McpStdioTransport).toBeDefined()
+      const transport: McpStdioTransport = {
+        type: 'stdio',
+        command: 'test',
+      }
+      expect(transport).toBeDefined()
     })
   })
 
-  describe('McpSseTransport', () => {
+  describe('McpSseTransport type', () => {
     test('should be defined', () => {
-      expect(McpSseTransport).toBeDefined()
+      const transport: McpSseTransport = {
+        type: 'sse',
+        url: 'http://localhost',
+      }
+      expect(transport).toBeDefined()
     })
   })
 
-  describe('McpServer', () => {
+  describe('McpServer type', () => {
     test('should be defined', () => {
-      expect(McpServer).toBeDefined()
+      const server: McpServer = {
+        type: 'stdio',
+        command: 'test',
+      }
+      expect(server).toBeDefined()
     })
   })
 
-  describe('McpScript', () => {
+  describe('McpScript type', () => {
     test('should be defined', () => {
-      expect(McpScript).toBeDefined()
+      const script: McpScript = {
+        source: 'test',
+      }
+      expect(script).toBeDefined()
     })
   })
 
-  describe('McpConfig', () => {
+  describe('McpConfig type', () => {
     test('should be defined', () => {
-      expect(McpConfig).toBeDefined()
+      const config: McpConfig = {}
+      expect(config).toBeDefined()
     })
   })
 })

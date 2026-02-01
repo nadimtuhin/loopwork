@@ -24,6 +24,7 @@
 import { createBackend, type TaskBackend, type Task } from '../backends'
 import type { BackendConfig, FindTaskOptions } from '../backends/types'
 import { logger } from '../core/utils'
+import { generateSuccessCriteria, generateFailureCriteria } from '../core/task-utils'
 
 // MCP Protocol Types
 interface McpRequest {
@@ -90,6 +91,17 @@ class LoopworkMcpServer {
           type: 'object',
           properties: {
             taskId: { type: 'string', description: 'The task ID to retrieve' },
+          },
+          required: ['taskId'],
+        },
+      },
+      {
+        name: 'loopwork_get_task_context',
+        description: 'Get full context for a task, including details, criteria, subtasks, and dependencies. Use this when starting a task.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'string', description: 'The task ID' },
           },
           required: ['taskId'],
         },
@@ -241,6 +253,30 @@ class LoopworkMcpServer {
           return { error: `Task not found: ${args.taskId}` }
         }
         return this.formatTask(task)
+      }
+
+      case 'loopwork_get_task_context': {
+        const taskId = String(args.taskId)
+        const task = await this.backend.getTask(taskId)
+        if (!task) {
+          return { error: `Task not found: ${taskId}` }
+        }
+
+        const subtasks = await this.backend.getSubTasks(taskId)
+        const dependencies = await this.backend.getDependencies(taskId)
+        
+        return {
+          task: this.formatTask(task),
+          subtasks: this.formatTaskList(subtasks),
+          dependencies: this.formatTaskList(dependencies),
+          successCriteria: generateSuccessCriteria(task),
+          failureCriteria: generateFailureCriteria(task),
+          suggestedInstructions: [
+            'Read the PRD carefully',
+            'Verify against success criteria',
+            'Run relevant tests',
+          ]
+        }
       }
 
       case 'loopwork_mark_complete': {

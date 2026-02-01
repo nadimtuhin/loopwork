@@ -12,10 +12,11 @@ import type {
   OrphanWatchConfig,
   FeatureFlags,
   DynamicTasksConfig,
+  DeadletterPolicy,
 } from './types'
 
 export type { TaskAnalyzer } from './analysis'
-export type { LogLevel, OutputMode, ParallelFailureMode, OrphanWatchConfig, FeatureFlags, DynamicTasksConfig }
+export type { LogLevel, OutputMode, ParallelFailureMode, OrphanWatchConfig, FeatureFlags, DynamicTasksConfig, DeadletterPolicy }
 
 /**
  * Main Loopwork configuration
@@ -47,6 +48,7 @@ export interface LoopworkConfig {
   retryStrategy?: 'linear' | 'exponential'
   selfHealingCooldown?: number
   dynamicTasks?: DynamicTasksConfig
+  deadletter?: DeadletterPolicy
   dynamicPlugins?: string[]
   plugins?: LoopworkPlugin[]
   orphanWatch?: OrphanWatchConfig
@@ -107,6 +109,13 @@ export const DEFAULT_CONFIG: Partial<LoopworkConfig> = {
     createSubTasks: true,
     maxTasksPerExecution: 5,
     autoApprove: true,
+  },
+  deadletter: {
+    enabled: true,
+    threshold: 3,
+    retryCooldownMs: 60000, // 1 minute
+    autoRetry: false,
+    autoRetryDelayMs: 3600000, // 1 hour
   },
   orphanWatch: {
     enabled: false,

@@ -10,6 +10,7 @@ export interface FindTaskOptions {
   includeBlocked?: boolean
   topLevelOnly?: boolean
   retryCooldown?: number
+  deadletterPolicy?: DeadletterPolicy
 }
 
 export interface UpdateResult {

@@ -144,11 +144,16 @@ export function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
       <Text bold color="white">Ongoing:</Text>
       {tasks.map((task) => (
         <Box key={task.id} flexDirection="column" marginLeft={1} marginBottom={1}>
-          <Box>
-            <Text color="cyan">{'▶ '}</Text>
-            <Text bold>{task.id}</Text>
-            <Text color="gray">: {task.title.slice(0, 50)}</Text>
-          </Box>
+    <Box>
+      <Text bold color="cyan">Ongoing: </Text>
+      <Text bold>{task.id}</Text>
+      {task.title && !task.title.startsWith(task.id) && (
+        <Text color="gray">: {task.title.slice(0, 50)}</Text>
+      )}
+      {task.title && task.title.startsWith(task.id) && (
+        <Text color="gray">{task.title.slice(task.id.length).slice(0, 50)}</Text>
+      )}
+    </Box>
           <Box>
             <Text color="gray">  📟 </Text>
             {task.workerId !== undefined && (

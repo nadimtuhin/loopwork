@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### 2026-02-01 - VISUALIZ-002
+- VISUALIZ-002: Task Requirements
+
+### 2026-02-01 - CONTROLA-005
+- CONTROLA-005: Add Authentication Middleware
+
+### 2026-02-01 - DEADLETT-004
+- DEADLETT-004: Add Cooldown & Retry Policy
+
+### 2026-02-01 - MCPMANAG-003
+- MCPMANAG-003: Build Local Script Bridge Adapter
+
+### 2026-02-01 - PLUGINAR-004
+- PLUGINAR-004: Implement Persistent Plugin State
+
+### 2026-02-01 - CONTROLA-003
+- CONTROLA-003: Implement Real-time Event Streaming (SSE)
+
+### 2026-02-01 - MCPMANAG-002
+- MCPMANAG-002: Implement MCP Client Connection & Tool Registry
+
+### 2026-02-01 - DEBUGGER-003
+- DEBUGGER-003: Implement 'Edit & Continue' for Prompts
+
+### 2026-02-01 - PLUGINAR-003
+- PLUGINAR-003: Create Capability Registration API
+
 ### 2026-02-01 - DEBUGGER-002
 - DEBUGGER-002: Build TUI Inspector & Interactive Shell
 

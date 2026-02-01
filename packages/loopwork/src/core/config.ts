@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import path from 'path'
 import fs from 'fs'
-import type { LoopworkConfig, ParallelFailureMode, LogLevel, FeatureFlags } from '../contracts'
+import type { LoopworkConfig, ParallelFailureMode, LogLevel, FeatureFlags, DeadletterPolicy } from '../contracts'
 import { DEFAULT_CONFIG } from '../contracts'
 import { warnIfLooseBackendConfig, type BackendConfig, type JsonBackendConfig, type GithubBackendConfig } from '../contracts/backend'
 import type { LoopworkConfig as LoopworkFileConfig } from '../contracts'
@@ -72,6 +72,7 @@ export interface Config extends LoopworkConfig {
   flags?: FeatureFlags
   quarantineThreshold?: number
   retryCooldown?: number
+  deadletter?: DeadletterPolicy
 }
 
 /**
@@ -269,6 +270,17 @@ function validateConfig(config: Config): void {
         'ERR_CONFIG_INVALID',
         `Invalid model ID: "${config.model}"`,
         suggestions
+      )
+    }
+  }
+
+  // Validate deadletter policy
+  if (config.deadletter) {
+    if (config.deadletter.threshold !== undefined && (isNaN(config.deadletter.threshold) || config.deadletter.threshold <= 0)) {
+      throw new LoopworkError(
+        'ERR_CONFIG_INVALID',
+        `Invalid deadletter threshold: ${config.deadletter.threshold}`,
+        ['deadletter.threshold must be a positive number']
       )
     }
   }

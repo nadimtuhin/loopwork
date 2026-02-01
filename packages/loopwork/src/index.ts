@@ -99,6 +99,11 @@ export {
   analyzeTaskOutput,
 } from './core/analyzer-registry'
 
+export { container, createContainer, ServiceContainer } from './core/di/container'
+export type { IServiceContainer } from './core/di/container'
+export { ParallelRunnerFactory } from './core/parallel-runner-factory'
+export type { IParallelRunnerFactory } from './core/parallel-runner-factory'
+
 // Export adapters for bridging to agent packages
 export { CliRunnerAdapter, GitRunnerAdapter } from './adapters'
 
@@ -237,6 +242,13 @@ export {
   OrphanDetector,
   ProcessCleaner,
 } from './core/process-management'
+
+// Export Provider Manager
+export { createProviderManager } from './factories'
+export { ProviderManager, type ProviderConfig } from './implementations/provider-manager'
+export { CLAUDE_LIMITS } from './providers/claude'
+export { OPENAI_LIMITS } from './providers/openai'
+export { GEMINI_LIMITS } from './providers/gemini'
 
 // Legacy exports for backward compatibility (deprecated)
 export {

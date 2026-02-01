@@ -1,0 +1,28 @@
+{
+  "name": "@loopwork-ai/rate-limiter",
+  "version": "1.0.0",
+  "description": "Foundational rate limiting for Loopwork with DI architecture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "loopwork",
+    "rate-limiting",
+    "token-bucket",
+    "sliding-window"
+  ],
+  "author": "Loopwork Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/bun": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "*"
+  }
+}

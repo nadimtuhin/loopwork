@@ -1,5 +1,6 @@
 import path from 'path'
 import { createCheckpointManager, type ICheckpointManager } from '@loopwork-ai/checkpoint'
+import type { ICheckpointIntegrator } from '../contracts/services'
 
 /**
  * Checkpoint Integrator
@@ -15,7 +16,7 @@ export interface CheckpointConfig {
   cliCheckpointIntervalSecs?: number
 }
 
-export class CheckpointIntegrator {
+export class CheckpointIntegrator implements ICheckpointIntegrator {
   private iteration: number = 0
   private config: CheckpointConfig
   private projectRoot: string
@@ -35,14 +36,20 @@ export class CheckpointIntegrator {
     return iteration > 0 && iteration % interval === 0
   }
 
-  async checkpoint(data: unknown): Promise<void> {
+  async checkpoint(data: {
+    taskId: string
+    iteration: number
+    context?: Record<string, unknown>
+    memory?: Record<string, unknown>
+    status?: string
+  }): Promise<void> {
     if (!this.config.enabled) return
 
     const agentId = 'loopwork-core'
     await this.manager.checkpoint(agentId, {
       taskId: data.taskId,
       iteration: data.iteration ?? this.iteration,
-      phase: (data as { status?: string }).status ?? 'executing',
+      phase: (data.status as any) ?? 'executing',
       state: {
         context: data.context,
         memory: data.memory,

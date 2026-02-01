@@ -6,6 +6,7 @@
  */
 
 import { trace, metrics } from '@opentelemetry/api'
+import { isRateLimitOutput } from '@loopwork-ai/resilience'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc'

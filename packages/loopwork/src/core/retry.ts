@@ -1,6 +1,7 @@
 import { 
   isRetryable as isRetryableResilient, 
-  calculateExponentialBackoff 
+  calculateExponentialBackoff,
+  LinearBackoff
 } from '@loopwork-ai/resilience'
 import type { Task } from '../contracts/types'
 
@@ -86,16 +87,10 @@ export function calculateBackoff(attempt: number, policy: RetryPolicy = DEFAULT_
       jitter: policy.jitter
     })
   } else {
-    // Linear backoff logic
-    const delay = policy.initialDelay * (attempt + 1)
-    let finalDelay = delay
-
-    if (policy.jitter) {
-      const jitterFactor = 0.2 
-      const randomFactor = 1 + (Math.random() * jitterFactor - (jitterFactor / 2))
-      finalDelay = delay * randomFactor
-    }
-
-    return Math.min(Math.floor(finalDelay), policy.maxDelay)
+    return new LinearBackoff({
+      baseDelayMs: policy.initialDelay,
+      maxDelayMs: policy.maxDelay,
+      jitter: policy.jitter
+    }).calculateDelay(attempt + 1)
   }
 }

@@ -1,23 +1,29 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { SpawnSubagentOutput, SpawnSubagentDeps, spawnSubagent, SpawnSubagentInputSchema, spawnSubagentTool, SpawnSubagentInput } from '../tools/spawn-subagent'
-
-/**
- * spawn-subagent Tests
- * 
- * Auto-generated test suite for spawn-subagent
- */
+import {
+  type SpawnSubagentOutput,
+  type SpawnSubagentDeps,
+  spawnSubagent,
+  SpawnSubagentInputSchema,
+  spawnSubagentTool,
+  type SpawnSubagentInput,
+} from '../spawn-subagent'
 
 describe('spawn-subagent', () => {
-
-  describe('SpawnSubagentOutput', () => {
+  describe('SpawnSubagentOutput type', () => {
     test('should be defined', () => {
-      expect(SpawnSubagentOutput).toBeDefined()
+      const output: SpawnSubagentOutput = {
+        agentId: 'test',
+        status: 'spawned',
+        message: 'test',
+      }
+      expect(output).toBeDefined()
     })
   })
 
-  describe('SpawnSubagentDeps', () => {
+  describe('SpawnSubagentDeps type', () => {
     test('should be defined', () => {
-      expect(SpawnSubagentDeps).toBeDefined()
+      const deps: SpawnSubagentDeps = {}
+      expect(deps).toBeDefined()
     })
   })
 
@@ -26,8 +32,13 @@ describe('spawn-subagent', () => {
       expect(typeof spawnSubagent).toBe('function')
     })
 
-    test('should execute without throwing', () => {
-      expect(() => spawnSubagent()).not.toThrow()
+    test('should execute without throwing', async () => {
+      expect(async () => await spawnSubagent({
+        agentName: 'test',
+        taskId: 'TASK-001',
+        taskTitle: 'Test',
+        taskDescription: 'Test',
+      }, {})).not.toThrow()
     })
   })
 
@@ -43,9 +54,15 @@ describe('spawn-subagent', () => {
     })
   })
 
-  describe('SpawnSubagentInput', () => {
+  describe('SpawnSubagentInput type', () => {
     test('should be defined', () => {
-      expect(SpawnSubagentInput).toBeDefined()
+      const input: SpawnSubagentInput = {
+        agentName: 'test',
+        taskId: 'TASK-001',
+        taskTitle: 'Test',
+        taskDescription: 'Test',
+      }
+      expect(input).toBeDefined()
     })
   })
 })

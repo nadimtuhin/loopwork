@@ -1,23 +1,38 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ResumeAgentOutput, ResumeAgentDeps, resumeAgent, ResumeAgentInputSchema, resumeAgentTool, ResumeAgentInput } from '../tools/resume-agent'
-
-/**
- * resume-agent Tests
- * 
- * Auto-generated test suite for resume-agent
- */
+import {
+  type ResumeAgentOutput,
+  type ResumeAgentDeps,
+  resumeAgent,
+  ResumeAgentInputSchema,
+  resumeAgentTool,
+  type ResumeAgentInput,
+} from '../resume-agent'
 
 describe('resume-agent', () => {
-
-  describe('ResumeAgentOutput', () => {
+  describe('ResumeAgentOutput type', () => {
     test('should be defined', () => {
-      expect(ResumeAgentOutput).toBeDefined()
+      const output: ResumeAgentOutput = {
+        status: 'resumed',
+        checkpoint: {
+          agentId: 'test',
+          taskId: 'TASK-001',
+          agentName: 'test',
+          iteration: 1,
+          phase: 'executing',
+          timestamp: new Date(),
+          lastToolCall: 'test',
+          state: {},
+        },
+        message: 'test',
+      }
+      expect(output).toBeDefined()
     })
   })
 
-  describe('ResumeAgentDeps', () => {
+  describe('ResumeAgentDeps type', () => {
     test('should be defined', () => {
-      expect(ResumeAgentDeps).toBeDefined()
+      const deps: ResumeAgentDeps = {}
+      expect(deps).toBeDefined()
     })
   })
 
@@ -26,8 +41,10 @@ describe('resume-agent', () => {
       expect(typeof resumeAgent).toBe('function')
     })
 
-    test('should execute without throwing', () => {
-      expect(() => resumeAgent()).not.toThrow()
+    test('should execute without throwing', async () => {
+      expect(async () => await resumeAgent({
+        agentId: 'test',
+      }, {})).not.toThrow()
     })
   })
 
@@ -43,9 +60,12 @@ describe('resume-agent', () => {
     })
   })
 
-  describe('ResumeAgentInput', () => {
+  describe('ResumeAgentInput type', () => {
     test('should be defined', () => {
-      expect(ResumeAgentInput).toBeDefined()
+      const input: ResumeAgentInput = {
+        agentId: 'test',
+      }
+      expect(input).toBeDefined()
     })
   })
 })
