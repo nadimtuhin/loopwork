@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { OpenCodeCacheError, CliExecutor, CliExecutorOptions, isOpenCodeCacheCorruption, clearOpenCodeCache, EXEC_MODELS, FALLBACK_MODELS } from '../cli-executor'
+import { OpenCodeCacheError, CliExecutor, isOpenCodeCacheCorruption, clearOpenCodeCache, EXEC_MODELS, FALLBACK_MODELS, type CliExecutorOptions } from '../cli-executor'
 
 /**
  * cli-executor Tests
@@ -24,24 +24,58 @@ describe('cli-executor', () => {
   })
 
   describe('CliExecutor', () => {
+    const mockConfig = {
+      models: EXEC_MODELS,
+      retry: {},
+      projectRoot: process.cwd(),
+      outputDir: '/tmp/loopwork-test',
+    }
+    const mockProcessManager = {
+      spawn: () => ({ on: () => {}, stdout: { on: () => {} }, stderr: { on: () => {} }, kill: () => {} }),
+      cleanup: async () => {},
+    }
+    const mockPluginRegistry = {
+      getCapabilityRegistry: () => ({ getPromptInjection: () => '' }),
+      runHook: async () => {},
+    }
+    const mockLogger = {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      startSpinner: () => {},
+      stopSpinner: () => {},
+    }
+
     test('should instantiate without errors', () => {
-      const instance = new CliExecutor()
+      const instance = new CliExecutor(
+        mockConfig as any,
+        mockProcessManager as any,
+        mockPluginRegistry as any,
+        mockLogger as any
+      )
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(CliExecutor)
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new CliExecutor()
-      const instance2 = new CliExecutor()
+      const instance1 = new CliExecutor(
+        mockConfig as any,
+        mockProcessManager as any,
+        mockPluginRegistry as any,
+        mockLogger as any
+      )
+      const instance2 = new CliExecutor(
+        mockConfig as any,
+        mockProcessManager as any,
+        mockPluginRegistry as any,
+        mockLogger as any
+      )
       expect(instance1).not.toBe(instance2)
     })
   })
 
-  describe('CliExecutorOptions', () => {
-    test('should be defined', () => {
-      expect(CliExecutorOptions).toBeDefined()
-    })
-  })
+
 
   describe('isOpenCodeCacheCorruption', () => {
     test('should be a function', () => {

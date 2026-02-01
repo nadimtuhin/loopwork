@@ -1,41 +1,399 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ModelSelector, ModelSelectorOptions, calculateBackoffDelay } from '../model-selector'
+import { describe, expect, test, beforeEach } from 'bun:test'
+import { ModelSelector, calculateBackoffDelay, type ModelSelectorOptions } from '../model-selector'
+import type { ModelConfig } from '@loopwork-ai/contracts'
 
 /**
- * model-selector Tests
+ * Model Selector Tests
  * 
- * Auto-generated test suite for model-selector
+ * Comprehensive test suite for model selection and circuit breaker integration
  */
 
-describe('model-selector', () => {
+const createMockModels = (): ModelConfig[] => [
+  { name: 'model1', cli: 'claude', model: 'sonnet', costWeight: 50 },
+  { name: 'model2', cli: 'opencode', model: 'gemini-flash', costWeight: 30 },
+  { name: 'model3', cli: 'claude', model: 'opus', costWeight: 100 },
+]
 
-  describe('ModelSelector', () => {
-    test('should instantiate without errors', () => {
-      const instance = new ModelSelector()
-      expect(instance).toBeDefined()
-      expect(instance).toBeInstanceOf(ModelSelector)
+const createMockFallbackModels = (): ModelConfig[] => [
+  { name: 'fallback1', cli: 'gemini', model: 'pro', costWeight: 40 },
+  { name: 'fallback2', cli: 'opencode', model: 'gemini-pro', costWeight: 60 },
+]
+
+describe('ModelSelector', () => {
+  describe('basic functionality', () => {
+    test('should instantiate with default options', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      expect(selector).toBeDefined()
+      expect(selector.getTotalModelCount()).toBe(3)
     })
 
-    test('should maintain instance identity', () => {
-      const instance1 = new ModelSelector()
-      const instance2 = new ModelSelector()
-      expect(instance1).not.toBe(instance2)
+    test('should instantiate with fallback models', () => {
+      const primary = createMockModels()
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback)
+      
+      expect(selector.getTotalModelCount()).toBe(5)
+    })
+
+    test('should filter disabled models', () => {
+      const models: ModelConfig[] = [
+        { name: 'enabled', cli: 'claude', model: 'sonnet', enabled: true },
+        { name: 'disabled', cli: 'claude', model: 'opus', enabled: false },
+      ]
+      const selector = new ModelSelector(models)
+      
+      expect(selector.getTotalModelCount()).toBe(1)
     })
   })
 
-  describe('ModelSelectorOptions', () => {
-    test('should be defined', () => {
-      expect(ModelSelectorOptions).toBeDefined()
+  describe('selection strategies', () => {
+    test('should use round-robin strategy by default', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin')
+      
+      const model1 = selector.getNext()
+      const model2 = selector.getNext()
+      const model3 = selector.getNext()
+      const model4 = selector.getNext() // Should cycle back
+      
+      expect(model1?.name).toBe('model1')
+      expect(model2?.name).toBe('model2')
+      expect(model3?.name).toBe('model3')
+      expect(model4?.name).toBe('model1') // Back to start
+    })
+
+    test('should use priority strategy', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'priority')
+      
+      const model1 = selector.getNext()
+      const model2 = selector.getNext()
+      
+      expect(model1?.name).toBe('model1')
+      expect(model2?.name).toBe('model1') // Always first
+    })
+
+    test('should use cost-aware strategy', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'cost-aware')
+      
+      const model = selector.getNext()
+      
+      // Should select lowest costWeight (model2 with 30)
+      expect(model?.name).toBe('model2')
+    })
+
+    test('should use random strategy', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'random')
+      
+      const model = selector.getNext()
+      
+      // Should return one of the available models
+      expect(['model1', 'model2', 'model3']).toContain(model?.name)
+    })
+
+    test('should default to round-robin for unknown strategy', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'unknown' as any)
+      
+      const model1 = selector.getNext()
+      const model2 = selector.getNext()
+      
+      expect(model1?.name).toBe('model1')
+      expect(model2?.name).toBe('model2')
     })
   })
 
-  describe('calculateBackoffDelay', () => {
-    test('should be a function', () => {
-      expect(typeof calculateBackoffDelay).toBe('function')
+  describe('circuit breaker integration', () => {
+    test('should track failures and open circuit', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 2,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      expect(selector.isModelAvailable('model1')).toBe(true)
+      
+      const justOpened = selector.recordFailure('model1')
+      expect(justOpened).toBe(true)
+      expect(selector.isModelAvailable('model1')).toBe(false)
     })
 
-    test('should execute without throwing', () => {
-      expect(() => calculateBackoffDelay()).not.toThrow()
+    test('should skip models with open circuit', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1') // Opens circuit immediately
+      
+      // Should skip model1 and return model2
+      const next = selector.getNext()
+      expect(next?.name).toBe('model2')
     })
+
+    test('should return null when all models circuit-broken', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      // Break all models
+      selector.recordFailure('model1')
+      selector.recordFailure('model2')
+      selector.recordFailure('model3')
+      
+      expect(selector.getNext()).toBeNull()
+    })
+
+    test('should record success and reset retry count', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        enableCircuitBreaker: true,
+      })
+      
+      selector.trackRetry('model1')
+      selector.trackRetry('model1')
+      expect(selector.getRetryCount('model1')).toBe(2)
+      
+      selector.recordSuccess('model1')
+      expect(selector.getRetryCount('model1')).toBe(0)
+    })
+
+    test('should track retries', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      expect(selector.trackRetry('model1')).toBe(1)
+      expect(selector.trackRetry('model1')).toBe(2)
+      expect(selector.getRetryCount('model1')).toBe(2)
+    })
+
+    test('should reset all state', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      expect(selector.isModelAvailable('model1')).toBe(false)
+      
+      selector.reset()
+      expect(selector.isModelAvailable('model1')).toBe(true)
+      expect(selector.getRetryCount('model1')).toBe(0)
+    })
+
+    test('should reset specific model', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      selector.recordFailure('model2')
+      
+      selector.resetModel('model1')
+      
+      expect(selector.isModelAvailable('model1')).toBe(true)
+      expect(selector.isModelAvailable('model2')).toBe(false)
+    })
+
+    test('should get disabled models', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      
+      const disabled = selector.getDisabledModels()
+      expect(disabled).toContain('model1')
+      expect(disabled).not.toContain('model2')
+    })
+
+    test('should get circuit breaker state', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      
+      const state = selector.getCircuitBreakerState('model1')
+      expect(state).toBeDefined()
+      expect(state?.state).toBe('open')
+      expect(state?.failures).toBe(1)
+    })
+
+    test('should return null for circuit breaker state when disabled', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        enableCircuitBreaker: false,
+      })
+      
+      const state = selector.getCircuitBreakerState('model1')
+      expect(state).toBeNull()
+    })
+
+    test('should get all circuit breaker states', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      
+      const states = selector.getAllCircuitBreakerStates()
+      expect(states.size).toBeGreaterThan(0)
+    })
+  })
+
+  describe('fallback pool', () => {
+    test('should switch to fallback pool', () => {
+      const primary = createMockModels()
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback)
+      
+      expect(selector.isUsingFallback()).toBe(false)
+      
+      selector.switchToFallback()
+      
+      expect(selector.isUsingFallback()).toBe(true)
+    })
+
+    test('should select from fallback pool when switched', () => {
+      const primary = createMockModels()
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback, 'round-robin')
+      
+      selector.switchToFallback()
+      
+      const model = selector.getNext()
+      expect(model?.name).toBe('fallback1')
+    })
+
+    test('should auto-switch to fallback when primary exhausted', () => {
+      const primary: ModelConfig[] = [
+        { name: 'model1', cli: 'claude', model: 'sonnet' },
+      ]
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback, 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      // Break the only primary model
+      selector.recordFailure('model1')
+      
+      // Should return fallback model
+      const model = selector.getNext()
+      expect(model?.name).toBe('fallback1')
+      expect(selector.isUsingFallback()).toBe(true)
+    })
+
+    test('should reset to primary pool', () => {
+      const primary = createMockModels()
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback)
+      
+      selector.switchToFallback()
+      expect(selector.isUsingFallback()).toBe(true)
+      
+      selector.resetToFallback()
+      expect(selector.isUsingFallback()).toBe(false)
+    })
+  })
+
+  describe('health status', () => {
+    test('should get health status summary', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      selector.recordFailure('model1')
+      
+      const status = selector.getHealthStatus()
+      expect(status.total).toBe(3)
+      expect(status.available).toBe(2)
+      expect(status.disabled).toBe(1)
+      expect(status.circuitBreakersOpen).toBe(1)
+    })
+
+    test('should get available model count', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models, [], 'round-robin', {
+        failureThreshold: 1,
+        enableCircuitBreaker: true,
+      })
+      
+      expect(selector.getAvailableModelCount()).toBe(3)
+      
+      selector.recordFailure('model1')
+      expect(selector.getAvailableModelCount()).toBe(2)
+    })
+
+    test('should get current pool', () => {
+      const primary = createMockModels()
+      const selector = new ModelSelector(primary)
+      
+      const pool = selector.getCurrentPool()
+      expect(pool.length).toBe(3)
+    })
+
+    test('should get all models', () => {
+      const primary = createMockModels()
+      const fallback = createMockFallbackModels()
+      const selector = new ModelSelector(primary, fallback)
+      
+      const all = selector.getAllModels()
+      expect(all.length).toBe(5)
+    })
+  })
+
+  describe('exhaustion check', () => {
+    test('should report exhausted after trying all models', () => {
+      const models = createMockModels()
+      const selector = new ModelSelector(models)
+      
+      expect(selector.hasExhaustedAllModels(3)).toBe(true)
+      expect(selector.hasExhaustedAllModels(2)).toBe(false)
+    })
+  })
+})
+
+describe('calculateBackoffDelay', () => {
+  test('should calculate exponential backoff', () => {
+    expect(calculateBackoffDelay(0, 1000)).toBe(1000)
+    expect(calculateBackoffDelay(1, 1000)).toBe(2000)
+    expect(calculateBackoffDelay(2, 1000)).toBe(4000)
+    expect(calculateBackoffDelay(3, 1000)).toBe(8000)
+  })
+
+  test('should respect max delay cap', () => {
+    const delay = calculateBackoffDelay(10, 1000, 5000)
+    expect(delay).toBe(5000)
+  })
+
+  test('should use default values', () => {
+    const delay = calculateBackoffDelay(1)
+    expect(delay).toBe(2000) // Default baseDelayMs is 1000
+  })
+
+  test('should handle attempt 0', () => {
+    const delay = calculateBackoffDelay(0, 1000)
+    expect(delay).toBe(1000)
   })
 })

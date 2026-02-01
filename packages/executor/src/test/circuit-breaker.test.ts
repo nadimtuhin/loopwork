@@ -77,7 +77,8 @@ describe('CircuitBreaker', () => {
     test('should transition to half-open after reset timeout', async () => {
       const cb = new CircuitBreaker({ 
         failureThreshold: 1, 
-        resetTimeoutMs: 50 
+        resetTimeoutMs: 50,
+        halfOpenMaxCalls: 3
       })
       
       cb.recordFailure() // Opens circuit
@@ -102,9 +103,18 @@ describe('CircuitBreaker', () => {
       cb.recordFailure() // Opens circuit
       await new Promise(r => setTimeout(r, 60))
       
+      // Transition to half-open happens on first canExecute/getState call
+      expect(cb.getState().state).toBe('half-open')
+      
       // Three successful calls in half-open should close circuit
+      // Need to call canExecute before each recordSuccess to simulate actual usage
+      cb.canExecute()
       cb.recordSuccess()
+      
+      cb.canExecute()
       cb.recordSuccess()
+      
+      cb.canExecute()
       cb.recordSuccess()
       
       expect(cb.isClosed()).toBe(true)
@@ -180,23 +190,25 @@ describe('CircuitBreaker', () => {
   describe('state change listeners', () => {
     test('should notify listeners on state change', () => {
       const cb = new CircuitBreaker({ failureThreshold: 1 })
-      const listener = jest.fn()
+      let callCount = 0
+      const listener = () => { callCount++ }
       
       cb.onStateChange(listener)
       cb.recordFailure()
       
-      expect(listener).toHaveBeenCalled()
+      expect(callCount).toBeGreaterThan(0)
     })
 
     test('should allow unsubscribing listeners', () => {
       const cb = new CircuitBreaker({ failureThreshold: 1 })
-      const listener = jest.fn()
+      let callCount = 0
+      const listener = () => { callCount++ }
       
       const unsubscribe = cb.onStateChange(listener)
       unsubscribe()
       
       cb.recordFailure()
-      expect(listener).not.toHaveBeenCalled()
+      expect(callCount).toBe(0)
     })
   })
 
@@ -246,14 +258,14 @@ describe('CircuitBreakerRegistry', () => {
 
   describe('convenience methods', () => {
     test('should check if model can execute', () => {
-      const registry = new CircuitBreakerRegistry({ failureThreshold: 1 })
+      const registry = new CircuitBreakerRegistry({ failureThreshold: 2 })
       
       expect(registry.canExecute('model1')).toBe(true)
       
       registry.recordFailure('model1')
-      expect(registry.canExecute('model1')).toBe(true) // Still closed
+      expect(registry.canExecute('model1')).toBe(true) // Still closed (1 failure, threshold 2)
       
-      registry.recordFailure('model1') // Opens circuit
+      registry.recordFailure('model1') // Opens circuit (2 failures)
       expect(registry.canExecute('model1')).toBe(false)
     })
 
@@ -287,13 +299,13 @@ describe('CircuitBreakerRegistry', () => {
     })
 
     test('should get open circuits', () => {
-      const registry = new CircuitBreakerRegistry({ failureThreshold: 1 })
+      const registry = new CircuitBreakerRegistry({ failureThreshold: 2 })
       
       registry.recordFailure('model1')
-      registry.recordFailure('model1') // Opens
+      registry.recordFailure('model1') // Opens (2 failures)
       
       registry.recordFailure('model2')
-      // model2 still closed
+      // model2 still closed (only 1 failure)
       
       const open = registry.getOpenCircuits()
       
@@ -345,7 +357,4 @@ describe('CircuitBreakerRegistry', () => {
   })
 })
 
-// Mock jest for bun
-declare const jest: {
-  fn: () => any
-}
+
