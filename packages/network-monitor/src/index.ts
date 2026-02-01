@@ -102,7 +102,7 @@ export class NetworkMonitor {
 
   constructor(config: NetworkMonitorConfig = {}) {
     this.config = {
-      enabled: config.enabled ?? true,
+      enabled: config.enabled !== false,
       checkInterval: config.checkInterval ?? 30000,
       checkTimeout: config.checkTimeout ?? 5000,
       testHosts: config.testHosts ?? ['1.1.1.1', '8.8.8.8', 'dns.google'],
@@ -111,8 +111,8 @@ export class NetworkMonitor {
         good: 10,
         excellent: 50,
       },
-      adjustWorkerPool: config.adjustWorkerPool ?? true,
-      blockWhenOffline: config.blockWhenOffline ?? true,
+      adjustWorkerPool: config.adjustWorkerPool !== false,
+      blockWhenOffline: config.blockWhenOffline !== false,
       offlineRetryDelay: config.offlineRetryDelay ?? 60000,
     }
 

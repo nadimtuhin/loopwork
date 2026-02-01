@@ -131,6 +131,18 @@ export interface DynamicTasksConfig {
   autoApprove?: boolean
 }
 
+export interface DeadletterPolicy {
+  enabled?: boolean
+  /** Number of failures before moving to quarantined status */
+  threshold?: number
+  /** Cooldown period in ms before a failed task is retried */
+  retryCooldownMs?: number
+  /** Whether to automatically retry quarantined tasks after a long cooldown */
+  autoRetry?: boolean
+  /** Cooldown period for quarantined tasks before auto-retry (ms) */
+  autoRetryDelayMs?: number
+}
+
 export interface JsonBackendConfig {
   type: 'json'
   tasksFile: string

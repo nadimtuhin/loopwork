@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### 2026-02-01 - DEBUGGER-002
+- DEBUGGER-002: Build TUI Inspector & Interactive Shell
+
 ### 2026-02-01 - DEADLETT-003
 - DEADLETT-003: Implement Auto-Quarantine Logic
 
