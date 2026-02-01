@@ -13,8 +13,8 @@
  *   )(defineConfig({ cli: 'opencode' }))
  */
 
-import type { LoopworkPlugin, LoopworkConfig, BackendPlugin } from '../contracts'
-import type { Task, Priority, FindTaskOptions, UpdateResult, TaskBackend } from './types'
+import type { LoopworkConfig, BackendPlugin } from '../contracts'
+import type { TaskBackend } from './types'
 import { logger } from '../core/utils'
 import { LoopworkError } from '../core/errors'
 
@@ -49,6 +49,7 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
     backendType: 'json',
     classification: 'critical',
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onConfigLoad(cfg: any) {
       await getAdapter()
       return cfg
@@ -213,6 +214,7 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
     backendType: 'github',
     classification: 'critical',
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onConfigLoad(cfg: any) {
       if (!repo) {
         logger.warn('GitHub backend: Missing repo. Set GITHUB_REPOSITORY or pass repo option.')
@@ -369,6 +371,7 @@ export function createFallbackBackendPlugin(config: FallbackBackendConfig): Back
     backendType: 'fallback',
     classification: 'critical',
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async onConfigLoad(cfg: any) {
       await getAdapter(cfg)
       return cfg
