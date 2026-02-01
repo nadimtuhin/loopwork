@@ -694,6 +694,23 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600, { taskId: task.id })
       activeLogger.stopSpinner()
     } catch (error: unknown) {
+      // Check for CLI not found error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((error as any).code === 'ENOENT' && (error as any).syscall === 'spawn') {
+        const cliName = config.cli || 'AI CLI'
+        handleLoopworkError(new LoopworkError(
+          'ERR_CLI_NOT_FOUND',
+          `AI CLI '${cliName}' not found in PATH`,
+          [
+            `Install ${cliName}: https://claude.com/code (or https://opencode.sh)`,
+            'Or change CLI in config to a different tool',
+            'Ensure the CLI is available in your system PATH'
+          ]
+        ))
+        stateManager.releaseLock()
+        runtimeProcess.exit(1)
+      }
+
       if (error instanceof LoopworkError) {
         handleLoopworkError(error)
         
@@ -982,6 +999,12 @@ async function runParallel(
     },
     onTaskAbort: async (context) => {
       await activePlugins.runHook('onTaskAbort', context)
+    },
+    onWorkerStatus: async (status) => {
+      // Emit worker status to the output renderer for the status bar
+      if (activeLogger.emitWorkerStatus) {
+        activeLogger.emitWorkerStatus(status)
+      }
     },
     buildPrompt,
   })

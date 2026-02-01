@@ -11,34 +11,25 @@ import type {
   LogEvent,
 } from './types'
 
-/**
- * AI Monitor - Intelligent Log Watcher & Auto-Healer
- *
- * Monitors loopwork execution logs in real-time, detects issues,
- * and automatically takes corrective actions to keep the loop running smoothly.
- */
 export class AIMonitor {
   private config: AIMonitorConfig
   private logWatcher: LogWatcher
   private patternDetector: PatternDetector
-  private actionExecutor: ActionExecutor
   private circuitBreaker: CircuitBreaker
+  private verificationEngine: VerificationEngine
   private running = false
   private stats: MonitorStats
-
-  // Healing history
   private healingHistory: HealingAttempt[] = []
-
-  // Event tracking
   private onLogLineCallbacks: Set<(event: LogEvent) => void> = new Set()
 
-  constructor(config: AIMonitorConfig) {
+  constructor(config: Partial<AIMonitorConfig> = {}) {
     this.config = {
-      // Apply defaults
+      enabled: true,
+      logPaths: [],
       watchMode: 'event-driven',
       pollingIntervalMs: 2000,
-      staleDetectionMs: 180000, // 3 minutes
-      maxLifetimeMs: 1800000, // 30 minutes
+      staleDetectionMs: 180000,
+      maxLifetimeMs: 1800000,
       healthCheckIntervalMs: 5000,
       concurrency: {
         default: 3,
@@ -51,17 +42,11 @@ export class AIMonitor {
         halfOpenAttempts: 1,
       },
       verification: {
-        freshnessTTL: 300000, // 5 minutes
+        freshnessTTL: 300000,
         checks: ['BUILD', 'TEST', 'LINT'],
         requireArchitectApproval: false,
       },
-      healingCategories: {
-        'prd-not-found': { agent: 'executor-low', model: 'haiku', maxAttempts: 2 },
-        'syntax-error': { agent: 'executor-low', model: 'haiku', maxAttempts: 2 },
-        'type-error': { agent: 'executor', model: 'sonnet', maxAttempts: 3 },
-        'test-failure': { agent: 'executor', model: 'sonnet', maxAttempts: 3 },
-        'complex-debug': { agent: 'architect', model: 'opus', temperature: 0.3, extendedThinking: true },
-      },
+      healingCategories: {},
       recovery: {
         strategies: ['context-truncation', 'model-fallback', 'task-restart'],
         maxRetries: 3,
@@ -78,9 +63,9 @@ export class AIMonitor {
         enabled: false,
         model: 'haiku',
         maxCallsPerSession: 10,
-        cooldownMs: 300000, // 5 minutes
+        cooldownMs: 300000,
         cacheEnabled: true,
-        cacheTTL: 86400000, // 24 hours
+        cacheTTL: 86400000,
       },
       taskRecovery: {
         enabled: true,
@@ -88,9 +73,8 @@ export class AIMonitor {
         maxAnalysisLines: 200,
       },
       ...config,
-    }
+    } as AIMonitorConfig
 
-    // Initialize components
     this.logWatcher = new LogWatcher(
       this.config.logPaths || [],
       {
@@ -99,14 +83,17 @@ export class AIMonitor {
       }
     )
 
-    this.patternDetector = new PatternDetector(this.config.customPatterns)
-    this.actionExecutor = new ActionExecutor({
-      stateManager: this.config.stateManager,
-      namespace: this.config.namespace,
-    })
+    this.patternDetector = new PatternDetector()
     this.circuitBreaker = new CircuitBreaker(this.config.circuitBreaker)
+    this.verificationEngine = new VerificationEngine({
+      freshnessTTL: this.config.verification.freshnessTTL,
+      checks: this.config.verification.checks.map(type => ({
+        type,
+        required: true,
+      })),
+      requireArchitectApproval: this.config.verification.requireArchitectApproval,
+    })
 
-    // Initialize stats
     this.stats = {
       patternsDetected: 0,
       actionsExecuted: 0,
@@ -116,49 +103,32 @@ export class AIMonitor {
       startTime: new Date(),
     }
 
-    // Wire up components
     this.setupEventHandlers()
   }
 
-  /**
-   * Setup event handlers between components
-   */
   private setupEventHandlers(): void {
-    // LogWatcher -> PatternDetector
     this.logWatcher.on('line', (event) => {
       this.stats.patternsDetected++
       const match = this.patternDetector.detect(event.line)
 
       if (match) {
-        this.handlePatternMatch(match, event)
+        const logEvent: LogEvent = {
+          timestamp: event.timestamp,
+          level: this.detectLogLevel(event.line),
+          message: event.line,
+          line: event.line,
+          file: event.file,
+        }
+        this.handlePatternMatch(match, logEvent)
       }
     })
 
-    // PatternDetector -> ActionExecutor
-    // (Handled in handlePatternMatch)
-
-    // Circuit breaker monitoring
-    this.actionExecutor.on('healing-failed', () => {
-      this.stats.healingFailures++
-      this.checkCircuitBreaker()
-    })
-
-    this.actionExecutor.on('healing-success', () => {
-      this.stats.healingSuccess++
-      this.recordHealingSuccess()
-    })
-
-    // LLM call tracking
-    this.actionExecutor.on('llm-call', () => {
-      this.stats.llmCalls++
-    })
-
-    // Emit log events to external listeners
     this.logWatcher.on('line', (event) => {
       const logEvent: LogEvent = {
         timestamp: event.timestamp,
         level: this.detectLogLevel(event.line),
         message: event.line,
+        line: event.line,
         file: event.file,
       }
 
@@ -172,9 +142,6 @@ export class AIMonitor {
     })
   }
 
-  /**
-   * Detect log level from line content
-   */
   private detectLogLevel(line: string): LogEvent['level'] {
     const lowerLine = line.toLowerCase()
     if (lowerLine.includes('error') || lowerLine.includes('failed')) return 'error'
@@ -184,47 +151,48 @@ export class AIMonitor {
     return 'info'
   }
 
-  /**
-   * Handle detected pattern
-   */
   private async handlePatternMatch(match: PatternMatchResult, _event: LogEvent): Promise<void> {
     this.stats.actionsExecuted++
 
     try {
-      // Check circuit breaker first
       if (this.circuitBreaker.isOpen()) {
         logger.warn(`[AI-Monitor] Circuit breaker OPEN - skipping action: ${match.pattern}`)
-        await this.actionExecutor.execute({
-          type: 'notify',
-          channel: 'log',
-          message: `[SKIPPED] ${match.pattern}: Circuit breaker active`,
-          patternName: match.pattern,
-        })
         return
       }
 
-      // Execute the pattern's action
       if (match.action) {
-        await this.actionExecutor.execute(match.action)
+        await this.executeAction(match.action)
         this.recordHealingAttempt(match.pattern, match.action.type || 'unknown', true)
       } else {
-        // No action defined, just log
         logger.info(`[AI-Monitor] Pattern detected: ${match.pattern} (${match.severity})`)
       }
     } catch (error) {
       logger.error(`[AI-Monitor] Error executing action for ${match.pattern}: ${error}`)
       this.recordHealingAttempt(match.pattern, match.action?.type || 'error', false, String(error))
 
-      // Check circuit breaker conditions
       if (match.severity === 'HIGH' || match.severity === 'ERROR') {
         this.checkCircuitBreaker()
       }
     }
   }
 
-  /**
-   * Record healing attempt for wisdom system
-   */
+  private async executeAction(action: { type: string; fn?: () => Promise<void> }): Promise<void> {
+    if (action.type === 'auto-fix' && action.fn) {
+      await action.fn()
+      
+      const verificationResult = await this.verificationEngine.verify(`Healing action: ${action.type}`)
+      
+      if (verificationResult.passed) {
+        this.stats.healingSuccess++
+        logger.info('[AI-Monitor] Healing action verified successfully')
+      } else {
+        this.stats.healingFailures++
+        logger.error(`[AI-Monitor] Healing action failed verification: ${verificationResult.failedChecks.join(', ')}`)
+        this.checkCircuitBreaker()
+      }
+    }
+  }
+
   private recordHealingAttempt(
     pattern: string,
     actionType: string,
@@ -234,51 +202,30 @@ export class AIMonitor {
     const attempt: HealingAttempt = {
       id: `attempt-${Date.now()}-${pattern}-${actionType}`,
       pattern,
-      actionType,
+      strategy: actionType as HealingAttempt['strategy'],
       timestamp: new Date(),
       success,
       error,
+      durationMs: 0,
     }
 
     this.healingHistory.push(attempt)
 
-    // Keep only last 1000 attempts
     if (this.healingHistory.length > 1000) {
       this.healingHistory = this.healingHistory.slice(-1000)
     }
   }
 
-  /**
-   * Record successful healing for wisdom learning
-   */
-  private recordHealingSuccess(): void {
-    // This would update the wisdom system with learned patterns
-    // Implementation would save to .loopwork/ai-monitor/learned-patterns.json
-    logger.debug('[AI-Monitor] Recording successful healing for wisdom system')
-  }
-
-  /**
-   * Check and update circuit breaker state
-   */
   private checkCircuitBreaker(): void {
     const stats = this.circuitBreaker.getStats()
 
-    // Open circuit after consecutive failures
     if (stats.consecutiveFailures >= this.config.circuitBreaker.maxFailures) {
       logger.warn(
         `[AI-Monitor] Circuit breaker OPEN after ${stats.consecutiveFailures} consecutive failures`
       )
-      await this.actionExecutor.execute({
-        type: 'notify',
-        channel: 'log',
-        message: 'Circuit breaker activated. Manual intervention required.',
-      })
     }
   }
 
-  /**
-   * Start monitoring
-   */
   start(): void {
     if (this.running) {
       logger.warn('[AI-Monitor] Already running')
@@ -292,14 +239,9 @@ export class AIMonitor {
     this.stats.startTime = new Date()
 
     this.logWatcher.start()
-
-    // Start stale detection and health check
     this.startHealthChecks()
   }
 
-  /**
-   * Stop monitoring
-   */
   async stop(): Promise<void> {
     if (!this.running) {
       return
@@ -311,18 +253,11 @@ export class AIMonitor {
     await this.logWatcher.stop()
   }
 
-  /**
-   * Register external event handler
-   */
   on(event: string, callback: (event: LogEvent) => void): void {
     this.onLogLineCallbacks.add(callback)
   }
 
-  /**
-   * Start health checks for stale detection and max lifetime
-   */
   private startHealthChecks(): void {
-    // Health check interval
     const healthInterval = setInterval(() => {
       if (!this.running) {
         clearInterval(healthInterval)
@@ -331,16 +266,13 @@ export class AIMonitor {
 
       const elapsed = Date.now() - this.stats.startTime.getTime()
 
-      // Stale detection
       if (elapsed > this.config.staleDetectionMs) {
         const lastActivity = Date.now() - this.getLastActivityTime()
         if (lastActivity > this.config.staleDetectionMs) {
           logger.warn('[AI-Monitor] Stale monitor detected (no activity for 3 min)')
-          // Could trigger restart or alert
         }
       }
 
-      // Max lifetime enforcement
       if (elapsed > this.config.maxLifetimeMs) {
         logger.warn('[AI-Monitor] Max lifetime exceeded (30 min), shutting down')
         this.stop()
@@ -350,9 +282,6 @@ export class AIMonitor {
     }, this.config.healthCheckIntervalMs)
   }
 
-  /**
-   * Get time of last activity
-   */
   private getLastActivityTime(): number {
     if (this.healingHistory.length === 0) {
       return Date.now() - this.stats.startTime.getTime()
@@ -362,10 +291,7 @@ export class AIMonitor {
     return Date.now() - lastAttempt.timestamp.getTime()
   }
 
-  /**
-   * Get current statistics
-   */
-  getStats(): MonitorStats {
+  getStats(): MonitorStats & { elapsed: number; uptime: boolean } {
     return {
       ...this.stats,
       elapsed: Date.now() - this.stats.startTime.getTime(),
@@ -373,24 +299,19 @@ export class AIMonitor {
     }
   }
 
-  /**
-   * Get circuit breaker stats
-   */
-  getCircuitBreakerStats(): CircuitBreakerStatsResult {
+  getCircuitBreakerStats() {
     return this.circuitBreaker.getStats()
   }
 
-  /**
-   * Get healing history
-   */
   getHealingHistory(limit = 100): HealingAttempt[] {
     return this.healingHistory.slice(-limit)
   }
+
+  getVerificationEngine(): VerificationEngine {
+    return this.verificationEngine
+  }
 }
 
-/**
- * Create AI Monitor instance
- */
 export function createAIMonitor(config: AIMonitorConfig): AIMonitor {
   return new AIMonitor(config)
 }

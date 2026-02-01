@@ -4,6 +4,7 @@ import os from 'os'
 import { spawn } from 'child_process'
 import chalk from 'chalk'
 import { logger as defaultLogger } from '../core/utils'
+import { LoopworkError } from '../core/errors'
 import type { ModelConfig } from '../contracts/cli'
 
 /**
@@ -74,7 +75,14 @@ function getAuthenticatedProviders(deps: ReturnType<typeof resolveDeps>): Provid
   const authPath = path.join(deps.homedir(), '.local/share/opencode/auth.json')
 
   if (!deps.fs.existsSync(authPath)) {
-    throw new Error(`OpenCode auth file not found at ${authPath}`)
+    throw new LoopworkError(
+      'ERR_FILE_NOT_FOUND',
+      `OpenCode auth file not found at ${authPath}`,
+      [
+        'Run "opencode auth login" to authenticate',
+        'Or ensure OpenCode is installed correctly'
+      ]
+    )
   }
 
   const authData = JSON.parse(deps.fs.readFileSync(authPath, 'utf-8'))
@@ -118,7 +126,11 @@ async function fetchModelsForProvider(
 
     child.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`Failed to fetch models for ${provider}: ${stderr}`))
+        reject(new LoopworkError(
+          'ERR_CLI_EXEC',
+          `Failed to fetch models for ${provider}: ${stderr}`,
+          ['Check your internet connection', 'Try running "opencode models" manually']
+        ))
         return
       }
 
@@ -140,7 +152,11 @@ async function fetchModelsForProvider(
     })
 
     child.on('error', (err) => {
-      reject(new Error(`Failed to spawn opencode: ${err.message}`))
+      reject(new LoopworkError(
+        'ERR_PROCESS_SPAWN',
+        `Failed to spawn opencode: ${err.message}`,
+        ['Ensure "opencode" is in your PATH']
+      ))
     })
   })
 }
