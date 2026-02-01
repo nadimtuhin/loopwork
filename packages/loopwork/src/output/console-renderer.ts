@@ -139,19 +139,9 @@ export class ConsoleRenderer extends BaseRenderer {
     if (this.activeSpinner) {
       this.activeSpinner.text = event.message
     } else {
-      // Fallback update logic similar to original logger.update
-      const terminalWidth = process.stdout.columns || 120
       const timestamp = getTimestamp()
       const prefix = `${chalk.gray(timestamp)} ${chalk.blue('[INFO]')} `
-      const prefixLength = timestamp.length + 1 + '[INFO] '.length
-      const availableWidth = Math.max(10, terminalWidth - prefixLength - 5)
-
-      let displayMsg = event.message
-      if (event.message.length > availableWidth) {
-        displayMsg = event.message.substring(0, availableWidth - 3) + '...'
-      }
-
-      process.stdout.write(`\r\x1b[K${prefix}${displayMsg}`)
+      process.stdout.write(`\r\x1b[K${prefix}${event.message}`)
     }
   }
 
