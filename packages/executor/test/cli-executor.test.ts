@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-import { CliExecutor, EXEC_MODELS, FALLBACK_MODELS } from '../src/cli-executor'
+import { CliExecutor, EXEC_MODELS, FALLBACK_MODELS, isOpenCodeCacheCorruption, OpenCodeCacheError } from '../src/cli-executor'
 import { ModelSelector, calculateBackoffDelay } from '../src/model-selector'
 import { WorkerPoolManager } from '../src/isolation/worker-pool-manager'
 import { createSpawner } from '../src/spawners'
@@ -462,5 +462,38 @@ describe('EXEC_MODELS and FALLBACK_MODELS', () => {
     const names = FALLBACK_MODELS.map(m => m.name)
     expect(names).toContain('opus-claude')
     expect(names).toContain('gemini-3-pro')
+  })
+})
+
+describe('OpenCode Cache Corruption Detection', () => {
+  test('isOpenCodeCacheCorruption detects ENOENT reading cache', () => {
+    const output = 'ENOENT reading "/Users/test/.cache/opencode/node_modules/foo"'
+    expect(isOpenCodeCacheCorruption(output)).toBe(true)
+  })
+
+  test('isOpenCodeCacheCorruption detects BuildMessage ENOENT', () => {
+    const output = 'BuildMessage: ENOENT reading "/Users/test/.cache/opencode/node_modules/bar"'
+    expect(isOpenCodeCacheCorruption(output)).toBe(true)
+  })
+
+  test('isOpenCodeCacheCorruption returns false for unrelated errors', () => {
+    const output = 'Error: File not found: /some/other/path'
+    expect(isOpenCodeCacheCorruption(output)).toBe(false)
+  })
+
+  test('isOpenCodeCacheCorruption returns false for normal output', () => {
+    const output = 'Task completed successfully'
+    expect(isOpenCodeCacheCorruption(output)).toBe(false)
+  })
+
+  test('isOpenCodeCacheCorruption is case insensitive', () => {
+    const output = 'enoent READING "/users/test/.cache/opencode/node_modules"'
+    expect(isOpenCodeCacheCorruption(output)).toBe(true)
+  })
+
+  test('OpenCodeCacheError has correct name', () => {
+    const error = new OpenCodeCacheError('test message')
+    expect(error.name).toBe('OpenCodeCacheError')
+    expect(error.message).toBe('test message')
   })
 })

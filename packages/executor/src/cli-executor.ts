@@ -27,6 +27,7 @@ import type {
 import { ModelSelector } from './model-selector'
 import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/worker-pool-manager'
 import { createSpawner } from './spawners'
+import { CliHealthChecker, type HealthCheckResult, type ValidatedModelConfig } from './cli-health-checker'
 
 const MIN_FREE_MEMORY_MB = 512
 const DEFAULT_SIGKILL_DELAY_MS = 5000
@@ -42,18 +43,11 @@ const OPENCODE_CACHE_CORRUPTION_PATTERNS = [
   /BuildMessage:.*ENOENT.*opencode/i,
 ]
 
-/**
- * Check if output indicates OpenCode cache corruption
- */
-function isOpenCodeCacheCorruption(output: string): boolean {
+export function isOpenCodeCacheCorruption(output: string): boolean {
   return OPENCODE_CACHE_CORRUPTION_PATTERNS.some(pattern => pattern.test(output))
 }
 
-/**
- * Clear OpenCode cache directory
- * Returns true if cache was cleared successfully
- */
-function clearOpenCodeCache(logger?: ILogger): boolean {
+export function clearOpenCodeCache(logger?: ILogger): boolean {
   const homeDir = os.homedir()
   const cachePath = path.join(homeDir, '.cache', 'opencode')
   
@@ -147,6 +141,8 @@ export class CliExecutor {
   private spawner: ISpawner
   private poolManager: WorkerPoolManager
   private resourceExhaustedPids: Map<number, string> = new Map()
+  private healthChecker: CliHealthChecker
+  private preflightValidated = false
 
   constructor(
     protected config: CliExecutorConfig,
@@ -175,7 +171,18 @@ export class CliExecutor {
     const fallbackModels = config.fallbackModels ?? FALLBACK_MODELS
     const strategy = config.selectionStrategy ?? 'round-robin'
 
-    this.modelSelector = new ModelSelector(primaryModels, fallbackModels, strategy)
+    this.modelSelector = new ModelSelector(primaryModels, fallbackModels, strategy, {
+      enableCircuitBreaker: true,
+      failureThreshold: 3,
+      resetTimeoutMs: 300000, // 5 minutes
+    })
+
+    this.healthChecker = new CliHealthChecker({
+      testTimeoutMs: 30000,
+      maxRetries: 1,
+      autoClearCache: true,
+      logger: this.logger,
+    })
 
     const poolConfig: WorkerPoolConfig = {
       pools: {
@@ -269,6 +276,112 @@ export class CliExecutor {
     await this.processManager.cleanup()
   }
 
+  /**
+   * Run pre-flight health check on all models
+   * Returns validated healthy models and filters the model selector
+   */
+  async runPreflightValidation(
+    minimumRequired: number = 1
+  ): Promise<{
+    success: boolean
+    healthy: ValidatedModelConfig[]
+    unhealthy: ValidatedModelConfig[]
+    message: string
+  }> {
+    if (this.preflightValidated) {
+      const healthStatus = this.modelSelector.getHealthStatus()
+      return {
+        success: healthStatus.available >= minimumRequired,
+        healthy: [],
+        unhealthy: [],
+        message: `Using cached validation: ${healthStatus.available}/${healthStatus.total} models available`,
+      }
+    }
+
+    this.logger.info('[Preflight] Starting CLI health validation...')
+    
+    const allModels = this.modelSelector.getAllModels()
+    const { healthy, unhealthy, summary } = await this.healthChecker.validateAllModels(
+      this.cliPaths,
+      allModels
+    )
+
+    const { sufficient, canContinue } = this.healthChecker.hasMinimumHealthyModels(
+      healthy.length,
+      minimumRequired
+    )
+
+    if (healthy.length > 0) {
+      // Create a new model selector with only healthy models
+      const healthySet = new Set(healthy.map(h => h.name))
+      
+      // Filter primary and fallback models to only include healthy ones
+      const primaryHealthy = allModels
+        .filter(m => healthySet.has(m.name))
+        .filter(m => !this.modelSelector.isUsingFallback() || 
+          !this.modelSelector.getAllModels().slice(0, this.modelSelector.getTotalModelCount() - 
+            this.modelSelector.getAllModels().filter(x => x.cli === m.cli && x.model === m.model).length).includes(m))
+      
+      this.logger.info(
+        `[Preflight] ${summary.healthy}/${summary.total} models healthy` +
+          (summary.cacheCleared > 0 ? ` (${summary.cacheCleared} cache cleared)` : '')
+      )
+
+      if (unhealthy.length > 0) {
+        this.logger.warn(
+          `[Preflight] Disabled models: ${unhealthy.map(u => u.name).join(', ')}`
+        )
+      }
+    }
+
+    this.preflightValidated = true
+
+    if (!sufficient) {
+      const message = canContinue
+        ? `Only ${summary.healthy}/${summary.total} models healthy (minimum ${minimumRequired} recommended)`
+        : `CRITICAL: Only ${summary.healthy}/${summary.total} models healthy, need at least ${minimumRequired}`
+      
+      return {
+        success: canContinue,
+        healthy,
+        unhealthy,
+        message,
+      }
+    }
+
+    return {
+      success: true,
+      healthy,
+      unhealthy,
+      message: `All ${summary.healthy} models healthy and ready`,
+    }
+  }
+
+  /**
+   * Get current health status
+   */
+  getHealthStatus(): {
+    total: number
+    available: number
+    disabled: number
+    preflightComplete: boolean
+  } {
+    const status = this.modelSelector.getHealthStatus()
+    return {
+      ...status,
+      preflightComplete: this.preflightValidated,
+    }
+  }
+
+  /**
+   * Reset preflight validation (for testing)
+   */
+  resetPreflight(): void {
+    this.preflightValidated = false
+    this.healthChecker.clearCache()
+    this.modelSelector.reset()
+  }
+
   private getPoolForTask(priority?: string, feature?: string): string {
     if (feature && this.poolManager.getStats()[feature]) {
       return feature
@@ -339,6 +452,8 @@ export class CliExecutor {
         exponentialBackoffMultiplier: this.retryConfig.backoffMultiplier,
       })
 
+      let currentModelName: string | null = null
+
       const retryResult = await runner.execute(async () => {
         const modelConfig = this.modelSelector.getNext()
         if (!modelConfig) {
@@ -346,10 +461,13 @@ export class CliExecutor {
         }
 
         const modelName = modelConfig.displayName || modelConfig.name
+        currentModelName = modelConfig.name
         const displayName = modelConfig.cli === 'claude' ? modelName : `${modelConfig.cli}/${modelName}`
         const cliPath = this.cliPaths.get(modelConfig.cli)
 
         if (!cliPath) {
+          // Track failure for circuit breaker
+          this.modelSelector.recordFailure(modelConfig.name)
           throw new Error(`CLI tool ${modelConfig.cli} not found`)
         }
 
@@ -464,7 +582,21 @@ export class CliExecutor {
         }
 
         if (result.exitCode !== 0) {
+          // Track failure for circuit breaker
+          if (currentModelName) {
+            const justOpened = this.modelSelector.recordFailure(currentModelName)
+            if (justOpened) {
+              this.logger.error(
+                `[CircuitBreaker] Model ${currentModelName} disabled after ${this.modelSelector.getCircuitBreakerState(currentModelName)?.failures} failures`
+              )
+            }
+          }
           throw new Error(`CLI exited with code ${result.exitCode}`)
+        }
+
+        // Track success for circuit breaker
+        if (currentModelName) {
+          this.modelSelector.recordSuccess(currentModelName)
         }
 
         return 0
