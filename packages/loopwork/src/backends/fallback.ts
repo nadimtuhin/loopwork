@@ -6,7 +6,7 @@
  * - Write operations only use primary
  */
 
-import type { Task, TaskBackend, FindTaskOptions, UpdateResult, PingResult } from './types'
+import type { Task, TaskBackend, FindTaskOptions, UpdateResult, PingResult, ApiQuotaInfo } from './types'
 import type { BackendPlugin } from '../contracts'
 
 export interface OfflineQueue {
@@ -139,12 +139,12 @@ export class FallbackTaskBackend implements TaskBackend {
     return this.tryWithFallback((backend) => backend.ping(), 'ping')
   }
 
-  async getQuotaInfo(): Promise<any> {
+  async getQuotaInfo(): Promise<ApiQuotaInfo> {
     if (!this.primaryBackend.getQuotaInfo) {
-      return undefined
+      return { limit: 0, remaining: 0, reset: new Date() }
     }
     return this.tryWithFallback(
-      (backend) => backend.getQuotaInfo?.() || Promise.resolve(undefined),
+      (backend) => backend.getQuotaInfo?.() || Promise.resolve({ limit: 0, remaining: 0, reset: new Date() }),
       'getQuotaInfo'
     )
   }
