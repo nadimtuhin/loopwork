@@ -251,8 +251,8 @@ export const ModelPresets = {
    * Gemini Flash via OpenCode - fast
    */
   geminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'opencode-gemini-flash',
-    displayName: 'opencode-gemini-flash',
+    name: 'gemini-flash',
+    displayName: 'opencode/gemini-flash',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
@@ -263,8 +263,8 @@ export const ModelPresets = {
    * Gemini Flash via OpenCode - fast
    */
   opencodeGeminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'opencode-gemini-flash',
-    displayName: 'opencode-gemini-flash',
+    name: 'gemini-flash',
+    displayName: 'opencode/gemini-flash',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
@@ -276,8 +276,8 @@ export const ModelPresets = {
    * Gemini Pro via OpenCode - capable
    */
   geminiPro: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'opencode-gemini-pro-low',
-    displayName: 'opencode-gemini-pro-low',
+    name: 'gemini-pro-low',
+    displayName: 'opencode/gemini-pro-low',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-low',
     timeout: 600,
@@ -288,8 +288,8 @@ export const ModelPresets = {
    * Gemini Pro via OpenCode - capable
    */
   opencodeGeminiProHigh: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'opencode-gemini-pro-high',
-    displayName: 'opencode-gemini-pro-high',
+    name: 'gemini-pro-high',
+    displayName: 'opencode/gemini-pro-high',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-high',
     timeout: 600,
@@ -300,8 +300,8 @@ export const ModelPresets = {
    * Gemini Pro via OpenCode - capable
    */
   opencodeGeminiProLow: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'opencode-gemini-pro-low',
-    displayName: 'opencode-gemini-pro-low',
+    name: 'gemini-pro-low',
+    displayName: 'opencode/gemini-pro-low',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-low',
     timeout: 600,

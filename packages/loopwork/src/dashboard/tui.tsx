@@ -152,7 +152,7 @@ export function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
           <Box>
             <Text color="gray">  📟 </Text>
             {task.workerId !== undefined && (
-              <Text color="yellow">w{task.workerId} </Text>
+              <Text color="yellow">[W{task.workerId}] </Text>
             )}
             <Text color="magenta">{task.modelDisplayName || task.cli || 'unknown'}</Text>
             <TaskTimer startTime={task.startedAt} />
