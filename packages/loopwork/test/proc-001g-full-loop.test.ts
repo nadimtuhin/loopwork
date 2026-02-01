@@ -15,6 +15,10 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
   let loopworkDir: string
   let spawnedProcesses: ChildProcess[] = []
 
+  // Increase timeout for all tests in this suite
+  const TEST_TIMEOUT = 15000
+  const CLEANUP_WAIT = 3000 // 3 seconds wait for process cleanup
+
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'proc-001g-'))
     loopworkDir = path.join(tempDir, '.loopwork')
@@ -145,7 +149,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(orphansAfterCrash.some(o => o.pid === pid2)).toBe(true)
 
       // Stage 4: Clean orphans (simulating new loopwork instance cleaning up)
-      const cleaner = new ProcessCleaner(registry3)
+      const cleaner = new ProcessCleaner(registry3, 1000)
       const result = await cleaner.cleanup(orphansAfterCrash)
 
       // Verify cleanup succeeded
@@ -153,7 +157,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(result.errors.length).toBe(0)
 
       // Wait for processes to terminate
-      await new Promise(resolve => setTimeout(resolve, 6000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Verify processes are killed
       expect(isProcessAlive(pid1)).toBe(false)
@@ -161,7 +165,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
 
       // Verify registry is clean
       expect(registry3.list().length).toBe(0)
-    })
+    }, TEST_TIMEOUT)
 
     test('handles partial orphan cleanup gracefully', async () => {
       const registry = new ProcessRegistry(loopworkDir)
@@ -204,13 +208,13 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(orphans.length).toBe(3)
 
       // Clean orphans
-      const cleaner = new ProcessCleaner(registry, 5000)
+      const cleaner = new ProcessCleaner(registry, 1000)
       const result = await cleaner.cleanup(orphans)
 
       expect(result.cleaned.length).toBe(3)
 
       // Wait for cleanup
-      await new Promise(resolve => setTimeout(resolve, 6000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // First 3 should be dead, last 2 should still be alive
       for (let i = 0; i < 3; i++) {
@@ -226,7 +230,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
           proc.kill('SIGKILL')
         }
       }
-    })
+    }, TEST_TIMEOUT)
   })
 
   describe('Multi-Namespace Test', () => {
@@ -301,13 +305,13 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(orphans.every(o => o.process.namespace === 'ns1')).toBe(true)
 
       // Stage 5: Clean orphans
-      const cleaner = new ProcessCleaner(sharedRegistry, 5000)
+      const cleaner = new ProcessCleaner(sharedRegistry, 1000)
       const result = await cleaner.cleanup(orphans)
 
       expect(result.cleaned.length).toBe(2)
 
       // Wait for cleanup
-      await new Promise(resolve => setTimeout(resolve, 6000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Stage 6: Verify isolation - only ns1 processes are cleaned
       // ns1 processes should be dead
@@ -335,7 +339,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
           }
         }
       }
-    })
+    }, TEST_TIMEOUT)
 
     test('namespace isolation prevents cross-namespace cleanup', async () => {
       const registry = new ProcessRegistry(loopworkDir)
@@ -409,11 +413,11 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(orphans.every(o => o.process.namespace === 'namespace-a')).toBe(true)
 
       // Clean only namespace-a orphans
-      const cleaner = new ProcessCleaner(registry, 5000)
+      const cleaner = new ProcessCleaner(registry, 1000)
       await cleaner.cleanup(orphans)
 
       // Wait for cleanup
-      await new Promise(resolve => setTimeout(resolve, 6000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Verify namespace-a processes are killed
       expect(isProcessAlive(pidNs1_1)).toBe(false)
@@ -426,7 +430,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       // Cleanup remaining processes
       ns2Proc1.kill('SIGKILL')
       ns2Proc2.kill('SIGKILL')
-    })
+    }, TEST_TIMEOUT)
   })
 
   describe('Timeout Test', () => {
@@ -446,8 +450,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
         args: ['60'],
         namespace: 'timeout-test',
         startTime: Date.now() - 10000, // Simulate started 10 seconds ago
-        parentPid: process.pid,
-        status: 'running'
+        parentPid: process.pid
       })
 
       await registry.persist()
@@ -469,21 +472,21 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(orphans[0].reason).toBe('stale')
 
       // Stage 3: Clean the stale process
-      const cleaner = new ProcessCleaner(registry, 2000)
+      const cleaner = new ProcessCleaner(registry, 1000)
       const result = await cleaner.cleanup(orphans)
 
       expect(result.cleaned.length).toBe(1)
       expect(result.cleaned).toContain(pid)
 
       // Wait for process to be killed
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Verify process is terminated
       expect(isProcessAlive(pid)).toBe(false)
 
       // Verify registry is clean
       expect(registry.get(pid)).toBeUndefined()
-    })
+    }, TEST_TIMEOUT)
 
     test('process under timeout not killed as stale', async () => {
       const registry = new ProcessRegistry(loopworkDir)
@@ -525,7 +528,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
 
       // Cleanup
       proc.kill('SIGKILL')
-    })
+    }, TEST_TIMEOUT)
 
     test('multiple stale processes killed in parallel', async () => {
       const registry = new ProcessRegistry(loopworkDir)
@@ -646,7 +649,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(result.cleaned.length).toBeGreaterThanOrEqual(0)
 
       // Wait for processes to terminate
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Verify processes are killed
       expect(isProcessAlive(pid1)).toBe(false)
@@ -655,7 +658,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       // Verify state after cleanup
       const finalChildren = manager2.listChildren()
       expect(finalChildren.length).toBeLessThanOrEqual(2)
-    })
+    }, TEST_TIMEOUT)
 
     test('handles crash with persistence and recovery', async () => {
       // Stage 1: Initial session
@@ -709,7 +712,7 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       expect(result).toBeDefined()
 
       // Wait for termination
-      await new Promise(resolve => setTimeout(resolve, 6000))
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT))
 
       // Verify cleanup
       expect(isProcessAlive(pid1)).toBe(false)
@@ -726,6 +729,6 @@ describe.serial('PROC-001g: Process Management E2E (Full Loop Scenario)', () => 
       await manager3.load()
 
       expect(manager3.listChildren().length).toBe(0)
-    })
+    }, TEST_TIMEOUT)
   })
 })

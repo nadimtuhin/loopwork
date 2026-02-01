@@ -16,6 +16,7 @@ import type { IStateManager, IStateManagerConstructor } from '../contracts/state
 import type { RunLogger } from '../contracts/logger'
 import { LoopworkError, handleError } from '../core/errors'
 import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
+import { RetryBudget } from '../core/retry-budget'
 import { LoopworkMonitor } from '../monitor'
 import type { JsonEvent } from '../contracts/output'
 
@@ -536,6 +537,12 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   const maxRetries = config.maxRetries ?? 3
   const retryCount: Map<string, number> = new Map()
 
+  const retryBudget = new RetryBudget(
+    config.retryBudget?.maxRetries || 50,
+    config.retryBudget?.windowMs || 3600000,
+    config.retryBudget?.persistence !== false
+  )
+
   while (iteration < (config.maxIterations || 50)) {
     iteration++
     cliExecutor.resetFallback()
@@ -758,9 +765,13 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       }
     } else {
       const currentRetries = retryCount.get(task.id) || 0
+      const hasBudget = config.retryBudget?.enabled !== false && retryBudget.hasBudget()
 
-      if (currentRetries < maxRetries - 1) {
+      if (currentRetries < maxRetries - 1 && hasBudget) {
         retryCount.set(task.id, currentRetries + 1)
+        if (config.retryBudget?.enabled !== false) {
+          retryBudget.consume()
+        }
 
         if (isJsonMode) {
           activeLogger.emitJsonEvent('warn', 'run', {
@@ -779,7 +790,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         } catch (error: unknown) {
           handleLoopworkError(new LoopworkError(
             'ERR_BACKEND_INVALID',
-            `Failed to reset task ${task.id} to pending: ${error.message}`,
+            `Failed to reset task ${task.id} to pending: ${(error as Error).message}`,
             [
               'Check backend connectivity and permissions',
               'The task may need manual intervention'
@@ -811,14 +822,17 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         await new Promise(r => setTimeout(r, config.retryDelay ?? 3000))
         continue
       } else {
-        const errorMsg = `Max retries (${maxRetries}) reached\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
+        const isBudgetExhausted = currentRetries < maxRetries - 1 && !hasBudget
+        const errorMsg = isBudgetExhausted
+          ? `Retry budget exhausted (${config.retryBudget?.maxRetries || 50} per ${(config.retryBudget?.windowMs || 3600000) / 3600000}h)\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
+          : `Max retries (${maxRetries}) reached\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
 
         try {
           await backend.markFailed(task.id, errorMsg)
         } catch (error: unknown) {
           handleLoopworkError(new LoopworkError(
             'ERR_BACKEND_INVALID',
-            `Task failed and could not be marked as failed in backend: ${error.message}`,
+            `Task failed and could not be marked as failed in backend: ${(error as Error).message}`,
             [
               'The task execution failed multiple times',
               'Backend operation also failed - check connectivity',
@@ -848,14 +862,19 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
             taskId: task.id,
             iteration,
             failed: true,
-            attempts: maxRetries,
+            attempts: currentRetries + 1,
             tasksFailed,
             consecutiveFailures,
             lastOutput: lastOutput.substring(0, 500),
+            budgetExhausted: isBudgetExhausted,
           })
         } else {
           activeLogger.raw('')
-          activeLogger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
+          if (isBudgetExhausted) {
+            activeLogger.error(`Task ${task.id} failed: Retry budget exhausted`)
+          } else {
+            activeLogger.error(`Task ${task.id} failed after ${currentRetries + 1} attempts`)
+          }
 
           if (lastOutput) {
             activeLogger.raw('')
@@ -870,7 +889,11 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           activeLogger.info(`💡 Check task requirements in ${prdPath}`)
           activeLogger.info(`💡 Check full output: ${outputFile}`)
           activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
-          activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
+          if (!isBudgetExhausted) {
+            activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
+          } else {
+            activeLogger.info(`💡 Increase retry budget in config: retryBudget.maxRetries`)
+          }
           activeLogger.raw('')
         }
       }

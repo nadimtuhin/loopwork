@@ -594,7 +594,7 @@ export class CliExecutor {
         maxAttempts: maxAttempts,
         retryOnRateLimit: true,
         retryOnTransient: true,
-        retryableErrors: ['opencode cache corruption'],
+        retryableErrors: ['opencode cache corruption', 'CLI exited with code', 'Quota exceeded'],
         rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
         exponentialBackoff: this.retryConfig.exponentialBackoff,
         exponentialBackoffBaseDelay: this.retryConfig.delayBetweenModelAttemptsMs || this.retryConfig.baseDelayMs,

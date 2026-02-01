@@ -5,9 +5,11 @@ import { LoopworkError } from '../errors'
 
 export class ProcessCleaner {
   private registry: ProcessRegistry
+  private gracePeriodMs: number
 
-  constructor(registry: ProcessRegistry) {
+  constructor(registry: ProcessRegistry, gracePeriodMs: number = 5000) {
     this.registry = registry
+    this.gracePeriodMs = gracePeriodMs
   }
 
   async cleanup(orphans: OrphanInfo[]): Promise<CleanupResult> {
@@ -51,7 +53,7 @@ export class ProcessCleaner {
 
     try {
       process.kill(pid, 'SIGTERM')
-      await sleep(5000)
+      await sleep(this.gracePeriodMs)
 
       if (!isProcessAlive(pid)) {
         return true

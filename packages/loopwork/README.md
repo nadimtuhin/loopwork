@@ -11,6 +11,7 @@ An extensible task automation framework that runs AI CLI tools against task back
 - **Notifications** - Telegram, Discord webhooks
 - **Cost Tracking** - Token usage and cost monitoring
 - **Sub-tasks & Dependencies** - Hierarchical task structures
+- **Quarantine & Retries** - Automatically moves failing tasks to quarantine and enforces global retry budgets to prevent runaway API costs
 - **MCP Server** - Model Context Protocol for AI tool integration
 
 ## Quick Start

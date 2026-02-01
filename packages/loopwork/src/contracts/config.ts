@@ -54,6 +54,7 @@ export interface LoopworkConfig {
     enabled?: boolean
     maxRetries?: number
     windowMs?: number
+    persistence?: boolean
   }
   checkpoint?: import('../core/checkpoint-integrator').CheckpointConfig
   [key: string]: unknown

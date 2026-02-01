@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-02-01 - DYNAMICT-002
+- DYNAMICT-002: Implement output pattern analyzer for detecting follow-up work
+
+### 2026-02-01 - CLIOUTPU-004
+- CLIOUTPU-004: Add JSON output mode support
+
 ### 2026-02-01 - CLIOUTPU-002
 - CLIOUTPU-002: Standardize output method across all commands
 

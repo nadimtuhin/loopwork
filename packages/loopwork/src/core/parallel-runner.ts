@@ -208,12 +208,12 @@ export class ParallelRunner {
     } else {
       const budgetConfig = this.config.retryBudget || {
         maxRetries: 50,
-        windowMs: 3600000,
-        enabled: true,
+        windowMs: 3600000
       }
       this.retryBudget = new RetryBudget(
         budgetConfig.maxRetries || 50,
-        budgetConfig.windowMs || 3600000
+        budgetConfig.windowMs || 3600000,
+        budgetConfig.persistence !== false
       )
     }
 
