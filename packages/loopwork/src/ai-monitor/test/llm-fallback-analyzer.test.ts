@@ -8,8 +8,10 @@ const MOCK_API_KEY = 'sk-ant-test-key'
 
 describe('LLMFallbackAnalyzer', () => {
   let analyzer: LLMFallbackAnalyzer
+  let testDir: string
 
   beforeEach(async () => {
+    testDir = path.join(TEST_DIR, `session-${Date.now()}`)
     try {
       await fs.rm(TEST_DIR, { recursive: true, force: true })
       await fs.mkdir(TEST_DIR, { recursive: true })
@@ -24,15 +26,15 @@ describe('LLMFallbackAnalyzer', () => {
       cacheEnabled: true,
       cacheTTL: 86400000,
       timeout: 30000,
-      cachePath: path.join(TEST_DIR, 'llm-cache.json'),
-      sessionPath: path.join(TEST_DIR, 'llm-session.json'),
+      cachePath: path.join(testDir, 'llm-cache.json'),
+      sessionPath: path.join(testDir, 'llm-session.json'),
       useMock: true,
     })
   })
 
   afterEach(async () => {
     try {
-      await fs.rm(TEST_DIR, { recursive: true, force: true })
+      await fs.rm(testDir, { recursive: true, force: true })
     } catch (e) {
     }
   })
@@ -74,15 +76,28 @@ describe('LLMFallbackAnalyzer', () => {
     })
 
     test('should persist session state across instances', async () => {
-      await analyzer.analyzeError('Test error 1')
-      const stats1 = analyzer.getSessionStats()
+      // Use consistent paths for both analyzers
+      const sharedCachePath = path.join(TEST_DIR, 'shared-llm-cache.json')
+      const sharedSessionPath = path.join(TEST_DIR, 'shared-llm-session.json')
+      
+      const analyzer1 = new LLMFallbackAnalyzer({
+        apiKey: MOCK_API_KEY,
+        cacheEnabled: true,
+        cachePath: sharedCachePath,
+        sessionPath: sharedSessionPath,
+        useMock: true,
+        cooldownMs: 0,
+      })
+      
+      await analyzer1.analyzeError('Test error 1')
+      const stats1 = analyzer1.getSessionStats()
       expect(stats1.callsThisSession).toBe(1)
 
       const analyzer2 = new LLMFallbackAnalyzer({
         apiKey: MOCK_API_KEY,
         cacheEnabled: true,
-        cachePath: path.join(TEST_DIR, 'llm-cache.json'),
-        sessionPath: path.join(TEST_DIR, 'llm-session.json'),
+        cachePath: sharedCachePath,
+        sessionPath: sharedSessionPath,
         useMock: true,
         cooldownMs: 0,
       })
@@ -211,7 +226,7 @@ describe('LLMFallbackAnalyzer', () => {
     })
 
     test('should delete cache file on clear', async () => {
-      const cacheFile = path.join(TEST_DIR, 'llm-cache.json')
+      const cacheFile = path.join(testDir, 'llm-cache.json')
 
       await analyzer.analyzeError('Test error')
 

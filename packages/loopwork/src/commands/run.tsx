@@ -19,27 +19,7 @@ import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
 import { LoopworkMonitor } from '../monitor'
 import type { JsonEvent } from '../contracts/output'
 
-/**
- * Emit a JSON event to stdout
- */
-function emitJsonEvent(
-  type: 'info' | 'success' | 'error' | 'warn' | 'progress' | 'result',
-  data: Record<string, unknown>,
-  activeLogger: RunLogger
-): void {
-  const event: JsonEvent = {
-    timestamp: new Date().toISOString(),
-    type,
-    command: 'run',
-    data,
-  }
-  // Use jsonEvent if available, otherwise fall back to raw
-  if ('jsonEvent' in activeLogger && typeof activeLogger.jsonEvent === 'function') {
-    activeLogger.jsonEvent(event)
-  } else {
-    activeLogger.raw(JSON.stringify(event))
-  }
-}
+
 
 function generateSuccessCriteria(task: Task): string[] {
   const criteria: string[] = []
@@ -437,7 +417,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   // Display startup configuration
   if (isJsonMode) {
-    emitJsonEvent('info', {
+    activeLogger.emitJsonEvent('info', 'run', {
       namespace,
       backend: backend.name,
       backendConfig: config.backend.type === 'github'
@@ -454,7 +434,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       sessionId: config.sessionId,
       outputDir: config.outputDir,
       dryRun: config.dryRun,
-    }, activeLogger)
+    })
   } else {
     activeLogger.raw('')
     const startupBannerOutput = await renderInk(
@@ -493,7 +473,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     }
     pendingCount = await backend.countPending({ feature: config.feature })
     if (isJsonMode) {
-      emitJsonEvent('info', { pendingTasks: pendingCount }, activeLogger)
+      activeLogger.emitJsonEvent('info', 'run', { pendingTasks: pendingCount })
     } else {
       activeLogger.stopSpinner(`Found ${pendingCount} pending tasks`)
     }
@@ -518,7 +498,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   if (pendingCount === 0) {
     if (isJsonMode) {
-      emitJsonEvent('info', { message: 'No pending tasks found' }, activeLogger)
+      activeLogger.emitJsonEvent('info', 'run', { message: 'No pending tasks found' })
     } else {
       activeLogger.info('No pending tasks found')
       activeLogger.raw('')
@@ -618,7 +598,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     }
 
     if (isJsonMode) {
-      emitJsonEvent('progress', {
+      activeLogger.emitJsonEvent('progress', 'run', {
         iteration,
         maxIterations: config.maxIterations,
         taskId: task.id,
@@ -626,7 +606,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         taskPriority: task.priority,
         taskFeature: task.feature || 'none',
         taskUrl: task.metadata?.url,
-      }, activeLogger)
+      })
     } else {
       activeLogger.raw('')
       activeLogger.raw(separator('heavy'))
@@ -740,12 +720,12 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           ]
         ))
         if (isJsonMode) {
-          emitJsonEvent('error', {
+          activeLogger.emitJsonEvent('error', 'run', {
             taskId: task.id,
             iteration,
             error: 'Failed to mark task as completed in backend',
             message: (error as Error).message,
-          }, activeLogger)
+          })
         }
         continue
       }
@@ -766,13 +746,13 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       retryCount.delete(task.id)
 
       if (isJsonMode) {
-        emitJsonEvent('success', {
+        activeLogger.emitJsonEvent('success', 'run', {
           taskId: task.id,
           iteration,
           duration,
           completed: true,
           tasksCompleted,
-        }, activeLogger)
+        })
       } else {
         activeLogger.success(`Task ${task.id} completed!`)
       }
@@ -783,13 +763,13 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         retryCount.set(task.id, currentRetries + 1)
 
         if (isJsonMode) {
-          emitJsonEvent('warn', {
+          activeLogger.emitJsonEvent('warn', 'run', {
             taskId: task.id,
             iteration,
             retry: currentRetries + 2,
             maxRetries,
             message: 'Task failed, retrying',
-          }, activeLogger)
+          })
         } else {
           activeLogger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
         }
@@ -806,12 +786,12 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
             ]
           ))
           if (isJsonMode) {
-            emitJsonEvent('error', {
+            activeLogger.emitJsonEvent('error', 'run', {
               taskId: task.id,
               iteration,
               error: 'Failed to reset task to pending',
               message: (error as Error).message,
-            }, activeLogger)
+            })
           }
           continue
         }
@@ -864,7 +844,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         } catch {}
 
         if (isJsonMode) {
-          emitJsonEvent('error', {
+          activeLogger.emitJsonEvent('error', 'run', {
             taskId: task.id,
             iteration,
             failed: true,
@@ -872,7 +852,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
             tasksFailed,
             consecutiveFailures,
             lastOutput: lastOutput.substring(0, 500),
-          }, activeLogger)
+          })
         } else {
           activeLogger.raw('')
           activeLogger.error(`Task ${task.id} failed after ${maxRetries} attempts`)
@@ -922,7 +902,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
   if (isJsonMode) {
     // Emit final result JSON
-    emitJsonEvent('result', {
+    activeLogger.emitJsonEvent('result', 'run', {
       summary: {
         totalIterations: iteration,
         tasksCompleted,
@@ -933,7 +913,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       },
       sessionId: config.sessionId,
       outputDir: config.outputDir,
-    }, activeLogger)
+    })
   } else {
     const summaryOutput = await renderInk(
       <InkCompletionSummary
@@ -1083,7 +1063,7 @@ async function runParallel(
 
     if (isJsonMode) {
       // Emit final result JSON for parallel mode
-      emitJsonEvent('result', {
+      activeLogger.emitJsonEvent('result', 'run', {
         summary: {
           totalIterations: 0, // Not tracked in parallel mode
           tasksCompleted: stats.completed,
@@ -1096,7 +1076,7 @@ async function runParallel(
         sessionId: config.sessionId,
         outputDir: config.outputDir,
         mode: 'parallel',
-      }, activeLogger)
+      })
     } else {
       const parallelSummaryOutput = await renderInk(
         <InkCompletionSummary

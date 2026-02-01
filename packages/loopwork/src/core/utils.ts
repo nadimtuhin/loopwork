@@ -197,6 +197,32 @@ export const logger = {
   },
 
   /**
+   * Emit a compact JSON object (for NDJSON streaming)
+   * Used by long-running commands (run, logs --follow)
+   */
+  json: (data: unknown) => {
+    logger.renderer.render({
+      type: 'raw',
+      content: JSON.stringify(data, null, 0), // Compact for NDJSON
+      noNewline: false,
+      timestamp: Date.now()
+    })
+  },
+
+  /**
+   * Emit a formatted JSON object (for snapshot commands)
+   * Used by atomic commands (status, kill)
+   */
+  jsonPretty: (data: unknown) => {
+    logger.renderer.render({
+      type: 'raw',
+      content: JSON.stringify(data, null, 2), // Formatted for readability
+      noNewline: false,
+      timestamp: Date.now()
+    })
+  },
+
+  /**
    * Emit a JSON event to stdout
    * Used when outputFormat is 'json'
    */
@@ -207,6 +233,24 @@ export const logger = {
       data: event.data,
       timestamp: Date.now()
     })
+  },
+
+  /**
+   * Emit a standardized JSON event (NDJSON format)
+   * Helper for commands to emit consistent event structures
+   */
+  emitJsonEvent: (
+    type: 'info' | 'success' | 'error' | 'warn' | 'progress' | 'result',
+    command: string,
+    data: Record<string, unknown>
+  ) => {
+    const event: JsonEvent = {
+      timestamp: new Date().toISOString(),
+      type,
+      command,
+      data,
+    }
+    logger.json(event)
   },
 
   /**

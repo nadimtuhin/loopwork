@@ -4015,7 +4015,7 @@
     },
     {
       "id": "CLIOUTPU-004",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "medium",
       "title": "Add JSON output mode support",
       "feature": "cli-output-design",
@@ -4082,13 +4082,27 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "taskId": "CLIOUTPU-004",
+          "timestamp": "2026-02-01T18:50:09.416Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-02-01T18-41-14-26132\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-02-01T18:13:10.088Z",
-        "updatedAt": "2026-02-01T18:42:27.280Z",
-        "startedAt": "2026-02-01T18:42:27.280Z"
-      }
+        "updatedAt": "2026-02-01T18:50:09.416Z",
+        "startedAt": "2026-02-01T18:42:27.280Z",
+        "completedAt": "2026-02-01T18:50:09.416Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CLIOUTPU-005",

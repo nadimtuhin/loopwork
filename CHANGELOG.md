@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### 2026-02-01 - CLIOUTPU-002
+- CLIOUTPU-002: Standardize output method across all commands
+
 ### 2026-02-01 - CLIOUTPU-003
 - CLIOUTPU-003: Add progress bar and completion summary components
 
