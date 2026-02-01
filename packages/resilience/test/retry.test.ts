@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { calculateExponentialBackoff, exponentialBackoff } from '../src/backoff'
-import { DEFAULT_RETRY_OPTIONS, isRetryable } from '../src/retry'
+import { calculateExponentialBackoff, exponentialBackoff, LinearBackoff, ConstantBackoff } from '../src/backoff'
+import { DEFAULT_RETRY_OPTIONS, isRetryable, StandardRetryStrategy } from '../src/retry'
 import { createResilienceRunner, makeResilient, ResilienceRunner, type ResilienceRunnerOptions } from '../src/runner'
 
 async function retryStrategyHelper<T>(fn: () => Promise<T>, options: any): Promise<T> {
@@ -74,6 +74,43 @@ describe('backoff.ts', () => {
       expect(delay).toBeGreaterThan(0)
     })
   })
+
+  describe('LinearBackoff', () => {
+    test('calculates correct delay without jitter', () => {
+      const strategy = new LinearBackoff({ baseDelayMs: 1000, jitter: false })
+      expect(strategy.calculateDelay(1)).toBe(1000)
+      expect(strategy.calculateDelay(2)).toBe(2000)
+      expect(strategy.calculateDelay(3)).toBe(3000)
+    })
+
+    test('respects maxDelayMs', () => {
+      const strategy = new LinearBackoff({ baseDelayMs: 10000, maxDelayMs: 15000, jitter: false })
+      expect(strategy.calculateDelay(1)).toBe(10000)
+      expect(strategy.calculateDelay(2)).toBe(15000)
+    })
+
+    test('applies jitter', () => {
+      const strategy = new LinearBackoff({ baseDelayMs: 1000, jitter: true })
+      const delays = new Set()
+      for (let i = 0; i < 50; i++) {
+        delays.add(strategy.calculateDelay(1))
+      }
+      expect(delays.size).toBeGreaterThan(1)
+    })
+  })
+
+  describe('ConstantBackoff', () => {
+    test('returns constant delay', () => {
+      const strategy = new ConstantBackoff(500)
+      expect(strategy.calculateDelay(1)).toBe(500)
+      expect(strategy.calculateDelay(10)).toBe(500)
+    })
+
+    test('uses default delay', () => {
+      const strategy = new ConstantBackoff()
+      expect(strategy.calculateDelay(1)).toBe(1000)
+    })
+  })
 })
 
 describe('retry.ts', () => {
@@ -114,6 +151,18 @@ describe('retry.ts', () => {
       expect(isRetryable(error, options)).toBe(true)
     })
 
+    test('checks transient errors by code', () => {
+      const error = { code: 'ECONNRESET' }
+      const options = { ...DEFAULT_RETRY_OPTIONS, maxAttempts: 3, retryOnTransient: true }
+      expect(isRetryable(error, options)).toBe(true)
+    })
+
+    test('checks more transient errors', () => {
+      const error = { message: 'gateway timeout' }
+      const options = { ...DEFAULT_RETRY_OPTIONS, maxAttempts: 3, retryOnTransient: true }
+      expect(isRetryable(error, options)).toBe(true)
+    })
+
     test('checks custom retryable errors', () => {
       const error = { message: 'Custom fatal error' }
       const options = { ...DEFAULT_RETRY_OPTIONS, maxAttempts: 3, retryableErrors: ['Custom fatal'] }
@@ -130,7 +179,32 @@ describe('retry.ts', () => {
       const options = { ...DEFAULT_RETRY_OPTIONS, maxAttempts: 3 }
       expect(isRetryable(null, options)).toBe(false)
       expect(isRetryable(undefined, options)).toBe(false)
-      expect(isRetryable('string', options)).toBe(false)
+    })
+
+    test('handles string errors', () => {
+      const options = { ...DEFAULT_RETRY_OPTIONS, maxAttempts: 3, retryOnTransient: true }
+      expect(isRetryable('connection reset', options)).toBe(true)
+      expect(isRetryable('rate limit exceeded', options)).toBe(true)
+      expect(isRetryable('fatal error', options)).toBe(false)
+    })
+  })
+
+  describe('StandardRetryStrategy', () => {
+    test('retries when attempts are less than max', () => {
+      const strategy = new StandardRetryStrategy({ maxAttempts: 3, retryOnAllErrors: true })
+      expect(strategy.shouldRetry(1, new Error('fail'))).toBe(true)
+      expect(strategy.shouldRetry(2, new Error('fail'))).toBe(true)
+    })
+
+    test('does not retry when attempts reach max', () => {
+      const strategy = new StandardRetryStrategy({ maxAttempts: 3, retryOnAllErrors: true })
+      expect(strategy.shouldRetry(3, new Error('fail'))).toBe(false)
+    })
+
+    test('respects isRetryable logic', () => {
+      const strategy = new StandardRetryStrategy({ maxAttempts: 3, retryOnTransient: true })
+      expect(strategy.shouldRetry(1, new Error('connection reset'))).toBe(true)
+      expect(strategy.shouldRetry(1, new Error('fatal error'))).toBe(false)
     })
   })
 
@@ -323,6 +397,29 @@ describe('ResilienceRunner', () => {
     const duration = Date.now() - start
 
     expect(duration).toBeGreaterThanOrEqual(baseDelay - 20) // Allow small buffer for timing
+    expect(attempts).toBe(2)
+  })
+
+  test('verifies rate limit backoff timing', async () => {
+    const rateLimitWaitMs = 50
+    const runner = createResilienceRunner({
+      maxAttempts: 2,
+      retryOnRateLimit: true,
+      rateLimitWaitMs: rateLimitWaitMs,
+    })
+
+    let attempts = 0
+    const start = Date.now()
+    await runner.execute(async () => {
+      attempts++
+      if (attempts < 2) {
+        throw new Error('rate limit exceeded')
+      }
+      return 'success'
+    })
+    const duration = Date.now() - start
+
+    expect(duration).toBeGreaterThanOrEqual(rateLimitWaitMs - 20)
     expect(attempts).toBe(2)
   })
 

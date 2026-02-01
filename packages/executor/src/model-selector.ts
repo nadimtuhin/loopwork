@@ -125,13 +125,12 @@ export class ModelSelector {
   private peekNextInternal(): ModelConfig | null {
     const pool = this.useFallback ? this.fallbackModels : this.primaryModels
     
-    // Filter out disabled models
+    this.updateDisabledModels()
+    
     const availablePool = pool.filter(m => !this.disabledModels.has(m.name))
     
     if (availablePool.length === 0) {
-      // Try fallback if not already using it
       if (!this.useFallback && this.fallbackModels.length > 0) {
-        // Don't actually switch, just check if fallback has models
         const fallbackAvailable = this.fallbackModels.filter(m => !this.disabledModels.has(m.name))
         if (fallbackAvailable.length > 0) {
           return fallbackAvailable[0]
@@ -162,11 +161,11 @@ export class ModelSelector {
   private selectNextInternal(): ModelConfig | null {
     const pool = this.useFallback ? this.fallbackModels : this.primaryModels
     
-    // Filter out disabled models
+    this.updateDisabledModels()
+    
     const availablePool = pool.filter(m => !this.disabledModels.has(m.name))
     
     if (availablePool.length === 0) {
-      // Try fallback if not already using it
       if (!this.useFallback && this.fallbackModels.length > 0) {
         this.switchToFallback()
         return this.selectNextInternal()
@@ -185,6 +184,19 @@ export class ModelSelector {
         return this.selectRandom(availablePool)
       default:
         return this.selectRoundRobin(availablePool)
+    }
+  }
+
+  /**
+   * Update disabled models by checking if circuit breakers have reset
+   */
+  private updateDisabledModels(): void {
+    if (!this.enableCircuitBreaker) return
+    
+    for (const modelName of this.disabledModels) {
+      if (this.circuitBreakers.canExecute(modelName)) {
+        this.disabledModels.delete(modelName)
+      }
     }
   }
 
@@ -618,23 +630,6 @@ export class ModelSelector {
       })
     })
   }
-}
-
-/**
- * Calculate exponential backoff delay
- *
- * @param attempt - Current attempt number (0-indexed)
- * @param baseDelayMs - Base delay in milliseconds
- * @param maxDelayMs - Maximum delay cap in milliseconds
- * @returns Delay in milliseconds
- */
-export function calculateBackoffDelay(
-  attempt: number,
-  baseDelayMs: number = 1000,
-  maxDelayMs: number = 60000
-): number {
-  const delay = baseDelayMs * Math.pow(2, attempt)
-  return Math.min(delay, maxDelayMs)
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { PtySpawner, PtySpawnerOptions, isPtyAvailable } from '../spawners/pty-spawner'
+import { PtySpawner, PtySpawnerOptions, isPtyAvailable } from '../pty-spawner'
 
 /**
  * pty-spawner Tests
@@ -24,8 +24,9 @@ describe('pty-spawner', () => {
   })
 
   describe('PtySpawnerOptions', () => {
-    test('should be defined', () => {
-      expect(PtySpawnerOptions).toBeDefined()
+    test('should be defined as a type', () => {
+      const options: PtySpawnerOptions = {}
+      expect(options).toBeDefined()
     })
   })
 

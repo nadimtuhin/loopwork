@@ -31,9 +31,23 @@ export const RATE_LIMIT_PATTERNS = [
   /over.*query.*limit/i,
 ]
 
+/**
+ * OpenCode cache corruption error patterns
+ */
+export const OPENCODE_CACHE_CORRUPTION_PATTERNS = [
+  /ENOENT.*reading.*\.cache\/opencode/i,
+  /ENOENT.*\.cache\/opencode\/node_modules/i,
+  /BuildMessage:.*ENOENT.*opencode/i,
+]
+
 export function isRateLimitOutput(output: string): boolean {
   if (!output) return false
   return RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(output))
+}
+
+export function isOpenCodeCacheCorruption(output: string): boolean {
+  if (!output) return false
+  return OPENCODE_CACHE_CORRUPTION_PATTERNS.some((pattern) => pattern.test(output))
 }
 
 export function isRateLimitError(error: unknown): boolean {
@@ -43,6 +57,10 @@ export function isRateLimitError(error: unknown): boolean {
 
   if (error instanceof RateLimitError) {
     return true
+  }
+
+  if (typeof error === 'string') {
+    return isRateLimitOutput(error)
   }
 
   if (typeof error !== 'object') {

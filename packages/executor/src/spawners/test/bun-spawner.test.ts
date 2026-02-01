@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { BunSpawner } from '../spawners/bun-spawner'
+import { BunSpawner } from '../bun-spawner'
 
 /**
  * bun-spawner Tests

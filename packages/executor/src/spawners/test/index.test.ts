@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { isPtyFunctional, createSpawner, getDefaultSpawner, resetDefaultSpawner } from '../spawners/index'
+import { isPtyFunctional, createSpawner, getDefaultSpawner, resetDefaultSpawner } from '../index'
 
 /**
  * index Tests

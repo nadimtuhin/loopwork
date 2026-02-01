@@ -82,7 +82,7 @@ describe('RateLimitBackoffStrategy', () => {
     expect(delay).toBe(30000) // Should use rate limit wait, not exponential backoff
   })
 
-  test('returns custom rate limit wait time', () => {
+  test('returns 60000 when custom wait time is provided', () => {
     const strategy = new RateLimitBackoffStrategy(60000)
     const rateLimitError = new Error('rate limit exceeded')
 
@@ -91,16 +91,22 @@ describe('RateLimitBackoffStrategy', () => {
     expect(delay).toBe(60000)
   })
 
-  test('getBaseDelay returns rate limit wait time', () => {
-    const strategy = new RateLimitBackoffStrategy(45000)
+  test('uses default 30s wait time when not provided', () => {
+    const strategy = new RateLimitBackoffStrategy()
+    const rateLimitError = new Error('rate limit exceeded')
 
-    expect(strategy.getBaseDelay()).toBe(45000)
+    const delay = strategy.calculateDelay(1, rateLimitError)
+
+    expect(delay).toBe(30000)
   })
 
-  test('getRateLimitWaitMs returns configured wait time', () => {
+  test('detects rate limit errors from various patterns', () => {
     const strategy = new RateLimitBackoffStrategy(30000)
-
-    expect(strategy.getRateLimitWaitMs()).toBe(30000)
+    
+    expect(strategy.calculateDelay(1, new Error('429 too many requests'))).toBe(30000)
+    expect(strategy.calculateDelay(1, new Error('RESOURCE_EXHAUSTED'))).toBe(30000)
+    expect(strategy.calculateDelay(1, new Error('quota exceeded'))).toBe(30000)
+    expect(strategy.calculateDelay(1, new Error('billing limit reached'))).toBe(30000)
   })
 
   test('integrates with ResilienceRunner for rate limit handling', async () => {

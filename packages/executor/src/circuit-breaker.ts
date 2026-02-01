@@ -74,11 +74,8 @@ export class CircuitBreaker {
     this.state.lastSuccessTime = Date.now()
 
     if (this.state.state === 'half-open') {
-      // Success in half-open state closes the circuit
-      this.halfOpenCalls++
-      if (this.halfOpenCalls >= this.options.halfOpenMaxCalls) {
-        this.close()
-      }
+      // Success in half-open state closes the circuit immediately
+      this.close()
     } else if (this.state.state === 'closed') {
       // Reset failure count on success in closed state
       if (this.state.failures > 0) {

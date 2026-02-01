@@ -2,11 +2,12 @@ import {
   IResilienceEngine,
   RetryResult,
   ResilienceConfig,
-  RetryAttempt
+  RetryAttempt,
+  IBackoffPolicy
 } from '@loopwork-ai/contracts'
-import { ExponentialBackoff } from './backoff.js'
-import { RateLimitBackoffStrategy } from './rate-limit.js'
-import { StandardRetryStrategy, RetryOptions } from './retry.js'
+import { ExponentialBackoff, ConstantBackoff } from './backoff'
+import { RateLimitBackoffStrategy } from './rate-limit'
+import { StandardRetryStrategy, RetryOptions } from './retry'
 
 export interface ResilienceRunnerOptions {
   maxAttempts: number
@@ -75,16 +76,22 @@ export class ResilienceRunner implements IResilienceEngine {
       rateLimitWaitMs: opts.rateLimitWaitMs,
     }
 
-    const exponentialBackoff = new ExponentialBackoff({
-      baseDelayMs: opts.exponentialBackoffBaseDelay,
-      maxDelayMs: opts.exponentialBackoffMaxDelay,
-      multiplier: opts.exponentialBackoffMultiplier,
-      jitter: opts.exponentialBackoffJitter,
-    })
+    let backoffPolicy: IBackoffPolicy
+
+    if (opts.exponentialBackoff) {
+      backoffPolicy = new ExponentialBackoff({
+        baseDelayMs: opts.exponentialBackoffBaseDelay,
+        maxDelayMs: opts.exponentialBackoffMaxDelay,
+        multiplier: opts.exponentialBackoffMultiplier,
+        jitter: opts.exponentialBackoffJitter,
+      })
+    } else {
+      backoffPolicy = new ConstantBackoff(opts.exponentialBackoffBaseDelay)
+    }
 
     const rateLimitBackoff = new RateLimitBackoffStrategy(
       opts.rateLimitWaitMs,
-      exponentialBackoff,
+      backoffPolicy,
     )
 
     return {
@@ -155,12 +162,16 @@ export class ResilienceRunner implements IResilienceEngine {
       try {
         let result: T
         if (attemptTimeout && attemptTimeout > 0) {
-          result = await Promise.race([
-            operation(),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error(`Operation timed out after ${attemptTimeout}ms`)), attemptTimeout)
-            )
-          ])
+          let timeoutHandle: any
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => reject(new Error(`Operation timed out after ${attemptTimeout}ms`)), attemptTimeout)
+          })
+          
+          try {
+            result = await Promise.race([operation(), timeoutPromise])
+          } finally {
+            clearTimeout(timeoutHandle)
+          }
         } else {
           result = await operation()
         }

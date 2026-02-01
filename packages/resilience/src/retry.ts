@@ -1,7 +1,7 @@
 import {
   IRetryStrategy
 } from '@loopwork-ai/contracts'
-import { isRateLimitError, RetryableError } from './rate-limit.js'
+import { isRateLimitError, RetryableError } from './rate-limit'
 
 export type { RetryableError }
 
@@ -58,8 +58,7 @@ export function isRetryable(
     return true
   }
 
-  const err = error as Error
-  const errorMessage = (err.message || '').toLowerCase()
+  const errorMessage = (typeof error === 'string' ? error : (error as any).message || '').toLowerCase()
   const errorCode = typeof error === 'object' && error !== null && 'code' in error ? String((error as any).code).toLowerCase() : undefined
 
   if (retryableErrors && retryableErrors.length > 0) {
@@ -90,9 +89,19 @@ export function isRetryable(
       '502',
       '503',
       '504',
+      'eai_again',
+      'econnrefused',
+      'etimedout',
+      '408',
+      'gateway timeout',
+      'bad gateway',
+      'service unavailable',
     ]
 
-    return transientErrors.some((transient) => errorMessage.includes(transient))
+    const isTransientMessage = transientErrors.some((transient) => errorMessage.includes(transient))
+    const isTransientCode = errorCode && transientErrors.some((transient) => errorCode === transient)
+
+    return Boolean(isTransientMessage || isTransientCode)
   }
 
   return false
