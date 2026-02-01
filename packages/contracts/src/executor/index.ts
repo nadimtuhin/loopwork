@@ -35,4 +35,27 @@ export interface ICliExecutor {
 
   killCurrent(): void
   cleanup(): Promise<void>
+
+  /**
+   * Run pre-flight validation on all CLI models
+   * Returns information about healthy and unhealthy models
+   */
+  runPreflightValidation?(
+    minimumRequired?: number
+  ): Promise<{
+    success: boolean
+    healthy: unknown[]
+    unhealthy: unknown[]
+    message: string
+  }>
+
+  /**
+   * Get current health status of models
+   */
+  getHealthStatus?(): {
+    total: number
+    available: number
+    disabled: number
+    preflightComplete: boolean
+  }
 }
