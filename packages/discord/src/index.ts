@@ -147,6 +147,24 @@ export class DiscordClient {
   }
 
   /**
+   * Send task quarantined notification
+   */
+  async notifyTaskQuarantined(task: PluginTask, reason: string, mention?: string): Promise<void> {
+    await this.send({
+      content: mention ? `${mention} Task quarantined!` : undefined,
+      embeds: [{
+        title: `⚠️ Task Quarantined`,
+        description: `**${task.id}**: ${task.title}`,
+        color: COLORS.yellow,
+        fields: [
+          { name: 'Reason', value: reason.slice(0, 1000) },
+        ],
+        timestamp: new Date().toISOString(),
+      }],
+    })
+  }
+
+  /**
    * Send loop summary notification
    */
   async notifyLoopEnd(stats: { completed: number; failed: number; duration: number }): Promise<void> {
@@ -255,6 +273,16 @@ export function createDiscordPlugin(config: DiscordConfig = {}): LoopworkPlugin 
 
       try {
         await client.notifyTaskFailed(context.task, error, config.mentionOnFail)
+      } catch (e: any) {
+        console.warn(`Discord: Failed to send notification: ${e.message}`)
+      }
+    },
+
+    async onTaskQuarantined(context: TaskContext, reason: string) {
+      if (!notifyOnFail) return
+
+      try {
+        await client.notifyTaskQuarantined(context.task, reason, config.mentionOnFail)
       } catch (e: any) {
         console.warn(`Discord: Failed to send notification: ${e.message}`)
       }

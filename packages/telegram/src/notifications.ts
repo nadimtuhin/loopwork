@@ -183,6 +183,17 @@ export function createTelegramHookPlugin(config?: Partial<TelegramConfig>): Loop
       })
     },
 
+    async onTaskQuarantined(context: TaskContext, reason: string) {
+      if (!telegram.isConfigured()) return
+
+      await telegram.send({
+        title: 'Task Quarantined',
+        message: `${context.task.title}\n\nReason: ${reason.slice(0, 200)}`,
+        level: 'warning',
+        taskId: context.task.id,
+      })
+    },
+
     async onLoopEnd(stats: LoopStats) {
       if (!telegram.isConfigured()) return
 

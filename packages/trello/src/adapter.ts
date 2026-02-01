@@ -24,17 +24,19 @@ export class TrelloTaskAdapter implements TaskBackend {
     if (this.listIdMap.size > 0) return;
 
     const lists = await this.client.getLists();
-    
+
     const pendingName = this.config.lists?.pending || 'To Do';
     const inProgressName = this.config.lists?.inProgress || 'Doing';
     const completedName = this.config.lists?.completed || 'Done';
     const failedName = this.config.lists?.failed || 'Failed';
+    const quarantinedName = this.config.lists?.quarantined || 'Quarantined';
 
     this.findAndSetListId(lists, 'pending', pendingName);
     this.findAndSetListId(lists, 'inProgress', inProgressName);
     this.findAndSetListId(lists, 'completed', completedName);
     this.findAndSetListId(lists, 'failed', failedName);
-    
+    this.findAndSetListId(lists, 'quarantined', quarantinedName);
+
     if (!this.listIdMap.has('pending')) {
       const available = lists.map(l => l.name).join(', ');
       throw new Error(`Pending list "${pendingName}" not found on board. Available lists: ${available}`);
@@ -55,10 +57,11 @@ export class TrelloTaskAdapter implements TaskBackend {
         pending: 'To Do',
         inProgress: 'Doing',
         completed: 'Done',
-        failed: 'Failed'
+        failed: 'Failed',
+        quarantined: 'Quarantined'
       };
       const name = (this.config.lists as any)?.[key] || defaultNames[key];
-      throw new Error(`List "${name}" (${key}) not found. Ensure it exists on the board.`);
+      throw new Error(`List "${name}" (${key}) not found. Ensure it exists on your board.`);
     }
     return id;
   }
@@ -150,8 +153,20 @@ export class TrelloTaskAdapter implements TaskBackend {
         await this.client.moveCard(taskId, listId);
       } catch {
       }
-      
+
       await this.client.addComment(taskId, `**Loopwork Failed**\n\n${error}`);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    try {
+      await this.ensureLists();
+      const listId = this.getListId('quarantined');
+      await this.client.moveCard(taskId, listId);
+      await this.client.addComment(taskId, `**Loopwork Quarantined**\n\n${reason}`);
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e.message };
@@ -196,11 +211,12 @@ export class TrelloTaskAdapter implements TaskBackend {
   }
 
   private async adaptCard(card: TrelloCard): Promise<Task> {
-    
+
     let status: TaskStatus = 'pending';
     if (card.idList === this.listIdMap.get('inProgress')) status = 'in-progress';
     else if (card.idList === this.listIdMap.get('completed')) status = 'completed';
     else if (card.idList === this.listIdMap.get('failed')) status = 'failed';
+    else if (card.idList === this.listIdMap.get('quarantined')) status = 'quarantined';
 
     let priority: Priority = 'medium';
     if (card.labels.some(l => l.name.toLowerCase() === 'high')) priority = 'high';
@@ -208,6 +224,16 @@ export class TrelloTaskAdapter implements TaskBackend {
 
     const featureLabel = card.labels.find(l => l.name.startsWith('feat:'));
     const feature = featureLabel?.name.replace('feat:', '');
+
+    const timestamps: Task['timestamps'] = {
+      createdAt: new Date(parseInt(card.id.substring(0, 8), 16) * 1000).toISOString(),
+    };
+
+    if (status === 'failed') {
+      timestamps.failedAt = card.dateLastActivity;
+    } else if (status === 'quarantined') {
+      timestamps.quarantinedAt = card.dateLastActivity;
+    }
 
     return {
       id: card.id,
@@ -217,10 +243,7 @@ export class TrelloTaskAdapter implements TaskBackend {
       priority,
       feature,
       metadata: { url: card.url, labels: card.labels.map(l => l.name) },
-      timestamps: {
-        createdAt: new Date(parseInt(card.id.substring(0, 8), 16) * 1000).toISOString(),
-        failedAt: status === 'failed' ? card.dateLastActivity : undefined,
-      }
+      timestamps,
     };
   }
 }

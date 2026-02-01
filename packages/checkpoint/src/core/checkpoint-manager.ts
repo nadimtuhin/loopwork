@@ -12,8 +12,12 @@ export class CheckpointManager implements ICheckpointManager {
   constructor(private readonly storage: ICheckpointStorage) {}
 
   async checkpoint(agentId: string, state: Partial<AgentCheckpoint>): Promise<void> {
-    // Merge with previous state to preserve fields
-    const previous = this.lastCheckpoints.get(agentId) ?? {}
+    let previous = this.lastCheckpoints.get(agentId)
+    if (!previous) {
+      const loaded = await this.storage.load(agentId)
+      previous = loaded ?? {}
+    }
+    
     const merged = { ...previous, ...state }
     this.lastCheckpoints.set(agentId, merged)
 
@@ -33,6 +37,9 @@ export class CheckpointManager implements ICheckpointManager {
   async restore(agentId: string): Promise<RestoredContext | null> {
     const checkpoint = await this.storage.load(agentId)
     if (!checkpoint) return null
+    
+    this.lastCheckpoints.set(agentId, checkpoint)
+    
     const partialOutput = await this.storage.getOutput(agentId)
     return { checkpoint, partialOutput }
   }

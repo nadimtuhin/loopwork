@@ -7,6 +7,7 @@ export interface TrelloBackendConfig {
     inProgress?: string;
     completed?: string;
     failed?: string;
+    quarantined?: string;
   };
 }
 

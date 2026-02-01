@@ -15,5 +15,6 @@ export interface NotionBackendConfig {
     inProgress?: string;
     completed?: string;
     failed?: string;
+    quarantined?: string;
   };
 }

@@ -115,6 +115,11 @@ export class NotionTaskAdapter implements BackendPlugin {
     return this.updateStatus(taskId, 'failed')
   }
 
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    await this.addComment(taskId, `Quarantined: ${reason}`)
+    return this.updateStatus(taskId, 'quarantined')
+  }
+
   async resetToPending(taskId: string): Promise<UpdateResult> {
     return this.updateStatus(taskId, 'pending')
   }
@@ -194,6 +199,7 @@ export class NotionTaskAdapter implements BackendPlugin {
       case 'inProgress': return 'In Progress'
       case 'completed': return 'Completed'
       case 'failed': return 'Failed'
+      case 'quarantined': return 'Quarantined'
       default: return key
     }
   }
@@ -259,6 +265,7 @@ export class NotionTaskAdapter implements BackendPlugin {
     if (status === (values.completed || 'Completed')) return 'completed'
     if (status === (values.inProgress || 'In Progress')) return 'in-progress'
     if (status === (values.failed || 'Failed')) return 'failed'
+    if (status === (values.quarantined || 'Quarantined')) return 'quarantined'
     return 'pending'
   }
 

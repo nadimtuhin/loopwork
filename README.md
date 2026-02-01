@@ -612,7 +612,7 @@ If you're still stuck:
 
 2. **Read architecture docs:**
    ```bash
-   cat packages/loopwork/docs/ARCHITECTURE.md
+   cat docs/explanation/architecture-overview.md
    ```
 
 3. **Search GitHub issues:**
@@ -901,13 +901,13 @@ Read detailed guides for advanced features:
 
 ```bash
 # Core architecture
-cat packages/loopwork/docs/ARCHITECTURE.md
+cat docs/explanation/architecture-overview.md
 
 # CLI execution and model selection
-cat packages/loopwork/docs/cli-invocation-algorithm.md
+cat docs/explanation/cli-invocation.md
 
 # Process management
-cat packages/loopwork/docs/orphan-process-management.md
+cat docs/explanation/process-management.md
 
 # Full package README
 cat packages/loopwork/README.md

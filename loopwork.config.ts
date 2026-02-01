@@ -44,7 +44,7 @@ export default compose(
       // createModel({ name: "gemma-3-27b", cli: "opencode", model: "openrouter/google/gemma-3-27b-it:free", timeout: 600, costWeight: 5 }),
 
       // Additional free models
-      // createModel({ name: "mistral-7b", cli: "opencode", model: "openrouter/mistralai/mistral-7b-instruct:free", timeout: 180, costWeight: 5 }),
+      // createModel({ name: "mistral-7b", cli: "opencode", model: "openrouter/mistralai/mistral-7b-instruct:free", timeout: 600, costWeight: 5 }),
       // createModel({ name: "devstral-2512", cli: "opencode", model: "openrouter/mistralai/devstral-2512:free", timeout: 600, costWeight: 5 }),
       // Zhipu AI Coding Plan Models (ZAI) - Specialized for coding
       ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
@@ -70,6 +70,25 @@ export default compose(
         timeout: 600,
         costWeight: 22,
       }),
+
+      createModel({
+        name: "kimi-k2.5-coding",
+        cli: "opencode",
+        model: "kimi-for-coding/k2p5",
+        timeout: 600,
+        costWeight: 60,
+      }),
+      createModel({
+        name: "minimax-m2.1-free",
+        cli: "opencode",
+        model: "opencode/minimax-m2.1-free",
+        timeout: 600,
+        costWeight: 5,
+      }),
+
+      // === PAID MODELS (costWeight: 10-30) - Used After Free ===
+      // Fast & cheap
+      ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
       createModel({
         name: "glm-4.7-free",
         cli: "opencode",
@@ -84,18 +103,6 @@ export default compose(
         timeout: 600,
         costWeight: 5,
       }),
-      createModel({
-        name: "minimax-m2.1-free",
-        cli: "opencode",
-        model: "opencode/minimax-m2.1-free",
-        timeout: 600,
-        costWeight: 5,
-      }),
-
-      // === PAID MODELS (costWeight: 10-30) - Used After Free ===
-      // Fast & cheap
-      ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
-
       /*
       // Cerebras Models - Fast and cheap (limited tokens)
       createModel({
@@ -123,8 +130,15 @@ export default compose(
         name: "antigravity-gemini-3-flash",
         cli: "opencode",
         model: "google/antigravity-gemini-3-flash",
-        timeout: 180,
+        timeout: 600,
         costWeight: 15,
+      }),
+      createModel({
+        name: "antigravity-claude-sonnet-4-5",
+        cli: "opencode",
+        model: "google/antigravity-claude-sonnet-4-5",
+        timeout: 600,
+        costWeight: 30,
       }),
       createModel({
         name: "antigravity-claude-sonnet-4-5",
@@ -138,6 +152,20 @@ export default compose(
       // Premium models for complex tasks
       // ModelPresets.claudeHaiku({ timeout: 600, costWeight: 10 }),
       ModelPresets.geminiFlash({ timeout: 900, costWeight: 15 }),
+      createModel({
+        name: "antigravity-claude-sonnet-4-5",
+        cli: "opencode",
+        model: "google/antigravity-claude-sonnet-4-5",
+        timeout: 600,
+        costWeight: 30,
+      }),
+      createModel({
+        name: "kimi-k2.5-tee",
+        cli: "opencode",
+        model: "chutes/moonshotai/Kimi-K2.5-TEE",
+        timeout: 600,
+        costWeight: 65,
+      }),
       // ModelPresets.opencodeGeminiProHigh({ timeout: 900, costWeight: 60 }),
       // createModel({ name: "claude-opus", cli: "claude", model: "opus", timeout: 900, costWeight: 100 }),
     ],
@@ -218,14 +246,21 @@ export default compose(
   }),
 )(
   defineConfig({
-    parallel: 10,
+    parallel: 5,
     maxIterations: 500,
     timeout: 600,
     namespace: "default",
     autoConfirm: true,
     debug: true,
-    maxRetries: 5,
+    maxRetries: 10,
     taskDelay: 2000,
     retryDelay: 6000,
+    orphanWatch: {
+      enabled: true,
+      interval: 60000, // Check every minute
+      maxAge: 1800000, // Kill processes older than 30 minutes
+      autoKill: true, // Auto-kill confirmed orphans
+      patterns: [],
+    },
   } as any),
 );

@@ -326,7 +326,7 @@
     },
     {
       "id": "PARALLEL-001g",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Parallel: Integrate ParallelRunner into run command",
       "feature": "parallel",
@@ -346,8 +346,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.757Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:40:10.513Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.757Z",
+        "startedAt": "2026-01-31T23:38:57.757Z",
+        "completedAt": "2026-01-31T23:40:10.513Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PARALLEL-001h",
@@ -1105,7 +1130,7 @@
     },
     {
       "id": "CLI-005",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Fix CLI output streaming - output not showing in real-time",
       "feature": "cli",
@@ -1134,12 +1159,34 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.859Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.295Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-01-31T23:11:29.764Z",
-        "startedAt": "2026-01-31T23:11:29.764Z"
-      }
+        "startedAt": "2026-01-31T23:11:29.764Z",
+        "resumedAt": "2026-01-31T23:38:57.859Z",
+        "completedAt": "2026-01-31T23:44:31.295Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001",
@@ -1385,7 +1432,7 @@
     },
     {
       "id": "PROC-001d",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Process Management: ProcessCleaner (Kill Orphans Safely)",
       "feature": "process-management",
@@ -1430,12 +1477,34 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.870Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.299Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-01-31T23:11:29.803Z",
-        "startedAt": "2026-01-31T23:11:29.803Z"
-      }
+        "startedAt": "2026-01-31T23:11:29.803Z",
+        "resumedAt": "2026-01-31T23:38:57.870Z",
+        "completedAt": "2026-01-31T23:44:31.299Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PROC-001e",
@@ -1938,7 +2007,7 @@
     },
     {
       "id": "RETRY-001",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Core Retry Utilities and Configuration",
       "feature": "retry",
@@ -1962,12 +2031,52 @@
             "newStatus": "in-progress",
             "method": "claimTask"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.879Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.378Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:34.782Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:07:28.358Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "timestamps": {
         "createdAt": "2026-01-31T23:11:29.897Z",
-        "startedAt": "2026-01-31T23:11:29.897Z"
-      }
+        "startedAt": "2026-01-31T23:44:34.782Z",
+        "completedAt": "2026-02-01T00:07:28.358Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "RETRY-002",
@@ -2062,7 +2171,7 @@
     },
     {
       "id": "HEALTHCH-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Healthcheck Plugin and Scheduler",
       "feature": "healthcheck",
@@ -2076,8 +2185,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.892Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.271Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.892Z",
+        "startedAt": "2026-01-31T23:38:57.892Z",
+        "completedAt": "2026-01-31T23:44:31.271Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "HEALTHCH-002",
@@ -2148,7 +2282,7 @@
     },
     {
       "id": "CHAOS-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Chaos Plugin Package and Configuration",
       "feature": "chaos",
@@ -2162,8 +2296,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.908Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.266Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 5)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.908Z",
+        "startedAt": "2026-01-31T23:38:57.908Z",
+        "completedAt": "2026-01-31T23:44:31.266Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CHAOS-002",
@@ -2258,7 +2417,7 @@
     },
     {
       "id": "ROLLBACK-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Git Snapshot Utilities",
       "feature": "rollback",
@@ -2272,12 +2431,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.924Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.305Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 6)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.924Z",
+        "startedAt": "2026-01-31T23:38:57.924Z",
+        "completedAt": "2026-01-31T23:44:31.305Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "ROLLBACK-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Rollback Plugin & Lifecycle Hooks",
       "feature": "rollback",
@@ -2294,8 +2478,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:34.883Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:54:14.509Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:44:34.883Z",
+        "startedAt": "2026-01-31T23:44:34.883Z",
+        "completedAt": "2026-01-31T23:54:14.509Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "ROLLBACK-003",
@@ -2321,7 +2530,7 @@
     },
     {
       "id": "BULKHEAD-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Hierarchical Worker Pool Manager",
       "feature": "bulkhead",
@@ -2335,8 +2544,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.939Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:40:47.850Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 7)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.939Z",
+        "startedAt": "2026-01-31T23:38:57.939Z",
+        "completedAt": "2026-01-31T23:40:47.850Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "BULKHEAD-002",
@@ -2430,7 +2664,7 @@
     },
     {
       "id": "CHECKPOI-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Design Checkpoint System and Core Manager",
       "feature": "checkpoint",
@@ -2444,8 +2678,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:57.972Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:07.681Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 8)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:57.972Z",
+        "startedAt": "2026-01-31T23:38:57.972Z",
+        "completedAt": "2026-01-31T23:44:07.681Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CHECKPOI-002",
@@ -2539,7 +2798,7 @@
     },
     {
       "id": "FALLBACK-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Feature Flag Infrastructure",
       "feature": "fallback",
@@ -2553,12 +2812,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:58.017Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:31.308Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 9)\n\nSession: loopwork-default-2026-01-31T23-38-57-36785\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:38:58.017Z",
+        "startedAt": "2026-01-31T23:38:58.017Z",
+        "completedAt": "2026-01-31T23:44:31.308Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "FALLBACK-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Fallback Task Backend Adapter",
       "feature": "fallback",
@@ -2572,8 +2856,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:34.894Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:50:37.775Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:44:34.894Z",
+        "startedAt": "2026-01-31T23:44:34.894Z",
+        "completedAt": "2026-01-31T23:50:37.775Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "FALLBACK-003",
@@ -2621,7 +2930,7 @@
     },
     {
       "id": "DEADLETT-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Failure State Persistence",
       "feature": "deadletter",
@@ -2635,12 +2944,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:34.962Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:05.007Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:44:34.962Z",
+        "startedAt": "2026-01-31T23:44:34.962Z",
+        "completedAt": "2026-02-01T00:22:05.007Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DEADLETT-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Update Backend Interface for Quarantine Status",
       "feature": "deadletter",
@@ -2657,8 +2991,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:07.019Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:01.941Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T00:22:07.019Z",
+        "startedAt": "2026-02-01T00:22:07.019Z",
+        "completedAt": "2026-02-01T01:11:01.941Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DEADLETT-003",
@@ -2752,7 +3111,7 @@
     },
     {
       "id": "TIMESTAM-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Task Timestamps and Event Log Interfaces",
       "feature": "timestamps",
@@ -2766,8 +3125,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:44:34.978Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:53:13.499Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 1",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-01-31T23:44:34.978Z",
+        "startedAt": "2026-01-31T23:44:34.978Z",
+        "completedAt": "2026-01-31T23:53:13.499Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "TIMESTAM-002",
@@ -2815,7 +3199,7 @@
     },
     {
       "id": "PLUGINAR-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Dynamic Plugin Loading System",
       "feature": "plugin-arch",
@@ -2829,8 +3213,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:07.119Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:49:29.361Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T00:22:07.119Z",
+        "startedAt": "2026-02-01T00:22:07.119Z",
+        "completedAt": "2026-02-01T00:49:29.361Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "PLUGINAR-002",
@@ -2900,7 +3309,7 @@
     },
     {
       "id": "DEBUGGER-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Debugger Core & Event Hooks",
       "feature": "debugger",
@@ -2914,8 +3323,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:07.130Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:37:35.387Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T00:22:07.130Z",
+        "startedAt": "2026-02-01T00:22:07.130Z",
+        "completedAt": "2026-02-01T00:37:35.387Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DEBUGGER-002",
@@ -3067,7 +3501,7 @@
     },
     {
       "id": "MCPMANAG-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create MCP Plugin Package & Configuration Schema",
       "feature": "mcp-manager",
@@ -3081,8 +3515,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:07.140Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:26:25.716Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T00:22:07.140Z",
+        "startedAt": "2026-02-01T00:22:07.140Z",
+        "completedAt": "2026-02-01T00:26:25.716Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "MCPMANAG-002",
@@ -3251,7 +3710,7 @@
     },
     {
       "id": "CONTROLA-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Initialize Control API Plugin & Server Scaffold",
       "feature": "control-api",
@@ -3265,12 +3724,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T00:22:07.151Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T00:33:38.729Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 2",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T00:22:07.151Z",
+        "startedAt": "2026-02-01T00:22:07.151Z",
+        "completedAt": "2026-02-01T00:33:38.729Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CONTROLA-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Loop Control REST Endpoints",
       "feature": "control-api",
@@ -3287,8 +3771,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:03.948Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:13:03.186Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:11:03.948Z",
+        "startedAt": "2026-02-01T01:11:03.948Z",
+        "completedAt": "2026-02-01T01:13:03.186Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "CONTROLA-003",
@@ -3751,7 +4260,7 @@
     },
     {
       "id": "VISUALIZ-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Task Graph Analysis Engine",
       "feature": "visualizer",
@@ -3765,8 +4274,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:04.050Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:14:19.299Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:11:04.050Z",
+        "startedAt": "2026-02-01T01:11:04.050Z",
+        "completedAt": "2026-02-01T01:14:19.299Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "VISUALIZ-002",
@@ -3965,7 +4499,7 @@
     },
     {
       "id": "SCAFFOLD-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Scaffolding Core & Template Engine",
       "feature": "scaffold",
@@ -3979,8 +4513,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:04.060Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:15:37.166Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:11:04.060Z",
+        "startedAt": "2026-02-01T01:11:04.060Z",
+        "completedAt": "2026-02-01T01:15:37.166Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "SCAFFOLD-002",
@@ -4310,7 +4869,7 @@
     },
     {
       "id": "SAFETY-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Safety Configuration & Risk Taxonomy",
       "feature": "safety",
@@ -4324,8 +4883,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:04.070Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:49.874Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:11:04.070Z",
+        "startedAt": "2026-02-01T01:11:04.070Z",
+        "completedAt": "2026-02-01T01:26:49.874Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "SAFETY-002",
@@ -4544,7 +5128,7 @@
     },
     {
       "id": "MEMORY-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Vector Store & Embedding Infrastructure",
       "feature": "memory",
@@ -4558,12 +5142,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:11:04.080Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:22:33.674Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 3",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:11:04.080Z",
+        "startedAt": "2026-02-01T01:11:04.080Z",
+        "completedAt": "2026-02-01T01:22:33.674Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "MEMORY-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Semantic Code Indexer with Incremental Updates",
       "feature": "memory",
@@ -4580,8 +5189,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:51.889Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:35:07.297Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:26:51.889Z",
+        "startedAt": "2026-02-01T01:26:51.889Z",
+        "completedAt": "2026-02-01T01:35:07.297Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "MEMORY-003",
@@ -4734,7 +5368,7 @@
     },
     {
       "id": "DOCS-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Audit documentation and define structure",
       "feature": "docs",
@@ -4748,12 +5382,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:51.986Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:03.218Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:26:51.986Z",
+        "startedAt": "2026-02-01T01:26:51.986Z",
+        "completedAt": "2026-02-01T01:43:03.218Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DOCS-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Revamp Onboarding and QuickStart",
       "feature": "docs",
@@ -4770,8 +5429,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:05.231Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:44:11.403Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:43:05.231Z",
+        "startedAt": "2026-02-01T01:43:05.231Z",
+        "completedAt": "2026-02-01T02:44:11.403Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "DOCS-003",
@@ -4990,7 +5674,7 @@
     },
     {
       "id": "SWARM-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Agent Persona Configuration Schema",
       "feature": "swarm",
@@ -5004,12 +5688,37 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:51.996Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:40:37.334Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:26:51.996Z",
+        "startedAt": "2026-02-01T01:26:51.996Z",
+        "completedAt": "2026-02-01T01:40:37.334Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "SWARM-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement Inter-Agent Messaging Infrastructure",
       "feature": "swarm",
@@ -5026,8 +5735,42 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:56.499Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:05.331Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:34:03.035Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:43:05.331Z",
+        "startedAt": "2026-02-01T01:43:05.331Z",
+        "completedAt": "2026-02-01T02:34:03.035Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "SWARM-003",
@@ -5153,7 +5896,7 @@
     },
     {
       "id": "TELEMETR-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Setup OpenTelemetry SDK and Infrastructure",
       "feature": "telemetry",
@@ -5167,8 +5910,42 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:56.502Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:52.006Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:39:01.516Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:26:52.006Z",
+        "startedAt": "2026-02-01T01:26:52.006Z",
+        "completedAt": "2026-02-01T01:39:01.516Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "TELEMETR-002",
@@ -5340,7 +6117,7 @@
     },
     {
       "id": "GOVERNAN-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Governance Plugin with Basic Policy Engine",
       "feature": "governance",
@@ -5354,8 +6131,33 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T01:26:52.017Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:41:22.574Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 4",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T01:26:52.017Z",
+        "startedAt": "2026-02-01T01:26:52.017Z",
+        "completedAt": "2026-02-01T01:41:22.574Z"
+      },
+      "failureCount": 0
     },
     {
       "id": "GOVERNAN-002",
@@ -5542,14 +6344,15 @@
     },
     {
       "id": "TERMINAL-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Add ink-based component library for rich CLI rendering",
       "feature": "terminal-ui-overhaul",
       "timestamps": {
         "createdAt": "2026-01-31T06:03:11.016Z",
         "startedAt": "2026-01-31T06:33:13.696Z",
-        "resumedAt": "2026-01-31T08:09:29.846Z"
+        "resumedAt": "2026-02-01T01:43:05.343Z",
+        "completedAt": "2026-02-01T02:06:16.499Z"
       },
       "events": [
         {
@@ -5606,6 +6409,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:05.343Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:06:16.499Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -5890,13 +6712,14 @@
     },
     {
       "id": "CONFIGHO-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Add config reload function to core/config.ts",
       "feature": "config-hot-reload",
       "timestamps": {
         "createdAt": "2026-01-31T06:03:11.141Z",
-        "startedAt": "2026-01-31T06:03:11.141Z"
+        "startedAt": "2026-02-01T01:43:05.353Z",
+        "completedAt": "2026-02-01T01:53:01.128Z"
       },
       "events": [
         {
@@ -5925,6 +6748,34 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-01-31T23:38:56.504Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:05.353Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:53:01.128Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -6206,13 +7057,15 @@
     },
     {
       "id": "MODELCAP-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define capability and role type contracts",
       "feature": "model-capability-roles",
       "timestamps": {
         "createdAt": "2026-01-31T06:03:11.179Z",
-        "startedAt": "2026-01-31T06:33:13.800Z"
+        "startedAt": "2026-01-31T06:33:13.800Z",
+        "resumedAt": "2026-02-01T01:43:05.363Z",
+        "completedAt": "2026-02-01T02:01:35.754Z"
       },
       "events": [
         {
@@ -6260,6 +7113,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T01:43:05.363Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:01:35.754Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 5",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -6463,13 +7335,15 @@
     },
     {
       "id": "DECOMPOS-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Add spinning progress indicator during AI call",
       "feature": "decompose-loading-feedback",
       "timestamps": {
         "createdAt": "2026-01-31T06:33:13.805Z",
-        "startedAt": "2026-01-31T06:33:13.805Z"
+        "startedAt": "2026-01-31T06:33:13.805Z",
+        "resumedAt": "2026-02-01T02:44:13.415Z",
+        "completedAt": "2026-02-01T03:00:05.560Z"
       },
       "events": [
         {
@@ -6498,6 +7372,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:44:13.415Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:00:05.560Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -6655,13 +7548,15 @@
     },
     {
       "id": "INKTERMI-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Audit and document current output.ts API surface",
       "feature": "ink-terminal-output",
       "timestamps": {
         "createdAt": "2026-01-31T08:09:44.328Z",
-        "startedAt": "2026-01-31T08:12:33.216Z"
+        "startedAt": "2026-01-31T08:12:33.216Z",
+        "resumedAt": "2026-02-01T02:44:13.515Z",
+        "completedAt": "2026-02-01T02:46:13.186Z"
       },
       "events": [
         {
@@ -6707,6 +7602,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:44:13.515Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:46:13.186Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -6983,13 +7897,15 @@
     },
     {
       "id": "TASKRESC-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Extend Task interface with scheduling metadata",
       "feature": "task-reschedule",
       "timestamps": {
         "createdAt": "2026-01-31T08:20:10.778Z",
-        "startedAt": "2026-01-31T08:20:10.778Z"
+        "startedAt": "2026-01-31T08:20:10.778Z",
+        "resumedAt": "2026-02-01T02:44:13.524Z",
+        "completedAt": "2026-02-01T02:46:48.821Z"
       },
       "events": [
         {
@@ -7018,6 +7934,25 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T02:44:13.524Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:46:48.821Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
@@ -7025,7 +7960,7 @@
     },
     {
       "id": "TASKRESC-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Add rescheduleCompleted method to TaskBackend interface",
       "feature": "task-reschedule",
@@ -7034,7 +7969,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T08:23:35.090Z",
-        "startedAt": "2026-01-31T08:23:35.090Z"
+        "startedAt": "2026-01-31T08:23:35.090Z",
+        "resumedAt": "2026-02-01T03:00:07.569Z",
+        "completedAt": "2026-02-01T03:04:48.530Z"
       },
       "events": [
         {
@@ -7063,6 +8000,25 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T03:00:07.569Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:04:48.530Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
@@ -7070,7 +8026,7 @@
     },
     {
       "id": "TASKRESC-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Implement rescheduleCompleted in JSON backend",
       "feature": "task-reschedule",
@@ -7079,7 +8035,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T08:24:06.997Z",
-        "startedAt": "2026-01-31T08:24:06.997Z"
+        "startedAt": "2026-01-31T08:24:06.997Z",
+        "resumedAt": "2026-02-01T03:15:25.601Z",
+        "completedAt": "2026-02-01T03:31:59.899Z"
       },
       "events": [
         {
@@ -7107,6 +8065,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:15:25.601Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:31:59.899Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -7384,13 +8361,15 @@
     },
     {
       "id": "INKOUTPU-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create Ink output architecture and contracts",
       "feature": "ink-output-system",
       "timestamps": {
         "createdAt": "2026-01-31T17:34:58.508Z",
-        "startedAt": "2026-01-31T17:34:58.508Z"
+        "startedAt": "2026-01-31T17:34:58.508Z",
+        "resumedAt": "2026-02-01T02:44:13.535Z",
+        "completedAt": "2026-02-01T02:48:32.687Z"
       },
       "events": [
         {
@@ -7420,6 +8399,25 @@
             "oldStatus": "completed",
             "newStatus": "pending"
           }
+        },
+        {
+          "timestamp": "2026-02-01T02:44:13.535Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:48:32.687Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
         }
       ],
       "failureCount": 0,
@@ -7427,7 +8425,7 @@
     },
     {
       "id": "INKOUTPU-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Migrate core logger to event-based system",
       "feature": "ink-output-system",
@@ -7436,7 +8434,9 @@
       ],
       "timestamps": {
         "createdAt": "2026-01-31T17:50:26.417Z",
-        "startedAt": "2026-01-31T17:50:26.417Z"
+        "startedAt": "2026-01-31T17:50:26.417Z",
+        "resumedAt": "2026-02-01T03:00:07.670Z",
+        "completedAt": "2026-02-01T03:00:27.033Z"
       },
       "events": [
         {
@@ -7465,6 +8465,25 @@
           "metadata": {
             "oldStatus": "completed",
             "newStatus": "pending"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:00:07.670Z",
+          "type": "resumed",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:00:27.033Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
           }
         }
       ],
@@ -7657,63 +8676,333 @@
     },
     {
       "id": "ARCH-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create @loopwork-ai/contracts package foundation",
-      "feature": "ARCH"
+      "feature": "ARCH",
+      "timestamps": {
+        "createdAt": "2026-02-01T02:44:13.545Z",
+        "startedAt": "2026-02-01T02:44:13.545Z",
+        "completedAt": "2026-02-01T02:48:55.888Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T02:44:13.545Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T02:48:55.888Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 6",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create @loopwork-ai/common package with Logger abstraction",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-001"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:00:07.681Z",
+        "startedAt": "2026-02-01T03:00:07.681Z",
+        "completedAt": "2026-02-01T03:15:23.589Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:00:07.681Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:15:23.589Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-003",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create @loopwork-ai/state package with IPersistenceLayer",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-001",
         "ARCH-002"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:15:25.700Z",
+        "startedAt": "2026-02-01T03:15:25.700Z",
+        "completedAt": "2026-02-01T03:21:07.775Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:15:25.700Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:21:07.775Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-004",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create @loopwork-ai/plugin-registry package",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-001",
         "ARCH-002"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:15:25.711Z",
+        "startedAt": "2026-02-01T03:15:25.711Z",
+        "completedAt": "2026-02-01T03:21:26.827Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:15:25.711Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:21:26.827Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-005",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Create @loopwork-ai/executor package with CliExecutor",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-003",
         "ARCH-004"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:32:01.911Z",
+        "updatedAt": "2026-02-01T04:50:06.551Z",
+        "startedAt": "2026-02-01T04:46:37.590Z",
+        "completedAt": "2026-02-01T04:50:06.551Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:32:01.911Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T04:25:12.355Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:25:14.760Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:27:56.896Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:27:58.789Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:41:44.154Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:44:42.413Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:46:36.077Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:46:37.590Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-005",
+          "timestamp": "2026-02-01T04:50:06.551Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-006",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Refactor @loopwork-ai/loopwork as composition root",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-005"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:03:56.111Z",
+        "updatedAt": "2026-02-01T05:08:34.991Z",
+        "startedAt": "2026-02-01T05:03:56.111Z",
+        "completedAt": "2026-02-01T05:08:34.991Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCH-006",
+          "timestamp": "2026-02-01T05:03:56.111Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCH-006",
+          "timestamp": "2026-02-01T05:08:34.991Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 0)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCH-007",
@@ -7727,12 +9016,32 @@
     },
     {
       "id": "ARCH-008",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Fix test imports and update test suite",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-006"
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:08:37.002Z",
+        "updatedAt": "2026-02-01T05:08:37.002Z",
+        "startedAt": "2026-02-01T05:08:37.002Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCH-008",
+          "timestamp": "2026-02-01T05:08:37.002Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
       ]
     },
     {
@@ -7747,12 +9056,32 @@
     },
     {
       "id": "ARCH-010",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "title": "Verify no circular dependencies",
       "feature": "ARCH",
       "dependsOn": [
         "ARCH-006"
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:08:37.099Z",
+        "updatedAt": "2026-02-01T05:08:37.099Z",
+        "startedAt": "2026-02-01T05:08:37.099Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCH-010",
+          "timestamp": "2026-02-01T05:08:37.099Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        }
       ]
     },
     {
@@ -7800,20 +9129,74 @@
     },
     {
       "id": "EXTRACTI-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Process Management Contracts",
-      "feature": "EXTRACTION"
+      "feature": "EXTRACTION",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:00:07.690Z",
+        "startedAt": "2026-02-01T03:00:07.690Z",
+        "completedAt": "2026-02-01T03:02:55.967Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:00:07.690Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:02:55.967Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Process Manager Package",
       "feature": "EXTRACTION",
       "dependsOn": [
         "EXTRACTI-001"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:15:25.721Z",
+        "startedAt": "2026-02-01T03:15:25.721Z",
+        "completedAt": "2026-02-01T03:18:05.997Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:15:25.721Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:18:05.997Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-003",
@@ -7867,20 +9250,74 @@
     },
     {
       "id": "EXTRACTI-008",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define State Persistence Contracts",
-      "feature": "EXTRACTION"
+      "feature": "EXTRACTION",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:00:07.702Z",
+        "startedAt": "2026-02-01T03:00:07.702Z",
+        "completedAt": "2026-02-01T03:15:06.698Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:00:07.702Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:15:06.698Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 7",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-009",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold State Package",
       "feature": "EXTRACTION",
       "dependsOn": [
         "EXTRACTI-008"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T03:15:25.732Z",
+        "startedAt": "2026-02-01T03:15:25.732Z",
+        "completedAt": "2026-02-01T03:18:27.554Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:15:25.732Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:18:27.554Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 8",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-010",
@@ -7914,30 +9351,298 @@
     },
     {
       "id": "EXTRACTI-013",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Executor Interfaces",
-      "feature": "EXTRACTION"
+      "feature": "EXTRACTION",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:32:02.011Z",
+        "startedAt": "2026-02-01T03:32:02.011Z",
+        "completedAt": "2026-02-01T03:39:10.692Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:32:02.011Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:39:10.692Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 9",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-014",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Executor Package",
       "feature": "EXTRACTION",
       "dependsOn": [
         "EXTRACTI-013"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T04:25:14.861Z",
+        "updatedAt": "2026-02-01T04:35:04.329Z",
+        "startedAt": "2026-02-01T04:27:58.890Z",
+        "completedAt": "2026-02-01T04:35:04.329Z"
+      },
+      "events": [
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.861Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.864Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.867Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.869Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.871Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.873Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.875Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:25:14.878Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:27:56.902Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:27:56.905Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:27:56.908Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:27:56.911Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:27:58.890Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-014",
+          "timestamp": "2026-02-01T04:35:04.329Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-27-58-70725\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-015",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Migrate CliExecutor",
       "feature": "EXTRACTION",
       "dependsOn": [
         "EXTRACTI-014"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T04:44:42.513Z",
+        "updatedAt": "2026-02-01T05:03:54.105Z",
+        "startedAt": "2026-02-01T04:46:37.691Z",
+        "completedAt": "2026-02-01T05:03:54.105Z"
+      },
+      "events": [
+        {
+          "taskId": "EXTRACTI-015",
+          "timestamp": "2026-02-01T04:44:42.513Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-015",
+          "timestamp": "2026-02-01T04:46:36.080Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-015",
+          "timestamp": "2026-02-01T04:46:37.691Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "EXTRACTI-015",
+          "timestamp": "2026-02-01T05:03:54.105Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "EXTRACTI-016",
@@ -7999,17 +9704,159 @@
     },
     {
       "id": "FIX-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Fix ReferenceError in Documentation Plugin",
-      "feature": "FIX"
+      "feature": "FIX",
+      "timestamps": {
+        "createdAt": "2026-02-01T04:27:58.901Z",
+        "updatedAt": "2026-02-01T04:30:59.297Z",
+        "startedAt": "2026-02-01T04:27:58.901Z",
+        "completedAt": "2026-02-01T04:30:59.297Z"
+      },
+      "events": [
+        {
+          "taskId": "FIX-001",
+          "timestamp": "2026-02-01T04:27:58.901Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "FIX-001",
+          "timestamp": "2026-02-01T04:30:59.297Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-27-58-70725\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "FIX-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Fix Promise Leaks in Status Command",
-      "feature": "FIX"
+      "feature": "FIX",
+      "timestamps": {
+        "createdAt": "2026-02-01T04:27:58.910Z",
+        "updatedAt": "2026-02-01T04:45:22.938Z",
+        "startedAt": "2026-02-01T04:44:42.525Z",
+        "completedAt": "2026-02-01T04:45:22.938Z"
+      },
+      "events": [
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:27:58.910Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:27:58.913Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:27:58.916Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:27:58.918Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:41:44.157Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:41:44.159Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:44:42.525Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "FIX-002",
+          "timestamp": "2026-02-01T04:45:22.938Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-44-42-82191\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "FIX-003",
@@ -8064,20 +9911,155 @@
     },
     {
       "id": "ARCHWAVE-001",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Vector Store Contracts",
-      "feature": "ARCH-WAVE-2"
+      "feature": "ARCH-WAVE-2",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:32:02.022Z",
+        "startedAt": "2026-02-01T03:32:02.022Z",
+        "completedAt": "2026-02-01T03:33:54.003Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:32:02.022Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:33:54.003Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 9",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-002",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Vector Store Package",
       "feature": "ARCH-WAVE-2",
       "dependsOn": [
         "ARCHWAVE-001"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T04:44:42.536Z",
+        "updatedAt": "2026-02-01T04:47:34.879Z",
+        "startedAt": "2026-02-01T04:46:37.700Z",
+        "completedAt": "2026-02-01T04:47:34.879Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:44:42.536Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:44:42.540Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:44:42.542Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:44:42.545Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:46:36.083Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:46:36.085Z",
+          "type": "reset",
+          "message": "Task reset from pending to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:46:37.700Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-002",
+          "timestamp": "2026-02-01T04:47:34.879Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 1",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-003",
@@ -8101,20 +10083,131 @@
     },
     {
       "id": "ARCHWAVE-005",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Analysis Engine Contracts",
-      "feature": "ARCH-WAVE-2"
+      "feature": "ARCH-WAVE-2",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:32:02.032Z",
+        "startedAt": "2026-02-01T03:32:02.032Z",
+        "completedAt": "2026-02-01T03:34:54.895Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:32:02.032Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:34:54.895Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 3)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 9",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-006",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Analysis Package",
       "feature": "ARCH-WAVE-2",
       "dependsOn": [
         "ARCHWAVE-005"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T04:46:37.709Z",
+        "updatedAt": "2026-02-01T05:06:53.000Z",
+        "startedAt": "2026-02-01T05:03:56.212Z",
+        "completedAt": "2026-02-01T05:06:53.000Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T04:46:37.709Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T04:46:37.712Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T04:46:37.715Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T04:46:37.717Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T05:03:56.212Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-006",
+          "timestamp": "2026-02-01T05:06:53.000Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 1)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-007",
@@ -8128,20 +10221,81 @@
     },
     {
       "id": "ARCHWAVE-008",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Safety Contracts",
-      "feature": "ARCH-WAVE-2"
+      "feature": "ARCH-WAVE-2",
+      "timestamps": {
+        "createdAt": "2026-02-01T03:32:02.043Z",
+        "startedAt": "2026-02-01T03:32:02.043Z",
+        "completedAt": "2026-02-01T03:35:20.170Z"
+      },
+      "events": [
+        {
+          "timestamp": "2026-02-01T03:32:02.043Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "timestamp": "2026-02-01T03:35:20.170Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 4)\n\nSession: loopwork-default-2026-01-31T23-44-34-47708\nIteration: 9",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-009",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Scaffold Safety Package",
       "feature": "ARCH-WAVE-2",
       "dependsOn": [
         "ARCHWAVE-008"
-      ]
+      ],
+      "timestamps": {
+        "createdAt": "2026-02-01T05:03:56.223Z",
+        "updatedAt": "2026-02-01T05:05:05.736Z",
+        "startedAt": "2026-02-01T05:03:56.223Z",
+        "completedAt": "2026-02-01T05:05:05.736Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-009",
+          "timestamp": "2026-02-01T05:03:56.223Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-009",
+          "timestamp": "2026-02-01T05:05:05.736Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 2",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-010",
@@ -8155,10 +10309,94 @@
     },
     {
       "id": "ARCHWAVE-011",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "title": "Define Adapter Contracts",
-      "feature": "ARCH-WAVE-2"
+      "feature": "ARCH-WAVE-2",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:03:56.240Z",
+        "updatedAt": "2026-02-01T05:11:02.332Z",
+        "startedAt": "2026-02-01T05:08:37.109Z",
+        "completedAt": "2026-02-01T05:11:02.332Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:03:56.240Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:03:56.244Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:03:56.247Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:03:56.250Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:08:37.109Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-011",
+          "timestamp": "2026-02-01T05:11:02.332Z",
+          "type": "completed",
+          "message": "Completed by Loopwork (parallel worker 2)\n\nSession: loopwork-default-2026-02-01T04-46-37-83687\nIteration: 3",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "completed"
+          }
+        }
+      ],
+      "failureCount": 0
     },
     {
       "id": "ARCHWAVE-012",
@@ -8198,7 +10436,63 @@
       "status": "pending",
       "priority": "high",
       "title": "Define Messaging Contracts",
-      "feature": "ARCH-WAVE-3"
+      "feature": "ARCH-WAVE-3",
+      "timestamps": {
+        "createdAt": "2026-02-01T05:08:37.120Z",
+        "updatedAt": "2026-02-01T05:08:37.130Z"
+      },
+      "events": [
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:08:37.120Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:08:37.124Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:08:37.127Z",
+          "type": "started",
+          "message": "Status changed to in-progress (claimed)",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress",
+            "method": "claimTask"
+          }
+        },
+        {
+          "taskId": "ARCHWAVE-015",
+          "timestamp": "2026-02-01T05:08:37.130Z",
+          "type": "reset",
+          "message": "Task reset from in-progress to pending",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "in-progress",
+            "newStatus": "pending"
+          }
+        }
+      ]
     },
     {
       "id": "ARCHWAVE-016",

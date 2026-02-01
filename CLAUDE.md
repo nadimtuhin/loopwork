@@ -312,222 +312,22 @@ import { Banner, ProgressBar, Table, CompletionSummary } from 'loopwork/componen
 
 **Migration:**
 - Legacy output in `src/core/output.ts` is deprecated
-- See `packages/loopwork/docs/MIGRATION-OUTPUT.md` for migration guide
+- See `docs/guides/migration-output.md` for migration guide
 - Use Ink components for all new code
-
-## Common Development Tasks
-
-### Adding a New Backend
-
-1. Create `packages/loopwork/src/backends/my-backend.ts`
-2. Implement `TaskBackend` interface
-3. Export from `packages/loopwork/src/backends/index.ts`
-4. Add integration test in `packages/loopwork/test/backends.test.ts`
-
-### Adding a New Plugin Package
-
-1. Create directory: `packages/my-plugin/`
-2. Add `package.json` with name `@loopwork-ai/my-plugin`
-3. Create `src/index.ts` exporting plugin factory
-4. Add `test/index.test.ts` with tests
-5. Add to workspace in root `package.json`
-6. Update main README's plugin table
-
-### Running Examples
-
-The `examples/basic-json-backend/` demonstrates minimal setup:
-```bash
-cd examples/basic-json-backend
-./quick-start.sh  # Interactive menu
-# Or manually:
-bun run ../../packages/loopwork/src/index.ts
-```
-
-## TypeScript Configuration
-
-- Uses Bun's native TypeScript support
-- `moduleResolution: "bundler"` for Bun compatibility
-- `allowImportingTsExtensions: true` - import `.ts` files directly
-- `noEmit: true` - No JS compilation, Bun runs TS directly
-- Shared base config in `packages/loopwork/tsconfig.json`
-
-## Publishing
-
-```bash
-# Build and test before publishing
-bun run build
-bun run test
-
-# Publish all packages (from root)
-bun run publish:all
-
-# Or individual package
-cd packages/loopwork
-npm publish
-```
-
-## Security
-
-- `SECURITY.md` exists for vulnerability reporting
-- Trivy scanning available: `bun run security:trivy` (in loopwork package)
-- Never commit API tokens or credentials
-- Use environment variables for sensitive config
-
-## Architectural Guidelines & AI Safety
-
-### 1. Monorepo Dependency Rules (CRITICAL)
-- **No Circular Dependencies**: 
-  - Core packages (`packages/loopwork`) must NEVER import from plugins or higher-level packages.
-  - Plugins must import from `@loopwork-ai/loopwork` (which points to core), NEVER the other way around.
-  - Shared types/interfaces should live in a dependency-free package if needed by both (e.g. `@loopwork-ai/contracts`).
-- **Strict Layering**:
-  - `contracts` -> `core` -> `plugins` -> `implementations`
-  - Breaking this causes Segfaults (0x18) in Bun due to memory corruption during module loading.
-
-### 2. TypeScript & Bun Safety
-- **Type Exports**: Always use `export type { ... }` when re-exporting interfaces.
-  - Wrong: `export { MyInterface } ...` -> Fails at runtime in Bun (Value not found).
-  - Right: `export type { MyInterface } ...` -> Correctly erased at runtime.
-- **Verbatim Module Syntax**: Respect `verbatimModuleSyntax: true`.
-
-### 3. Verification Protocol
-- **Always Build**: AI tasks are not complete until `bun run build` passes.
-- **Check Cycles**: If you modify exports/imports, verify graph integrity.
-
-## Modular Development Protocol (CRITICAL)
-
-All architectural changes must follow the **Contract → Implement → Swap** protocol to ensure granular tasks can be executed by free AI models without introducing regressions.
-
-1.  **Define Contract**: Add/update pure TypeScript interfaces in `@loopwork-ai/contracts` (or `src/contracts`).
-2.  **Define Package**: Create a new standalone package for the module if appropriate.
-3.  **Implement**: Create the new implementation that satisfies the contract. 
-4.  **Integration (DI)**: Refactor consumer classes to accept the interface via **Constructor Injection** rather than concrete imports.
-5.  **Swap**: Replace the concrete instantiation in the "Composition Root" (usually `src/index.ts` or a factory).
-
-### Dependency Inversion Rules
-- Core modules must NEVER depend on concrete implementations of other core modules.
-- Always depend on an interface defined in a lower layer (e.g. `contracts`).
-- Avoid global singleton instances (like global `logger` or `plugins`). Use injected instances.
-
-## AI Development Philosophy
-
-### Core Principles
-
-1.  **Granular Task Decomposition**: Complex tasks must be broken down into atomic sub-tasks (each <20 min of work). This allows free models to contribute effectively without exceeding context limits.
-
-2.  **Contract-First Design**: Define interfaces/contracts before implementation. All modules communicate through well-defined contracts. Never depend on concrete implementations directly.
-
-3.  **Dependency Inversion (DIP)**: High-level modules must not depend on low-level modules. Both should depend on abstractions (contracts). Inject dependencies rather than importing concrete implementations.
-
-4.  **Always TDD**: Write tests BEFORE writing implementation code. Red → Green → Refactor cycle is mandatory.
-
-5.  **E2E Testing Always**: Every feature must have end-to-end tests that verify the full user journey. Unit tests alone are insufficient.
-
-6.  **Test Integrity**: If tests fail, do not amend tests just to pass them. First, verify if the feature implementation is broken. Fix the code, not the test, unless the test itself is incorrect.
-
-### Implementation Patterns
-
-7.  **Swap via Imports**: When replacing functionality, create the new implementation first, then swap the import. Never modify existing working code inline. This enables easy rollback and A/B testing.
-
-8.  **Single Feature Focus**: Work on ONE feature at a time. Complete it fully (tests passing, E2E verified) before moving to the next. Avoid scattered partial implementations.
-
-
-9. **Node.js Built-ins in Bun**: When using Node.js built-in modules (`events`, `stream`, `util`, `path`, etc.), you MUST install them as explicit dependencies:
-   ```bash
-   bun install events  # NOT just import { EventEmitter } from 'events'
-   ```
-   - In Node.js, built-ins are available without installation
-   - In Bun, they are NOT - they must be added to `package.json` dependencies
-   - Common modules to watch for: `events`, `stream`, `util`, `buffer`, `crypto`, `os`, `vm`
-   - Always verify with `ls node_modules/<module-name>` after import fails
-
-### Task Management
-
-9. **Proactive Task Proposal**: You should be able to propose new tasks when you identify gaps or improvements.
-
-10. **Task Creation**: You are empowered to create new tasks in the backlog to track necessary work.
-
-### Contract-Driven Development Workflow
-
-```
-1. Define contract/interface in src/contracts/
-2. Write E2E test against the contract
-3. Write unit tests for the implementation
-4. Implement to satisfy contracts and tests
-5. Verify E2E passes
-6. Swap in new implementation via import change
-```
-
-## Integration Testing Rules
-
-These rules prevent bugs where individual components work but fail when wired together.
-
-### 1. Test the Full Data Path
-
-When adding features that involve data flowing through multiple layers:
-- Write unit tests for the new code
-- Write an integration test that verifies the FULL PATH from entry to exit
-- If data passes through A → B → C, test A→C directly, not just A and C separately
-
-**Example (Bug that was caught):** `withCli()` plugin correctly set `cliConfig`, but `getConfig()` forgot to pass it through. Unit tests passed, but integration was broken.
-
-### 2. Test at the Seams
-
-A "seam" is where two components connect. When modifying code:
-1. Identify all seams the change touches
-2. Write at least one test that crosses each seam
-3. Never trust that "if A works and B works, A→B works"
-
-**Key seams in loopwork:**
-- Config file → `loadConfigFile()` → `getConfig()` → `CliExecutor`
-- Backend plugin → `TaskBackend` interface → run command
-- Plugin hooks → Loop execution → Task lifecycle
-
-### 3. Beware Silent Defaults
-
-DANGER: When code has a fallback default, bugs can hide because the system "works" with wrong values.
-
-```typescript
-// This pattern hides bugs:
-cli: options.cli || fileConfig?.cli || 'opencode'
-// If fileConfig.cliConfig.models is lost, system uses 'opencode' default
-// No error thrown, but wrong behavior!
-```
-
-**Rule:** When adding defaults, add a test that FAILS if the primary value is lost.
-
-### 4. New Config Property Checklist
-
-When adding a new config property, verify it appears in ALL these places:
-- [ ] Type/interface definition
-- [ ] `DEFAULT_CONFIG` (if applicable)
-- [ ] Config file loading (`loadConfigFile`)
-- [ ] Config merging (`getConfig`) - **this is where bugs hide!**
-- [ ] Validation (`validateConfig`)
-- [ ] Consumer code (`CliExecutor`, etc.)
-- [ ] Integration test verifying full path
-
-### 5. Property Propagation Grep Check
-
-Before completing config changes, run:
-```bash
-git grep "const config.*=" -- "*.ts" | grep -v test
-```
-This finds all places that build config objects - verify your new property is included in each.
 
 ## Architecture Documentation
 
-Architecture docs are in `packages/loopwork/docs/`:
-- `ARCHITECTURE.md` - Comprehensive system architecture
-- `cli-invocation-algorithm.md` - CLI model selection and retry logic
-- `orphan-process-management.md` - Orphan process detection and cleanup
+Architecture docs are in `docs/`:
+- `docs/explanation/architecture-overview.md` - Comprehensive system architecture
+- `docs/explanation/cli-invocation.md` - CLI model selection and retry logic
+- `docs/explanation/process-management.md` - Orphan process detection and cleanup
 
 **Keep docs in sync**: When making architectural changes, update the relevant docs:
-1. New backends → Update ARCHITECTURE.md (Backend System section)
-2. New plugins → Update ARCHITECTURE.md (Plugin System section)
-3. New CLI commands → Update ARCHITECTURE.md (CLI Commands section)
-4. Changed execution flow → Update cli-invocation-algorithm.md
-5. Process management changes → Update orphan-process-management.md
+1. New backends → Update architecture-overview.md (Backend System section)
+2. New plugins → Update architecture-overview.md (Plugin System section)
+3. New CLI commands → Update architecture-overview.md (CLI Commands section)
+4. Changed execution flow → Update cli-invocation.md
+5. Process management changes → Update process-management.md
 
 ## Important Notes
 
@@ -536,4 +336,5 @@ Architecture docs are in `packages/loopwork/docs/`:
 - **Plugins must be fault-tolerant** - A failing plugin shouldn't crash the loop
 - **CLI paths are auto-detected** - Don't hardcode paths to `claude` or `opencode`
 - **Test timeouts**: Default is 5000ms, increase for integration tests
-- **Update architecture docs** - Keep `packages/loopwork/docs/` in sync with code changes
+- **Update architecture docs** - Keep `docs/` in sync with code changes
+

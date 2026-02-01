@@ -3,7 +3,7 @@
  * Used by both TUI and Web UI implementations
  */
 
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed';
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'cancelled' | 'quarantined';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Task {

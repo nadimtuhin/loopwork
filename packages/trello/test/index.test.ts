@@ -200,6 +200,9 @@ describe("TrelloTaskAdapter", () => {
   test("findNextTask queries pending list", async () => {
     const mockLists: TrelloList[] = [
       { id: "list-todo", name: "To Do", closed: false, idBoard: "board-123" },
+      { id: "list-doing", name: "Doing", closed: false, idBoard: "board-123" },
+      { id: "list-failed", name: "Failed", closed: false, idBoard: "board-123" },
+      { id: "list-quarantined", name: "Quarantined", closed: false, idBoard: "board-123" },
     ];
 
     const mockCards: TrelloCard[] = [
@@ -498,6 +501,88 @@ describe("TrelloTaskAdapter", () => {
     const result = await adapter.markFailed("card-123", "Build error");
 
     expect(result.success).toBe(true);
+  });
+
+  test("markQuarantined moves card to Quarantined list and adds comment", async () => {
+    const configWithQuarantined = {
+      ...config,
+      lists: {
+        ...config.lists,
+        quarantined: "Quarantined"
+      }
+    };
+    adapter = new TrelloTaskAdapter(configWithQuarantined);
+
+    const mockLists: TrelloList[] = [
+      { id: "list-todo", name: "To Do", closed: false, idBoard: "board-123" },
+      { id: "list-quarantined", name: "Quarantined", closed: false, idBoard: "board-123" },
+    ];
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(mockLists), { status: 200 })
+    );
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify([]), { status: 200 })
+    );
+    await adapter.listPendingTasks();
+
+    const updatedCard: TrelloCard = {
+      id: "card-123",
+      name: "Task",
+      desc: "",
+      idList: "list-quarantined",
+      idBoard: "board-123",
+      url: "",
+      labels: [],
+    };
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(updatedCard), { status: 200 })
+    );
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 200 })
+    );
+
+    const result = await adapter.markQuarantined("card-123", "Exceeded quarantine threshold (3). Last error: Timeout");
+
+    expect(result.success).toBe(true);
+  });
+
+  test("adaptCard maps quarantined list to quarantined status", async () => {
+    adapter = new TrelloTaskAdapter(config);
+
+    const mockLists: TrelloList[] = [
+      { id: "list-quarantined", name: "Quarantined", closed: false, idBoard: "board-123" },
+    ];
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(mockLists), { status: 200 })
+    );
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify([]), { status: 200 })
+    );
+    await adapter.listPendingTasks();
+
+    const mockCard: TrelloCard = {
+      id: "card-1",
+      name: "Quarantined Task",
+      desc: "Description",
+      idList: "list-quarantined",
+      idBoard: "board-123",
+      url: "https://trello.com/c/card-1",
+      labels: [],
+      dateLastActivity: "2025-02-01T10:00:00.000Z"
+    };
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(mockCard), { status: 200 })
+    );
+
+    const task = await adapter.getTask("card-1");
+
+    expect(task).not.toBeNull();
+    expect(task?.status).toBe("quarantined");
+    expect(task?.timestamps?.quarantinedAt).toBe("2025-02-01T10:00:00.000Z");
   });
 
   test("resetToPending moves card to To Do list", async () => {

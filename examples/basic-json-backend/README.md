@@ -412,7 +412,7 @@ This is configured in `loopwork.config.js` with the `dynamicTasks` setting.
 
 - **This Tutorial** - You're reading it! Re-read sections as needed.
 - **Main README** - See the main [Loopwork README](../../README.md) for architecture details
-- **Architecture Docs** - Read `packages/loopwork/docs/` for deep dives
+- **Architecture Docs** - Read `docs/` for deep dives
 - **Issue Tracker** - File bugs or feature requests on GitHub
 
 ## What's Happening Behind the Scenes?
