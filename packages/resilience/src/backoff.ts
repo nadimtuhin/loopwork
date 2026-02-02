@@ -20,15 +20,53 @@ export class RateLimitError extends Error {
   }
 }
 
+export class QuotaExceededError extends Error {
+  public readonly code: string | number
+
+  constructor(message: string, code: string | number = 403) {
+    super(message)
+    this.name = 'QuotaExceededError'
+    this.code = code
+  }
+}
+
 export const RATE_LIMIT_PATTERNS = [
   /rate.*limit/i,
   /429/i,
   /too.*many.*request/i,
   /resource.*exhausted/i,
+]
+
+export const QUOTA_EXCEEDED_PATTERNS = [
   /quota.*exceed/i,
   /billing.*limit/i,
-  /over.*quota/i,
-  /over.*query.*limit/i,
+  /credit.*exhausted/i,
+  /insufficient.*funds/i,
+  /billing.*not.*enabled/i,
+]
+
+export const TRANSIENT_ERROR_PATTERNS = [
+  /econnreset/i,
+  /etimeout/i,
+  /connection.*refused/i,
+  /connection.*reset/i,
+  /network.*error/i,
+  /network.*unreachable/i,
+  /enotfound/i,
+  /socket.*hang.*up/i,
+  /internal.*server.*error/i,
+  /500/i,
+  /502/i,
+  /503/i,
+  /504/i,
+  /eai_again/i,
+  /econnrefused/i,
+  /etimedout/i,
+  /408/i,
+  /gateway.*timeout/i,
+  /bad.*gateway/i,
+  /service.*unavailable/i,
+  /timeout/i,
 ]
 
 /**
@@ -42,7 +80,18 @@ export const OPENCODE_CACHE_CORRUPTION_PATTERNS = [
 
 export function isRateLimitOutput(output: string): boolean {
   if (!output) return false
-  return RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(output))
+  return RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(output)) || 
+         QUOTA_EXCEEDED_PATTERNS.some((pattern) => pattern.test(output))
+}
+
+export function isQuotaExceededOutput(output: string): boolean {
+  if (!output) return false
+  return QUOTA_EXCEEDED_PATTERNS.some((pattern) => pattern.test(output))
+}
+
+export function isTransientOutput(output: string): boolean {
+  if (!output) return false
+  return TRANSIENT_ERROR_PATTERNS.some((pattern) => pattern.test(output))
 }
 
 export function isOpenCodeCacheCorruption(output: string): boolean {
@@ -55,7 +104,7 @@ export function isRateLimitError(error: unknown): boolean {
     return false
   }
 
-  if (error instanceof RateLimitError) {
+  if (error instanceof RateLimitError || error instanceof QuotaExceededError) {
     return true
   }
 
@@ -76,12 +125,50 @@ export function isRateLimitError(error: unknown): boolean {
 
   if (err.code) {
     const codeStr = String(err.code).toLowerCase()
-    if (codeStr === '429' || codeStr.includes('rate')) {
+    if (codeStr === '429' || codeStr.includes('rate') || codeStr === '403') {
       return true
     }
   }
 
   return false
+}
+
+export function isQuotaExceededError(error: unknown): boolean {
+  if (!error) return false
+  if (error instanceof QuotaExceededError) return true
+  if (typeof error === 'string') return isQuotaExceededOutput(error)
+  if (typeof error !== 'object' || error === null) return false
+  const err = error as Record<string, unknown>
+  const errorMessage = String(err.message || '').toLowerCase()
+  return isQuotaExceededOutput(errorMessage)
+}
+
+export function isTransientError(error: unknown): boolean {
+  if (!error) return false
+  if (typeof error === 'string') return isTransientOutput(error)
+  if (typeof error !== 'object' || error === null) return false
+  const err = error as Record<string, unknown>
+  const errorMessage = String(err.message || '').toLowerCase()
+  const errorCode = err.code ? String(err.code).toLowerCase() : undefined
+
+  if (isTransientOutput(errorMessage)) return true
+  if (errorCode && isTransientOutput(errorCode)) return true
+  
+  return false
+}
+
+export enum ResilienceErrorType {
+  TRANSIENT = 'TRANSIENT',
+  RATE_LIMIT = 'RATE_LIMIT',
+  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export function classifyError(error: unknown): ResilienceErrorType {
+  if (isQuotaExceededError(error)) return ResilienceErrorType.QUOTA_EXCEEDED
+  if (isRateLimitError(error)) return ResilienceErrorType.RATE_LIMIT
+  if (isTransientError(error)) return ResilienceErrorType.TRANSIENT
+  return ResilienceErrorType.UNKNOWN
 }
 
 export interface ExponentialBackoffOptions {

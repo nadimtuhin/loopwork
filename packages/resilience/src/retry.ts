@@ -12,10 +12,7 @@ import {
   RateLimitBackoffStrategy,
   DEFAULT_RATE_LIMIT_WAIT_MS,
   isRateLimitError,
-  isRateLimitOutput,
-  isOpenCodeCacheCorruption,
-  RateLimitError,
-  RetryableError
+  isTransientError,
 } from './backoff'
 
 /**
@@ -34,8 +31,6 @@ export interface RetryOptions {
   retryableErrors?: string[]
   /** Wait time when rate limit is detected (default: 30000ms) */
   rateLimitWaitMs?: number
-  /** Optional delay strategy function */
-  delayStrategy?: (attempt: number) => number
 }
 
 /**
@@ -57,10 +52,10 @@ export function isRetryable(
   options: Partial<RetryOptions>,
 ): boolean {
   const {
-    retryOnRateLimit,
-    retryOnTransient,
-    retryOnAllErrors,
-    retryableErrors,
+    retryOnRateLimit = true,
+    retryOnTransient = true,
+    retryOnAllErrors = false,
+    retryableErrors = [],
   } = options
 
   if (!error) {
@@ -85,38 +80,11 @@ export function isRetryable(
   }
 
   if (isRateLimitError(error)) {
-    return retryOnRateLimit ?? true
+    return retryOnRateLimit
   }
 
-  if (retryOnTransient) {
-    const transientErrors = [
-      'econnreset',
-      'etimeout',
-      'connection refused',
-      'connection reset',
-      'network error',
-      'network unreachable',
-      'enotfound',
-      'socket hang up',
-      'internal server error',
-      '500',
-      '502',
-      '503',
-      '504',
-      'eai_again',
-      'econnrefused',
-      'etimedout',
-      '408',
-      'gateway timeout',
-      'bad gateway',
-      'service unavailable',
-      'timeout', // Generic timeout
-    ]
-
-    const isTransientMessage = transientErrors.some((transient) => errorMessage.includes(transient))
-    const isTransientCode = errorCode && transientErrors.some((transient) => errorCode === transient)
-
-    return Boolean(isTransientMessage || isTransientCode)
+  if (retryOnTransient && isTransientError(error)) {
+    return true
   }
 
   return false
@@ -169,12 +137,13 @@ export interface ResilienceRunnerOptions {
   exponentialBackoffJitter?: boolean
 }
 
-export const DEFAULT_RESILIENCE_OPTIONS: ResilienceRunnerOptions = {
+export const DEFAULT_RESILIENCE_OPTIONS: Required<ResilienceRunnerOptions> = {
   maxAttempts: 3,
   retryOnRateLimit: true,
   retryOnTransient: true,
   retryOnAllErrors: false,
-  rateLimitWaitMs: 30000,
+  retryableErrors: [],
+  rateLimitWaitMs: DEFAULT_RATE_LIMIT_WAIT_MS,
   exponentialBackoff: true,
   exponentialBackoffBaseDelay: 1000,
   exponentialBackoffMaxDelay: 60000,
@@ -195,17 +164,8 @@ export class ResilienceRunner implements IResilienceEngine {
 
   constructor(options: Partial<ResilienceRunnerOptions> = {}) {
     this.options = {
-      maxAttempts: options.maxAttempts ?? DEFAULT_RESILIENCE_OPTIONS.maxAttempts,
-      retryOnRateLimit: options.retryOnRateLimit ?? DEFAULT_RESILIENCE_OPTIONS.retryOnRateLimit ?? true,
-      retryOnTransient: options.retryOnTransient ?? DEFAULT_RESILIENCE_OPTIONS.retryOnTransient ?? true,
-      retryOnAllErrors: options.retryOnAllErrors ?? DEFAULT_RESILIENCE_OPTIONS.retryOnAllErrors ?? false,
-      retryableErrors: options.retryableErrors ?? [],
-      rateLimitWaitMs: options.rateLimitWaitMs ?? DEFAULT_RESILIENCE_OPTIONS.rateLimitWaitMs ?? 30000,
-      exponentialBackoff: options.exponentialBackoff ?? DEFAULT_RESILIENCE_OPTIONS.exponentialBackoff ?? true,
-      exponentialBackoffBaseDelay: options.exponentialBackoffBaseDelay ?? DEFAULT_RESILIENCE_OPTIONS.exponentialBackoffBaseDelay ?? 1000,
-      exponentialBackoffMaxDelay: options.exponentialBackoffMaxDelay ?? DEFAULT_RESILIENCE_OPTIONS.exponentialBackoffMaxDelay ?? 60000,
-      exponentialBackoffMultiplier: options.exponentialBackoffMultiplier ?? DEFAULT_RESILIENCE_OPTIONS.exponentialBackoffMultiplier ?? 2,
-      exponentialBackoffJitter: options.exponentialBackoffJitter ?? DEFAULT_RESILIENCE_OPTIONS.exponentialBackoffJitter ?? true,
+      ...DEFAULT_RESILIENCE_OPTIONS,
+      ...options,
     }
 
     this.defaultConfig = this.buildConfig()
@@ -266,7 +226,7 @@ export class ResilienceRunner implements IResilienceEngine {
   }
 
   getStats() {
-    return { ... this.stats }
+    return { ...this.stats }
   }
 
   /**
@@ -282,7 +242,6 @@ export class ResilienceRunner implements IResilienceEngine {
   }
 
   async execute<T>(
-
     operation: () => Promise<T>,
     config?: Partial<ResilienceConfig>
   ): Promise<RetryResult<T>> {
@@ -403,8 +362,10 @@ export class ResilienceRunner implements IResilienceEngine {
   }
 
   private updateAverageAttempts(): void {
-    this.stats.averageAttemptsPerOperation = 
-      this.stats.totalAttempts / this.stats.totalOperations
+    if (this.stats.totalOperations > 0) {
+      this.stats.averageAttemptsPerOperation = 
+        this.stats.totalAttempts / this.stats.totalOperations
+    }
   }
 
   async run<T>(fn: () => Promise<T>): Promise<T> {

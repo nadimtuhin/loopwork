@@ -7,6 +7,15 @@ export type {
   LinearBackoffOptions,
   RetryableError 
 } from './backoff'
+export { 
+  ResilienceErrorType,
+  classifyError,
+  isRateLimitError,
+  isQuotaExceededError,
+  isTransientError,
+  RateLimitError,
+  QuotaExceededError
+} from './backoff'
 export type { 
   RetryOptions, 
   ResilienceRunnerOptions
