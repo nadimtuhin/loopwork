@@ -1,11 +1,7 @@
-/**
- * Governance Plugin
- *
- * Provides policy enforcement and governance capabilities
- */
-
-import type { LoopworkPlugin, ConfigWrapper, LoopworkConfig, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
+import type { LoopworkPlugin, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
+import { RiskLevel } from '@loopwork-ai/loopwork/contracts'
 import { logger } from '@loopwork-ai/common'
+import { ApprovalGate, type ApprovalOptions } from './approval-gate'
 
 export class GovernanceError extends Error {
   constructor(message: string) {
@@ -18,7 +14,7 @@ export interface PolicyRule {
   name: string
   description?: string
   priority?: number
-  condition?: (context: unknown) => boolean | Promise<boolean>
+  condition?: (context: PolicyContext) => boolean | Promise<boolean>
 }
 
 export interface PolicyAction {
@@ -31,38 +27,37 @@ export interface PolicyResult {
   allowed: boolean
   reason?: string
   modifications?: Record<string, unknown>
+  requiresApproval?: boolean
 }
 
 export type PolicyRules = {
   maxConcurrentTasks?: number
   allowedClis?: string[]
+  approvalRequired?: boolean
+  highPriorityApproval?: boolean
 }
 
 export interface GovernanceConfig {
   enabled?: boolean
   rules?: PolicyRules
+  approval?: ApprovalOptions
 }
 
 export interface PolicyContext {
-  /** Task being executed */
   task: {
     id: string
     title: string
     priority?: string
     feature?: string
   }
-  /** Current namespace */
   namespace: string
-  /** CLI tool being used */
   cli?: string
-  /** Active task IDs */
   activeTasks: Set<string>
-  /** Iteration number */
   iteration: number
 }
 
 export class PolicyEngine {
-  private rules: Map<string, PolicyRule> = new Map()
+  public readonly rules: Map<string, PolicyRule> = new Map()
   private config: PolicyRules
   private activeTasks: Set<string> = new Set()
 
@@ -77,28 +72,23 @@ export class PolicyEngine {
     this.rules.set(rule.name, rule)
   }
 
-  /** Track a task as started */
   trackTaskStart(taskId: string): void {
     this.activeTasks.add(taskId)
   }
 
-  /** Track a task as completed or failed */
   trackTaskEnd(taskId: string): void {
     this.activeTasks.delete(taskId)
   }
 
-  /** Get current count of active tasks */
   getActiveTaskCount(): number {
     return this.activeTasks.size
   }
 
-  /** Get list of active task IDs */
   getActiveTasks(): string[] {
     return Array.from(this.activeTasks)
   }
 
   async evaluate(context: PolicyContext): Promise<PolicyResult> {
-    // 1. Check maxConcurrentTasks policy
     if (this.config.maxConcurrentTasks && this.config.maxConcurrentTasks > 0) {
       const currentCount = this.activeTasks.size
       if (currentCount >= this.config.maxConcurrentTasks) {
@@ -109,7 +99,6 @@ export class PolicyEngine {
       }
     }
 
-    // 2. Check allowedClis policy
     if (this.config.allowedClis && this.config.allowedClis.length > 0) {
       if (!context.cli || !this.config.allowedClis.includes(context.cli)) {
         return {
@@ -119,7 +108,22 @@ export class PolicyEngine {
       }
     }
 
-    // 3. Evaluate custom policy rules
+    if (this.config.approvalRequired) {
+      return {
+        allowed: true,
+        requiresApproval: true,
+        reason: 'Manual approval required by policy',
+      }
+    }
+
+    if (this.config.highPriorityApproval && context.task.priority === 'high') {
+      return {
+        allowed: true,
+        requiresApproval: true,
+        reason: 'Manual approval required for high priority task',
+      }
+    }
+
     for (const [name, rule] of this.rules.entries()) {
       if (rule.priority !== undefined && rule.priority <= 0) {
         continue
@@ -138,7 +142,6 @@ export class PolicyEngine {
       }
     }
 
-    // All policies passed
     return {
       allowed: true,
     }
@@ -156,6 +159,7 @@ export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkP
   }
 
   const engine = new PolicyEngine(config.rules)
+  const gate = new ApprovalGate(config.approval)
 
   let namespace = 'default'
 
@@ -163,7 +167,7 @@ export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkP
     name: 'governance',
     classification: 'enhancement',
 
-    async onConfigLoad(loopworkConfig: LoopworkConfig): Promise<LoopworkConfig> {
+    async onConfigLoad(loopworkConfig: unknown): Promise<unknown> {
       return loopworkConfig
     },
 
@@ -187,8 +191,8 @@ export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkP
     async onTaskStart(context: TaskContext): Promise<void> {
       if (!enabled) return
 
-      const { task, config: loopworkConfig } = context
-      const cli = loopworkConfig?.cli
+      const { task } = context
+      const cli = context.cli
 
       logger.debug(`Governance check for task ${task.id}`)
 
@@ -213,6 +217,25 @@ export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkP
         throw error
       }
 
+      if (result.requiresApproval) {
+        const approval = await gate.askApproval({
+          taskId: task.id,
+          title: task.title,
+          riskLevel: task.priority === 'high' ? RiskLevel.HIGH : RiskLevel.MEDIUM,
+          reasons: [result.reason || 'Manual approval required'],
+        })
+
+        if (!approval.confirmed) {
+          const error = new GovernanceError(
+            `Task ${task.id} rejected by user: ${approval.timedOut ? 'Timed out' : 'Denied'}`
+          )
+          logger.error(`🚫 ${error.message}`)
+          throw error
+        }
+        
+        logger.info(`✅ Task ${task.id} approved by user`)
+      }
+
       logger.debug(`Task ${task.id} passed governance checks`)
       engine.trackTaskStart(task.id)
     },
@@ -232,25 +255,15 @@ export function createGovernancePlugin(config: GovernanceConfig = {}): LoopworkP
 }
 
 export function withGovernance(config: GovernanceConfig = {}): ConfigWrapper {
-  return (baseConfig: LoopworkConfig) => ({
-    ...baseConfig,
-    plugins: [...(baseConfig.plugins || []), createGovernancePlugin(config)],
-  })
+  return (baseConfig: unknown) => {
+    const cfg = baseConfig as any
+    return {
+      ...cfg,
+      plugins: [...(cfg.plugins || []), createGovernancePlugin(config)],
+    }
+  }
 }
 
-export { 
-  createAuditLoggingPlugin, 
-  withAuditLogging, 
-  type AuditConfig, 
-  type AuditEvent, 
-  AuditLogManager 
-} from './audit-logging'
-
-export { 
-  createAuditQueryManager, 
-  queryAuditLogs, 
-  exportAuditLogs, 
-  type AuditQuery, 
-  type AuditExportOptions, 
-  type AuditReport 
-} from './audit-query'
+export * from './audit-logging'
+export * from './audit-query'
+export { ApprovalGate, type ApprovalOptions } from './approval-gate'

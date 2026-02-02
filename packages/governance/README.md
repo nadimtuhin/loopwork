@@ -8,6 +8,7 @@ Governance and audit logging plugin for Loopwork task automation framework.
 - **Flexible Query API** - Query audit logs by event type, task, namespace, date range
 - **Export Formats** - Export to JSON or CSV for external analysis
 - **Policy Enforcement** - Basic policy engine for governance rules
+- **Human-in-the-Loop (HITL)** - Approval gates for sensitive operations or high-priority tasks
 - **Configurable** - Filter events, control log size, enable/disable features
 
 ## Installation
@@ -320,10 +321,27 @@ export default compose(
     enabled: true,
     rules: {
       maxConcurrentTasks: 5,
-      allowedClis: ['claude', 'opencode']
+      allowedClis: ['claude', 'opencode'],
+      highPriorityApproval: true, // Require approval for high priority tasks
     }
   }),
 )(defineConfig({ cli: 'claude' }))
+```
+
+### Human-in-the-Loop (HITL)
+
+Enable manual approval for all tasks or based on specific rules:
+
+```typescript
+withGovernance({
+  rules: {
+    approvalRequired: true, // Require approval for ALL tasks
+  },
+  approval: {
+    timeout: 30000, // Wait 30s for approval
+    autoApproveNonInteractive: true, // Auto-approve in CI/non-interactive mode
+  }
+})
 ```
 
 ## License

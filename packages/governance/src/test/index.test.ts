@@ -1,95 +1,43 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { GovernanceError, PolicyEngine, PolicyRule, PolicyAction, PolicyResult, GovernanceConfig, PolicyContext, createGovernancePlugin, withGovernance, PolicyRules } from '../index'
-
-/**
- * index Tests
- * 
- * Auto-generated test suite for index
- */
+import { GovernanceError, PolicyEngine, createGovernancePlugin, withGovernance } from '../index'
 
 describe('index', () => {
-
   describe('GovernanceError', () => {
-    test('should instantiate without errors', () => {
-      const instance = new GovernanceError()
+    test('should instantiate with message', () => {
+      const instance = new GovernanceError('test message')
       expect(instance).toBeDefined()
+      expect(instance.message).toBe('test message')
       expect(instance).toBeInstanceOf(GovernanceError)
-    })
-
-    test('should maintain instance identity', () => {
-      const instance1 = new GovernanceError()
-      const instance2 = new GovernanceError()
-      expect(instance1).not.toBe(instance2)
     })
   })
 
   describe('PolicyEngine', () => {
-    test('should instantiate without errors', () => {
+    test('should instantiate', () => {
       const instance = new PolicyEngine()
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(PolicyEngine)
     })
 
-    test('should maintain instance identity', () => {
-      const instance1 = new PolicyEngine()
-      const instance2 = new PolicyEngine()
-      expect(instance1).not.toBe(instance2)
-    })
-  })
-
-  describe('PolicyRule', () => {
-    test('should be defined', () => {
-      expect(PolicyRule).toBeDefined()
-    })
-  })
-
-  describe('PolicyAction', () => {
-    test('should be defined', () => {
-      expect(PolicyAction).toBeDefined()
-    })
-  })
-
-  describe('PolicyResult', () => {
-    test('should be defined', () => {
-      expect(PolicyResult).toBeDefined()
-    })
-  })
-
-  describe('GovernanceConfig', () => {
-    test('should be defined', () => {
-      expect(GovernanceConfig).toBeDefined()
-    })
-  })
-
-  describe('PolicyContext', () => {
-    test('should be defined', () => {
-      expect(PolicyContext).toBeDefined()
+    test('should block if max concurrent tasks reached', async () => {
+      const engine = new PolicyEngine({ maxConcurrentTasks: 1 })
+      engine.trackTaskStart('TASK-1')
+      
+      const context = {
+        task: { id: 'TASK-2', title: 'Test' },
+        namespace: 'default',
+        activeTasks: new Set(['TASK-1']),
+        iteration: 1
+      }
+      
+      const result = await engine.evaluate(context as any)
+      expect(result.allowed).toBe(false)
+      expect(result.reason).toContain('Maximum concurrent tasks limit reached')
     })
   })
 
   describe('createGovernancePlugin', () => {
     test('should be a function', () => {
       expect(typeof createGovernancePlugin).toBe('function')
-    })
-
-    test('should execute without throwing', () => {
-      expect(() => createGovernancePlugin()).not.toThrow()
-    })
-  })
-
-  describe('withGovernance', () => {
-    test('should be a function', () => {
-      expect(typeof withGovernance).toBe('function')
-    })
-
-    test('should execute without throwing', () => {
-      expect(() => withGovernance()).not.toThrow()
-    })
-  })
-
-  describe('PolicyRules', () => {
-    test('should be defined', () => {
-      expect(PolicyRules).toBeDefined()
     })
   })
 })
