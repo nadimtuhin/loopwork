@@ -8,11 +8,44 @@ import fs from 'fs'
 import path from 'path'
 import type { LoopworkPlugin, PluginTask, LoopStats, ConfigWrapper, TaskContext, PluginTaskResult, CliResultEvent } from '@loopwork-ai/loopwork/contracts'
 
+export class BudgetExceededError extends Error {
+  public readonly budgetType: 'daily' | 'perTask' | 'perUser'
+  public readonly currentCost: number
+  public readonly budgetLimit: number
+  public readonly taskId?: string
+
+  constructor(
+    budgetType: 'daily' | 'perTask' | 'perUser',
+    currentCost: number,
+    budgetLimit: number,
+    taskId?: string
+  ) {
+    const taskInfo = taskId ? ` for task ${taskId}` : ''
+    const typeLabel = budgetType === 'daily' ? 'Daily' : budgetType === 'perTask' ? 'Per-task' : 'Per-user'
+    super(
+      `${typeLabel} budget exceeded${taskInfo}: $${currentCost.toFixed(4)} > $${budgetLimit.toFixed(4)}`
+    )
+    this.name = 'BudgetExceededError'
+    this.budgetType = budgetType
+    this.currentCost = currentCost
+    this.budgetLimit = budgetLimit
+    this.taskId = taskId
+  }
+}
+
 export interface CostTrackingConfig {
   enabled?: boolean
   defaultModel?: string
   dailyBudget?: number
   alertThreshold?: number
+  /** Maximum cost per individual task (in USD) */
+  perTaskBudget?: number
+  /** Maximum cost per user session (in USD) */
+  perUserBudget?: number
+  /** User identifier for tracking per-user budgets */
+  userId?: string
+  /** Action to take when budget is exceeded: 'warn' | 'block' | 'alert' */
+  budgetAction?: 'warn' | 'block' | 'alert'
 }
 
 // ============================================================================
@@ -75,6 +108,7 @@ export interface UsageEntry {
   error?: string
   iteration?: number
   namespace?: string
+  userId?: string // User identifier for per-user budget tracking
 }
 
 export interface UsageSummary {
@@ -155,7 +189,8 @@ export class CostTracker {
     duration?: number,
     status: 'success' | 'failed' = 'success',
     error?: string,
-    iteration?: number
+    iteration?: number,
+    userId?: string
   ): UsageEntry {
     const cost = this.calculateCost(model, usage)
 
@@ -170,6 +205,7 @@ export class CostTracker {
       error,
       iteration,
       namespace: this.namespace,
+      userId,
     }
 
     this.entries.push(entry)
@@ -287,6 +323,53 @@ export class CostTracker {
   }
 
   /**
+   * Get usage summaries grouped by user
+   */
+  getUserSummaries(): Record<string, UsageSummary> {
+    const byUser: Record<string, UsageSummary> = {}
+
+    for (const entry of this.entries) {
+      const userId = entry.userId || 'anonymous'
+      if (!byUser[userId]) {
+        byUser[userId] = {
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          totalCacheReadTokens: 0,
+          totalCacheWriteTokens: 0,
+          totalCost: 0,
+          taskCount: 0,
+          successCount: 0,
+          failureCount: 0,
+          avgTokensPerSecond: 0,
+          avgCostPerTask: 0,
+          entries: [],
+        }
+      }
+
+      const summary = byUser[userId]
+      summary.totalInputTokens += entry.usage.inputTokens
+      summary.totalOutputTokens += entry.usage.outputTokens
+      summary.totalCacheReadTokens += entry.usage.cacheReadTokens || 0
+      summary.totalCacheWriteTokens += entry.usage.cacheWriteTokens || 0
+      summary.totalCost += entry.cost
+      summary.taskCount += 1
+      summary.successCount += entry.status === 'success' || !entry.status ? 1 : 0
+      summary.failureCount += entry.status === 'failed' ? 1 : 0
+      summary.entries.push(entry)
+    }
+
+    // Calculate averages
+    for (const userId of Object.keys(byUser)) {
+      const summary = byUser[userId]
+      if (summary.taskCount > 0) {
+        summary.avgCostPerTask = summary.totalCost / summary.taskCount
+      }
+    }
+
+    return byUser
+  }
+
+  /**
    * Get cost breakdown by model
    */
   getCostByModel(): Record<string, { cost: number; tokens: TokenUsage }> {
@@ -338,6 +421,126 @@ export class CostTracker {
       recentFailures,
       errorCorrelation,
     }
+  }
+
+  // ============================================================================
+  // Budget Enforcement Methods
+  // ============================================================================
+
+  /**
+   * Check if a task can be executed within the per-task budget
+   */
+  checkPerTaskBudget(taskId: string, perTaskBudget: number): { allowed: boolean; currentCost: number } {
+    const currentCost = this.getTaskCost(taskId)
+    return {
+      allowed: currentCost < perTaskBudget,
+      currentCost,
+    }
+  }
+
+  /**
+   * Check if execution is within per-user budget
+   */
+  checkPerUserBudget(userId: string, perUserBudget: number): { allowed: boolean; currentCost: number } {
+    const currentCost = this.getUserCost(userId)
+    return {
+      allowed: currentCost < perUserBudget,
+      currentCost,
+    }
+  }
+
+  /**
+   * Check if execution is within daily budget
+   */
+  checkDailyBudget(dailyBudget: number): { allowed: boolean; currentCost: number } {
+    const todaySummary = this.getTodaySummary()
+    return {
+      allowed: todaySummary.totalCost < dailyBudget,
+      currentCost: todaySummary.totalCost,
+    }
+  }
+
+  /**
+   * Get current cost for a specific task (including retries)
+   */
+  getTaskCost(taskId: string): number {
+    return this.entries
+      .filter(e => e.taskId === taskId)
+      .reduce((sum, e) => sum + e.cost, 0)
+  }
+
+  /**
+   * Get current cost for a specific user (all tasks by that user)
+   */
+  getUserCost(userId: string): number {
+    return this.entries
+      .filter(e => (e.userId || 'anonymous') === userId)
+      .reduce((sum, e) => sum + e.cost, 0)
+  }
+
+  /**
+   * Validate budget constraints before task execution
+   * Throws BudgetExceededError if budget would be exceeded
+   */
+  validateBudgets(
+    taskId: string,
+    options: {
+      dailyBudget?: number
+      perTaskBudget?: number
+      perUserBudget?: number
+      userId?: string
+      budgetAction?: 'warn' | 'block' | 'alert'
+    }
+  ): { allowed: boolean; warnings: string[] } {
+    const warnings: string[] = []
+    let allowed = true
+
+    // Check daily budget
+    if (options.dailyBudget && options.dailyBudget > 0) {
+      const dailyCheck = this.checkDailyBudget(options.dailyBudget)
+      if (!dailyCheck.allowed) {
+        const message = `Daily budget exceeded: $${dailyCheck.currentCost.toFixed(4)} / $${options.dailyBudget.toFixed(4)}`
+        if (options.budgetAction === 'block') {
+          throw new BudgetExceededError('daily', dailyCheck.currentCost, options.dailyBudget)
+        }
+        warnings.push(message)
+        if (options.budgetAction === 'warn') {
+          allowed = false
+        }
+      }
+    }
+
+    // Check per-task budget
+    if (options.perTaskBudget && options.perTaskBudget > 0) {
+      const taskCheck = this.checkPerTaskBudget(taskId, options.perTaskBudget)
+      if (!taskCheck.allowed) {
+        const message = `Per-task budget exceeded for ${taskId}: $${taskCheck.currentCost.toFixed(4)} / $${options.perTaskBudget.toFixed(4)}`
+        if (options.budgetAction === 'block') {
+          throw new BudgetExceededError('perTask', taskCheck.currentCost, options.perTaskBudget, taskId)
+        }
+        warnings.push(message)
+        if (options.budgetAction === 'warn') {
+          allowed = false
+        }
+      }
+    }
+
+    // Check per-user budget
+    if (options.perUserBudget && options.perUserBudget > 0 && options.userId) {
+      const userCheck = this.checkPerUserBudget(options.userId, options.perUserBudget)
+      if (!userCheck.allowed) {
+        const message = `Per-user budget exceeded for ${options.userId}: $${userCheck.currentCost.toFixed(4)} / $${options.perUserBudget.toFixed(4)}`
+        if (options.budgetAction === 'block') {
+          throw new BudgetExceededError('perUser', userCheck.currentCost, options.perUserBudget)
+        }
+        warnings.push(message)
+        if (options.budgetAction === 'warn') {
+          allowed = false
+        }
+      }
+    }
+
+    return { allowed, warnings }
   }
 
   private correlateErrors(failures: UsageEntry[]): ErrorGroup[] {
@@ -455,30 +658,82 @@ export class CostTracker {
  * Add cost tracking wrapper
  */
 export function withCostTracking(options: CostTrackingConfig = {}): ConfigWrapper {
-  return (config) => ({
-    ...config,
-    costTracking: {
-      enabled: true,
-      defaultModel: 'claude-3.5-sonnet',
-      classification: 'enhancement',
-      ...options,
-    },
-  })
+  return (config) => {
+    const baseConfig = config as Record<string, unknown>
+    return {
+      ...baseConfig,
+      costTracking: {
+        enabled: true,
+        defaultModel: 'claude-3.5-sonnet',
+        classification: 'enhancement',
+        ...options,
+      },
+    }
+  }
 }
 
 export function createCostTrackingPlugin(
   projectRoot: string,
   namespace = 'default',
-  defaultModel = 'claude-3.5-sonnet'
+  config: CostTrackingConfig = {}
 ): LoopworkPlugin {
   const tracker = new CostTracker(projectRoot, namespace)
+  const {
+    dailyBudget,
+    perTaskBudget,
+    perUserBudget,
+    userId,
+    budgetAction = 'warn',
+    alertThreshold = 0.8,
+  } = config
 
   return {
     name: 'cost-tracking',
     classification: 'enhancement',
 
     async onTaskStart(context: TaskContext) {
-      // Track task start time (stored in tracker)
+      // Validate budgets before task execution
+      const validation = tracker.validateBudgets(context.task.id, {
+        dailyBudget,
+        perTaskBudget,
+        perUserBudget,
+        userId,
+        budgetAction,
+      })
+
+      // Log warnings if budgets are approaching limits
+      if (validation.warnings.length > 0) {
+        for (const warning of validation.warnings) {
+          console.warn(`⚠️  COST TRACKING: ${warning}`)
+        }
+      }
+
+      // Check alert threshold for daily budget
+      if (dailyBudget && dailyBudget > 0) {
+        const todaySummary = tracker.getTodaySummary()
+        const thresholdAmount = dailyBudget * alertThreshold
+        if (todaySummary.totalCost >= thresholdAmount && todaySummary.totalCost < dailyBudget) {
+          console.warn(`⚠️  COST TRACKING: Daily budget at ${(alertThreshold * 100).toFixed(0)}% threshold: $${todaySummary.totalCost.toFixed(4)} / $${dailyBudget.toFixed(4)}`)
+        }
+      }
+
+      // Check alert threshold for per-task budget
+      if (perTaskBudget && perTaskBudget > 0) {
+        const taskCost = tracker.getTaskCost(context.task.id)
+        const thresholdAmount = perTaskBudget * alertThreshold
+        if (taskCost >= thresholdAmount && taskCost < perTaskBudget) {
+          console.warn(`⚠️  COST TRACKING: Per-task budget for ${context.task.id} at ${(alertThreshold * 100).toFixed(0)}% threshold: $${taskCost.toFixed(4)} / $${perTaskBudget.toFixed(4)}`)
+        }
+      }
+
+      // Check alert threshold for per-user budget
+      if (perUserBudget && perUserBudget > 0 && userId) {
+        const userCost = tracker.getUserCost(userId)
+        const thresholdAmount = perUserBudget * alertThreshold
+        if (userCost >= thresholdAmount && userCost < perUserBudget) {
+          console.warn(`⚠️  COST TRACKING: Per-user budget for ${userId} at ${(alertThreshold * 100).toFixed(0)}% threshold: $${userCost.toFixed(4)} / $${perUserBudget.toFixed(4)}`)
+        }
+      }
     },
 
     async onTaskComplete(context: TaskContext, result: PluginTaskResult) {
@@ -499,7 +754,8 @@ export function createCostTrackingPlugin(
           event.durationMs / 1000,
           status,
           event.exitCode !== 0 ? event.output.slice(-500) : undefined,
-          event.iteration
+          event.iteration,
+          userId
         )
       }
     },
@@ -510,6 +766,32 @@ export function createCostTrackingPlugin(
       console.log(`   Tasks: ${summary.taskCount} (${summary.successCount} success, ${summary.failureCount} failed)`)
       console.log(`   Tokens: ${summary.totalInputTokens.toLocaleString()} in / ${summary.totalOutputTokens.toLocaleString()} out`)
       console.log(`   Cost: $${summary.totalCost.toFixed(4)}`)
+
+      // Display budget status if configured
+      if (dailyBudget && dailyBudget > 0) {
+        const percentUsed = (summary.totalCost / dailyBudget) * 100
+        const status = percentUsed >= 100 ? '❌ EXCEEDED' : percentUsed >= 80 ? '⚠️  WARNING' : '✅ OK'
+        console.log(`   Daily Budget: $${summary.totalCost.toFixed(4)} / $${dailyBudget.toFixed(4)} (${percentUsed.toFixed(1)}%) ${status}`)
+      }
+
+      if (perTaskBudget && perTaskBudget > 0) {
+        console.log(`   Per-Task Budget: $${perTaskBudget.toFixed(4)} (enforced)`)
+      }
+
+      // Display per-user budget status if configured
+      if (perUserBudget && perUserBudget > 0 && userId) {
+        const userCost = tracker.getUserCost(userId)
+        const percentUsed = (userCost / perUserBudget) * 100
+        const status = percentUsed >= 100 ? '❌ EXCEEDED' : percentUsed >= 80 ? '⚠️  WARNING' : '✅ OK'
+        console.log(`   Per-User Budget (${userId}): $${userCost.toFixed(4)} / $${perUserBudget.toFixed(4)} (${percentUsed.toFixed(1)}%) ${status}`)
+
+        // Show top users if multiple users
+        const userSummaries = tracker.getUserSummaries()
+        const userCount = Object.keys(userSummaries).filter(u => u !== 'anonymous').length
+        if (userCount > 1) {
+          console.log(`   Users with activity: ${userCount}`)
+        }
+      }
     },
   }
 }
@@ -565,13 +847,13 @@ export function formatTelemetryReport(report: TelemetryReport): string {
   lines.push('Overall Summary:')
   lines.push(formatUsageSummary(report.summary))
   lines.push('')
-  
+
   lines.push('Breakdown by Model:')
   for (const [model, stats] of Object.entries(report.byModel)) {
     const successRate = stats.taskCount > 0 ? (stats.successCount / stats.taskCount) * 100 : 0
     lines.push(`- ${model}: ${stats.taskCount} calls, ${successRate.toFixed(1)}% success, ${formatCost(stats.totalCost)} total`)
   }
-  
+
   if (report.recentFailures.length > 0) {
     lines.push('')
     lines.push('Recent Failures:')
@@ -589,6 +871,12 @@ export function formatTelemetryReport(report: TelemetryReport): string {
       lines.push(`  Last seen: ${group.lastOccurred.toISOString()}`)
     }
   }
-  
+
   return lines.join('\n')
 }
+
+export {
+  CostTrackingTelemetryProvider,
+  createCostTelemetryProvider,
+  type CostTelemetryProviderOptions,
+} from './provider'
