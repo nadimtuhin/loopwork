@@ -1,20 +1,29 @@
 import React from 'react'
 import { Box, Text } from 'ink'
+import { useThemeColor } from '../theme'
 
 interface BannerProps {
   title: string
   rows?: Array<{ key: string; value: string }>
   style?: 'light' | 'heavy'
   borderColor?: string
+  useThemeColors?: boolean
 }
 
-export const Banner: React.FC<BannerProps> = ({ 
-  title, 
-  rows = [], 
+export const Banner: React.FC<BannerProps> = ({
+  title,
+  rows = [],
   style = 'heavy',
-  borderColor = 'cyan'
+  borderColor: propBorderColor,
+  useThemeColors: useThemeProp = true,
 }) => {
   const borderStyle = style === 'heavy' ? 'double' : 'single'
+
+  const themeBorderColor = useThemeProp ? useThemeColor('borderHighlight') : 'cyan'
+  const borderColor = propBorderColor || themeBorderColor
+
+  const themeTextColor = useThemeProp ? useThemeColor('text') : 'white'
+  const themeMutedColor = useThemeProp ? useThemeColor('textMuted') : 'gray'
 
   return (
     <Box
@@ -25,7 +34,7 @@ export const Banner: React.FC<BannerProps> = ({
       minWidth={40}
     >
       <Box justifyContent="center" marginBottom={rows.length > 0 ? 1 : 0}>
-        <Text bold color="white">
+        <Text bold color={themeTextColor}>
           {title}
         </Text>
       </Box>
@@ -34,8 +43,8 @@ export const Banner: React.FC<BannerProps> = ({
         <Box flexDirection="column">
           {rows.map((row, index) => (
             <Box key={index}>
-              <Text color="gray">{row.key}: </Text>
-              <Text color="white">{row.value}</Text>
+              <Text color={themeMutedColor}>{row.key}: </Text>
+              <Text color={themeTextColor}>{row.value}</Text>
             </Box>
           ))}
         </Box>

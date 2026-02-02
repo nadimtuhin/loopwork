@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Box, Text } from 'ink'
 import { getEmoji } from './utils'
 import type { OutputRenderer } from '../output/renderer'
-import type { 
-  ProgressStartEvent, 
-  ProgressUpdateEvent, 
-  ProgressStopEvent 
+import type {
+  ProgressStartEvent,
+  ProgressUpdateEvent,
+  ProgressStopEvent
 } from '../output/contracts'
+import { useThemeColor } from '../theme'
 
 interface ProgressBarProps {
   id?: string
@@ -17,11 +18,12 @@ interface ProgressBarProps {
   indeterminate?: boolean
   width?: number
   completed?: boolean
+  useThemeColors?: boolean
 }
 
 /**
  * ProgressBar Component
- * 
+ *
  * A versatile progress bar supporting deterministic and indeterminate modes.
  * Can be controlled via props or by subscribing to an event-based OutputRenderer.
  */
@@ -34,6 +36,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   indeterminate: initialIndeterminate = false,
   width = 20,
   completed: initialCompleted = false,
+  useThemeColors: useThemeProp = true,
 }) => {
   const [current, setCurrent] = useState(initialCurrent)
   const [total, setTotal] = useState(initialTotal)
@@ -41,9 +44,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const [indeterminate, setIndeterminate] = useState(initialIndeterminate)
   const [completed, setCompleted] = useState(initialCompleted)
   const [success, setSuccess] = useState(true)
+  const lastUpdateRef = useRef(0)
+  const throttleMs = 50
 
   const [spinnerIndex, setSpinnerIndex] = useState(0)
   const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+  // Get theme colors
+  const themeSuccessColor = useThemeProp ? useThemeColor('success') : 'green'
+  const themeErrorColor = useThemeProp ? useThemeColor('error') : 'red'
+  const themeProgressColor = useThemeProp ? useThemeColor('progressBar') : 'cyan'
+  const themeTrackColor = useThemeProp ? useThemeColor('progressTrack') : 'gray'
+  const themeSpinnerColor = useThemeProp ? useThemeColor('spinner') : 'cyan'
 
   // Event-based subscription
   useEffect(() => {
@@ -63,6 +75,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           break
         }
         case 'progress:update': {
+          const now = Date.now()
+          if (now - lastUpdateRef.current < throttleMs) return
+          lastUpdateRef.current = now
+
           const e = event as ProgressUpdateEvent
           setMessage(e.message)
           if (e.percent !== undefined) {
@@ -98,7 +114,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   if (completed) {
     return (
       <Box>
-        <Text color={success ? 'green' : 'red'}>{getEmoji(success ? '✓' : '✗')} </Text>
+        <Text color={success ? themeSuccessColor : themeErrorColor}>{getEmoji(success ? '✓' : '✗')} </Text>
         <Text>{message || 'Complete'}</Text>
       </Box>
     )
@@ -108,7 +124,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     return (
       <Box>
         <Text>
-          <Text color="cyan">{spinnerFrames[spinnerIndex]} </Text>
+          <Text color={themeSpinnerColor}>{spinnerFrames[spinnerIndex]} </Text>
           {message}
         </Text>
       </Box>
@@ -124,9 +140,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <Box>
-      <Text color="gray">[</Text>
-      <Text color="cyan">{bar}</Text>
-      <Text color="gray">{empty}] </Text>
+      <Text color={themeTrackColor}>[</Text>
+      <Text color={themeProgressColor}>{bar}</Text>
+      <Text color={themeTrackColor}>{empty}] </Text>
       <Text bold>{percent}%</Text>
       {message && <Text> {message}</Text>}
     </Box>
