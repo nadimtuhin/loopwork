@@ -4,6 +4,16 @@
   "description": "Process management utilities for Loopwork",
   "main": "dist/index.js",
   "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./spawner": {
+      "types": "./src/spawner/index.ts",
+      "default": "./dist/spawner/index.js"
+    }
+  },
   "scripts": {
     "build": "bun build src/*.ts --outdir dist --target node --external bun",
     "test": "bun test"
@@ -12,7 +22,9 @@
     "@loopwork-ai/loopwork": "workspace:*"
   },
   "dependencies": {
-    "events": "^3.3.0"
+    "@loopwork-ai/contracts": "workspace:*",
+    "events": "^3.3.0",
+    "node-pty": "^1.0.0"
   },
   "keywords": [
     "loopwork",
