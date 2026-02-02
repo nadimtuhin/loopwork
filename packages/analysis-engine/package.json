@@ -8,6 +8,9 @@
     "build": "bun build src/*.ts --outdir dist --target node --external bun",
     "test": "bun test"
   },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  },
   "peerDependencies": {
     "@loopwork-ai/loopwork": "workspace:*"
   },
