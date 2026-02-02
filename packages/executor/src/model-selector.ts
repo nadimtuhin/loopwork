@@ -8,9 +8,15 @@
 import type { ModelConfig, ModelSelectionStrategy } from '@loopwork-ai/contracts/executor'
 import { CircuitBreakerRegistry, CircuitBreaker } from './circuit-breaker.js'
 
+/**
+ * Options for configuring the ModelSelector
+ */
 export interface ModelSelectorOptions {
+  /** Number of failures before circuit breaker opens */
   failureThreshold?: number
+  /** Time in milliseconds before circuit breaker attempts to reset */
   resetTimeoutMs?: number
+  /** Whether to enable circuit breaker logic */
   enableCircuitBreaker?: boolean
   /**
    * Delay between model execution attempts in milliseconds.
@@ -21,8 +27,11 @@ export interface ModelSelectorOptions {
 }
 
 /**
- * ModelSelector manages the selection of models from primary and fallback pools
- * using configurable selection strategies.
+ * ModelSelector manages the selection of AI models from primary and fallback pools.
+ * 
+ * It implements various selection strategies (round-robin, priority, cost-aware, random)
+ * and incorporates circuit breaker logic to temporarily disable failing models.
+ * It also supports progressive validation where models can be added or removed dynamically.
  */
 export class ModelSelector {
   private primaryModels: ModelConfig[]
@@ -50,6 +59,14 @@ export class ModelSelector {
   // Callbacks for when models wake up from sleep
   private onModelWakeUpCallbacks: ((modelName: string) => void)[] = []
 
+  /**
+   * Creates a new ModelSelector instance
+   * 
+   * @param primaryModels - Initial list of primary models
+   * @param fallbackModels - Initial list of fallback models
+   * @param strategy - Selection strategy to use
+   * @param options - Additional selector options
+   */
   constructor(
     primaryModels: ModelConfig[],
     fallbackModels: ModelConfig[] = [],
@@ -69,7 +86,10 @@ export class ModelSelector {
 
   /**
    * Peek at the next model without advancing the selector
-   * Returns null if no healthy models are available
+   * 
+   * Skips models that are currently disabled by the circuit breaker.
+   * 
+   * @returns Model configuration or null if no healthy models are available
    */
   peek(): ModelConfig | null {
     const maxAttempts = this.getTotalModelCount()
@@ -96,7 +116,11 @@ export class ModelSelector {
 
   /**
    * Get the next model to try based on the selection strategy
-   * Returns null if no healthy models are available
+   * 
+   * Advances the internal indices or state for the selected strategy.
+   * Skips models that are currently disabled by the circuit breaker.
+   * 
+   * @returns Model configuration or null if no healthy models are available
    */
   getNext(): ModelConfig | null {
     const maxAttempts = this.getTotalModelCount()
@@ -260,6 +284,10 @@ export class ModelSelector {
 
   /**
    * Record a successful execution for a model
+   * 
+   * Resets the retry count and signals success to the circuit breaker.
+   * 
+   * @param modelName - Unique identifier for the model
    */
   recordSuccess(modelName: string): void {
     if (this.enableCircuitBreaker) {
@@ -271,7 +299,11 @@ export class ModelSelector {
 
   /**
    * Record a failed execution for a model
-   * Returns true if the circuit breaker just opened for this model
+   * 
+   * Increments the retry count and signals failure to the circuit breaker.
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns True if the circuit breaker just opened for this model
    */
   recordFailure(modelName: string): boolean {
     const retryCount = this.getRetryCount(modelName) + 1
@@ -288,7 +320,13 @@ export class ModelSelector {
   }
 
   /**
-   * Check if a model is currently available (not circuit-broken or explicitly unavailable)
+   * Check if a model is currently available
+   * 
+   * A model is available if it's not explicitly disabled, not in the 
+   * circuit breaker 'open' state, and not still pending validation.
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns True if the model can be used
    */
   isModelAvailable(modelName: string): boolean {
     // Check if explicitly marked unavailable
@@ -309,15 +347,20 @@ export class ModelSelector {
 
   /**
    * Get list of currently disabled (sleeping) models
+   * 
    * @deprecated Use getSleepingModels() instead for clearer terminology
+   * @returns Array of model names
    */
   getDisabledModels(): string[] {
     return this.getSleepingModels()
   }
 
   /**
-   * Get list of models that are currently "sleeping" (circuit breaker open)
-   * These models will automatically wake up after the cooldown period
+   * Get list of models that are currently "sleeping" due to circuit breaker
+   * 
+   * These models will automatically wake up after the cooldown period.
+   * 
+   * @returns Array of model names
    */
   getSleepingModels(): string[] {
     // Check if any can be re-enabled
@@ -331,7 +374,9 @@ export class ModelSelector {
 
   /**
    * Get wake-up time for a sleeping model
-   * Returns null if model is not sleeping or wake-up time unknown
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns Date when the model will be available again, or null if not sleeping
    */
   getModelWakeUpTime(modelName: string): Date | null {
     if (!this.enableCircuitBreaker || !this.disabledModels.has(modelName)) {
@@ -352,6 +397,9 @@ export class ModelSelector {
 
   /**
    * Get human-readable sleep status for a model
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns Sleep status information
    */
   getModelSleepStatus(modelName: string): { 
     isSleeping: boolean 
@@ -380,7 +428,9 @@ export class ModelSelector {
   }
 
   /**
-   * Get human-readable status for all models including sleep info
+   * Get human-readable status for all configured models
+   * 
+   * @returns Array of model status objects
    */
   getModelStatus(): Array<{
     name: string
@@ -405,7 +455,10 @@ export class ModelSelector {
   }
 
   /**
-   * Get circuit breaker state for a model
+   * Get current circuit breaker state for a specific model
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns Circuit breaker state object or null if disabled
    */
   getCircuitBreakerState(modelName: string) {
     if (!this.enableCircuitBreaker) {
@@ -415,7 +468,9 @@ export class ModelSelector {
   }
 
   /**
-   * Get all circuit breaker states
+   * Get all circuit breaker states for all models
+   * 
+   * @returns Map of model names to circuit breaker states
    */
   getAllCircuitBreakerStates() {
     if (!this.enableCircuitBreaker) {
@@ -425,7 +480,7 @@ export class ModelSelector {
   }
 
   /**
-   * Switch to fallback pool
+   * Switch the selector to use the fallback model pool
    */
   switchToFallback(): void {
     if (!this.useFallback && this.fallbackModels.length > 0) {
@@ -435,7 +490,7 @@ export class ModelSelector {
   }
 
   /**
-   * Reset to primary pool
+   * Reset the selector to use the primary model pool
    */
   resetToFallback(): void {
     this.useFallback = false
@@ -443,21 +498,27 @@ export class ModelSelector {
   }
 
   /**
-   * Check if currently using fallback pool
+   * Check if the selector is currently using the fallback pool
+   * 
+   * @returns True if using fallback pool
    */
   isUsingFallback(): boolean {
     return this.useFallback
   }
 
   /**
-   * Get total number of models (primary + fallback)
+   * Get the total number of models in both pools
+   * 
+   * @returns Model count
    */
   getTotalModelCount(): number {
     return this.primaryModels.length + this.fallbackModels.length
   }
 
   /**
-   * Get number of currently available models
+   * Get the number of models that are currently available for use
+   * 
+   * @returns Available model count
    */
   getAvailableModelCount(): number {
     const allModels = [...this.primaryModels, ...this.fallbackModels]
@@ -465,7 +526,9 @@ export class ModelSelector {
   }
 
   /**
-   * Get the current pool being used
+   * Get the current pool of models being used, filtered for healthy ones
+   * 
+   * @returns Array of healthy model configurations
    */
   getCurrentPool(): ModelConfig[] {
     const pool = this.useFallback ? this.fallbackModels : this.primaryModels
@@ -473,15 +536,19 @@ export class ModelSelector {
   }
 
   /**
-   * Get all models (for exhaustion check)
+   * Get all configured models regardless of pool or status
+   * 
+   * @returns Array of all model configurations
    */
   getAllModels(): ModelConfig[] {
     return [...this.primaryModels, ...this.fallbackModels]
   }
 
   /**
-   * Track a retry for a model
-   * Returns the new retry count
+   * Increment and track the retry count for a model
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns New retry count
    */
   trackRetry(modelName: string): number {
     const current = this.retryCount.get(modelName) || 0
@@ -491,21 +558,24 @@ export class ModelSelector {
   }
 
   /**
-   * Get retry count for a model
+   * Get the current retry count for a model
+   * 
+   * @param modelName - Unique identifier for the model
+   * @returns Current retry count
    */
   getRetryCount(modelName: string): number {
     return this.retryCount.get(modelName) || 0
   }
 
   /**
-   * Reset retry count for all models
+   * Reset retry counts for all models
    */
   resetRetryCount(): void {
     this.retryCount.clear()
   }
 
   /**
-   * Reset all state (indices, fallback flag, retry counts, circuit breakers)
+   * Reset all selector state (indices, pools, retries, circuit breakers)
    */
   reset(): void {
     this.primaryIndex = 0
@@ -518,7 +588,9 @@ export class ModelSelector {
   }
 
   /**
-   * Reset a specific model's circuit breaker
+   * Reset state for a specific model
+   * 
+   * @param modelName - Unique identifier for the model
    */
   resetModel(modelName: string): void {
     this.disabledModels.delete(modelName)
@@ -528,14 +600,19 @@ export class ModelSelector {
   }
 
   /**
-   * Check if we've exhausted all models (been through entire primary + fallback)
+   * Check if all models in both pools have been tried
+   * 
+   * @param attemptCount - Current number of attempts made
+   * @returns True if all models have been tried
    */
   hasExhaustedAllModels(attemptCount: number): boolean {
     return attemptCount >= this.getTotalModelCount()
   }
 
   /**
-   * Get health status summary
+   * Get a summary of the current health status of all models
+   * 
+   * @returns Health status summary object
    */
   getHealthStatus(): {
     total: number
@@ -562,15 +639,18 @@ export class ModelSelector {
   }
 
   /**
-   * Mark a model as pending (being validated)
+   * Mark a model as pending validation
+   * 
+   * @param modelName - Unique identifier for the model
    */
   markPending(modelName: string): void {
     this.pendingModels.add(modelName)
   }
 
   /**
-   * Mark a model as available (validation complete)
-   * This adds the model to the primary pool and notifies listeners
+   * Add or update a model and mark it as available
+   * 
+   * @param modelConfig - Model configuration to add or update
    */
   addModel(modelConfig: ModelConfig): void {
     // Remove from pending if it was there
@@ -597,7 +677,9 @@ export class ModelSelector {
   }
 
   /**
-   * Mark a model as unavailable/invalid
+   * Mark a model as explicitly unavailable
+   * 
+   * @param modelName - Unique identifier for the model
    */
   markModelUnavailable(modelName: string): void {
     this.pendingModels.delete(modelName)
@@ -617,8 +699,10 @@ export class ModelSelector {
   }
 
   /**
-   * Register callback for when a model becomes available
-   * Returns unsubscribe function
+   * Register a callback for when a model becomes available
+   * 
+   * @param callback - Function to call when a model is added or becomes available
+   * @returns Unsubscribe function
    */
   onModelAvailable(callback: (model: ModelConfig) => void): () => void {
     this.onModelAvailableCallbacks.push(callback)
@@ -631,8 +715,10 @@ export class ModelSelector {
   }
 
   /**
-   * Register callback for when all pending validations are complete
-   * Returns unsubscribe function
+   * Register a callback for when all pending validations are complete
+   * 
+   * @param callback - Function to call when validation finishes
+   * @returns Unsubscribe function
    */
   onValidationComplete(callback: () => void): () => void {
     this.onValidationCompleteCallbacks.push(callback)
@@ -645,8 +731,10 @@ export class ModelSelector {
   }
 
   /**
-   * Register callback for when a model wakes up from sleep
-   * Returns unsubscribe function
+   * Register a callback for when a model wakes up from the circuit breaker 'open' state
+   * 
+   * @param callback - Function to call with the name of the waking model
+   * @returns Unsubscribe function
    */
   onModelWakeUp(callback: (modelName: string) => void): () => void {
     this.onModelWakeUpCallbacks.push(callback)
@@ -659,7 +747,7 @@ export class ModelSelector {
   }
 
   /**
-   * Signal that all validations are complete
+   * Signal that all validations are complete and notify listeners
    */
   signalValidationComplete(): void {
     this.pendingModels.clear()
@@ -673,29 +761,37 @@ export class ModelSelector {
   }
 
   /**
-   * Check if there are any pending models being validated
+   * Check if any models are currently being validated
+   * 
+   * @returns True if validation is in progress
    */
   hasPendingModels(): boolean {
     return this.pendingModels.size > 0
   }
 
   /**
-   * Get list of pending model names
+   * Get the names of all models currently being validated
+   * 
+   * @returns Array of pending model names
    */
   getPendingModels(): string[] {
     return Array.from(this.pendingModels)
   }
 
   /**
-   * Check if any models are available (including already validated ones)
+   * Check if any healthy models are available for use
+   * 
+   * @returns True if at least one model is available
    */
   hasAvailableModels(): boolean {
     return this.getAvailableModelCount() > 0
   }
 
   /**
-   * Wait for at least one model to become available
-   * Returns immediately if models are already available
+   * Wait for at least one model to become available, up to a timeout
+   * 
+   * @param timeoutMs - Maximum time to wait in milliseconds
+   * @returns Promise resolving to true if a model became available
    */
   async waitForAvailableModels(timeoutMs: number = 30000): Promise<boolean> {
     // If already have available models, return immediately
@@ -745,7 +841,8 @@ export class ModelSelector {
 }
 
 /**
- * Sleep/delay utility for async operations
+ * Utility function to pause execution for a specified duration
+ * 
  * @param ms - Milliseconds to sleep
  * @returns Promise that resolves after the delay
  */

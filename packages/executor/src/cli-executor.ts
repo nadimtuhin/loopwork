@@ -5,8 +5,10 @@ import path from 'path'
 import { StreamLogger } from '@loopwork-ai/common'
 import { 
   isRateLimitOutput, 
+  isQuotaExceededOutput,
   createResilienceRunner, 
   RateLimitError,
+  QuotaExceededError,
   DEFAULT_RATE_LIMIT_WAIT_MS,
 } from '@loopwork-ai/resilience'
 import type { 
@@ -32,6 +34,12 @@ import { createDefaultRegistry } from './strategies'
 const MIN_FREE_MEMORY_MB = 512
 const DEFAULT_SIGKILL_DELAY_MS = 5000
 
+/**
+ * Clears the OpenCode cache directory to resolve potential corruption issues.
+ * 
+ * @param logger - Optional logger for reporting progress and errors
+ * @returns True if cache was cleared successfully or didn't exist
+ */
 export function clearOpenCodeCache(logger?: ILogger): boolean {
   const homeDir = os.homedir()
   const cachePath = path.join(homeDir, '.cache', 'opencode')
@@ -96,12 +104,18 @@ function getAvailableMemoryMB(): number {
   return Math.round(os.freemem() / (1024 * 1024))
 }
 
+/**
+ * Default AI models used for primary task execution
+ */
 export const EXEC_MODELS: ModelConfig[] = [
   { name: 'sonnet-claude', displayName: 'claude', cli: 'claude', model: 'sonnet' },
   { name: 'sonnet-opencode', displayName: 'sonnet', cli: 'opencode', model: 'google/antigravity-claude-sonnet-4-5' },
   { name: 'gemini-3-flash', displayName: 'gemini-flash', cli: 'opencode', model: 'google/antigravity-gemini-3-flash' },
 ]
 
+/**
+ * Fallback AI models used when primary models fail or are rate-limited
+ */
 export const FALLBACK_MODELS: ModelConfig[] = [
   { name: 'opus-claude', displayName: 'opus', cli: 'claude', model: 'opus' },
   { name: 'gemini-3-pro', displayName: 'gemini-pro', cli: 'opencode', model: 'google/antigravity-gemini-3-pro' },
@@ -117,15 +131,29 @@ const CLI_PATH_ENV_VARS: Record<CliType, string> = {
   kilocode: 'LOOPWORK_KILOCODE_PATH',
 }
 
+/**
+ * Options for configuring the CliExecutor
+ */
 export interface CliExecutorOptions {
+  /** Debugger instance for troubleshooting */
   debugger?: any
+  /** Optional integrator for persisting execution checkpoints */
   checkpointIntegrator?: ICheckpointIntegrator
 }
 
 /**
- * Checkpoint integrator interface for auto-checkpointing during CLI execution
+ * Checkpoint integrator interface for auto-checkpointing during CLI execution.
+ * 
+ * Enables the executor to save and restore partial progress of an AI agent
+ * to support long-running tasks and resilience across interruptions.
  */
 export interface ICheckpointIntegrator {
+  /**
+   * Save a checkpoint for a specific agent execution
+   * 
+   * @param agentId - Unique identifier for the agent session
+   * @param state - Partial state to be persisted
+   */
   checkpoint(agentId: string, state: Partial<{
     taskId: string
     agentName: string
@@ -134,6 +162,13 @@ export interface ICheckpointIntegrator {
     lastToolCall?: string
     state?: Record<string, unknown>
   }>): Promise<void>
+
+  /**
+   * Restore a previously saved checkpoint
+   * 
+   * @param agentId - Unique identifier for the agent session to restore
+   * @returns The restored checkpoint and partial output, or null if none found
+   */
   restore?(agentId: string): Promise<{
     checkpoint: {
       taskId: string
@@ -146,6 +181,13 @@ export interface ICheckpointIntegrator {
   } | null>
 }
 
+/**
+ * CliExecutor manages the execution of AI CLI tools (Claude, OpenCode, etc.).
+ * 
+ * It handles model selection, health checks, progressive validation, 
+ * resource isolation through worker pools, and automatic retries with fallback.
+ * It also integrates with the plugin system to provide rich lifecycle hooks.
+ */
 export class CliExecutor {
   private cliPaths: Map<string, string> = new Map()
   private currentProcess: ISpawnedProcess | null = null
@@ -162,6 +204,15 @@ export class CliExecutor {
   private currentTaskId?: string
   private executionIteration = 0
 
+  /**
+   * Creates a new CliExecutor instance
+   * 
+   * @param config - Main executor configuration
+   * @param processManager - Manager for spawning and tracking processes
+   * @param pluginRegistry - Registry for executing plugin hooks
+   * @param logger - Logger instance for output
+   * @param options - Additional execution options
+   */
   constructor(
     protected config: CliExecutorConfig,
     protected processManager: IProcessManager,
@@ -298,6 +349,9 @@ export class CliExecutor {
     }
   }
 
+  /**
+   * Force switch to fallback model pool
+   */
   switchToFallback(): void {
     if (!this.modelSelector.isUsingFallback()) {
       this.modelSelector.switchToFallback()
@@ -305,10 +359,20 @@ export class CliExecutor {
     }
   }
 
+  /**
+   * Get configuration for the next model to be used
+   * 
+   * @returns Model configuration
+   */
   getNextCliConfig(): any {
     return this.modelSelector.getNext()
   }
 
+  /**
+   * Get metadata for the next model without advancing the selector
+   * 
+   * @returns Model metadata or null if no models available
+   */
   getNextModel(): { cli: string; model: string; displayName?: string } | null {
     // Use peek() to get the next model without advancing the selector
     // The actual execution will call getNext() to advance
@@ -325,6 +389,9 @@ export class CliExecutor {
     }
   }
 
+  /**
+   * Terminate the currently running AI CLI process
+   */
   killCurrent(): void {
     if (this.currentProcess) {
       this.currentProcess.kill('SIGTERM')
@@ -332,6 +399,9 @@ export class CliExecutor {
     }
   }
 
+  /**
+   * Perform cleanup of resources before shutdown
+   */
   async cleanup(): Promise<void> {
     this.killCurrent()
     await this.poolManager.shutdown()
@@ -375,7 +445,12 @@ export class CliExecutor {
 
   /**
    * Run pre-flight health check on all models
-   * Returns validated healthy models and filters the model selector
+   * 
+   * Validates that CLI tools are installed and responsive.
+   * Filters the model selector to only include healthy models.
+   * 
+   * @param minimumRequired - Minimum number of healthy models required to succeed
+   * @returns Validation results including healthy and unhealthy models
    */
   async runPreflightValidation(
     minimumRequired: number = 1
@@ -445,7 +520,9 @@ export class CliExecutor {
   }
 
   /**
-   * Get current health status
+   * Get current health status of all configured models
+   * 
+   * @returns Health status summary
    */
   getHealthStatus(): {
     total: number
@@ -461,7 +538,9 @@ export class CliExecutor {
   }
 
   /**
-   * Reset preflight validation (for testing)
+   * Reset preflight validation state
+   * 
+   * Clears cached validation results and resets the model selector.
    */
   resetPreflight(): void {
     this.preflightValidated = false
@@ -470,8 +549,13 @@ export class CliExecutor {
   }
 
   /**
-   * Start progressive validation that enables immediate work with available models
-   * Returns immediately with initial available models, continues validating in background
+   * Start progressive validation of models
+   * 
+   * Enables immediate work with available models while continuing 
+   * validation of other models in the background.
+   * 
+   * @param minimumRequired - Minimum number of healthy models required for initial success
+   * @returns Progressive validation status and a promise to wait for all models
    */
   async startProgressiveValidation(
     minimumRequired: number = 1
@@ -588,7 +672,9 @@ export class CliExecutor {
   }
 
   /**
-   * Check if models are still being validated
+   * Check if model validation is currently in progress
+   * 
+   * @returns True if validation is running
    */
   isValidationInProgress(): boolean {
     return this.modelSelector.hasPendingModels()
@@ -596,6 +682,9 @@ export class CliExecutor {
 
   /**
    * Wait for at least one model to become available
+   * 
+   * @param timeoutMs - Maximum time to wait in milliseconds
+   * @returns True if at least one model became available
    */
   async waitForAvailableModels(timeoutMs?: number): Promise<boolean> {
     return this.modelSelector.waitForAvailableModels(timeoutMs)
@@ -611,6 +700,16 @@ export class CliExecutor {
     return 'medium'
   }
 
+  /**
+   * Execute a specific task using the configured AI CLI
+   * 
+   * @param task - Task metadata
+   * @param prompt - Prompt to send to the AI
+   * @param outputFile - File path to store the AI output
+   * @param timeoutSecs - Execution timeout in seconds
+   * @param options - Additional execution options
+   * @returns Exit code of the execution (0 for success)
+   */
   async executeTask(
     task: ITaskMinimal,
     prompt: string,
@@ -631,6 +730,15 @@ export class CliExecutor {
     )
   }
 
+  /**
+   * Execute a prompt using the configured AI CLI with automatic retries and fallback
+   * 
+   * @param prompt - Prompt to send to the AI
+   * @param outputFile - File path to store the AI output
+   * @param timeoutSecs - Execution timeout in seconds
+   * @param options - Additional execution options
+   * @returns Exit code of the execution (0 for success)
+   */
   async execute(
     prompt: string,
     outputFile: string,
@@ -733,8 +841,8 @@ export class CliExecutor {
 
         const startTime = Date.now()
         await this.pluginRegistry.runHook('onStep', {
-          stepId: 'cli_spawn_start',
-          description: `Spawning CLI: ${displayName}`,
+          stepId: 'agent_reasoning_start',
+          description: `Agent reasoning for ${displayName}`,
           phase: 'start',
           context: { taskId: options.taskId, model: displayName }
         })
@@ -754,6 +862,20 @@ export class CliExecutor {
           effectiveTimeout
         )
         const spawnDuration = Date.now() - startTime
+
+        await this.pluginRegistry.runHook('onStep', {
+          stepId: 'agent_reasoning_end',
+          description: `Agent reasoning completed for ${displayName}`,
+          phase: 'end',
+          context: { taskId: options.taskId, exitCode: result.exitCode, durationMs: spawnDuration }
+        })
+
+        await this.pluginRegistry.runHook('onStep', {
+          stepId: 'cli_spawn_start',
+          description: `Spawning CLI: ${displayName}`,
+          phase: 'start',
+          context: { taskId: options.taskId, model: displayName }
+        })
 
         await this.pluginRegistry.runHook('onStep', {
           stepId: 'cli_spawn_end',
@@ -788,13 +910,13 @@ export class CliExecutor {
         }
 
         const output = fullOutput.slice(-2000)
-        if (isRateLimitOutput(output)) {
-          throw new RateLimitError(`Rate limit exceeded on ${displayName}`)
+        if (isQuotaExceededOutput(output)) {
+          this.switchToFallback()
+          throw new QuotaExceededError(`Quota exceeded on ${displayName}`)
         }
 
-        if (/quota.*exceed|billing.*limit/i.test(output)) {
-          this.switchToFallback()
-          throw new Error(`Quota exceeded on ${displayName}`)
+        if (isRateLimitOutput(output)) {
+          throw new RateLimitError(`Rate limit exceeded on ${displayName}`)
         }
 
         if (strategy.detectCacheCorruption?.(fullOutput)) {

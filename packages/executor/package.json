@@ -17,6 +17,7 @@
     "@loopwork-ai/common": "workspace:*",
     "@loopwork-ai/state": "workspace:*",
     "@loopwork-ai/resilience": "workspace:*",
+    "@loopwork-ai/process-manager": "workspace:*",
     "chalk": "^5.3.0"
   },
   "devDependencies": {
