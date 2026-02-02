@@ -2,6 +2,10 @@ import crypto from 'crypto'
 import chalk from 'chalk'
 import type { ILogger } from '@loopwork-ai/contracts'
 
+/**
+ * Get current timestamp in HH:MM:SS format
+ * @returns Formatted timestamp string
+ */
 export function getTimestamp(): string {
   // Use 24-hour format for consistent width (always 8 chars: HH:MM:SS)
   return new Date().toLocaleTimeString('en-US', {
@@ -14,12 +18,20 @@ export function getTimestamp(): string {
 
 /**
  * Calculate a SHA-256 checksum for an object
+ * @param data - The data to hash (string or object)
+ * @returns Hex-encoded SHA-256 hash
  */
 export function calculateChecksum(data: unknown): string {
   const content = typeof data === 'string' ? data : JSON.stringify(data)
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
+/**
+ * Utility for handling streaming output from CLI processes
+ * 
+ * Provides buffering, line-by-line processing, and visual prefixes
+ * for better readability in multi-process environments.
+ */
 export class StreamLogger {
   private buffer: string = ''
   private prefix: string = ''
@@ -28,6 +40,12 @@ export class StreamLogger {
   private isPaused: boolean = false
   private isAtStartOfLine: boolean = true
 
+  /**
+   * Create a new StreamLogger
+   * @param logger - The underlying logger instance to use
+   * @param prefix - Optional prefix for each line
+   * @param onEvent - Optional event callback for specific line patterns
+   */
   constructor(
     logger: ILogger,
     prefix?: string,
@@ -38,10 +56,16 @@ export class StreamLogger {
     this.onEvent = onEvent
   }
 
+  /**
+   * Temporarily pause output processing and buffer incoming chunks
+   */
   pause() {
     this.isPaused = true
   }
 
+  /**
+   * Resume output processing and flush buffered content
+   */
   resume() {
     this.isPaused = false
     if (this.buffer) {
@@ -51,6 +75,10 @@ export class StreamLogger {
     }
   }
 
+  /**
+   * Process a chunk of data from the stream
+   * @param chunk - Data chunk (string or Buffer) to log
+   */
   log(chunk: string | Buffer) {
     const str = chunk.toString('utf8')
     
@@ -122,6 +150,9 @@ export class StreamLogger {
     this.logger.raw(`${timestamp}${separatorStr} ${prefixStr} `, true)
   }
 
+  /**
+   * Flush any remaining buffered content to the logger
+   */
   flush() {
     if (this.isAtStartOfLine && this.buffer) {
       this.log('\n')
