@@ -1,0 +1,23 @@
+{
+  "name": "@loopwork-ai/task-scheduler",
+  "version": "1.0.0",
+  "description": "Task scheduling with cron, deadlines, and priority management for Loopwork",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["loopwork", "scheduler", "cron", "deadline", "priority"],
+  "author": "Loopwork Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/bun": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "*"
+  }
+}
