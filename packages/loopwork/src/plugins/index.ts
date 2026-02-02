@@ -10,7 +10,6 @@ import type {
   ConfigWrapper,
   CapabilityRegistry,
 } from '../contracts'
-import { DEFAULT_CONFIG } from '../contracts'
 import { withJSONBackend, withGitHubBackend } from '../backends/plugin'
 import { logger } from '../core/utils'
 import { createCapabilityRegistry } from '../core/capability-registry'
@@ -57,7 +56,9 @@ export { withSafety } from './safety'
 export { withFeatureFlags } from './feature-flags'
 export { withAgents } from './agents'
 export { createGitAutoCommitPlugin, withGitAutoCommit } from './git-autocommit'
+export { createProjectSummaryPlugin, withProjectSummary } from './project-summary'
 export { createSystemMonitoringPlugin, withSystemMonitoring } from '@loopwork-ai/proactive-health-monitoring'
+export { createTelemetryPlugin, withTelemetry } from './telemetry'
 export { createDebuggerPlugin, withDebugger } from './debugger'
 export { withDynamicPlugins } from './loader'
 export type { DebuggerConfig } from './debugger'
@@ -105,6 +106,7 @@ export type { SystemMonitoringOptions } from '@loopwork-ai/proactive-health-moni
 export type { DynamicTasksOptions } from './dynamic-tasks'
 export type { RollbackPluginOptions } from './rollback'
 export type { GitAutoCommitOptions } from './git-autocommit'
+export type { ProjectSummaryConfig } from './project-summary'
 export {
   withAnalyzerConfig,
   withGLMAnalyzer,
@@ -159,55 +161,13 @@ export type { WithCliOptions, WithModelsOptions } from './cli'
 // Config Helpers
 // ============================================================================
 
-/**
- * Define a type-safe config
- */
-export function defineConfig(config: LoopworkConfig): LoopworkConfig {
-  return {
-    ...DEFAULT_CONFIG,
-    ...config,
-    plugins: config.plugins || [],
-  }
-}
-
-/**
- * Define async/dynamic config
- */
-export function defineConfigAsync(
-  fn: () => Promise<LoopworkConfig> | LoopworkConfig
-): () => Promise<LoopworkConfig> {
-  return async () => {
-    const config = await fn()
-    return defineConfig(config)
-  }
-}
-
-/**
- * Compose multiple wrappers
- *
- * @example
- * export default compose(
- *   withPlugin(myPlugin),
- *   withJSONBackend(),
- * )(defineConfig({ ... }))
- */
-export function compose(...wrappers: ConfigWrapper[]): ConfigWrapper {
-  return (config) => wrappers.reduce((cfg, wrapper) => wrapper(cfg), config)
-}
-
-// ============================================================================
-// Plugin Wrappers
-// ============================================================================
-
-/**
- * Add a custom plugin
- */
-export function withPlugin(plugin: LoopworkPlugin): ConfigWrapper {
-  return (config) => ({
-    ...config,
-    plugins: [...(config.plugins || []), plugin],
-  })
-}
+export {
+  defineConfig,
+  defineConfigAsync,
+  compose,
+  withPlugin,
+  DEFAULT_CONFIG,
+} from '@loopwork-ai/config-engine'
 
 // ============================================================================
 // Plugin Registry
@@ -409,7 +369,7 @@ class PluginRegistry {
    */
   async applyConfigHooks(config: LoopworkConfig): Promise<LoopworkConfig> {
     let currentConfig = config
-    const flags = currentConfig.flags
+    const flags = currentConfig.flags as import('../contracts/config').FeatureFlags | undefined
 
     for (const plugin of this.plugins) {
       // Respect reduced functionality mode for config loading too
@@ -421,7 +381,7 @@ class PluginRegistry {
         try {
           const result = await plugin.onConfigLoad(currentConfig)
           if (result) {
-            currentConfig = result
+            currentConfig = result as LoopworkConfig
           }
         } catch (error) {
           const isCritical = plugin.classification === 'critical' || plugin.essential === true

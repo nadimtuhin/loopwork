@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { defineConfig, defineConfigAsync, compose, withPlugin, plugins } from '../plugins/index'
+import { defineConfig, defineConfigAsync, compose, withPlugin, plugins } from '../index'
 
 /**
  * index Tests
@@ -15,7 +15,7 @@ describe('index', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => defineConfig()).not.toThrow()
+      expect(() => defineConfig({ backend: { type: 'json', tasksFile: 't.json' } } as any)).not.toThrow()
     })
   })
 
@@ -25,7 +25,7 @@ describe('index', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => defineConfigAsync()).not.toThrow()
+      expect(() => defineConfigAsync(() => ({ backend: { type: 'json', tasksFile: 't.json' } } as any))).not.toThrow()
     })
   })
 
@@ -45,7 +45,7 @@ describe('index', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => withPlugin()).not.toThrow()
+      expect(() => withPlugin({ name: 'test' })).not.toThrow()
     })
   })
 

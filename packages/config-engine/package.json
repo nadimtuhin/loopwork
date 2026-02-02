@@ -1,0 +1,17 @@
+{
+  "name": "@loopwork-ai/config-engine",
+  "version": "0.1.0",
+  "description": "Configuration engine for Loopwork",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/common": "workspace:*",
+    "zod": "^3.22.4"
+  },
+  "peerDependencies": {
+    "bun": ">=1.0.0"
+  }
+}
