@@ -5,6 +5,7 @@
  * Implements business logic for session tracking, plugin state, and locking.
  */
 
+export * from './persistence'
 import type { IPersistenceLayer } from './persistence'
 
 /**

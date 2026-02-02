@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./process": "./src/process/index.ts",
     "./state": "./src/state/index.ts",
-    "./executor": "./src/executor/index.ts"
+    "./executor": "./src/executor/index.ts",
+    "./capability": "./src/capability/index.ts"
   },
   "files": [
     "src/"

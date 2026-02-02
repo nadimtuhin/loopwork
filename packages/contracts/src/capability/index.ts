@@ -5,3 +5,6 @@ export interface ICapabilityRegistry {
   getSkills(): any[]
   getPluginCapabilities(pluginName: string): any | undefined
 }
+
+export * from './types'
+export * from './model-capability'

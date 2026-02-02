@@ -1,5 +1,12 @@
+import type {
+  ModelCapabilityLevel,
+  ExtendedModelCapabilityLevel,
+  ModelRoleType,
+  TaskCategory
+} from '../capability/types'
+
 export type CliType = 'claude' | 'opencode' | 'gemini' | 'droid' | 'crush' | 'kimi' | 'kilocode'
-export type ModelSelectionStrategy = 'round-robin' | 'priority' | 'cost-aware' | 'random'
+export type ModelSelectionStrategy = 'round-robin' | 'priority' | 'cost-aware' | 'random' | 'capability'
 
 export interface ModelConfig {
   /**
@@ -60,7 +67,40 @@ export interface ModelConfig {
   maxTokens?: number
   topP?: number
   topK?: number
+  /**
+   * Stop sequences for generation
+   */
   stopSequences?: string[]
+
+  /**
+   * The capability level of this model
+   */
+  capability?: ModelCapabilityLevel
+
+  /**
+   * Extended capability level (optional)
+   */
+  extendedCapability?: ExtendedModelCapabilityLevel
+
+  /**
+   * The primary role this model is assigned to
+   */
+  primaryRole?: ModelRoleType
+
+  /**
+   * Additional roles this model can fulfill
+   */
+  secondaryRoles?: ModelRoleType[]
+
+  /**
+   * Task categories this model is optimized for
+   */
+  optimizedFor?: TaskCategory[]
+
+  /**
+   * Maximum complexity level this model can handle (1-10)
+   */
+  maxComplexity?: number
 }
 
 export interface ExecutionOptions {
