@@ -6,10 +6,11 @@
  */
 
 import type { AgentPersona } from './schemas/persona'
+import { BuildResultAggregator, type ExportOptions } from './aggregation/build-aggregator'
 
 export interface Task {
   id: string
-  type: 'generate-tests' | 'verify-tests' | 'fix-tests'
+  type: 'generate-tests' | 'verify-tests' | 'fix-tests' | 'delegate'
   target: string
   priority: number
   context?: Record<string, unknown>
@@ -20,7 +21,10 @@ export interface TaskResult {
   success: boolean
   output: string
   filesCreated: string[]
+  subTasks?: Task[]
   error?: string
+  duration?: number
+  agentId?: string
 }
 
 export interface SwarmAgent {
@@ -62,25 +66,29 @@ export class SwarmCoordinator {
   }
 
   async run(): Promise<TaskResult[]> {
-    // Sort tasks by priority (higher first)
-    const sortedTasks = [...this.tasks].sort((a, b) => b.priority - a.priority)
+    const queue = [...this.tasks].sort((a, b) => b.priority - a.priority)
+    this.tasks = []
     
-    // Process tasks with concurrency limit
-    const batches: Task[][] = []
-    for (let i = 0; i < sortedTasks.length; i += this.config.maxConcurrency) {
-      batches.push(sortedTasks.slice(i, i + this.config.maxConcurrency))
-    }
-
-    for (const batch of batches) {
+    while (queue.length > 0) {
+      const batch = queue.splice(0, this.config.maxConcurrency)
       const batchPromises = batch.map(task => this.executeTask(task))
       const batchResults = await Promise.allSettled(batchPromises)
       
-      for (const result of batchResults) {
+      for (let i = 0; i < batchResults.length; i++) {
+        const result = batchResults[i]
+        const currentTask = batch[i]
+
         if (result.status === 'fulfilled') {
-          this.results.push(result.value)
+          const taskResult = result.value
+          this.results.push(taskResult)
+
+          if (taskResult.subTasks && taskResult.subTasks.length > 0) {
+            queue.push(...taskResult.subTasks)
+            queue.sort((a, b) => b.priority - a.priority)
+          }
         } else {
           this.results.push({
-            taskId: batch[batchResults.indexOf(result)].id,
+            taskId: currentTask.id,
             success: false,
             output: '',
             filesCreated: [],
@@ -153,5 +161,44 @@ ${this.getFailedResults().map(r => `  - ${r.taskId}: ${r.error}`).join('\n') || 
 Created Files:
 ${this.getSuccessfulResults().flatMap(r => r.filesCreated).map(f => `  - ${f}`).join('\n') || '  None'}
 `
+  }
+
+  /**
+   * Create a BuildResultAggregator with current results
+   */
+  createAggregator(): BuildResultAggregator {
+    return new BuildResultAggregator(this.results)
+  }
+
+  /**
+   * Generate aggregated report with detailed metrics
+   */
+  generateAggregatedReport(): string {
+    const aggregator = this.createAggregator()
+    return aggregator.generateSummary()
+  }
+
+  /**
+   * Export results to JSON format
+   */
+  exportToJSON(options?: ExportOptions): string {
+    const aggregator = this.createAggregator()
+    return aggregator.exportToJSON(options)
+  }
+
+  /**
+   * Export results to Markdown format
+   */
+  exportToMarkdown(): string {
+    const aggregator = this.createAggregator()
+    return aggregator.exportToMarkdown()
+  }
+
+  /**
+   * Export results to HTML format
+   */
+  exportToHTML(): string {
+    const aggregator = this.createAggregator()
+    return aggregator.exportToHTML()
   }
 }

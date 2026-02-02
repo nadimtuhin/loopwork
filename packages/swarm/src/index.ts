@@ -1,3 +1,5 @@
 export * from './schemas/persona'
 export * from './coordinator'
 export * from './agents/test-generator'
+export * from './agents/manager'
+export * from './aggregation/build-aggregator'
