@@ -9,8 +9,10 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@loopwork-ai/loopwork": "workspace:*",
     "@loopwork-ai/common": "workspace:*"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

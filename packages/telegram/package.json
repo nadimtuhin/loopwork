@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "types": "src/index.ts",
   "scripts": {
-    "build": "bun build src/*.ts --outdir dist --target node --external bun --external ink --external react --external react-devtools-core",
+    "build": "bun build src/*.ts --outdir dist --target node --external bun --external ink --external react --external react-devtools-core --external @loopwork-ai/loopwork --external @loopwork-ai/resilience --external @loopwork-ai/agents --external @loopwork-ai/executor --external @loopwork-ai/ai-monitor --external @loopwork-ai/proactive-health-monitoring",
     "test": "bun test"
   },
   "peerDependencies": {
