@@ -1,1 +1,6 @@
-export * from './components/index'
+export * from './Banner'
+export * from './ProgressBar'
+export * from './Table'
+export * from './theme'
+export * from './utils'
+export { Separator, type SeparatorType } from './utils'

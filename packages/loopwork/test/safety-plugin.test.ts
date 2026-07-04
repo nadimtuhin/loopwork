@@ -1,21 +1,21 @@
 import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 import { createSafetyPlugin, withSafety } from '../src/plugins/safety'
 import type { TaskContext, PluginTaskResult } from '../src/contracts/plugin'
-import { RiskLevel } from '../src/contracts/safety'
-import { RiskAnalysisEngine } from '../src/safety/risk-analysis'
-import { InteractiveConfirmation } from '../src/safety/interactive-confirmation'
 import { logger } from '../src/core/utils'
+import { LoopworkError } from '../src/core/errors'
+import { RiskEvaluator as RiskAnalysisEngine, InteractiveConfirmation } from '@loopwork-ai/safety'
+import type { RiskLevel } from '@loopwork-ai/contracts'
 
 describe('Safety Plugin', () => {
   let plugin: ReturnType<typeof createSafetyPlugin>
 
   beforeEach(() => {
-    plugin = createSafetyPlugin({
-      enabled: true,
-      maxRiskLevel: RiskLevel.HIGH,
-      autoReject: false,
-      confirmTimeout: 30000,
-    })
+      plugin = createSafetyPlugin({
+        enabled: true,
+        maxRiskLevel: 'high',
+        autoReject: false,
+        confirmTimeout: 30000,
+      })
 
     // Mock logger to prevent console output
     spyOn(logger, 'info').mockImplementation(() => {})
@@ -38,7 +38,7 @@ describe('Safety Plugin', () => {
     test('should create plugin with custom options', () => {
       const customPlugin = createSafetyPlugin({
         enabled: false,
-        maxRiskLevel: RiskLevel.MEDIUM,
+        maxRiskLevel: 'medium',
         autoReject: true,
         confirmTimeout: 60000,
       })
@@ -147,7 +147,7 @@ describe('Safety Plugin', () => {
   describe('onTaskStart - MEDIUM risk', () => {
     test('should allow MEDIUM risk tasks within max risk level', async () => {
       const pluginWithMediumMax = createSafetyPlugin({
-        maxRiskLevel: RiskLevel.HIGH,
+        maxRiskLevel: 'high',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -195,7 +195,7 @@ describe('Safety Plugin', () => {
 
     test('should allow HIGH risk when max is CRITICAL', async () => {
       const pluginWithCriticalMax = createSafetyPlugin({
-        maxRiskLevel: RiskLevel.CRITICAL,
+        maxRiskLevel: 'critical',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -226,7 +226,7 @@ describe('Safety Plugin', () => {
     test('should block CRITICAL risk tasks with auto-reject', async () => {
       const autoRejectPlugin = createSafetyPlugin({
         autoReject: true,
-        maxRiskLevel: RiskLevel.HIGH,
+        maxRiskLevel: 'high',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -255,7 +255,7 @@ describe('Safety Plugin', () => {
     test('should log error when auto-rejecting', async () => {
       const autoRejectPlugin = createSafetyPlugin({
         autoReject: true,
-        maxRiskLevel: RiskLevel.HIGH,
+        maxRiskLevel: 'high',
       })
 
       const errorSpy = spyOn(logger, 'error').mockImplementation(() => {})
@@ -288,7 +288,7 @@ describe('Safety Plugin', () => {
     test('should block HIGH risk when max is MEDIUM with auto-reject', async () => {
       const autoRejectPlugin = createSafetyPlugin({
         autoReject: true,
-        maxRiskLevel: RiskLevel.MEDIUM,
+        maxRiskLevel: 'medium',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -319,7 +319,7 @@ describe('Safety Plugin', () => {
     test('should block MEDIUM risk when max is LOW with auto-reject', async () => {
       const autoRejectPlugin = createSafetyPlugin({
         autoReject: true,
-        maxRiskLevel: RiskLevel.LOW,
+        maxRiskLevel: 'low',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -368,7 +368,7 @@ describe('Safety Plugin', () => {
 
     test('should request confirmation for HIGH risk when max is MEDIUM', async () => {
       const mediumMaxPlugin = createSafetyPlugin({
-        maxRiskLevel: RiskLevel.MEDIUM,
+        maxRiskLevel: 'medium',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -420,7 +420,7 @@ describe('Safety Plugin', () => {
     test('should re-throw safety policy errors', async () => {
       const autoRejectPlugin = createSafetyPlugin({
         autoReject: true,
-        maxRiskLevel: RiskLevel.LOW,
+        maxRiskLevel: 'low',
       })
 
       spyOn(logger, 'info').mockImplementation(() => {})
@@ -465,13 +465,103 @@ describe('Safety Plugin', () => {
       // In non-interactive mode, this won't fail
       await plugin.onTaskStart!(context)
     })
+
+    test('should propagate LoopworkError for safety violations', async () => {
+      const autoRejectPlugin = createSafetyPlugin({ 
+        enabled: true,
+        autoReject: true,
+        maxRiskLevel: 'low'
+      })
+
+      spyOn(RiskAnalysisEngine.prototype, 'evaluate').mockResolvedValue({
+        level: 'high',
+        score: 80,
+        reason: 'Testing auto-reject',
+        concerns: ['Testing auto-reject'],
+        requiresConfirmation: true,
+        recommendations: []
+      })
+
+      const context: TaskContext = {
+        task: {
+          id: 'TASK-021',
+          title: 'Dangerous Task',
+          description: 'Delete everything',
+          status: 'pending',
+          priority: 'high',
+        },
+        config: {} as any,
+        iteration: 1,
+        startTime: new Date(),
+        namespace: 'default',
+      }
+
+      try {
+        await autoRejectPlugin.onTaskStart!(context)
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(LoopworkError)
+        if (error instanceof LoopworkError) {
+          expect(error.code).toBe('ERR_SAFETY_VIOLATION')
+          expect(error.message).toContain('blocked by safety policy')
+        }
+      }
+    })
+
+    test('should propagate non-Error objects thrown by risk engine if they match safety keywords', async () => {
+      const normalPlugin = createSafetyPlugin({ enabled: true })
+
+      spyOn(RiskAnalysisEngine.prototype, 'evaluate').mockImplementation(async () => {
+        throw 'blocked by safety policy string error'
+      })
+
+      const context: TaskContext = {
+        task: {
+          id: 'TASK-022',
+          title: 'Task that triggers error',
+          description: 'Should be blocked',
+          status: 'pending',
+          priority: 'medium',
+        },
+        config: {} as any,
+        iteration: 1,
+        startTime: new Date(),
+        namespace: 'default',
+      }
+
+      await expect(normalPlugin.onTaskStart!(context)).rejects.toBe('blocked by safety policy string error')
+    })
+
+    test('should handle undefined return from risk assessment gracefully', async () => {
+      const normalPlugin = createSafetyPlugin({ enabled: true })
+
+      // @ts-ignore
+      spyOn(RiskAnalysisEngine.prototype, 'evaluate').mockResolvedValue(undefined)
+
+      const context: TaskContext = {
+        task: {
+          id: 'TASK-023',
+          title: 'Task with undefined risk',
+          description: 'Testing undefined',
+          status: 'pending',
+          priority: 'medium',
+        },
+        config: {} as any,
+        iteration: 1,
+        startTime: new Date(),
+        namespace: 'default',
+      }
+
+      const result = await normalPlugin.onTaskStart!(context)
+      expect(result).toBeUndefined()
+    })
   })
 
   describe('withSafety config wrapper', () => {
     test('should create safety config wrapper', () => {
       const wrapper = withSafety({
         enabled: true,
-        maxRiskLevel: RiskLevel.HIGH,
+        maxRiskLevel: 'high',
         autoReject: false,
         confirmTimeout: 30000,
       })
@@ -482,7 +572,7 @@ describe('Safety Plugin', () => {
     test('should add safety config to config object', () => {
       const wrapper = withSafety({
         enabled: true,
-        maxRiskLevel: RiskLevel.HIGH,
+        maxRiskLevel: 'high',
         autoReject: false,
         confirmTimeout: 30000,
       })
@@ -499,14 +589,14 @@ describe('Safety Plugin', () => {
 
       expect(config.safety).toBeDefined()
       expect((config.safety as any)?.enabled).toBe(true)
-      expect((config.safety as any)?.maxRiskLevel).toBe(RiskLevel.HIGH)
+      expect((config.safety as any)?.maxRiskLevel).toBe('high')
       expect((config.safety as any)?.autoReject).toBe(false)
       expect((config.safety as any)?.confirmTimeout).toBe(30000)
     })
 
     test('should merge with default safety config', () => {
       const wrapper = withSafety({
-        maxRiskLevel: RiskLevel.MEDIUM,
+        maxRiskLevel: 'medium',
       })
 
       const baseConfig = {
@@ -520,7 +610,7 @@ describe('Safety Plugin', () => {
       const config = wrapper(baseConfig)
 
       expect(config.safety).toBeDefined()
-      expect((config.safety as any)?.maxRiskLevel).toBe(RiskLevel.MEDIUM)
+      expect((config.safety as any)?.maxRiskLevel).toBe('medium')
       expect((config.safety as any)?.enabled).toBe(true)
       expect((config.safety as any)?.autoReject).toBe(false)
     })

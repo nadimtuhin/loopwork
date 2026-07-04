@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## [0.4.0] - 2026-02-02
+
+### BREAKING CHANGES
+- **Modular Architecture**: The core framework is now split into multiple specialized packages (`@loopwork-ai/contracts`, `@loopwork-ai/state`, `@loopwork-ai/executor`, etc.). Direct imports from `loopwork/src/*` are no longer supported.
+- **Dependency Injection**: Services now use constructor-based DI. Plugins and custom services must be updated to inject dependencies.
+- **Ink-based UI**: Legacy console output utilities are deprecated in favor of Ink-based TUI components.
+
+### New Features
+- **Modular Packages**: Improved maintainability and reduced bundle sizes for specific use cases.
+- **Standardized TUI**: Rich, interactive terminal interface using Ink.
+- **Enhanced Process Management**: Better orphan detection and resource limiting.
+
+### Bug Fixes
+- **Test Isolation**: Improved test reliability through modular package boundaries and better mocking capabilities.
+
+### 2026-02-01 - MCPMANAG-004
+- MCPMANAG-004: Implement Task-Scoped Context Injection Logic
 
 ### 2026-02-01 - VISUALIZ-002
 - VISUALIZ-002: Task Requirements

@@ -4,10 +4,16 @@
   "main": "dist/index.js",
   "types": "src/index.ts",
   "scripts": {
-    "build": "bun build src/*.ts --outdir dist --target node --external bun --external ink --external react --external react-devtools-core",
+    "build": "bun build src/*.ts --outdir dist --target node --external bun --external ink --external react --external react-devtools-core --external @loopwork-ai/common --external @loopwork-ai/contracts --external @loopwork-ai/loopwork",
     "test": "bun test"
   },
+  "dependencies": {
+    "@loopwork-ai/common": "workspace:*",
+    "@loopwork-ai/contracts": "workspace:*"
+  },
   "peerDependencies": {
-    "@loopwork-ai/loopwork": "workspace:*"
+    "@loopwork-ai/loopwork": "workspace:*",
+    "react": "^18.2.0",
+    "ink": "^4.4.1"
   }
 }

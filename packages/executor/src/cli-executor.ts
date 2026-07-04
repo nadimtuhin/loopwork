@@ -10,11 +10,12 @@ import {
   RateLimitError,
   QuotaExceededError,
   DEFAULT_RATE_LIMIT_WAIT_MS,
+  StandardRetryStrategy,
 } from '@loopwork-ai/resilience'
-import type { 
-  ILogger, 
-  IProcessManager, 
-  ISpawnedProcess, 
+import type {
+  ILogger,
+  IProcessManager,
+  ISpawnedProcess,
   ISpawner,
   IPluginRegistry,
   ModelConfig,
@@ -23,8 +24,10 @@ import type {
   CliType,
   ExecutionOptions,
   ITaskMinimal,
-  ICliStrategyRegistry
+  ICliStrategyRegistry,
+  IResilienceEngine,
 } from '@loopwork-ai/contracts'
+import type { SandboxProvider } from '@loopwork-ai/isolation'
 import { ModelSelector } from './model-selector'
 import { WorkerPoolManager, type WorkerPoolConfig } from './isolation/worker-pool-manager'
 import { createSpawner } from './spawners'
@@ -89,6 +92,7 @@ function getAvailableMemoryMB(): number {
       const purgeablePages = getValue('Pages purgeable')
       const speculativePages = getValue('Pages speculative')
       const availablePages = freePages + inactivePages + purgeablePages + speculativePages
+      const availablePagesWithPurgeable = availablePages
 
       let actualPageSize = 16384
       const pageSizeMatch = vmstat.match(/page size of (\d+) bytes/)
@@ -96,7 +100,7 @@ function getAvailableMemoryMB(): number {
         actualPageSize = parseInt(pageSizeMatch[1], 10)
       }
 
-      return Math.round((availablePages * actualPageSize) / (1024 * 1024))
+      return Math.round((availablePagesWithPurgeable * actualPageSize) / (1024 * 1024))
     } catch {
       return Math.round(os.freemem() / (1024 * 1024))
     }
@@ -132,13 +136,22 @@ const CLI_PATH_ENV_VARS: Record<CliType, string> = {
 }
 
 /**
- * Options for configuring the CliExecutor
+ * Options for configuring CliExecutor
  */
 export interface CliExecutorOptions {
   /** Debugger instance for troubleshooting */
   debugger?: any
   /** Optional integrator for persisting execution checkpoints */
   checkpointIntegrator?: ICheckpointIntegrator
+  /** Optional process registry for tracking spawned processes */
+  processRegistry?: {
+    add(pid: number, metadata: Record<string, unknown>): Promise<void>
+    remove(pid: number): Promise<void>
+  }
+  /** Optional resilience engine for automatic retries and backoff */
+  resilienceEngine?: IResilienceEngine
+  /** Optional isolation provider for process sandboxing */
+  isolationProvider?: SandboxProvider
 }
 
 /**
@@ -200,6 +213,8 @@ export class CliExecutor {
   private preflightValidated = false
   private strategyRegistry: ICliStrategyRegistry
   private checkpointIntegrator?: ICheckpointIntegrator
+  private resilienceEngine: IResilienceEngine
+  private isolationProvider?: SandboxProvider
   private currentAgentId?: string
   private currentTaskId?: string
   private executionIteration = 0
@@ -231,6 +246,17 @@ export class CliExecutor {
       delayBetweenModelAttemptsMs: 2000,
       ...config.retry,
     }
+
+    this.resilienceEngine = options.resilienceEngine ?? createResilienceRunner({
+      retryOnRateLimit: true,
+      retryOnTransient: true,
+      retryableErrors: ['opencode cache corruption', 'CLI exited with code', 'Quota exceeded'],
+      rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
+      exponentialBackoff: this.retryConfig.exponentialBackoff,
+      exponentialBackoffBaseDelay: this.retryConfig.delayBetweenModelAttemptsMs || this.retryConfig.baseDelayMs,
+      exponentialBackoffMaxDelay: this.retryConfig.maxDelayMs,
+      exponentialBackoffMultiplier: this.retryConfig.backoffMultiplier,
+    })
 
     const preferPty = config.preferPty ?? true
     this.spawner = createSpawner(preferPty)
@@ -277,6 +303,7 @@ export class CliExecutor {
 
     this.strategyRegistry = createDefaultRegistry(this.logger)
     this.checkpointIntegrator = options.checkpointIntegrator
+    this.isolationProvider = options.isolationProvider
   }
 
   private detectClis(): void {
@@ -717,17 +744,44 @@ export class CliExecutor {
     timeoutSecs: number,
     options: ExecutionOptions = {}
   ): Promise<number> {
-    return this.execute(
-      prompt,
-      outputFile,
-      timeoutSecs,
-      {
-        ...options,
-        taskId: task.id,
-        priority: task.priority,
-        feature: task.feature
+    const maxAttempts = this.retryConfig.maxRetriesPerModel || 3
+
+    const retryResult = await this.resilienceEngine.execute(async () => {
+      return this.execute(
+        prompt,
+        outputFile,
+        timeoutSecs,
+        {
+          ...options,
+          taskId: task.id,
+          priority: task.priority,
+          feature: task.feature
+        }
+      )
+    }, {
+      retryStrategy: new StandardRetryStrategy({
+        maxAttempts: maxAttempts,
+        retryOnRateLimit: true,
+        retryOnTransient: true,
+        retryableErrors: ['opencode cache corruption', 'CLI exited with code', 'Quota exceeded'],
+        rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
+      }),
+      onRetry: (attempt, error, delay) => {
+        this.logger.warn(`Task ${task.id} failed (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms: ${error.message}`)
+        
+        // Run onTaskRetry hook
+        this.pluginRegistry.runHook('onTaskRetry', {
+          task,
+          iteration: this.executionIteration,
+          startTime: new Date(),
+          namespace: (options as any).namespace || 'default',
+          retryAttempt: attempt,
+          error: error.message,
+        }).catch(() => {})
       }
-    )
+    })
+
+    return retryResult.success ? (retryResult.result ?? 0) : 1
   }
 
   /**
@@ -773,21 +827,9 @@ export class CliExecutor {
     try {
       const maxAttempts = this.modelSelector.getTotalModelCount() * (this.retryConfig.retrySameModel ? this.retryConfig.maxRetriesPerModel : 1)
 
-      const runner = createResilienceRunner({
-        maxAttempts: maxAttempts,
-        retryOnRateLimit: true,
-        retryOnTransient: true,
-        retryableErrors: ['opencode cache corruption', 'CLI exited with code', 'Quota exceeded'],
-        rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
-        exponentialBackoff: this.retryConfig.exponentialBackoff,
-        exponentialBackoffBaseDelay: this.retryConfig.delayBetweenModelAttemptsMs || this.retryConfig.baseDelayMs,
-        exponentialBackoffMaxDelay: this.retryConfig.maxDelayMs,
-        exponentialBackoffMultiplier: this.retryConfig.backoffMultiplier,
-      })
-
       let currentModelName: string | null = null
 
-      const retryResult = await runner.execute(async () => {
+      const retryResult = await this.resilienceEngine.execute(async () => {
         const modelConfig = this.modelSelector.getNext()
         if (!modelConfig) {
           throw new Error('No more CLI configurations available')
@@ -951,6 +993,14 @@ export class CliExecutor {
         }
 
         return 0
+      }, {
+        retryStrategy: new StandardRetryStrategy({
+          maxAttempts: maxAttempts,
+          retryOnRateLimit: true,
+          retryOnTransient: true,
+          retryableErrors: ['opencode cache corruption', 'CLI exited with code', 'Quota exceeded'],
+          rateLimitWaitMs: this.retryConfig.rateLimitWaitMs,
+        })
       })
 
       if (retryResult.success) {
@@ -976,7 +1026,7 @@ export class CliExecutor {
     outputFile: string,
     timeoutSecs: number
   ): Promise<{ exitCode: number; timedOut: boolean; resourceExhausted?: string }> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const availableMemoryMB = getAvailableMemoryMB()
       if (availableMemoryMB < MIN_FREE_MEMORY_MB) {
         return reject(new Error(`Insufficient memory: ${availableMemoryMB}MB available`))
@@ -989,12 +1039,46 @@ export class CliExecutor {
       this.logger.startSpinner(`${options.prefix || 'CLI'} starting...`)
 
       const poolConfig = this.poolManager.getPoolConfig(options.poolName || 'medium')
-      const child = this.processManager.spawn(command, args, {
-        env: options.env as Record<string, string>,
-        nice: poolConfig.nice,
-      })
+      let child: ISpawnedProcess
+      let sandboxHandle: any = null
 
-      this.currentProcess = child
+      // Use isolation provider if configured, otherwise fall back to processManager
+      if (this.isolationProvider) {
+        try {
+          sandboxHandle = await this.isolationProvider.acquire({
+            memoryLimitMB: poolConfig.memoryLimitMB,
+            niceness: poolConfig.nice,
+            workingDirectory: undefined,
+            env: options.env as Record<string, string>,
+          })
+
+          child = await sandboxHandle.spawn(command, args)
+          this.currentProcess = child
+        } catch (error) {
+          return reject(error)
+        }
+      } else {
+        child = this.processManager.spawn(command, args, {
+          env: options.env as Record<string, string>,
+          nice: poolConfig.nice,
+        })
+
+        this.currentProcess = child
+      }
+
+      // Register process with ProcessRegistry for dashboard visibility
+      if (this.options.processRegistry && child.pid) {
+        this.options.processRegistry.add(child.pid, {
+          command,
+          args,
+          namespace: options.taskId ? `loopwork-${options.taskId}` : 'loopwork',
+          taskId: options.taskId,
+          workerId: options.workerId,
+          startTime: Date.now(),
+        }).catch(() => {
+          // Ignore registry errors - don't fail task execution due to tracking issues
+        })
+      }
 
       child.stdout?.on('data', (data) => {
         writeStream.write(data)
@@ -1026,11 +1110,28 @@ export class CliExecutor {
         setTimeout(() => child.kill('SIGKILL'), DEFAULT_SIGKILL_DELAY_MS)
       }, timeoutSecs * 1000)
 
-      child.on('close', (code) => {
+      child.on('close', async (code) => {
         clearTimeout(timer)
         streamLogger.flush()
         writeStream.end()
         this.currentProcess = null
+
+        // Release sandbox handle if using isolation provider
+        if (sandboxHandle) {
+          try {
+            await sandboxHandle.cleanup()
+            await this.isolationProvider!.release(sandboxHandle)
+          } catch (error) {
+            this.logger.warn(`Failed to cleanup sandbox: ${error}`)
+          }
+        }
+
+        // Unregister process from ProcessRegistry
+        if (this.options.processRegistry && child.pid) {
+          this.options.processRegistry.remove(child.pid).catch(() => {
+            // Ignore registry errors
+          })
+        }
 
         this.pluginRegistry.runHook('onAgentResponse', {
           responseText: '',
@@ -1051,6 +1152,14 @@ export class CliExecutor {
         streamLogger.flush()
         writeStream.end()
         this.currentProcess = null
+
+        // Unregister process from ProcessRegistry
+        if (this.options.processRegistry && child.pid) {
+          this.options.processRegistry.remove(child.pid).catch(() => {
+            // Ignore registry errors
+          })
+        }
+
         resolve({ exitCode: 1, timedOut: false })
       })
     })

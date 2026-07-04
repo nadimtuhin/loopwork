@@ -1,0 +1,46 @@
+/**
+ * @loopwork/plugin/{{pluginName}}
+ *
+ * Description for {{description}}
+ */
+
+import type { LoopworkPlugin, LoopworkConfig } from 'loopwork'
+
+export interface {{pluginNameCamelCase}}Options {
+  {{# Options defined in the plugin interface }}
+
+export function create{{pluginNameCamelCase}}(options: {{pluginNameCamelCase}}Options): LoopworkPlugin {
+  return {
+    name: '{{pluginName}}',
+
+    async onConfigLoad(config: LoopworkConfig) {
+      // Load and validate configuration
+      console.log('[{{pluginName}}] Plugin loaded')
+      return config
+    },
+
+    async onLoopStart(namespace: string) {
+      console.log('[{{pluginName}}] Loop starting for namespace:', namespace)
+    },
+
+    async onTaskStart(context: any) {
+      const { task, iteration } = context
+      console.log('[{{pluginName}}] Task starting:', task.id, '(iteration', iteration, ')')
+    },
+
+    async onTaskComplete(context: any, result: any) {
+      const { task } = context
+      const { duration } = result
+      console.log('[{{pluginName}}] Task completed:', task.id, '(' + duration.toFixed(2) + 'ms)')
+    },
+
+    async onTaskFailed(context: any, error: string) {
+      const { task } = context
+      console.error('[{{pluginName}}] Task failed:', task.id, error)
+    },
+
+    async onLoopEnd(stats: any) {
+      console.log('[{{pluginName}}] Loop ended:', stats.completed, 'completed,', stats.failed, 'failed')
+    }
+  }
+}

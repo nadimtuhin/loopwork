@@ -66,6 +66,7 @@ export interface Config extends LoopworkConfig {
   startTask?: string
   backend: BackendConfig
   namespace: string // For running multiple loops concurrently
+  tui?: boolean
   parallel: number // Number of parallel workers (1 = sequential)
   parallelFailureMode: ParallelFailureMode
   logLevel: LogLevel
@@ -513,8 +514,10 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       .option('--debug', 'Enable debug logging')
       .option('--namespace <name>', 'Namespace for running multiple loops')
       .option('--config <path>', 'Path to config file (loopwork.config.ts)')
+      .option('--tui', 'Enable full-screen TUI mode')
       .option('--parallel [count]', 'Enable parallel execution (default: 2 workers)', parseParallelOption)
       .option('--sequential', 'Force sequential execution (parallel=1)')
+      .option('--no-dynamic-tasks', 'Disable dynamic task creation')
       .parse(process.argv)
 
     return program.opts()
@@ -679,6 +682,7 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
       process.env.LOOPWORK_DEBUG === 'true' ||
       fileConfig?.debug ||
       false,
+    tui: options.tui || fileConfig?.tui || false,
     logLevel,
     projectRoot,
     outputDir: path.join(projectRoot, '.loopwork', 'runs', namespace, timestamp),
@@ -687,7 +691,9 @@ export async function getConfig(cliOptions?: Partial<Config> & { config?: string
     namespace,
     parallel: parallelValue,
     parallelFailureMode: fileConfig?.parallelFailureMode ?? 'continue',
-    dynamicTasks: fileConfig?.dynamicTasks,
+    dynamicTasks: options.dynamicTasks === false
+      ? { ...(fileConfig?.dynamicTasks || DEFAULT_CONFIG.dynamicTasks!), enabled: false }
+      : (fileConfig?.dynamicTasks || DEFAULT_CONFIG.dynamicTasks!),
     plugins: fileConfig?.plugins,
   }
 

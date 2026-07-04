@@ -1,0 +1,22 @@
+{
+  "name": "@loopwork-ai/utils-common",
+  "version": "0.1.0",
+  "description": "Shared async utilities for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

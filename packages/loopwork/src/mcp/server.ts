@@ -25,6 +25,7 @@ import { createBackend, type TaskBackend, type Task } from '../backends'
 import type { BackendConfig, FindTaskOptions } from '../backends/types'
 import { logger } from '../core/utils'
 import { generateSuccessCriteria, generateFailureCriteria } from '../core/task-utils'
+import { TelemetryManager } from '../telemetry'
 
 // MCP Protocol Types
 interface McpRequest {
@@ -232,6 +233,59 @@ class LoopworkMcpServer {
   }
 
   async handleToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
+    const startTime = Date.now()
+    const telemetry = TelemetryManager.getInstance()
+    const taskId = args.taskId ? String(args.taskId) : undefined
+    let span: any = null
+
+    // Start telemetry span if telemetry is enabled
+    try {
+      span = telemetry.startToolSpan(name, taskId, args)
+    } catch {
+      // Telemetry not enabled, continue without span
+    }
+
+    try {
+      const result = await this.executeToolCall(name, args)
+      const durationMs = Date.now() - startTime
+
+      // Record successful tool execution
+      telemetry.recordToolExecution(name, durationMs, true, taskId)
+
+      // End span if created
+      if (span) {
+        span.setAttributes({
+          'tool.duration_ms': durationMs,
+          'tool.success': true,
+        })
+        span.setStatus({ code: 1 })
+        span.end()
+      }
+
+      return result
+    } catch (error) {
+      const durationMs = Date.now() - startTime
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      // Record failed tool execution
+      telemetry.recordToolExecution(name, durationMs, false, taskId, errorMessage)
+
+      // End span with error if created
+      if (span) {
+        span.setAttributes({
+          'tool.duration_ms': durationMs,
+          'tool.success': false,
+          'tool.error': errorMessage,
+        })
+        span.setStatus({ code: 2, message: errorMessage })
+        span.end()
+      }
+
+      throw error
+    }
+  }
+
+  private async executeToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
     switch (name) {
       case 'loopwork_list_tasks': {
         const options: FindTaskOptions = {}
@@ -264,7 +318,7 @@ class LoopworkMcpServer {
 
         const subtasks = await this.backend.getSubTasks(taskId)
         const dependencies = await this.backend.getDependencies(taskId)
-        
+
         return {
           task: this.formatTask(task),
           subtasks: this.formatTaskList(subtasks),

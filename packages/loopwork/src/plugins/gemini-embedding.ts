@@ -1,18 +1,8 @@
-/**
- * Gemini Embedding Provider
- *
- * Provides embeddings using Google Gemini API
- */
+import type { IEmbeddingProvider, IEmbeddingConfig } from '@loopwork-ai/contracts'
 
-import type { EmbeddingProvider } from '../contracts/embedding'
+export type GeminiEmbeddingConfig = IEmbeddingConfig
 
-export interface GeminiEmbeddingConfig {
-  apiKey?: string
-  model?: string
-  baseUrl?: string
-}
-
-export class GeminiEmbeddingProvider implements EmbeddingProvider {
+export class GeminiEmbeddingProvider implements IEmbeddingProvider {
   readonly name = 'gemini-embedding'
 
   private apiKey: string

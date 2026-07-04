@@ -9,6 +9,7 @@ describe('InkCompletionSummary Component', () => {
       <InkCompletionSummary
         title="Build Complete"
         stats={{ completed: 10, failed: 2, skipped: 1 }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -20,6 +21,7 @@ describe('InkCompletionSummary Component', () => {
       <InkCompletionSummary
         title="Task Complete"
         stats={{ completed: 10, failed: 2, skipped: 1 }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -34,6 +36,7 @@ describe('InkCompletionSummary Component', () => {
         title="Done"
         stats={{ completed: 5, failed: 0, skipped: 0 }}
         duration={125000}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -47,11 +50,11 @@ describe('InkCompletionSummary Component', () => {
         title="Long Task"
         stats={{ completed: 1, failed: 0, skipped: 0 }}
         duration={7200000}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
-    expect(frame).toContain('120m')
-    expect(frame).toContain('0s')
+    expect(frame).toContain('2h 0m')
   })
 
   test('should display next steps', () => {
@@ -60,6 +63,7 @@ describe('InkCompletionSummary Component', () => {
         title="Deploy Complete"
         stats={{ completed: 5, failed: 0, skipped: 0 }}
         nextSteps={['Run tests', 'Push to production']}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -72,6 +76,7 @@ describe('InkCompletionSummary Component', () => {
       <InkCompletionSummary
         title="Partial"
         stats={{ completed: 5, failed: 0, skipped: 0 }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -83,6 +88,7 @@ describe('InkCompletionSummary Component', () => {
       <InkCompletionSummary
         title="Empty"
         stats={{ completed: 0, failed: 0, skipped: 0 }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -94,6 +100,7 @@ describe('InkCompletionSummary Component', () => {
       <InkCompletionSummary
         title="Simple Summary"
         stats={{ completed: 3, failed: 0, skipped: 0 }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()
@@ -111,6 +118,7 @@ describe('InkCompletionSummary Component', () => {
           isDegraded: true,
           disabledPlugins: ['plugin-a', 'plugin-b'],
         }}
+        useThemeColors={false}
       />
     )
     const frame = lastFrame()

@@ -6,6 +6,134 @@
  */
 
 /**
+ * Alert severity levels for retry-related alerts
+ */
+export enum RetryAlertSeverity {
+  INFO = 'info',
+  WARNING = 'warning',
+  ERROR = 'error',
+  CRITICAL = 'critical',
+}
+
+/**
+ * Types of retry-related alerts
+ */
+export enum RetryAlertType {
+  HIGH_RETRY_RATE = 'high_retry_rate',
+  CONSECUTIVE_FAILURES = 'consecutive_failures',
+  MAX_RETRIES_EXCEEDED = 'max_retries_exceeded',
+  LONG_RETRY_CHAIN = 'long_retry_chain',
+  CIRCUIT_BREAKER_OPENED = 'circuit_breaker_opened',
+}
+
+/**
+ * Alert triggered by retry behavior
+ */
+export interface RetryAlert {
+  /** Unique alert type */
+  type: RetryAlertType
+
+  /** Alert severity */
+  severity: RetryAlertSeverity
+
+  /** Human-readable message */
+  message: string
+
+  /** Current retry rate (0-1) if applicable */
+  retryRate?: number
+
+  /** Number of consecutive failures */
+  consecutiveFailures?: number
+
+  /** Total retry attempts */
+  totalRetries?: number
+
+  /** Operation or context identifier */
+  operation?: string
+
+  /** Timestamp when alert was triggered */
+  timestamp: Date
+
+  /** Additional metadata */
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Configuration for retry alerting thresholds
+ */
+export interface RetryAlertConfig {
+  /** Maximum acceptable retry rate (0-1). Alert if exceeded. */
+  maxRetryRate?: number
+
+  /** Maximum consecutive failures before alert */
+  maxConsecutiveFailures?: number
+
+  /** Maximum number of retries in a single operation */
+  maxRetriesPerOperation?: number
+
+  /** Minimum operations before calculating rate metrics */
+  minOperationsForRate?: number
+
+  /** Callback for retry alerts */
+  onAlert?: (alert: RetryAlert) => void
+}
+
+/**
+ * Retry metrics for telemetry
+ */
+export interface RetryMetrics {
+  /** Total operations executed */
+  totalOperations: number
+
+  /** Operations that succeeded on first attempt (no retry) */
+  immediateSuccess: number
+
+  /** Operations that required at least one retry */
+  retriedOperations: number
+
+  /** Total number of retry attempts across all operations */
+  totalRetries: number
+
+  /** Operations that ultimately succeeded after retries */
+  recoveredOperations: number
+
+  /** Operations that failed after all retries */
+  permanentlyFailedOperations: number
+
+  /** Total delays from all retries (milliseconds) */
+  totalRetryDelayMs: number
+
+  /** Average retry rate (retried / total) */
+  retryRate: number
+
+  /** Average attempts per operation */
+  averageAttempts: number
+
+  /** Operations currently in retry state */
+  activeRetries: number
+}
+
+/**
+ * Alerting and telemetry configuration for resilience engine
+ */
+export interface RetryTelemetryConfig {
+  /** Enable metrics collection and export */
+  enableMetrics?: boolean
+
+  /** Enable alerting based on thresholds */
+  enableAlerts?: boolean
+
+  /** Alert configuration thresholds */
+  alertConfig?: RetryAlertConfig
+
+  /** Custom operation name for metrics tagging */
+  operationName?: string
+
+  /** Tags to include with all metrics */
+  tags?: Record<string, string>
+}
+
+/**
  * Result of a retry attempt
  */
 export interface RetryAttempt {
@@ -214,4 +342,22 @@ export interface IResilienceEngine {
     totalAttempts: number
     averageAttemptsPerOperation: number
   }
+
+  /**
+   * Configure telemetry for retry operations
+   * @param config - Telemetry configuration including metrics and alerting
+   */
+  configureTelemetry(config: RetryTelemetryConfig): void
+
+  /**
+   * Get detailed retry metrics for telemetry/export
+   */
+  getMetrics(): RetryMetrics
+
+  /**
+   * Record a retry event for external metrics systems
+   * @param event - Event type ('retry', 'success', 'failure')
+   * @param data - Event data including attempt count, delay, etc.
+   */
+  recordRetryEvent(event: 'retry' | 'success' | 'failure', data?: Record<string, unknown>): void
 }

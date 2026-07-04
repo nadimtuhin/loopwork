@@ -1,43 +1,18 @@
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { LocalProcessProvider, SandboxProvider, SandboxConfig, SandboxHandle, defaultProvider } from '../index'
-
-/**
- * index Tests
- * 
- * Auto-generated test suite for index
- */
+import { describe, expect, test } from 'bun:test'
+import { LocalIsolationProvider, defaultProvider } from '../index'
 
 describe('index', () => {
-
-  describe('LocalProcessProvider', () => {
+  describe('LocalIsolationProvider', () => {
     test('should instantiate without errors', () => {
-      const instance = new LocalProcessProvider()
+      const instance = new LocalIsolationProvider()
       expect(instance).toBeDefined()
-      expect(instance).toBeInstanceOf(LocalProcessProvider)
+      expect(instance).toBeInstanceOf(LocalIsolationProvider)
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new LocalProcessProvider()
-      const instance2 = new LocalProcessProvider()
+      const instance1 = new LocalIsolationProvider()
+      const instance2 = new LocalIsolationProvider()
       expect(instance1).not.toBe(instance2)
-    })
-  })
-
-  describe('SandboxProvider', () => {
-    test('should be defined', () => {
-      expect(SandboxProvider).toBeDefined()
-    })
-  })
-
-  describe('SandboxConfig', () => {
-    test('should be defined', () => {
-      expect(SandboxConfig).toBeDefined()
-    })
-  })
-
-  describe('SandboxHandle', () => {
-    test('should be defined', () => {
-      expect(SandboxHandle).toBeDefined()
     })
   })
 

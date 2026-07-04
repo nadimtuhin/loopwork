@@ -24,6 +24,6 @@
     "@types/bun": "^1.0.0"
   },
   "peerDependencies": {
-    "@loopwork-ai/loopwork": "*"
+    "@loopwork-ai/loopwork": "workspace:*"
   }
 }

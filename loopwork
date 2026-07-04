@@ -1,0 +1,17 @@
+#!/bin/bash
+# Loopwork CLI wrapper script
+# This script allows running loopwork commands from the monorepo root
+# Since bun build --compile doesn't work with Ink (top-level await issue),
+# we run the TypeScript source directly.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOOPWORK_ENTRY="$SCRIPT_DIR/packages/loopwork/src/index.ts"
+
+if [ ! -f "$LOOPWORK_ENTRY" ]; then
+    echo "Error: Loopwork entry not found at $LOOPWORK_ENTRY" >&2
+    exit 1
+fi
+
+# Run bun from the current directory (preserving cwd context for config resolution)
+# but execute the loopwork source from the packages/loopwork directory
+exec bun "$LOOPWORK_ENTRY" "$@"

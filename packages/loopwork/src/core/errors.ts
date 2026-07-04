@@ -1,150 +1,386 @@
-import { logger } from './utils'
+import { logger, errorRegistry } from './utils'
 import chalk from 'chalk'
+import type { ErrorCode, IErrorGuidance } from '@loopwork-ai/contracts'
+
+export type { ErrorCode } from '@loopwork-ai/contracts'
 
 /**
- * Error code registry - maps error codes to documentation URLs
- *
- * Each error code is organized by category for easy reference.
- * When throwing errors, use the appropriate LoopworkError with these codes.
+ * Error code registry entry containing documentation and default suggestions
  */
-export const ERROR_CODES = {
-  /** Lock & File System Errors - Issues with file access, locks, or I/O operations */
+interface ErrorCodeEntry {
+  /** The error code identifier */
+  code: ErrorCode
+  /** Human-readable description of the error category */
+  description: string
+  /** Documentation URL for this error type */
+  docsUrl: string
+  /** Default suggestions for resolving this error */
+  suggestions: string[]
+}
 
-  /** Failed to acquire file lock - another process may be using the resource */
-  ERR_LOCK_CONFLICT: 'https://docs.loopwork.ai/errors/lock-conflict',
+/**
+ * Comprehensive error code registry documenting all Loopwork error codes
+ *
+ * This registry serves as the source of truth for:
+ * - Error code documentation URLs
+ * - Default suggestions for each error type
+ * - Error code descriptions for debugging and logging
+ *
+ * Usage:
+ * ```typescript
+ * import { ERROR_CODES } from './core/errors'
+ *
+ * // Get docs URL for an error code
+ * const docsUrl = ERROR_CODES.ERR_LOCK_CONFLICT.docsUrl
+ *
+ * // Get default suggestions
+ * const suggestions = ERROR_CODES.ERR_CONFIG_INVALID.suggestions
+ * ```
+ */
+export const ERROR_CODES: Record<ErrorCode, ErrorCodeEntry> = {
+  // ==================== Configuration Errors ====================
+  ERR_CONFIG_INVALID: {
+    code: 'ERR_CONFIG_INVALID',
+    description: 'Invalid or malformed configuration',
+    docsUrl: 'https://docs.loopwork.ai/errors/config-invalid',
+    suggestions: [
+      'Check your loopwork.config.ts for syntax errors',
+      'Verify all required fields are present and correctly typed',
+      'Run: bun run loopwork --help to see configuration options',
+    ],
+  },
 
-  /** Required file not found at expected path */
-  ERR_FILE_NOT_FOUND: 'https://docs.loopwork.ai/errors/file-not-found',
+  ERR_CONFIG_MISSING: {
+    code: 'ERR_CONFIG_MISSING',
+    description: 'Configuration file not found',
+    docsUrl: 'https://docs.loopwork.ai/errors/config-missing',
+    suggestions: [
+      'Create a loopwork.config.ts file in your project root',
+      'Run: loopwork init to generate a starter configuration',
+      'Check that the config file path is correct',
+    ],
+  },
 
-  /** Failed to write to file - check permissions and disk space */
-  ERR_FILE_WRITE: 'https://docs.loopwork.ai/errors/file-write',
+  ERR_CONFIG_LOAD: {
+    code: 'ERR_CONFIG_LOAD',
+    description: 'Failed to load configuration',
+    docsUrl: 'https://docs.loopwork.ai/errors/config-load',
+    suggestions: [
+      'Check that loopwork.config.ts exports a valid configuration',
+      'Verify TypeScript syntax is correct',
+      'Ensure all required plugins are installed',
+    ],
+  },
 
-  /** Failed to read from file - check file exists and has read permissions */
-  ERR_FILE_READ: 'https://docs.loopwork.ai/errors/file-read',
+  ERR_ENV_INVALID: {
+    code: 'ERR_ENV_INVALID',
+    description: 'Invalid environment variable',
+    docsUrl: 'https://docs.loopwork.ai/errors/env-invalid',
+    suggestions: [
+      'Check required environment variables are set',
+      'Verify environment variable formats and values',
+      'See documentation for required env vars',
+    ],
+  },
 
-  /** Configuration Errors - Issues with configuration files or environment setup */
+  // ==================== Backend Errors ====================
+  ERR_BACKEND_INVALID: {
+    code: 'ERR_BACKEND_INVALID',
+    description: 'Invalid backend configuration',
+    docsUrl: 'https://docs.loopwork.ai/errors/backend-invalid',
+    suggestions: [
+      'Verify backend type is one of: json, github',
+      'Check backend-specific configuration options',
+      'Ensure required credentials are provided',
+    ],
+  },
 
-  /** Configuration file contains invalid data or schema violations */
-  ERR_CONFIG_INVALID: 'https://docs.loopwork.ai/errors/config-invalid',
+  ERR_BACKEND_INIT: {
+    code: 'ERR_BACKEND_INIT',
+    description: 'Backend initialization failed',
+    docsUrl: 'https://docs.loopwork.ai/errors/backend-init',
+    suggestions: [
+      'Check backend connection and credentials',
+      'Verify required permissions for the backend',
+      'Check network connectivity',
+    ],
+  },
 
-  /** Required configuration file not found */
-  ERR_CONFIG_MISSING: 'https://docs.loopwork.ai/errors/config-missing',
+  // ==================== Task Errors ====================
+  ERR_TASK_NOT_FOUND: {
+    code: 'ERR_TASK_NOT_FOUND',
+    description: 'Task not found in the backend',
+    docsUrl: 'https://docs.loopwork.ai/errors/task-not-found',
+    suggestions: [
+      'Verify the task ID is correct',
+      'Check if the task exists in the backend',
+      'Run: loopwork status to list available tasks',
+    ],
+  },
 
-  /** Failed to load or parse configuration file */
-  ERR_CONFIG_LOAD: 'https://docs.loopwork.ai/errors/config-load',
+  ERR_TASK_INVALID: {
+    code: 'ERR_TASK_INVALID',
+    description: 'Task is in an invalid state',
+    docsUrl: 'https://docs.loopwork.ai/errors/task-invalid',
+    suggestions: [
+      'Check the task status is valid for this operation',
+      'Verify all required task fields are present',
+      'Ensure task dependencies are satisfied',
+    ],
+  },
 
-  /** Environment variable has invalid value or format */
-  ERR_ENV_INVALID: 'https://docs.loopwork.ai/errors/env-invalid',
+  // ==================== File Errors ====================
+  ERR_FILE_NOT_FOUND: {
+    code: 'ERR_FILE_NOT_FOUND',
+    description: 'File not found',
+    docsUrl: 'https://docs.loopwork.ai/errors/file-not-found',
+    suggestions: [
+      'Verify the file path is correct',
+      'Check file permissions',
+      'Ensure the file has not been deleted or moved',
+    ],
+  },
 
-  /** CLI Errors - Issues with CLI tool execution or discovery */
+  ERR_FILE_READ: {
+    code: 'ERR_FILE_READ',
+    description: 'Failed to read file',
+    docsUrl: 'https://docs.loopwork.ai/errors/file-read',
+    suggestions: [
+      'Check file permissions',
+      'Verify file is not locked by another process',
+      'Ensure sufficient disk space',
+    ],
+  },
 
-  /** CLI tool not found in PATH or expected locations */
-  ERR_CLI_NOT_FOUND: 'https://docs.loopwork.ai/errors/cli-not-found',
+  ERR_FILE_WRITE: {
+    code: 'ERR_FILE_WRITE',
+    description: 'Failed to write file',
+    docsUrl: 'https://docs.loopwork.ai/errors/file-write',
+    suggestions: [
+      'Check write permissions in the target directory',
+      'Verify disk space is available',
+      'Ensure file is not locked by another process',
+    ],
+  },
 
-  /** CLI tool failed during execution */
-  ERR_CLI_EXEC: 'https://docs.loopwork.ai/errors/cli-exec',
+  // ==================== Process Errors ====================
+  ERR_PROCESS_SPAWN: {
+    code: 'ERR_PROCESS_SPAWN',
+    description: 'Failed to spawn process',
+    docsUrl: 'https://docs.loopwork.ai/errors/process-spawn',
+    suggestions: [
+      'Check the command exists and is executable',
+      'Verify command-line arguments are valid',
+      'Check system resource limits',
+    ],
+  },
 
-  /** CLI tool exceeded timeout and was terminated */
-  ERR_CLI_TIMEOUT: 'https://docs.loopwork.ai/errors/cli-timeout',
+  ERR_PROCESS_KILL: {
+    code: 'ERR_PROCESS_KILL',
+    description: 'Failed to terminate process',
+    docsUrl: 'https://docs.loopwork.ai/errors/process-kill',
+    suggestions: [
+      'Process may have already terminated',
+      'Check process permissions',
+      'Try manually: kill -9 <pid>',
+    ],
+  },
 
-  /** Pre-flight validation failed */
-  ERR_PREFLIGHT_FAILED: 'https://docs.loopwork.ai/errors/preflight-failed',
+  // ==================== CLI Execution Errors ====================
+  ERR_CLI_NOT_FOUND: {
+    code: 'ERR_CLI_NOT_FOUND',
+    description: 'AI CLI tool not found',
+    docsUrl: 'https://docs.loopwork.ai/errors/cli-not-found',
+    suggestions: [
+      'Install the AI CLI tool from the official source',
+      'Ensure the CLI is in your system PATH',
+      'Update loopwork.config.ts to use an available CLI',
+    ],
+  },
 
-  /** Backend Errors - Issues with task backend initialization or validation */
+  ERR_CLI_EXEC: {
+    code: 'ERR_CLI_EXEC',
+    description: 'CLI execution failed',
+    docsUrl: 'https://docs.loopwork.ai/errors/cli-exec',
+    suggestions: [
+      'Check the command output for specific errors',
+      'Verify the CLI tool is properly authenticated',
+      'Try running the command manually to diagnose',
+    ],
+  },
 
-  /** Backend configuration is invalid or incompatible */
-  ERR_BACKEND_INVALID: 'https://docs.loopwork.ai/errors/backend-invalid',
+  // ==================== Lock Errors ====================
+  ERR_LOCK_CONFLICT: {
+    code: 'ERR_LOCK_CONFLICT',
+    description: 'Failed to acquire state lock',
+    docsUrl: 'https://docs.loopwork.ai/errors/lock-conflict',
+    suggestions: [
+      'Wait for the other instance to finish',
+      'Check for running loopwork processes',
+      'Manually remove stale lock file: rm .loopwork/loopwork.lock',
+    ],
+  },
 
-  /** Failed to initialize backend - check configuration and dependencies */
-  ERR_BACKEND_INIT: 'https://docs.loopwork.ai/errors/backend-init',
+  ERR_STATE_INVALID: {
+    code: 'ERR_STATE_INVALID',
+    description: 'Invalid state file',
+    docsUrl: 'https://docs.loopwork.ai/errors/state-invalid',
+    suggestions: [
+      'The state file may be corrupted',
+      'Try: loopwork start --resume=false',
+      'Manually remove state: rm .loopwork/state.json',
+    ],
+  },
 
-  /** Task Errors - Issues with task operations or dependencies */
+  // ==================== Plugin Errors ====================
+  ERR_PLUGIN_LOAD: {
+    code: 'ERR_PLUGIN_LOAD',
+    description: 'Plugin failed to load',
+    docsUrl: 'https://docs.loopwork.ai/errors/plugin-load',
+    suggestions: [
+      'Check plugin configuration is valid',
+      'Verify plugin dependencies are installed',
+      'Check plugin documentation for setup requirements',
+    ],
+  },
 
-  /** Requested task ID not found in backend */
-  ERR_TASK_NOT_FOUND: 'https://docs.loopwork.ai/errors/task-not-found',
+  // ==================== Safety Errors ====================
+  ERR_SAFETY_VIOLATION: {
+    code: 'ERR_SAFETY_VIOLATION',
+    description: 'Safety check violation',
+    docsUrl: 'https://docs.loopwork.ai/errors/safety-violation',
+    suggestions: [
+      'Review the safety violation reason',
+      'Modify the command to comply with safety rules',
+      'Adjust safety configuration if needed',
+    ],
+  },
 
-  /** Task data is invalid or malformed */
-  ERR_TASK_INVALID: 'https://docs.loopwork.ai/errors/task-invalid',
+  // ==================== Monitor Errors ====================
+  ERR_MONITOR_START: {
+    code: 'ERR_MONITOR_START',
+    description: 'Failed to start monitor',
+    docsUrl: 'https://docs.loopwork.ai/errors/monitor-start',
+    suggestions: [
+      'Check if port is already in use',
+      'Verify monitor configuration is valid',
+      'Ensure sufficient system resources',
+    ],
+  },
 
-  /** Task dependencies cannot be resolved or are circular */
-  ERR_TASK_DEPS: 'https://docs.loopwork.ai/errors/task-deps',
+  // ==================== TUI Errors ====================
+  ERR_TUI_UNSUPPORTED: {
+    code: 'ERR_TUI_UNSUPPORTED',
+    description: 'TUI mode not supported',
+    docsUrl: 'https://docs.loopwork.ai/errors/tui-unsupported',
+    suggestions: [
+      'TUI requires an interactive terminal',
+      'Use --json flag for non-interactive output',
+      'Redirect output to a file for logging',
+    ],
+  },
 
-  /** State Errors - Issues with state persistence or validation */
+  // ==================== Preflight Errors ====================
+  ERR_PREFLIGHT_FAILED: {
+    code: 'ERR_PREFLIGHT_FAILED',
+    description: 'Preflight checks failed',
+    docsUrl: 'https://docs.loopwork.ai/errors/preflight-failed',
+    suggestions: [
+      'Review preflight failure messages',
+      'Fix the indicated issues before continuing',
+      'Run with --verbose for detailed diagnostics',
+    ],
+  },
 
-  /** State data has invalid format or missing required fields */
-  ERR_STATE_INVALID: 'https://docs.loopwork.ai/errors/state-invalid',
+  // ==================== LLM Analyzer Errors ====================
+  ERR_LLM_ANALYSIS: {
+    code: 'ERR_LLM_ANALYSIS',
+    description: 'LLM analysis failed',
+    docsUrl: 'https://docs.loopwork.ai/errors/llm-analysis',
+    suggestions: [
+      'Check LLM provider credentials',
+      'Verify model configuration is valid',
+      'Try with a different model or provider',
+    ],
+  },
 
-  /** State file is corrupted and cannot be recovered */
-  ERR_STATE_CORRUPT: 'https://docs.loopwork.ai/errors/state-corrupt',
+  // ==================== Unknown Errors ====================
+  ERR_UNKNOWN: {
+    code: 'ERR_UNKNOWN',
+    description: 'Unknown error occurred',
+    docsUrl: 'https://docs.loopwork.ai/errors/unknown',
+    suggestions: [
+      'Check logs for more detailed error information',
+      'Try running with --debug for additional context',
+      'Report the issue if the error persists',
+    ],
+  },
 
-  /** Checkpoint Errors - Issues with checkpoint restore or validation */
+  // ==================== Testing Errors ====================
+  ERR_TEST: {
+    code: 'ERR_TEST',
+    description: 'Test error (for testing purposes only)',
+    docsUrl: 'https://docs.loopwork.ai/errors/test',
+    suggestions: [
+      'This error is only used in tests',
+      'If you see this in production, please report a bug',
+    ],
+  },
 
-  /** Checkpoint not found or integrity validation failed */
-  ERR_CHECKPOINT_INVALID: 'https://docs.loopwork.ai/errors/checkpoint-invalid',
-
-  /** Checkpoint is incompatible with current configuration */
-  ERR_CHECKPOINT_INCOMPATIBLE: 'https://docs.loopwork.ai/errors/checkpoint-incompatible',
-
-  /** Plugin Errors - Issues with plugin lifecycle or execution */
-
-  /** Required plugin not found */
-  ERR_PLUGIN_NOT_FOUND: 'https://docs.loopwork.ai/errors/plugin-not-found',
-
-  /** Failed to load plugin module */
-  ERR_PLUGIN_LOAD: 'https://docs.loopwork.ai/errors/plugin-load',
-
-  /** Plugin object or factory is invalid */
-  ERR_PLUGIN_INVALID: 'https://docs.loopwork.ai/errors/plugin-invalid',
-
-  /** Plugin failed during initialization */
-  ERR_PLUGIN_INIT: 'https://docs.loopwork.ai/errors/plugin-init',
-
-  /** Plugin hook threw an error during execution */
-  ERR_PLUGIN_HOOK: 'https://docs.loopwork.ai/errors/plugin-hook',
-
-  /** Process Errors - Issues with process management or cleanup */
-
-  /** Failed to spawn child process */
-  ERR_PROCESS_SPAWN: 'https://docs.loopwork.ai/errors/process-spawn',
-
-  /** Failed to kill process - may lack permissions or process doesn't exist */
-  ERR_PROCESS_KILL: 'https://docs.loopwork.ai/errors/process-kill',
-
-  /** Process exceeded resource limits (CPU/Memory) and was terminated */
-  ERR_RESOURCE_EXHAUSTED: 'https://docs.loopwork.ai/errors/resource-exhausted',
-
-  /** Monitor Errors - Issues with monitoring daemon lifecycle */
-  ERR_MONITOR_START: 'https://docs.loopwork.ai/errors/monitor-start',
-
-  /** Failed to stop monitoring daemon */
-  ERR_MONITOR_STOP: 'https://docs.loopwork.ai/errors/monitor-stop',
-
-  /** Safety Errors - Issues with safety policy violations */
-
-  /** Action or command blocked by safety policy */
-  ERR_SAFETY_VIOLATION: 'https://docs.loopwork.ai/errors/safety-violation',
-
-  /** Dashboard Errors - Issues with dashboard functionality */
-  ERR_TUI_UNSUPPORTED: 'https://docs.loopwork.ai/errors/tui-unsupported',
-
-  /** Worker Pool Errors - Issues with concurrency isolation */
-  /** Timeout waiting for a worker pool slot to become available */
-  ERR_POOL_SLOT_TIMEOUT: 'https://docs.loopwork.ai/errors/pool-slot-timeout',
-
-  /** Feature not yet implemented */
-
-  /** Chaos Engineering Errors - Intentional failures injected for testing */
-
-  /** Task failed due to chaos engineering fault injection */
-  ERR_CHAOS_INJECTION: 'https://docs.loopwork.ai/errors/chaos-injection',
-
-  /** Generic Error - Fallback for uncategorized errors */
-
-  /** An unknown or unexpected error occurred */
-  ERR_UNKNOWN: 'https://docs.loopwork.ai/errors/unknown',
+  // ==================== Chaos Engineering Errors ====================
+  ERR_CHAOS_INJECTION: {
+    code: 'ERR_CHAOS_INJECTION',
+    description: 'Chaos engineering fault injection',
+    docsUrl: 'https://docs.loopwork.ai/errors/chaos-injection',
+    suggestions: [
+      'This error was intentionally injected for testing',
+      'If unexpected, check chaos configuration',
+      'Disable chaos mode if not required',
+    ],
+  },
 } as const
 
-export type ErrorCode = keyof typeof ERROR_CODES
+/**
+ * Get the error code entry from the registry
+ */
+export function getErrorCodeEntry(code: ErrorCode): ErrorCodeEntry | undefined {
+  return ERROR_CODES[code]
+}
+
+/**
+ * Get documentation URL for an error code
+ */
+export function getErrorDocsUrl(code: ErrorCode): string {
+  return ERROR_CODES[code]?.docsUrl ?? `https://docs.loopwork.ai/errors/${code.toLowerCase().replace(/^err_/, '').replace(/_/g, '-')}`
+}
+
+/**
+ * Get default suggestions for an error code
+ */
+export function getErrorSuggestions(code: ErrorCode): string[] {
+  return ERROR_CODES[code]?.suggestions ?? []
+}
+
+/**
+ * Get description for an error code
+ */
+export function getErrorDescription(code: ErrorCode): string {
+  return ERROR_CODES[code]?.description ?? 'Unknown error'
+}
+
+/**
+ * Get all registered error codes
+ */
+export function getAllErrorCodes(): ErrorCode[] {
+  return Object.keys(ERROR_CODES) as ErrorCode[]
+}
+
+/**
+ * Check if an error code is registered
+ */
+export function isRegisteredErrorCode(code: ErrorCode): boolean {
+  return code in ERROR_CODES
+}
 
 export class LoopworkError extends Error {
   public readonly code: ErrorCode
@@ -158,8 +394,8 @@ export class LoopworkError extends Error {
     super(message)
     this.name = 'LoopworkError'
     this.code = code
-    // Use provided docsUrl or fall back to error code registry
-    this.docsUrl = docsUrl || ERROR_CODES[code]
+    // Use provided docsUrl or fall back to ERROR_CODES registry
+    this.docsUrl = docsUrl || getErrorDocsUrl(code)
   }
 
   public readonly docsUrl: string
@@ -170,7 +406,7 @@ export class LoopworkError extends Error {
  */
 export class ChaosError extends LoopworkError {
   constructor(message: string = 'Chaos injection triggered') {
-    super('ERR_CHAOS_INJECTION', message, [], ERROR_CODES.ERR_CHAOS_INJECTION)
+    super('ERR_CHAOS_INJECTION', message)
     this.name = 'ChaosError'
   }
 }
@@ -240,11 +476,26 @@ function formatErrorBox(code: ErrorCode, message: string, suggestions: string[],
 
 export function handleError(error: unknown): void {
   if (error instanceof LoopworkError) {
+    // Get suggestions from error object or fallback to external registry
+    // Priority: error.suggestions (if non-empty) > external registry > empty array
+    let suggestions: string[]
+
+    if (error.suggestions.length > 0) {
+      suggestions = error.suggestions
+    } else if (errorRegistry) {
+      // Use external registry if set (for backward compatibility)
+      const guidance = errorRegistry as unknown as IErrorGuidance
+      suggestions = guidance.getSuggestions ? guidance.getSuggestions(error.code) : []
+    } else {
+      // No registry set, use empty suggestions
+      suggestions = []
+    }
+
     // Use formatted box for LoopworkError
     const formattedError = formatErrorBox(
       error.code,
       error.message,
-      error.suggestions,
+      suggestions,
       error.docsUrl
     )
     logger.raw(formattedError)
@@ -282,8 +533,7 @@ export function createCliNotFoundError(cliName: string, suggestedInstall: string
   return new LoopworkError(
     'ERR_CLI_NOT_FOUND',
     `AI CLI '${cliName}' not found in PATH`,
-    suggestions,
-    ERROR_CODES.ERR_CLI_NOT_FOUND
+    suggestions
   )
 }
 
@@ -298,8 +548,7 @@ export function createNoTasksError(tasksFile: string): LoopworkError {
       `Create tasks in ${tasksFile}`,
       'Or run: loopwork task-new --title "Your task" --priority high',
       'Example: Add a task with status "pending" in the tasks array',
-    ],
-    ERROR_CODES.ERR_TASK_NOT_FOUND
+    ]
   )
 }
 
@@ -315,8 +564,7 @@ export function createRateLimitError(waitSeconds: number, retryAfter?: number): 
       `Consider upgrading your API tier for higher limits`,
       'Rate limits are per-minute, waiting will automatically retry',
       'You can also reduce concurrency with: --parallel 1',
-    ],
-    ERROR_CODES.ERR_CLI_EXEC
+    ]
   )
 }
 
@@ -337,7 +585,6 @@ export function createTaskFailureError(
       `Run manually: ${command}`,
       `Skip task: loopwork deadletter retry ${taskId}`,
       `View logs: loopwork logs --task ${taskId.replace('TASK-', '')}`,
-    ],
-    ERROR_CODES.ERR_CLI_EXEC
+    ]
   )
 }

@@ -9,6 +9,7 @@
  */
 
 import { DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
+import type { ModelCapabilityLevel, ModelRoleType } from './capability-types'
 
 /**
  * Supported CLI types
@@ -23,7 +24,7 @@ export type CliType = 'claude' | 'opencode' | 'gemini'
  * - cost-aware: Prefer lower cost models when possible
  * - random: Random selection from available models
  */
-export type ModelSelectionStrategy = 'round-robin' | 'priority' | 'cost-aware' | 'random'
+export type ModelSelectionStrategy = 'round-robin' | 'priority' | 'cost-aware' | 'capability' | 'random'
 
 /**
  * Configuration for a single model
@@ -93,6 +94,9 @@ export interface ModelConfig {
   topP?: number
   topK?: number
   stopSequences?: string[]
+  capability?: ModelCapabilityLevel
+  primaryRole?: ModelRoleType
+  secondaryRoles?: ModelRoleType[]
 }
 
 /**

@@ -1,6 +1,5 @@
 import { describe, expect, test, beforeEach, mock } from 'bun:test'
-import { OrphanDetector } from '../orphan-detector'
-import { ProcessRegistry } from '../registry'
+import { OrphanDetector, ProcessRegistry, MemoryPersistence } from '@loopwork-ai/process-manager'
 
 mock.module('../../../commands/shared/process-utils', () => ({
   isProcessAlive: (pid: number) => {
@@ -21,12 +20,20 @@ describe('OrphanDetector', () => {
   const staleTimeoutMs = 1000
 
   beforeEach(() => {
-    registry = new ProcessRegistry('.test')
+    registry = new ProcessRegistry(new MemoryPersistence())
     detector = new OrphanDetector(registry, patterns, staleTimeoutMs)
+    
+    spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      if (signal === 0) {
+        if (pid === 111) throw new Error('ESRCH')
+        return true as any
+      }
+      return true as any
+    })
   })
 
   test('should detect dead parent orphans', async () => {
-    registry.add(101, {
+    await registry.add(101, {
       command: 'claude',
       args: [],
       namespace: 'default',
@@ -34,7 +41,7 @@ describe('OrphanDetector', () => {
       parentPid: 111
     } as any)
 
-    registry.add(102, {
+    await registry.add(102, {
       command: 'opencode',
       args: [],
       namespace: 'default',
@@ -50,7 +57,7 @@ describe('OrphanDetector', () => {
 
   test('should detect stale processes', async () => {
     const now = Date.now()
-    registry.add(103, {
+    await registry.add(103, {
       command: 'claude',
       args: [],
       namespace: 'default',
@@ -66,7 +73,7 @@ describe('OrphanDetector', () => {
 
   test('should deduplicate orphans in scan()', async () => {
     const now = Date.now()
-    registry.add(104, {
+    await registry.add(104, {
       command: 'claude',
       args: [],
       namespace: 'default',
@@ -80,7 +87,7 @@ describe('OrphanDetector', () => {
   })
 
   test('should return empty if no orphans found', async () => {
-    registry.add(105, {
+    await registry.add(105, {
       command: 'claude',
       args: [],
       namespace: 'default',

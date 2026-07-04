@@ -218,6 +218,8 @@ export const ModelPresets = {
     model: 'sonnet',
     timeout: 300,
     costWeight: 30,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
 
@@ -231,6 +233,8 @@ export const ModelPresets = {
     model: 'opus',
     timeout: 900,
     costWeight: 100,
+    capability: 'high',
+    primaryRole: 'architect',
     ...overrides,
   }),
 
@@ -244,6 +248,8 @@ export const ModelPresets = {
     model: 'haiku',
     timeout: 120,
     costWeight: 10,
+    capability: 'low',
+    primaryRole: 'junior-engineer',
     ...overrides,
   }),
 
@@ -251,24 +257,28 @@ export const ModelPresets = {
    * Gemini Flash via OpenCode - fast
    */
   geminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-flash',
+    name: 'opencode-gemini-flash',
     displayName: 'opencode/gemini-flash',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
     costWeight: 15,
+    capability: 'low',
+    primaryRole: 'engineer',
     ...overrides,
   }),
   /**
    * Gemini Flash via OpenCode - fast
    */
   opencodeGeminiFlash: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-flash',
+    name: 'opencode-gemini-flash',
     displayName: 'opencode/gemini-flash',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
     costWeight: 15,
+    capability: 'low',
+    primaryRole: 'engineer',
     ...overrides,
   }),
 
@@ -276,36 +286,42 @@ export const ModelPresets = {
    * Gemini Pro via OpenCode - capable
    */
   geminiPro: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-pro-low',
+    name: 'opencode-gemini-pro-low',
     displayName: 'opencode/gemini-pro-low',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-low',
     timeout: 600,
     costWeight: 60,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
   /**
    * Gemini Pro via OpenCode - capable
    */
   opencodeGeminiProHigh: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-pro-high',
+    name: 'opencode-gemini-pro-high',
     displayName: 'opencode/gemini-pro-high',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-high',
     timeout: 600,
     costWeight: 60,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
   /**
    * Gemini Pro via OpenCode - capable
    */
   opencodeGeminiProLow: (overrides?: Partial<ModelConfig>): ModelConfig => ({
-    name: 'gemini-pro-low',
+    name: 'opencode-gemini-pro-low',
     displayName: 'opencode/gemini-pro-low',
     cli: 'opencode',
     model: 'google/antigravity-gemini-3-pro-low',
     timeout: 600,
     costWeight: 60,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
 

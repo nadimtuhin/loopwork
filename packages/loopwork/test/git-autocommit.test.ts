@@ -1,5 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
-import { createGitAutoCommitPlugin, type GitAutoCommitOptions } from '../src/plugins/git-autocommit'
+import { createGitAutoCommitPlugin, type GitAutoCommitOptions } from '@loopwork-ai/plugin-git-autocommit'
 import type { TaskContext, PluginTaskResult } from '../src/contracts/plugin'
 import { execSync } from 'child_process'
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import { render, cleanup } from 'ink-testing-library'
-import { InkRenderer } from '../../src/output/ink-renderer'
+import { InkRenderer } from '@loopwork-ai/ui'
 import type { OutputConfig } from '../../src/output/contracts'
 import { mockTTY, captureStdout, createMockEvents } from '../setup-ink'
 

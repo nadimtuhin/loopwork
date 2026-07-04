@@ -90,22 +90,22 @@ describe('Dashboard class implementation', () => {
       expect(stats.iterations).toBe(5)
     })
 
-    test('handles missing state file', () => {
+    test('handles missing state file', async () => {
       const dashboard = new Dashboard(testRoot, { MonitorClass })
-      const stats = (dashboard as any).getNamespaceStats('default')
+      const stats = await (dashboard as any).getNamespaceStats('default')
 
       expect(stats.currentTask).toBeUndefined()
       expect(stats.iterations).toBe(0)
     })
 
-    test('handles corrupted state file', () => {
+    test('handles corrupted state file', async () => {
       const stateDir = path.join(testRoot, '.loopwork')
       fs.mkdirSync(stateDir, { recursive: true })
       const stateFile = path.join(stateDir, 'state.json')
       fs.writeFileSync(stateFile, 'invalid content without equals')
 
       const dashboard = new Dashboard(testRoot, { MonitorClass })
-      const stats = (dashboard as any).getNamespaceStats('default')
+      const stats = await (dashboard as any).getNamespaceStats('default')
 
       // Should not crash, just return defaults
       expect(stats.iterations).toBe(0)

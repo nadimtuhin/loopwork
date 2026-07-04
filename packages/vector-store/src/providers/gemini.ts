@@ -64,6 +64,7 @@ export class GeminiEmbeddingProvider implements IEmbeddingProvider {
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs)
 
       const requests = texts.map(text => ({
+        model: `models/${this.model}`,
         content: {
           parts: [{ text }],
         },

@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { rateLimitMiddleware } from '../middleware/rate-limit'
+import { rateLimitMiddleware } from '../rate-limit'
 
 /**
  * rate-limit Tests

@@ -71,6 +71,10 @@ export interface TaskContext {
    * Worker ID for parallel execution (0, 1, 2, etc.)
    */
   workerId?: number
+  /**
+   * Message bus for inter-process communication
+   */
+  messageBus?: any
 }
 
 export type LoopworkContext = TaskContext

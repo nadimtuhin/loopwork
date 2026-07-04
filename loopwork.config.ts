@@ -20,9 +20,10 @@ import {
   withTaskRecovery,
   ModelPresets,
   createModel,
-} from "@loopwork-ai/loopwork";
+} from '@loopwork-ai/loopwork'
 import { withCostTracking } from "@loopwork-ai/cost-tracking";
 import { withNetworkMonitor } from "@loopwork-ai/network-monitor";
+import { withSafety } from "@loopwork-ai/loopwork";
 
 export default compose(
   // Choose your backend
@@ -50,6 +51,13 @@ export default compose(
       // Zhipu AI Coding Plan Models (ZAI) - Specialized for coding
       ModelPresets.geminiFlash({ timeout: 600, costWeight: 15 }),
       // Minimax Coding Plan Models - Specialized for coding
+      createModel({
+        name: "nanogpt-kimi-k2.5",
+        cli: "opencode",
+        model: "nano-gpt/moonshotai/kimi-k2.5",
+        timeout: 600,
+        costWeight: 20,
+      }),
       createModel({
         name: "minimax-m2.1-code",
         cli: "opencode",
@@ -99,20 +107,20 @@ export default compose(
         timeout: 600,
         costWeight: 30,
       }),
-      createModel({
-        name: "kimi-k2.5-tee",
-        cli: "opencode",
-        model: "chutes/moonshotai/Kimi-K2.5-TEE",
-        timeout: 600,
-        costWeight: 30,
-      }),
-      createModel({
-        name: "kimi-k2.5-coding",
-        cli: "opencode",
-        model: "kimi-for-coding/k2p5",
-        timeout: 600,
-        costWeight: 30,
-      }),
+      // createModel({
+      //   name: "kimi-k2.5-tee",
+      //   cli: "opencode",
+      //   model: "chutes/moonshotai/Kimi-K2.5-TEE",
+      //   timeout: 600,
+      //   costWeight: 30,
+      // }),
+      // createModel({
+      //   name: "kimi-k2.5-coding",
+      //   cli: "opencode",
+      //   model: "kimi-for-coding/k2p5",
+      //   timeout: 600,
+      //   costWeight: 30,
+      // }),
 
       // Cerebras Models - Fast and cheap (limited tokens)
       createModel({

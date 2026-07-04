@@ -11,8 +11,7 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc'
 import { MeterProvider } from '@opentelemetry/sdk-metrics'
-import { Resource } from '@opentelemetry/resources'
-import type { ResourceAttributes } from '@opentelemetry/resources'
+import { resourceFromAttributes, type Resource } from '@opentelemetry/resources'
 
 export interface TelemetryConfig {
   enabled?: boolean
@@ -27,10 +26,10 @@ export interface TelemetryConfig {
 
 export class TelemetryManager {
   private static instance: TelemetryManager | null = null
-  private provider: NodeTracerProvider | null = null
-  private meterProvider: MeterProvider | null = null
-  private tracer: trace.Tracer | null = null
-  private meter: unknown | null = null
+  private provider: any | null = null
+  private meterProvider: any | null = null
+  private tracer: any | null = null
+  private meter: any | null = null
   private enabled: boolean
 
   private constructor(config: TelemetryConfig) {
@@ -66,7 +65,7 @@ export class TelemetryManager {
   }
 
   private initialize(config: TelemetryConfig): void {
-    const resourceAttributes: ResourceAttributes = {
+    const resourceAttributes = {
       'service.name': config.serviceName ?? 'loopwork',
       'service.version': config.serviceVersion ?? '1.0.0',
       'service.namespace': 'loopwork',
@@ -74,10 +73,10 @@ export class TelemetryManager {
       'service.environment': process.env.NODE_ENV ?? 'development',
     }
 
-    const resource = new Resource(resourceAttributes)
+    const resource = resourceFromAttributes(resourceAttributes)
 
     this.provider = new NodeTracerProvider({
-      resource,
+      resource: resource as any,
     })
 
     if (config.consoleLogs) {
@@ -91,21 +90,21 @@ export class TelemetryManager {
         new BatchSpanProcessor(new OTLPMetricExporter({
           url: config.tracesEndpoint,
           headers: config.headers,
-        }))
+        }) as any)
       )
     }
 
     this.provider.register()
     this.tracer = trace.getTracer('loopwork', '1.0.0')
 
-    this.meterProvider = new MeterProvider({ resource })
+    this.meterProvider = new MeterProvider({ resource: resource as any })
 
     if (config.metricsEndpoint) {
       this.meterProvider.addMetricExporter(
         new OTLPMetricExporter({
           url: config.metricsEndpoint,
           headers: config.headers,
-        })
+        }) as any
       )
     }
 
@@ -113,7 +112,7 @@ export class TelemetryManager {
     logger.info('OpenTelemetry telemetry initialized')
   }
 
-  startTaskSpan(taskId: string, model: string, feature?: string, parentId?: string): trace.Span {
+  startTaskSpan(taskId: string, model: string, feature?: string, parentId?: string): any {
     if (!this.enabled || !this.tracer) {
       throw new Error('Telemetry is not enabled')
     }
@@ -131,12 +130,24 @@ export class TelemetryManager {
       attributes['task.parent_id'] = parentId
     }
 
-    return this.tracer.startSpan('task.execution', attributes, {
-      parent: parentId ? trace.getSpanContext(parentId) : undefined,
+    return this.tracer.startSpan('task.execution', {
+      attributes,
     })
   }
 
-  startCliSpan(cli: string, model: string, taskId: string): trace.Span {
+  startLoopSpan(namespace: string): any {
+    if (!this.enabled || !this.tracer) {
+      throw new Error('Telemetry is not enabled')
+    }
+
+    return this.tracer.startSpan('task.loop', {
+      attributes: {
+        'loop.namespace': namespace,
+      },
+    })
+  }
+
+  startCliSpan(cli: string, model: string, taskId: string): any {
     if (!this.enabled || !this.tracer) {
       throw new Error('Telemetry is not enabled')
     }
@@ -147,7 +158,72 @@ export class TelemetryManager {
       'task.id': taskId,
     }
 
-    return this.tracer.startSpan('cli.execution', attributes)
+    return this.tracer.startSpan('cli.execution', { attributes })
+  }
+
+  startToolSpan(toolName: string, taskId?: string, args?: Record<string, unknown>): any {
+    if (!this.enabled || !this.tracer) {
+      throw new Error('Telemetry is not enabled')
+    }
+
+    const attributes: Record<string, string> = {
+      'tool.name': toolName,
+    }
+
+    if (taskId) {
+      attributes['task.id'] = taskId
+    }
+
+    if (args) {
+      // Record tool argument keys for context (not values to avoid leaking sensitive data)
+      attributes['tool.args.keys'] = Object.keys(args).join(',')
+    }
+
+    return this.tracer.startSpan('tool.execution', { attributes })
+  }
+
+  recordToolExecution(toolName: string, durationMs: number, success: boolean, taskId?: string, error?: string): void {
+    if (!this.enabled || !this.meter) {
+      return
+    }
+
+    // Record tool execution duration histogram
+    const durationHistogram = this.meter.createHistogram('tool.execution.duration', {
+      description: 'Tool execution duration in milliseconds',
+      unit: 'ms',
+    })
+
+    const tags: Record<string, string> = {
+      tool_name: toolName,
+      status: success ? 'success' : 'failed',
+    }
+
+    if (taskId) {
+      tags.task_id = taskId
+    }
+
+    durationHistogram.record(durationMs, tags)
+
+    // Record tool execution counter
+    const counter = this.meter.createCounter('tool.execution.count', {
+      description: 'Total tool execution count',
+      unit: '1',
+    })
+
+    counter.add(1, tags)
+
+    // Record errors if failed
+    if (!success && error) {
+      const errorCounter = this.meter.createCounter('tool.execution.errors', {
+        description: 'Tool execution errors',
+        unit: '1',
+      })
+
+      errorCounter.add(1, {
+        ...tags,
+        error_type: this.classifyError(error),
+      })
+    }
   }
 
   recordTokenUsage(taskId: string, model: string, inputTokens: number, outputTokens: number, cost: number, durationSeconds: number, status: 'success' | 'failed', error?: string): void {
@@ -232,7 +308,7 @@ export class TelemetryManager {
     const lowerError = error.toLowerCase()
 
     if (lowerError.includes('timeout')) return 'timeout'
-    if (lowerError.includes('rate limit') || lowerError.includes('429')) return 'rate_limit'
+    if (isRateLimitOutput(lowerError)) return 'rate_limit'
     if (lowerError.includes('connection') || lowerError.includes('network')) return 'connection_error'
     if (lowerError.includes('api key') || lowerError.includes('authentication')) return 'authentication_error'
     if (lowerError.includes('validation') || lowerError.includes('invalid')) return 'validation_error'

@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React from 'react';
+import { TaskSkeleton } from './TaskSkeleton';
 
 interface Task {
   id: string;
@@ -8,6 +9,11 @@ interface Task {
   status: string;
   priority: string;
   [key: string]: any;
+}
+
+interface TaskListProps {
+  tasks: Task[];
+  isLoading?: boolean;
 }
 
 interface TaskListProps {
@@ -46,7 +52,7 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-export default function TaskList({ tasks = [] }: TaskListProps) {
+export default function TaskList({ tasks = [], isLoading = false }: TaskListProps) {
   if (!tasks || tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
@@ -60,7 +66,10 @@ export default function TaskList({ tasks = [] }: TaskListProps) {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {tasks.map((task) => (
+      {isLoading && tasks.length === 0 ? (
+        <TaskSkeleton />
+      ) : (
+        tasks.map((task) => (
         <div
           key={task.id}
           className="relative flex flex-col p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"

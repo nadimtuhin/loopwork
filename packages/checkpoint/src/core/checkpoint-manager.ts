@@ -73,4 +73,17 @@ export class CheckpointManager implements ICheckpointManager {
     this.lastCheckpoints.delete(agentId)
     await this.storage.delete(agentId)
   }
+
+  async list(): Promise<string[]> {
+    return this.storage.list()
+  }
+
+  async cleanup(maxAgeDays: number): Promise<number> {
+    const count = await this.storage.cleanup(maxAgeDays)
+    if (count > 0) {
+      // Clear cache to prevent stale data
+      this.lastCheckpoints.clear()
+    }
+    return count
+  }
 }

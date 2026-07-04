@@ -175,3 +175,14 @@ Available via `RetryPresets` object:
 - `aggressive()`: Exponential backoff, retries same model up to 3 times.
 - `gentle()`: Long 120s wait on rate limit, no retries on same model.
 
+## Runtime Configuration Updates
+
+The `CliExecutor` supports runtime configuration updates via the `updateConfig(newConfig)` method. This allows changing execution parameters without restarting the process:
+
+1. **Model Pool Updates**: Updating `cliConfig` changes the model selection pools immediately.
+2. **Timeout Changes**: Updates the stale timeout limit for process management.
+3. **Resource Limits**: Updates CPU priority and memory limits for new processes.
+4. **Signal Delays**: Updates the grace period for SIGKILL.
+
+This mechanism powers the config hot-reload feature, ensuring long-running daemons can adapt to configuration changes dynamically.
+

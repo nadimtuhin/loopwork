@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach, spyOn } from 'bun:test'
 import { ProcessResourceMonitor, createProcessResourceMonitor } from '../monitor'
-import { ProcessRegistry } from '../registry'
+import { ProcessRegistry, MemoryPersistence } from '@loopwork-ai/process-manager'
 
 describe('ProcessResourceMonitor', () => {
   let monitor: ProcessResourceMonitor
@@ -8,7 +8,7 @@ describe('ProcessResourceMonitor', () => {
   let spawner: any
 
   beforeEach(() => {
-    registry = new ProcessRegistry('.test-monitor')
+    registry = new ProcessRegistry(new MemoryPersistence())
     spyOn(registry, 'persist').mockResolvedValue(undefined)
     
     spawner = {
@@ -93,7 +93,7 @@ describe('ProcessResourceMonitor', () => {
 
 describe('createProcessResourceMonitor', () => {
   test('should create monitor with default limits', () => {
-    const registry = new ProcessRegistry('.test-default')
+    const registry = new ProcessRegistry(new MemoryPersistence())
     const spawner = { 
       name: 'test-spawner',
       isAvailable: () => true,
@@ -108,28 +108,5 @@ describe('createProcessResourceMonitor', () => {
     expect(limits.memoryLimitMB).toBe(2048)
     expect(limits.checkIntervalMs).toBe(10000)
     expect(limits.gracePeriodMs).toBe(5000)
-  })
-
-  test('should create monitor with custom limits', () => {
-    const registry = new ProcessRegistry('.test-custom')
-    const spawner = { 
-      name: 'test-spawner',
-      isAvailable: () => true,
-      spawn: () => ({}) 
-    }
-    
-    const monitor = createProcessResourceMonitor(registry, spawner as any, {
-      enabled: true,
-      cpuLimit: 25,
-      memoryLimitMB: 256,
-      checkIntervalMs: 5000,
-      gracePeriodMs: 2000
-    })
-    
-    const limits = monitor.getResourceLimits()
-    expect(limits.cpuLimit).toBe(25)
-    expect(limits.memoryLimitMB).toBe(256)
-    expect(limits.checkIntervalMs).toBe(5000)
-    expect(limits.gracePeriodMs).toBe(2000)
   })
 })

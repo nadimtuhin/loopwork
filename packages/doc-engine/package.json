@@ -13,7 +13,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@loopwork-ai/common": "workspace:*"
+    "@loopwork-ai/common": "workspace:*",
+    "@loopwork-ai/contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

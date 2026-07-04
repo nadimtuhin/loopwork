@@ -629,3 +629,255 @@ describe('Error Detection', () => {
     expect(isOpenCodeCacheCorruption('Normal error')).toBe(false)
   })
 })
+
+describe('Retry Telemetry', () => {
+  test('configureTelemetry enables telemetry features', () => {
+    const runner = createResilienceRunner({ maxAttempts: 3 })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+      enableAlerts: true,
+      operationName: 'test-operation',
+    })
+
+    const metrics = runner.getMetrics()
+    expect(metrics).toBeDefined()
+    expect(metrics.totalOperations).toBe(0)
+  })
+
+  test('getMetrics returns detailed retry metrics', async () => {
+    const runner = createResilienceRunner({
+      maxAttempts: 3,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+    })
+
+    let attemptCount = 0
+    await runner.execute(async () => {
+      attemptCount++
+      if (attemptCount < 2) {
+        throw new Error('connection reset')
+      }
+      return 'success'
+    })
+
+    const metrics = runner.getMetrics()
+    expect(metrics.totalOperations).toBe(1)
+    expect(metrics.retriedOperations).toBe(1)
+    expect(metrics.immediateSuccess).toBe(0)
+    expect(metrics.recoveredOperations).toBe(1)
+    expect(metrics.totalRetries).toBe(1)
+  })
+
+  test('recordRetryEvent tracks retry events', () => {
+    const runner = createResilienceRunner({ maxAttempts: 3 })
+
+    runner.configureTelemetry({ enableMetrics: true })
+
+    runner.recordRetryEvent('retry', { attempt: 1 })
+    runner.recordRetryEvent('retry', { attempt: 2 })
+
+    const metrics = runner.getMetrics()
+    expect(metrics.totalRetries).toBe(2)
+    expect(metrics.activeRetries).toBe(2)
+
+    runner.recordRetryEvent('success')
+    const metricsAfterSuccess = runner.getMetrics()
+    expect(metricsAfterSuccess.activeRetries).toBe(1)
+  })
+
+  test('resetStats clears telemetry metrics', async () => {
+    const runner = createResilienceRunner({
+      maxAttempts: 3,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({ enableMetrics: true })
+
+    await runner.execute(async () => {
+      throw new Error('fail')
+    }).catch(() => {})
+
+    expect(runner.getMetrics().totalOperations).toBe(1)
+
+    runner.resetStats()
+
+    expect(runner.getMetrics().totalOperations).toBe(0)
+    expect(runner.getMetrics().totalRetries).toBe(0)
+  })
+
+  test('calculates retry rate correctly', async () => {
+    const runner = createResilienceRunner({
+      maxAttempts: 3,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({ enableMetrics: true })
+
+    // 3 successful operations, 2 with retries, 1 immediate success
+    await runner.execute(async () => 'success')
+    await runner.execute(async () => {
+      throw new Error('fail')
+    }).catch(() => {})
+    await runner.execute(async () => {
+      throw new Error('fail')
+    }).catch(() => {})
+
+    const metrics = runner.getMetrics()
+    expect(metrics.totalOperations).toBe(3)
+    expect(metrics.retriedOperations).toBe(2)
+    expect(metrics.immediateSuccess).toBe(1)
+  })
+})
+
+describe('Retry Alerting', () => {
+  test('alerts on high retry rate', async () => {
+    const alerts: any[] = []
+    const runner = createResilienceRunner({
+      maxAttempts: 5,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+      enableAlerts: true,
+      operationName: 'test',
+      alertConfig: {
+        maxRetryRate: 0.3,
+        minOperationsForRate: 1,
+        onAlert: (alert) => alerts.push(alert),
+      },
+    })
+
+    // Create many retries to trigger alert
+    for (let i = 0; i < 10; i++) {
+      await runner.execute(async () => {
+        throw new Error('connection reset')
+      }).catch(() => {})
+    }
+
+    const highRateAlerts = alerts.filter(a => a.type === 'high_retry_rate')
+    expect(highRateAlerts.length).toBeGreaterThan(0)
+    expect(highRateAlerts[0].severity).toBe('warning')
+  })
+
+  test('alerts on consecutive failures', async () => {
+    const alerts: any[] = []
+    const runner = createResilienceRunner({
+      maxAttempts: 5,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+      enableAlerts: true,
+      alertConfig: {
+        maxConsecutiveFailures: 3,
+        onAlert: (alert) => alerts.push(alert),
+      },
+    })
+
+    // Create consecutive failures
+    for (let i = 0; i < 5; i++) {
+      await runner.execute(async () => {
+        throw new Error('connection reset')
+      }).catch(() => {})
+    }
+
+    const consecutiveFailureAlerts = alerts.filter(a => a.type === 'consecutive_failures')
+    expect(consecutiveFailureAlerts.length).toBeGreaterThan(0)
+    expect(consecutiveFailureAlerts[0].consecutiveFailures).toBeGreaterThanOrEqual(3)
+  })
+
+  test('alerts when max retries per operation exceeded', async () => {
+    const alerts: any[] = []
+    const runner = createResilienceRunner({
+      maxAttempts: 3,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+      enableAlerts: true,
+      alertConfig: {
+        maxRetriesPerOperation: 2,
+        onAlert: (alert) => alerts.push(alert),
+      },
+    })
+
+    // This should trigger max retries exceeded
+    await runner.execute(async () => {
+      throw new Error('connection reset')
+    }).catch(() => {})
+
+    const maxRetriesAlerts = alerts.filter(a => a.type === 'max_retries_exceeded')
+    expect(maxRetriesAlerts.length).toBe(1)
+    expect(maxRetriesAlerts[0].totalRetries).toBe(2)
+  })
+
+  test('does not alert when disabled', async () => {
+    const alerts: any[] = []
+    const runner = createResilienceRunner({
+      maxAttempts: 3,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: false,
+      enableAlerts: false,
+      alertConfig: {
+        maxConsecutiveFailures: 1,
+        onAlert: (alert) => alerts.push(alert),
+      },
+    })
+
+    await runner.execute(async () => {
+      throw new Error('connection reset')
+    }).catch(() => {})
+    await runner.execute(async () => {
+      throw new Error('connection reset')
+    }).catch(() => {})
+
+    expect(alerts.length).toBe(0)
+  })
+
+  test('alert callback receives correct severity', async () => {
+    const alerts: any[] = []
+    const runner = createResilienceRunner({
+      maxAttempts: 10,
+      retryOnAllErrors: true,
+      exponentialBackoffBaseDelay: 1,
+    })
+
+    runner.configureTelemetry({
+      enableMetrics: true,
+      enableAlerts: true,
+      alertConfig: {
+        maxConsecutiveFailures: 2,
+        onAlert: (alert) => alerts.push(alert),
+      },
+    })
+
+    // Create many consecutive failures
+    for (let i = 0; i < 5; i++) {
+      await runner.execute(async () => {
+        throw new Error('connection reset')
+      }).catch(() => {})
+    }
+
+    // Should have warnings for reaching threshold and errors for exceeding it
+    const severityLevels = alerts.map(a => a.severity)
+    expect(severityLevels).toContain('warning')
+    expect(severityLevels).toContain('error')
+  })
+})

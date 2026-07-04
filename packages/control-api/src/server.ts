@@ -5,7 +5,7 @@ import { authMiddleware } from './middleware/auth'
 import { rateLimitMiddleware } from './middleware/rate-limit'
 import { auditMiddleware } from './middleware/audit'
 import { sign, verify } from 'hono/jwt'
-import { TaskBackend, FindTaskOptions } from '@loopwork-ai/loopwork/contracts'
+import { TaskBackend, FindTaskOptions, Task } from '@loopwork-ai/loopwork/contracts'
 import type { ControlApiContext, HonoEnv } from './types'
 
 export class ControlServer {
@@ -136,14 +136,14 @@ export class ControlServer {
             const filtered: Record<string, unknown> = {}
             for (const field of requestedFields) {
               if (field in task) {
-                filtered[field] = (task as Record<string, unknown>)[field]
+                filtered[field] = (task as unknown as Record<string, unknown>)[field]
               } else if (field === 'timestamps' && task.timestamps) {
                 filtered[field] = task.timestamps
               } else if (field === 'metadata' && task.metadata) {
                 filtered[field] = task.metadata
               }
             }
-            return filtered
+            return filtered as unknown as Task
           })
         }
 

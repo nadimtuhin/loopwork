@@ -9,9 +9,13 @@ import type {
   ITelemetryProvider,
   IMetricsCollector,
   StructuredLog,
-  LogLevel,
 } from '@loopwork-ai/contracts'
-import { CostTracker, type TokenUsage, type CostTrackingConfig } from './index'
+import { 
+  CostTracker, 
+  parseUsageFromOutput, 
+  type TokenUsage, 
+  type CostTrackingConfig 
+} from './index'
 
 /**
  * Metrics collector implementation that tracks cost-related metrics
@@ -188,7 +192,7 @@ export class CostTrackingTelemetryProvider implements ITelemetryProvider {
    * Parse usage from CLI output string
    */
   parseUsageFromOutput(output: string): TokenUsage | null {
-    return this.tracker.parseUsageFromOutput(output)
+    return parseUsageFromOutput(output)
   }
 
   /**

@@ -1,0 +1,25 @@
+{
+  "name": "@loopwork-ai/plugin-git-autocommit",
+  "version": "0.1.0",
+  "description": "Loopwork plugin for automatic git commits",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

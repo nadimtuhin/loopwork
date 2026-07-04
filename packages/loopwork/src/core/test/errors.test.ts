@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { LoopworkError, ChaosError, handleError, ERROR_CODES, ErrorCode } from '../core/errors'
+import { LoopworkError, ChaosError, handleError } from '../errors'
 
 /**
  * errors Tests
@@ -11,14 +11,15 @@ describe('errors', () => {
 
   describe('LoopworkError', () => {
     test('should instantiate without errors', () => {
-      const instance = new LoopworkError()
+      const instance = new LoopworkError('ERR_TEST', 'Test message')
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(LoopworkError)
+      expect(instance.code).toBe('ERR_TEST')
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new LoopworkError()
-      const instance2 = new LoopworkError()
+      const instance1 = new LoopworkError('ERR1', 'Msg1')
+      const instance2 = new LoopworkError('ERR2', 'Msg2')
       expect(instance1).not.toBe(instance2)
     })
   })
@@ -28,12 +29,7 @@ describe('errors', () => {
       const instance = new ChaosError()
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(ChaosError)
-    })
-
-    test('should maintain instance identity', () => {
-      const instance1 = new ChaosError()
-      const instance2 = new ChaosError()
-      expect(instance1).not.toBe(instance2)
+      expect(instance.code).toBe('ERR_CHAOS_INJECTION')
     })
   })
 
@@ -43,19 +39,7 @@ describe('errors', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => handleError()).not.toThrow()
-    })
-  })
-
-  describe('ERROR_CODES', () => {
-    test('should be defined', () => {
-      expect(ERROR_CODES).toBeDefined()
-    })
-  })
-
-  describe('ErrorCode', () => {
-    test('should be defined', () => {
-      expect(ErrorCode).toBeDefined()
+      expect(() => handleError(new Error('test'))).not.toThrow()
     })
   })
 })

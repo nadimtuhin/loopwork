@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { LogLevel } from '../contracts/config'
 import type { OutputFormat, JsonEvent } from '../contracts/output'
+import type { IErrorRegistry } from '@loopwork-ai/contracts'
 import type { OutputRenderer } from '../output/renderer'
 import { ConsoleRenderer } from '../output/console-renderer'
 import { getTimestamp, StreamLogger as CommonStreamLogger } from '@loopwork-ai/common'
@@ -36,6 +37,18 @@ const initialConfig = {
 
 // Default renderer
 const defaultRenderer = new ConsoleRenderer(initialConfig)
+
+/**
+ * Global error registry for consistent error reporting across the system
+ */
+export let errorRegistry: IErrorRegistry | undefined
+
+/**
+ * Inject the error registry into the utility layer
+ */
+export function setErrorRegistry(registry: IErrorRegistry): void {
+  errorRegistry = registry
+}
 
 export const logger = {
   logFile: null as string | null,

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
-import { InkRenderer } from '../../src/output/ink-renderer'
+import { InkRenderer } from '@loopwork-ai/ui'
 import { ConsoleRenderer } from '../../src/output/console-renderer'
 import type { OutputConfig } from '../../src/output/contracts'
 import { mockTTY } from '../setup-ink'

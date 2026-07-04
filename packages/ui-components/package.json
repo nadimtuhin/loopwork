@@ -16,12 +16,16 @@
     "ink": "^4.4.1",
     "react": "^18.2.0"
   },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "bun-types": "latest",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "ink": "^4.4.1",
+    "ink-testing-library": "^3.0.0",
     "react": "^18.2.0"
   },
   "author": "Nadim Tuhin",

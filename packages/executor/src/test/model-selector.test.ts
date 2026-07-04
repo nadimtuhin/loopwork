@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach } from 'bun:test'
-import { ModelSelector, type ModelSelectorOptions } from '../model-selector'
+import { ModelSelector, type ModelSelectorOptions, sleep } from '../model-selector'
 import type { ModelConfig } from '@loopwork-ai/contracts'
 
 /**

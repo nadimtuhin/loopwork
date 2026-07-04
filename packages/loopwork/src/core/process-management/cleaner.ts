@@ -1,5 +1,5 @@
 import type { OrphanInfo, CleanupResult } from '../../contracts/process-manager'
-import { ProcessRegistry } from './registry'
+import { ProcessRegistry } from '@loopwork-ai/process-manager'
 import { isProcessAlive } from '../../commands/shared/process-utils'
 import { LoopworkError } from '../errors'
 
@@ -28,7 +28,7 @@ export class ProcessCleaner {
         const success = await this.gracefulKill(orphan.pid)
         if (success) {
           result.cleaned.push(orphan.pid)
-          this.registry.remove(orphan.pid)
+          await this.registry.remove(orphan.pid)
         } else {
           result.errors.push({
             pid: orphan.pid,

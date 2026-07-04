@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { DeadletterListOptions, DeadletterDependencies, list, retry, clear, createDeadletterCommand } from '../commands/deadletter'
+import { DeadletterListOptions, DeadletterDependencies, list, retry, clear, createDeadletterCommand } from '../deadletter'
 
 /**
  * deadletter Tests

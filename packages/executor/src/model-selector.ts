@@ -7,6 +7,7 @@
 
 import type { ModelConfig, ModelSelectionStrategy } from '@loopwork-ai/contracts/executor'
 import { CircuitBreakerRegistry, CircuitBreaker } from './circuit-breaker.js'
+export { sleep } from '@loopwork-ai/utils-common'
 
 /**
  * Options for configuring the ModelSelector
@@ -838,14 +839,4 @@ export class ModelSelector {
       })
     })
   }
-}
-
-/**
- * Utility function to pause execution for a specified duration
- * 
- * @param ms - Milliseconds to sleep
- * @returns Promise that resolves after the delay
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }

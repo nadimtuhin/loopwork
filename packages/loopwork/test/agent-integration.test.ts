@@ -15,7 +15,7 @@ import os from 'os'
 // Import from the main loopwork package to verify re-exports work
 import { // Agents package
   AgentFactory, AgentRegistry, AgentExecutor, AgentPromptBuilder, createRegistry, createExecutor, // Result parser package
-  StatusParser, ArtifactDetector, MetricsExtractor, CompositeResultParser, createResultParser, // Checkpoint package
+  StatusParser, ArtifactDetector, TaskSuggestionParser, MetricsExtractor, CompositeResultParser, createResultParser, // Checkpoint package
   createCheckpointManager, FileCheckpointStorage, NodeFileSystem, // Adapters
   CliRunnerAdapter, GitRunnerAdapter,  } from '../src/index'
 

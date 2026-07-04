@@ -1009,6 +1009,7 @@ export function createMyPlugin(options: MyOptions): LoopworkPlugin {
 | Todoist | Task sync | `withTodoist()` |
 | Cost Tracking | Token/cost monitoring | `withCostTracking()` |
 | Git Auto-Commit | Auto-commit after each task completion | `withGitAutoCommit()` |
+| Project Summary | AI-powered project status summaries | `withProjectSummary()` |
 
 ### Examples
 
@@ -1134,6 +1135,25 @@ Loopwork provides a comprehensive CLI for task automation and daemon management.
 | `loopwork dashboard` | Launch interactive TUI dashboard |
 | `loopwork reschedule` | Reschedule completed tasks to pending |
 | `loopwork task-new` | Create a new task in the backlog |
+| `loopwork checkpoint` | Manage execution checkpoints |
+
+### Checkpoint Management
+
+Loopwork saves execution checkpoints to allow resuming interrupted tasks.
+
+```bash
+# List all saved checkpoints
+loopwork checkpoint list
+
+# Show details for a specific checkpoint
+loopwork checkpoint show <checkpoint-id>
+
+# Delete a checkpoint
+loopwork checkpoint delete <checkpoint-id>
+
+# Clean up checkpoints older than N days (default: 7)
+loopwork checkpoint cleanup --max-age-days 3
+```
 
 ### Task Management
 
@@ -2552,6 +2572,157 @@ export class MyCustomRenderer extends BaseRenderer {
 - **JSON mode**: Lowest overhead, ideal for high-throughput scenarios
 - **Log filtering**: Use `logLevel` to suppress verbose output
 - **Buffer limits**: Ink renderer keeps last 100 log entries
+
+## Modular Architecture
+
+Loopwork is structured as a modular Bun workspace monorepo with focused packages for different concerns.
+
+### Package Structure
+
+```
+loopwork/
+├── Core Framework
+│   ├── packages/loopwork/          # Main framework & CLI entry point
+│   ├── packages/contracts/         # Shared interfaces & type definitions
+│   ├── packages/executor/          # AI CLI execution engine
+│   └── packages/common/            # Shared utilities (logging, utils)
+│
+├── State & Persistence
+│   ├── packages/state/             # State management & persistence
+│   └── packages/checkpoint/        # Checkpoint integration
+│
+├── Infrastructure
+│   ├── packages/process-manager/   # Process lifecycle management
+│   ├── packages/resilience/        # Retry & backoff strategies
+│   ├── packages/rate-limiter/      # API rate limiting
+│   ├── packages/cache/             # Caching layer
+│   └── packages/safety/            # Safety & human-in-the-loop
+│
+├── AI & Execution
+│   ├── packages/ai-monitor/        # AI execution monitoring
+│   ├── packages/cost-tracking/     # Token usage & cost tracking
+│   ├── packages/network-monitor/   # Network health monitoring
+│   └── packages/proactive-health-monitoring/  # Proactive health checks
+│
+├── Plugins & Integrations
+│   ├── packages/agents/            # Agent implementations
+│   ├── packages/mcp/               # MCP server
+│   ├── packages/swarm/             # Multi-agent coordination
+│   ├── packages/governance/        # Governance & compliance
+│   └── packages/scheduler/         # Task scheduling
+│
+├── External Integrations
+│   ├── packages/asana/             # Asana sync
+│   ├── packages/todoist/           # Todoist sync
+│   ├── packages/everhour/          # Everhour time tracking
+│   ├── packages/notion/            # Notion backend
+│   ├── packages/discord/           # Discord webhooks
+│   └── packages/telegram/          # Telegram bot
+│
+├── UI & Observability
+│   ├── packages/dashboard/         # Web dashboard & API
+│   ├── packages/ui-components/     # Shared UI components
+│   ├── packages/visualizer/        # Visualization tools
+│   └── packages/isolation/         # Resource isolation
+│
+└── Development & Testing
+    ├── packages/test-harness/      # Testing utilities
+    ├── packages/cli-commands/      # CLI commands
+    ├── packages/cli-detector/      # CLI detection
+    └── packages/result-parser/     # Result parsing
+```
+
+### Core Packages
+
+| Package | Purpose | Key Exports |
+|---------|---------|-------------|
+| `@loopwork-ai/loopwork` | Main framework | `compose`, `defineConfig`, plugins |
+| `@loopwork-ai/contracts` | Type contracts | `IClExecutor`, `IStateManager`, `LoopworkPlugin` |
+| `@loopwork-ai/executor` | CLI execution | `CliExecutor`, `ModelSelector`, `CircuitBreaker` |
+| `@loopwork-ai/common` | Utilities | `logger`, `ConsoleLogger`, `StreamLogger` |
+| `@loopwork-ai/state` | State management | `PersistenceStateManager`, `FilePersistenceLayer` |
+
+### Using Packages Directly
+
+```typescript
+// Import from core packages
+import { CliExecutor } from '@loopwork-ai/executor'
+import { logger } from '@loopwork-ai/common'
+import { PersistenceStateManager } from '@loopwork-ai/state'
+
+// Use contracts for type definitions
+import type {
+  ICliExecutor,
+  IStateManager,
+  LoopworkPlugin,
+  ModelConfig,
+} from '@loopwork-ai/contracts'
+```
+
+### Plugin Development
+
+Create custom plugins using the contract interfaces:
+
+```typescript
+import type { LoopworkPlugin, TaskContext, LoopStats } from '@loopwork-ai/contracts'
+
+export function createMyPlugin(): LoopworkPlugin {
+  return {
+    name: 'my-plugin',
+
+    async onTaskStart(context: TaskContext) {
+      console.log(`Starting task: ${context.task.id}`)
+    },
+
+    async onTaskComplete(context: TaskContext, result) {
+      console.log(`Task completed in ${result.duration}ms`)
+    },
+
+    async onLoopEnd(stats: LoopStats) {
+      console.log(`Loop complete: ${stats.completed} tasks done`)
+    },
+  }
+}
+```
+
+### Architecture Diagram
+
+```
+                    ┌─────────────────────┐
+                    │   loopwork CLI      │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+    ┌─────────────────┐ ┌──────────────┐ ┌─────────────────┐
+    │   Executor      │ │    State     │ │    Plugins      │
+    │  ┌───────────┐  │ │  ┌────────┐  │ │  ┌───────────┐  │
+    │  │ModelSelect│  │ │  │Manager │  │ │  │ Registry  │  │
+    │  └───────────┘  │ │  └────────┘  │ │  └───────────┘  │
+    │  ┌───────────┐  │ └──────────────┘ └─────────────────┘
+    │  │HealthCheck│  │
+    │  └───────────┘  │
+    └─────────────────┘
+           │
+           ▼
+    ┌─────────────────┐
+    │  CLI Tools      │
+    │  (Claude,       │
+    │   OpenCode,     │
+    │   Gemini)       │
+    └─────────────────┘
+```
+
+### Related Documentation
+
+- [Architecture Overview](../../docs/explanation/architecture-overview.md)
+- [CLI Invocation](../../docs/explanation/cli-invocation.md)
+- [Plugin Development Guide](#plugin-development-guide)
+- Package-specific READMEs:
+  - [`@loopwork-ai/contracts`](../../packages/contracts/README.md)
+  - [`@loopwork-ai/common`](../../packages/common/README.md)
+  - [`@loopwork-ai/state`](../../packages/state/README.md)
+  - [`@loopwork-ai/executor`](../../packages/executor/README.md)
 
 ## Architecture
 

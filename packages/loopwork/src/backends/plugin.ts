@@ -38,8 +38,8 @@ export function createJSONBackendPlugin(config: JSONBackendConfig = {}): Backend
 
   const getAdapter = async () => {
     if (!adapter) {
-      const { JsonTaskAdapter } = await import('./json')
-      adapter = new JsonTaskAdapter({ type: 'json', tasksFile, tasksDir: config.tasksDir })
+      const { JsonTaskAdapter } = await import('@loopwork-ai/backend-json')
+      adapter = new JsonTaskAdapter({ tasksFile, tasksDir: config.tasksDir })
     }
     return adapter
   }
@@ -203,8 +203,8 @@ export function createGitHubBackendPlugin(config: GitHubBackendConfig = {}): Bac
 
   const getAdapter = async () => {
     if (!adapter) {
-      const { GitHubTaskAdapter } = await import('./github')
-      adapter = new GitHubTaskAdapter({ type: 'github', repo })
+      const { GitHubTaskAdapter } = await import('@loopwork-ai/backend-github')
+      adapter = new GitHubTaskAdapter({ repo })
     }
     return adapter
   }

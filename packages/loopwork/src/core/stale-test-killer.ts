@@ -1,4 +1,5 @@
-import { OrphanProcess, detectOrphans } from './orphan-detector'
+import type { OrphanInfo } from '@loopwork-ai/contracts/process'
+import { OrphanDetector, ProcessRegistry, MemoryPersistence } from '@loopwork-ai/process-manager'
 import { OrphanKiller, KillResult } from './orphan-killer'
 import { logger } from './utils'
 
@@ -56,19 +57,18 @@ export class StaleTestKiller {
   /**
    * Find stale test runners without killing them
    */
-  async findStaleTestRunners(): Promise<OrphanProcess[]> {
-    const { projectRoot, maxAge } = this.options
+  async findStaleTestRunners(): Promise<OrphanInfo[]> {
+    const { maxAge } = this.options
 
     // Use orphan detector with test runner patterns
-    const allOrphans = await detectOrphans({
-      projectRoot,
-      patterns: TEST_RUNNER_PATTERNS,
-      maxAge,
-    })
+    const registry = new ProcessRegistry(new MemoryPersistence())
+    const detector = new OrphanDetector(registry, TEST_RUNNER_PATTERNS, maxAge)
+    
+    const allOrphans = await detector.scan()
 
     // Filter to only test runners (double-check pattern matching)
-    const testRunners = allOrphans.filter((orphan) => {
-      return TEST_RUNNER_PATTERNS.some((pattern) => orphan.command.includes(pattern))
+    const testRunners = allOrphans.filter((orphan: OrphanInfo) => {
+      return TEST_RUNNER_PATTERNS.some((pattern) => orphan.process.command.includes(pattern))
     })
 
     return testRunners
@@ -101,8 +101,10 @@ export class StaleTestKiller {
     if (!silent) {
       logger.info(`Found ${staleTestRunners.length} stale test runner(s)`)
       for (const runner of staleTestRunners) {
-        const ageMinutes = Math.floor(runner.age / 60000)
-        logger.debug(`  PID ${runner.pid}: ${runner.command} (age: ${ageMinutes}m)`)
+        const now = Date.now()
+        const age = now - runner.process.startTime
+        const ageMinutes = Math.floor(age / 60000)
+        logger.debug(`  PID ${runner.pid}: ${runner.process.command} (age: ${ageMinutes}m)`)
       }
     }
 

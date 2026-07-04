@@ -1,6 +1,7 @@
 import os from 'os'
 import { spawn } from 'child_process'
-import type { LoopworkPlugin, LoopworkConfig, ConfigWrapper } from '@loopwork-ai/loopwork/contracts'
+import type { LoopworkPlugin } from '@loopwork-ai/contracts'
+import type { LoopworkConfig, ConfigWrapper } from '@loopwork-ai/config-engine'
 
 export interface SystemMonitoringOptions {
   enabled?: boolean

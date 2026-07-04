@@ -1,3 +1,5 @@
+import type { TaskAnalyzer } from './analysis'
+
 export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'failed' | 'quarantined' | 'cancelled'
 export type Priority = 'high' | 'medium' | 'low' | 'background'
 
@@ -125,11 +127,11 @@ export interface FeatureFlags {
 }
 
 export interface DynamicTasksConfig {
-  enabled?: boolean
-  analyzer?: 'pattern' | 'llm' | unknown
-  createSubTasks?: boolean
-  maxTasksPerExecution?: number
-  autoApprove?: boolean
+  enabled: boolean
+  analyzer: 'pattern' | 'llm' | TaskAnalyzer
+  createSubTasks: boolean
+  maxTasksPerExecution: number
+  autoApprove: boolean
 }
 
 export interface DeadletterPolicy {

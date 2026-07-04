@@ -54,12 +54,15 @@ describe('Run Command Interrupt Handling', () => {
   // Create mock state manager
   function createMockStateManager(): IStateManager {
     return {
-      acquireLock: mock(() => true),
-      releaseLock: mock(() => {}),
-      loadState: mock(() => null),
-      saveState: mock(() => {}),
-      clearState: mock(() => {}),
-    }
+      acquireLock: mock(async () => true),
+      releaseLock: mock(async () => {}),
+      loadState: mock(async () => null),
+      saveState: mock(async () => {}),
+      clearState: mock(async () => {}),
+      getNamespace: mock(() => 'default'),
+      getPluginState: mock(async () => null),
+      setPluginState: mock(async () => {}),
+    } as any
   }
 
   // Create mock logger
@@ -128,7 +131,7 @@ describe('Run Command Interrupt Handling', () => {
 
         if (currentTaskId) {
           const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
-          stateManager.saveState(stateRef, currentIteration)
+          await stateManager.saveState(stateRef, currentIteration)
 
           // Reset in-progress task to pending
           try {
@@ -140,7 +143,7 @@ describe('Run Command Interrupt Handling', () => {
 
           logger.info('State saved. Resume with: --resume')
         }
-        stateManager.releaseLock()
+        await stateManager.releaseLock()
       }
 
       // Execute cleanup
@@ -182,7 +185,7 @@ describe('Run Command Interrupt Handling', () => {
 
         if (currentTaskId) {
           const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
-          stateManager.saveState(stateRef, currentIteration)
+          await stateManager.saveState(stateRef, currentIteration)
 
           try {
             await backend.resetToPending(currentTaskId)
@@ -193,7 +196,7 @@ describe('Run Command Interrupt Handling', () => {
 
           logger.info('State saved. Resume with: --resume')
         }
-        stateManager.releaseLock()
+        await stateManager.releaseLock()
       }
 
       // Execute cleanup - should not throw
@@ -230,7 +233,7 @@ describe('Run Command Interrupt Handling', () => {
 
         if (currentTaskId) {
           const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
-          stateManager.saveState(stateRef, currentIteration)
+          await stateManager.saveState(stateRef, currentIteration)
 
           try {
             await backend.resetToPending(currentTaskId)
@@ -241,7 +244,7 @@ describe('Run Command Interrupt Handling', () => {
 
           logger.info('State saved. Resume with: --resume')
         }
-        stateManager.releaseLock()
+        await stateManager.releaseLock()
       }
 
       await cleanup()
@@ -273,7 +276,7 @@ describe('Run Command Interrupt Handling', () => {
 
         if (currentTaskId) {
           const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
-          stateManager.saveState(stateRef, currentIteration)
+          await stateManager.saveState(stateRef, currentIteration)
 
           try {
             await backend.resetToPending(currentTaskId)
@@ -284,7 +287,7 @@ describe('Run Command Interrupt Handling', () => {
 
           logger.info('State saved. Resume with: --resume')
         }
-        stateManager.releaseLock()
+        await stateManager.releaseLock()
       }
 
       // Call cleanup twice concurrently
@@ -321,7 +324,7 @@ describe('Run Command Interrupt Handling', () => {
 
           if (taskId) {
             const stateRef = parseInt(taskId.replace(/\D/g, ''), 10) || 0
-            stateManager.saveState(stateRef, currentIteration)
+            await stateManager.saveState(stateRef, currentIteration)
 
             try {
               await backend.resetToPending(taskId)
@@ -329,7 +332,7 @@ describe('Run Command Interrupt Handling', () => {
               logger.debug(`Failed to reset task: ${err}`)
             }
           }
-          stateManager.releaseLock()
+          await stateManager.releaseLock()
         }
 
         await cleanup()

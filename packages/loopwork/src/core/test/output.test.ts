@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { Table, Banner, ProgressBar, CompletionSummary, supportsEmoji, getEmoji, separator, createJsonOutput, emitJsonEvent, BOX_CHARS } from '../core/output'
+import { Table, Banner, ProgressBar, CompletionSummary, supportsEmoji, getEmoji, separator, createJsonOutput, emitJsonEvent, BOX_CHARS } from '../output'
 
 /**
  * output Tests
@@ -11,28 +11,28 @@ describe('output', () => {
 
   describe('Table', () => {
     test('should instantiate without errors', () => {
-      const instance = new Table()
+      const instance = new Table(['header1', 'header2'])
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(Table)
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new Table()
-      const instance2 = new Table()
+      const instance1 = new Table(['header1', 'header2'])
+      const instance2 = new Table(['header1', 'header2'])
       expect(instance1).not.toBe(instance2)
     })
   })
 
   describe('Banner', () => {
     test('should instantiate without errors', () => {
-      const instance = new Banner()
+      const instance = new Banner('title')
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(Banner)
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new Banner()
-      const instance2 = new Banner()
+      const instance1 = new Banner('title')
+      const instance2 = new Banner('title')
       expect(instance1).not.toBe(instance2)
     })
   })
@@ -53,14 +53,14 @@ describe('output', () => {
 
   describe('CompletionSummary', () => {
     test('should instantiate without errors', () => {
-      const instance = new CompletionSummary()
+      const instance = new CompletionSummary('title')
       expect(instance).toBeDefined()
       expect(instance).toBeInstanceOf(CompletionSummary)
     })
 
     test('should maintain instance identity', () => {
-      const instance1 = new CompletionSummary()
-      const instance2 = new CompletionSummary()
+      const instance1 = new CompletionSummary('title')
+      const instance2 = new CompletionSummary('title')
       expect(instance1).not.toBe(instance2)
     })
   })
@@ -81,7 +81,7 @@ describe('output', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => getEmoji()).not.toThrow()
+      expect(() => getEmoji('x')).not.toThrow()
     })
   })
 
@@ -101,7 +101,7 @@ describe('output', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => createJsonOutput()).not.toThrow()
+      expect(() => createJsonOutput('cmd', {})).not.toThrow()
     })
   })
 
@@ -111,7 +111,7 @@ describe('output', () => {
     })
 
     test('should execute without throwing', () => {
-      expect(() => emitJsonEvent()).not.toThrow()
+      expect(() => emitJsonEvent('info', 'cmd', {})).not.toThrow()
     })
   })
 

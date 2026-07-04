@@ -99,4 +99,53 @@ describe('Control API Endpoints', () => {
     expect(json.data[1].id).toBe('T3')
     expect(json.data[2].id).toBe('T2')
   })
+
+  it('GET /tasks should support field selection', async () => {
+    const server = new ControlServer({ config: {}, backend: mockBackend })
+    // @ts-ignore
+    const app = server.app
+
+    const res = await app.request('/tasks?fields=id,status,priority')
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    
+    expect(json.data.length).toBe(3)
+    // Each task should only have the selected fields
+    expect(json.data[0]).not.toHaveProperty('title')
+    expect(json.data[0]).not.toHaveProperty('timestamps')
+    expect(json.data[0]).toHaveProperty('id')
+    expect(json.data[0]).toHaveProperty('status')
+    expect(json.data[0]).toHaveProperty('priority')
+  })
+
+  it('GET /tasks should support field selection with single field', async () => {
+    const server = new ControlServer({ config: {}, backend: mockBackend })
+    // @ts-ignore
+    const app = server.app
+
+    const res = await app.request('/tasks?fields=id')
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    
+    expect(json.data.length).toBe(3)
+    // Tasks are sorted by priority by default: T1(high), T3(medium), T2(low)
+    expect(json.data[0]).toEqual({ id: 'T1' })
+    expect(json.data[1]).toEqual({ id: 'T3' })
+    expect(json.data[2]).toEqual({ id: 'T2' })
+  })
+
+  it('GET /tasks should support field selection with timestamps', async () => {
+    const server = new ControlServer({ config: {}, backend: mockBackend })
+    // @ts-ignore
+    const app = server.app
+
+    const res = await app.request('/tasks?fields=id,timestamps')
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    
+    expect(json.data.length).toBe(3)
+    expect(json.data[0]).toHaveProperty('id')
+    expect(json.data[0]).toHaveProperty('timestamps')
+    expect(json.data[0].timestamps).toHaveProperty('createdAt')
+  })
 })

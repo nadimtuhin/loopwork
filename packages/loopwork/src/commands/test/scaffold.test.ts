@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { ScaffoldCommandOptions, scaffold } from '../commands/scaffold'
+import { ScaffoldCommandOptions, scaffold } from '../scaffold'
 
 /**
  * scaffold Tests

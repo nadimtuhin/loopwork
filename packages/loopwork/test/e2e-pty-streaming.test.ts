@@ -2,9 +2,8 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { createSpawner, isPtyAvailable } from '../src/core/spawners'
-import { StandardSpawner } from '../src/core/spawners/standard-spawner'
-import { PtySpawner } from '../src/core/spawners/pty-spawner'
+import { createSpawner, isPtyAvailable, isPtyFunctional } from '@loopwork-ai/process-manager/spawner'
+import { StandardSpawner, PtySpawner } from '@loopwork-ai/process-manager/spawner'
 
 /**
  * E2E tests for PTY streaming behavior
@@ -14,40 +13,6 @@ import { PtySpawner } from '../src/core/spawners/pty-spawner'
  * 2. Standard spawn captures output correctly
  * 3. Fallback to standard works when PTY unavailable or fails
  */
-
-/**
- * Check if PTY actually works (not just module availability)
- */
-async function isPtyFunctional(): Promise<boolean> {
-  if (!isPtyAvailable()) return false
-
-  try {
-    const pty = new PtySpawner()
-    const proc = pty.spawn('echo', ['test'])
-
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        proc.kill()
-        resolve(false)
-      }, 2000)
-
-      proc.on('close', () => {
-        clearTimeout(timeout)
-        resolve(true)
-      })
-      proc.on('exit', () => {
-        clearTimeout(timeout)
-        resolve(true)
-      })
-      proc.on('error', () => {
-        clearTimeout(timeout)
-        resolve(false)
-      })
-    })
-  } catch {
-    return false
-  }
-}
 
 describe('E2E PTY Streaming', () => {
   let tempDir: string

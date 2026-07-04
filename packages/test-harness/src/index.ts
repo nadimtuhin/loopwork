@@ -1,5 +1,5 @@
 export { MockProvider } from './mock-provider'
 export { TestEnvironment } from './test-environment'
 export { TestHarnessFactory, testHarnessFactory } from './test-harness-factory'
-export { VirtualFileSystem } from './virtual-file-system'
+export { VirtualFileSystem } from './mocks/fs'
 export { MemoryTaskBackend, MockCliExecutor } from './mocks'

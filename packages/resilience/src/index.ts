@@ -20,3 +20,13 @@ export type {
   RetryOptions, 
   ResilienceRunnerOptions
 } from './retry'
+
+// Export telemetry types
+export type {
+  RetryAlertSeverity,
+  RetryAlertType,
+  RetryAlert,
+  RetryAlertConfig,
+  RetryMetrics,
+  RetryTelemetryConfig,
+} from '@loopwork-ai/contracts'

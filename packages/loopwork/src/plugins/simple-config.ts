@@ -22,8 +22,7 @@ import type { LoopworkConfig, ConfigWrapper, LoopworkPlugin } from '../contracts
 import { DEFAULT_CONFIG } from '../contracts'
 import { withJSONBackend, withGitHubBackend } from '../backends/plugin'
 import { withCli, createModel, ModelPresets } from './cli'
-import { withGitAutoCommit } from './git-autocommit'
-import { withSmartTestTasks } from './smart-tasks'
+import { withGitAutoCommit } from '@loopwork-ai/plugin-git-autocommit'
 import { withTaskRecovery } from './task-recovery'
 import { withPlugin } from './index'
 import { withDocumentation } from './documentation'
@@ -157,12 +156,6 @@ export interface SimpleConfigOptions {
   costTracking?: boolean
   
   /**
-   * Enable smart test task suggestions.
-   * @default false
-   */
-  smartTests?: boolean
-  
-  /**
    * Enable task recovery on failures.
    * @default false
    */
@@ -263,7 +256,7 @@ export function defineSimpleConfig(options: SimpleConfigOptions): LoopworkConfig
     ...Object.fromEntries(
       Object.entries(options).filter(([key]) => 
         !['models', 'fallbackModels', 'backend', 'autoCommit', 'costTracking', 
-          'smartTests', 'taskRecovery', 'changelog', 'selectionStrategy'].includes(key)
+          'taskRecovery', 'changelog', 'selectionStrategy'].includes(key)
       )
     ),
   })
@@ -272,12 +265,8 @@ export function defineSimpleConfig(options: SimpleConfigOptions): LoopworkConfig
   config = cliConfig(config)
   
   // Apply optional plugins
-  if (options.autoCommit) {
+    if (options.autoCommit) {
     config = withGitAutoCommit({ enabled: true })(config)
-  }
-  
-  if (options.smartTests) {
-    config = withSmartTestTasks({ enabled: true, autoCreate: false })(config)
   }
   
   if (options.taskRecovery) {
@@ -391,7 +380,7 @@ export function createPresetConfig(
  * ```
  */
 export function defineEasyConfig(
-  config: Omit<SimpleConfigOptions, 'autoCommit' | 'costTracking' | 'smartTests' | 'taskRecovery' | 'changelog'> &
+  config: Omit<SimpleConfigOptions, 'autoCommit' | 'costTracking' | 'taskRecovery' | 'changelog'> &
     Pick<LoopworkConfig, 'cli' | 'model' | 'maxRetries' | 'circuitBreakerThreshold'>
 ): LoopworkConfig {
   const { models, fallbackModels, backend, selectionStrategy, ...rest } = config

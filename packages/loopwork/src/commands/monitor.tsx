@@ -1,7 +1,8 @@
 import React from 'react'
 import chalk from 'chalk'
 import { LoopworkMonitor } from '../monitor'
-import { logger, InkTable, separator, renderInk } from '../core/utils'
+import { logger, renderInk } from '../core/utils'
+import { Table as InkTable, Banner as InkBanner } from '@loopwork-ai/ui-components'
 import { LoopworkError, handleError } from '../core/errors'
 import {
   findLatestSession,
@@ -173,8 +174,14 @@ export async function monitorStatus(deps: MonitorDeps = {}): Promise<void> {
   const { running, namespaces } = monitor.getStatus()
 
   activeLogger.raw('')
-  activeLogger.raw(chalk.bold('Loopwork Monitor Status'))
-  activeLogger.raw(separator('light'))
+  const bannerOutput = await renderInk(
+    <InkBanner
+      title="Loopwork Monitor Status"
+      style="round"
+      borderColor="cyan"
+    />
+  )
+  activeLogger.raw(bannerOutput)
 
   if (running.length === 0) {
     activeLogger.raw(chalk.gray('No loops currently running'))

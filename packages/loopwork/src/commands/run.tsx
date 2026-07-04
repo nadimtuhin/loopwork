@@ -8,17 +8,20 @@ import { createBackend, type TaskBackend, type Task, type FindTaskOptions } from
 import { CliExecutor } from '../core/cli'
 import { logger, separator, InkBanner, InkCompletionSummary, renderInk } from '../core/utils'
 import { plugins, createAIMonitor } from '../plugins'
+import { TelemetryManager } from '../telemetry'
 import { createCostTrackingPlugin } from '@loopwork-ai/cost-tracking'
 import { createTelegramHookPlugin } from '@loopwork-ai/telegram'
+import { createResilienceRunner } from '@loopwork-ai/resilience'
 import type { TaskContext } from '../contracts/plugin'
 import type { ICliExecutor } from '../contracts/executor'
-import type { IStateManager, IStateManagerConstructor } from '../contracts/state'
+import type { IStateManager, IStateManagerConstructor, LoadStateResult } from '@loopwork-ai/contracts'
 import type { RunLogger } from '../contracts/logger'
 import { LoopworkError, handleError } from '../core/errors'
 import { ParallelRunner, type ParallelState } from '../core/parallel-runner'
 import { RetryBudget } from '../core/retry-budget'
 import { failureState } from '../core/failure-state'
 import { LoopworkMonitor } from '../monitor'
+import { ProcessRegistry, FilePersistence } from '@loopwork-ai/process-manager'
 import type { JsonEvent } from '../contracts/output'
 import type { DeadletterPolicy } from '../contracts'
 import { generateSuccessCriteria, generateFailureCriteria, buildPrompt } from '../core/task-utils'
@@ -39,6 +42,7 @@ import { generateSuccessCriteria, generateFailureCriteria, buildPrompt } from '.
 export interface RunDeps {
   getConfig?: typeof getConfig
   StateManagerClass?: IStateManagerConstructor
+  stateManager?: IStateManager
   createBackend?: typeof createBackend
   CliExecutorClass?: new (config: Config, options: unknown) => ICliExecutor
   logger?: RunLogger
@@ -93,7 +97,26 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     activeLogger.startSpinner('Initializing Loopwork...')
   }
   const config = await loadConfig(options)
-  const stateManager: IStateManager = new StateManagerClass(config)
+
+  // Initialize TUI if requested
+  if (config.tui && !isJsonMode) {
+    try {
+      const { InkRenderer } = await import('../output/ink-renderer')
+      const renderer = new InkRenderer({
+        mode: 'ink',
+        logLevel: config.logLevel
+      })
+      if (activeLogger.setRenderer) {
+        activeLogger.setRenderer(renderer)
+      } else {
+        activeLogger.warn('Logger does not support switching renderers')
+      }
+    } catch (error) {
+      activeLogger.warn(`Failed to initialize TUI: ${(error as Error).message}`)
+    }
+  }
+
+  const stateManager: IStateManager = deps.stateManager || new StateManagerClass(config as any)
   const backend: TaskBackend = makeBackend(config.backend)
 
   // Initialize debugger if requested
@@ -104,10 +127,19 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     dbg.setEnabled(true)
   }
 
+  // Create ProcessRegistry for tracking spawned processes (dashboard visibility)
+  const processPersistence = new FilePersistence({ storageDir: path.join(config.projectRoot, '.loopwork') })
+  const processRegistry = new ProcessRegistry(processPersistence)
+
+  // Create ResilienceEngine for automatic retries and backoff
+  const resilienceEngine = createResilienceRunner()
+
   const cliExecutor = new CliExecutorClass(config, { 
     debugger: dbg,
     pluginRegistry: activePlugins,
-    logger: activeLogger
+    logger: activeLogger,
+    processRegistry,
+    resilienceEngine
   })
 
   // Register AI Monitor plugin if --with-ai-monitor flag is set
@@ -160,8 +192,9 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
   }
 
   if (config.resume) {
-    const state = stateManager.loadState()
-    if (!state) {
+    const loadResult = await stateManager.loadState()
+    const snapshot = loadResult.snapshot
+    if (!loadResult.success || !snapshot) {
       const stateDir = path.resolve(config.projectRoot, '.loopwork')
       handleLoopworkError(new LoopworkError(
         'ERR_STATE_INVALID',
@@ -175,12 +208,12 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       ))
       runtimeProcess.exit(1)
     }
-    config.startTask = String(state.lastIssue)
-    config.outputDir = state.lastOutputDir
-    activeLogger.info(`Resuming from task ${state.lastIssue}, iteration ${state.lastIteration}`)
+    config.startTask = String(snapshot!.lastIssue)
+    config.outputDir = snapshot!.lastOutputDir
+    activeLogger.info(`Resuming from task ${snapshot!.lastIssue}, iteration ${snapshot!.lastIteration}`)
   }
 
-  if (!stateManager.acquireLock()) {
+  if (!await stateManager.acquireLock()) {
     const lockFile = path.resolve(config.projectRoot, '.loopwork', 'loopwork.lock')
     handleLoopworkError(new LoopworkError(
       'ERR_LOCK_CONFLICT',
@@ -224,7 +257,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
     if (currentTaskId) {
       const stateRef = parseInt(currentTaskId.replace(/\D/g, ''), 10) || 0
-      stateManager.saveState(stateRef, currentIteration)
+      await stateManager.saveState(stateRef, currentIteration)
 
       // Reset in-progress task to pending
       try {
@@ -236,7 +269,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
 
       activeLogger.info('State saved. Resume with: --resume')
     }
-    stateManager.releaseLock()
+    await stateManager.releaseLock()
     runtimeProcess.exit(130)
   }
 
@@ -547,7 +580,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     currentTaskId = task.id
     currentIteration = iteration
     const stateRef = parseInt(task.id.replace(/\D/g, ''), 10) || iteration
-    stateManager.saveState(stateRef, iteration)
+    await stateManager.saveState(stateRef, iteration)
 
     if (config.dryRun) {
       activeLogger.warn(`[DRY RUN] Would execute: ${task.id}`)
@@ -624,7 +657,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     let exitCode: number
     try {
       activeLogger.startSpinner(`Executing task ${task.id}...`)
-      exitCode = await cliExecutor.execute(prompt, outputFile, config.timeout || 600, { taskId: task.id })
+      exitCode = await cliExecutor.executeTask(task, prompt, outputFile, config.timeout || 600)
       activeLogger.stopSpinner()
     } catch (error: unknown) {
       // Check for CLI not found error
@@ -651,7 +684,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
           await backend.resetToPending(task.id)
         } catch {}
         
-        activeLogger.info('\\n💡 Resolve the issue above and restart with: npx loopwork --resume')
+        activeLogger.info('\n💡 Resolve the issue above and restart with: npx loopwork --resume')
         stateManager.releaseLock()
         runtimeProcess.exit(1)
       }
@@ -665,7 +698,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
       } catch (error: unknown) {
         handleLoopworkError(new LoopworkError(
           'ERR_BACKEND_INVALID',
-          `Task succeeded but failed to mark as completed in backend: ${error.message}`,
+          `Task succeeded but failed to mark as completed in backend: ${(error as any).message}`,
           [
             'The task execution was successful but could not be saved',
             'Check backend connectivity and permissions',
@@ -711,157 +744,87 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
         activeLogger.success(`Task ${task.id} completed!`)
       }
     } else {
-      const currentRetries = retryCount.get(task.id) || 0
-      const hasBudget = config.retryBudget?.enabled !== false && retryBudget.hasBudget()
+      const errorMsg = `Task ${task.id} failed after maximum retries\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
 
-      if (currentRetries < maxRetries - 1 && hasBudget) {
-        retryCount.set(task.id, currentRetries + 1)
-        if (config.retryBudget?.enabled !== false) {
-          retryBudget.consume()
-        }
+      try {
+        // Record failure in state manager
+        failureState.recordFailure(task.id, errorMsg)
+        const failureCount = failureState.getFailureCount(task.id)
+        
+        const deadletterPolicy = config.deadletter || { enabled: true, threshold: 3 }
+        const quarantineThreshold = deadletterPolicy.threshold ?? 3
 
-        if (isJsonMode) {
-          activeLogger.emitJsonEvent('warn', 'run', {
-            taskId: task.id,
-            iteration,
-            retry: currentRetries + 2,
-            maxRetries,
-            message: 'Task failed, retrying',
-          })
+        if (deadletterPolicy.enabled && failureCount >= quarantineThreshold) {
+          activeLogger.warn(`⚠️ Task ${task.id} has failed ${failureCount} times. Moving to quarantine (DLQ).`)
+          await backend.markQuarantined(task.id, `Exceeded quarantine threshold (${quarantineThreshold}). Last error: ${errorMsg}`)
         } else {
-          activeLogger.warn(`Task ${task.id} failed, retrying (${currentRetries + 2}/${maxRetries})...`)
+          await backend.markFailed(task.id, errorMsg)
         }
+      } catch (error: unknown) {
+        handleLoopworkError(new LoopworkError(
+          'ERR_BACKEND_INVALID',
+          `Task failed and could not be marked as failed in backend: ${(error as Error).message}`,
+          [
+            'The task execution failed multiple times',
+            'Backend operation also failed - check connectivity',
+            'Manual intervention may be required'
+          ]
+        ))
+      }
 
-        try {
-          await backend.resetToPending(task.id)
-        } catch (error: unknown) {
-          handleLoopworkError(new LoopworkError(
-            'ERR_BACKEND_INVALID',
-            `Failed to reset task ${task.id} to pending: ${(error as Error).message}`,
-            [
-              'Check backend connectivity and permissions',
-              'The task may need manual intervention'
-            ]
-          ))
-          if (isJsonMode) {
-            activeLogger.emitJsonEvent('error', 'run', {
-              taskId: task.id,
-              iteration,
-              error: 'Failed to reset task to pending',
-              message: (error as Error).message,
-            })
-          }
-          continue
+      await activePlugins.runHook('onTaskFailed', taskContext, errorMsg)
+      currentTaskContext = null
+
+      tasksFailed++
+      consecutiveFailures++
+      retryCount.delete(task.id)
+
+      let lastOutput = ''
+      try {
+        if (fs.existsSync(outputFile)) {
+          const content = fs.readFileSync(outputFile, 'utf-8')
+          const lines = content.split('\n').filter(l => l.trim())
+          lastOutput = lines.slice(-10).join('\n')
         }
+      } catch {}
 
-        let logExcerpt = ''
-        try {
-          if (fs.existsSync(outputFile)) {
-            const content = fs.readFileSync(outputFile, 'utf-8')
-            logExcerpt = content.slice(-1000)
-          }
-        } catch {}
-
-        retryContext = `## Previous Attempt Failed\nAttempt ${currentRetries + 1} failed. Log excerpt:\n\`\`\`\n${logExcerpt}\n\`\`\``
-
-        await activePlugins.runHook('onTaskRetry', taskContext, `Attempt ${currentRetries + 1} failed.`)
-
-        await new Promise(r => setTimeout(r, config.retryDelay ?? 3000))
-        continue
+      if (isJsonMode) {
+        activeLogger.emitJsonEvent('error', 'run', {
+          taskId: task.id,
+          iteration,
+          failed: true,
+          attempts: maxRetries,
+          tasksFailed,
+          consecutiveFailures,
+          lastOutput: lastOutput.substring(0, 500),
+        })
       } else {
-        const isBudgetExhausted = currentRetries < maxRetries - 1 && !hasBudget
-        const errorMsg = isBudgetExhausted
-          ? `Retry budget exhausted (${config.retryBudget?.maxRetries || 50} per ${(config.retryBudget?.windowMs || 3600000) / 3600000}h)\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
-          : `Max retries (${maxRetries}) reached\n\nSession: ${config.sessionId}\nIteration: ${iteration}`
+        activeLogger.raw('')
+        activeLogger.error(`Task ${task.id} failed after maximum attempts`)
 
-        try {
-          // Record failure in state manager
-          failureState.recordFailure(task.id, errorMsg)
-          const failureCount = failureState.getFailureCount(task.id)
-          
-          const deadletterPolicy = config.deadletter || { enabled: true, threshold: 3 }
-          const quarantineThreshold = deadletterPolicy.threshold ?? 3
-
-          if (deadletterPolicy.enabled && failureCount >= quarantineThreshold) {
-            activeLogger.warn(`⚠️ Task ${task.id} has failed ${failureCount} times. Moving to quarantine (DLQ).`)
-            await backend.markQuarantined(task.id, `Exceeded quarantine threshold (${quarantineThreshold}). Last error: ${errorMsg}`)
-          } else {
-            await backend.markFailed(task.id, errorMsg)
-          }
-        } catch (error: unknown) {
-          handleLoopworkError(new LoopworkError(
-            'ERR_BACKEND_INVALID',
-            `Task failed and could not be marked as failed in backend: ${(error as Error).message}`,
-            [
-              'The task execution failed multiple times',
-              'Backend operation also failed - check connectivity',
-              'Manual intervention may be required'
-            ]
-          ))
-        }
-
-        await activePlugins.runHook('onTaskFailed', taskContext, errorMsg)
-        currentTaskContext = null
-
-        tasksFailed++
-        consecutiveFailures++
-        retryCount.delete(task.id)
-
-        let lastOutput = ''
-        try {
-          if (fs.existsSync(outputFile)) {
-            const content = fs.readFileSync(outputFile, 'utf-8')
-            const lines = content.split('\n').filter(l => l.trim())
-            lastOutput = lines.slice(-10).join('\n')
-          }
-        } catch {}
-
-        if (isJsonMode) {
-          activeLogger.emitJsonEvent('error', 'run', {
-            taskId: task.id,
-            iteration,
-            failed: true,
-            attempts: currentRetries + 1,
-            tasksFailed,
-            consecutiveFailures,
-            lastOutput: lastOutput.substring(0, 500),
-            budgetExhausted: isBudgetExhausted,
-          })
-        } else {
+        if (lastOutput) {
           activeLogger.raw('')
-          if (isBudgetExhausted) {
-            activeLogger.error(`Task ${task.id} failed: Retry budget exhausted`)
-          } else {
-            activeLogger.error(`Task ${task.id} failed after ${currentRetries + 1} attempts`)
-          }
-
-          if (lastOutput) {
-            activeLogger.raw('')
-            activeLogger.raw(chalk.gray('Last 10 lines of output:'))
-            activeLogger.raw(chalk.gray('─────────────────────────────────────'))
-            activeLogger.raw(chalk.dim(lastOutput))
-            activeLogger.raw(chalk.gray('─────────────────────────────────────'))
-            activeLogger.raw('')
-          }
-
-          const prdPath = task.metadata?.prdFile || `.specs/tasks/${task.id}.md`
-          activeLogger.info(`💡 Check task requirements in ${prdPath}`)
-          activeLogger.info(`💡 Check full output: ${outputFile}`)
-          activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
-          if (!isBudgetExhausted) {
-            activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
-          } else {
-            activeLogger.info(`💡 Increase retry budget in config: retryBudget.maxRetries`)
-          }
+          activeLogger.raw(chalk.gray('Last 10 lines of output:'))
+          activeLogger.raw(chalk.gray('─────────────────────────────────────'))
+          activeLogger.raw(chalk.dim(lastOutput))
+          activeLogger.raw(chalk.gray('─────────────────────────────────────'))
           activeLogger.raw('')
         }
+
+        const prdPath = task.metadata?.prdFile || `.specs/tasks/${task.id}.md`
+        activeLogger.info(`💡 Check task requirements in ${prdPath}`)
+        activeLogger.info(`💡 Check full output: ${outputFile}`)
+        activeLogger.info(`💡 Skip task: npx loopwork --skip ${task.id}`)
+        activeLogger.info(`💡 Adjust retry limit in config: maxRetries (current: ${maxRetries})`)
+        activeLogger.raw('')
       }
     }
 
     await new Promise(r => setTimeout(r, config.taskDelay ?? 2000))
   }
 
-  const loopDuration = Date.now() - (stateManager.loadState()?.startedAt || Date.now())
+  const loadResult = await stateManager.loadState()
+  const loopDuration = Date.now() - (loadResult?.snapshot?.startedAt || Date.now())
 
   let finalPending = 0
   try {
@@ -879,7 +842,7 @@ export async function run(options: Record<string, unknown> = {}, deps: RunDeps =
     if (!isJsonMode) {
       activeLogger.success('All tasks completed!')
     }
-    stateManager.clearState()
+    await stateManager.clearState()
   }
 
   if (isJsonMode) {
@@ -1039,7 +1002,7 @@ async function runParallel(
       if (!isJsonMode) {
         activeLogger.success('All tasks completed!')
       }
-      stateManager.clearState()
+      await stateManager.clearState()
       clearParallelState(config.projectRoot, config.namespace || 'default')
     }
 
@@ -1089,7 +1052,7 @@ async function runParallel(
       activeLogger.error(`Parallel execution error: ${error}`)
     }
   } finally {
-    stateManager.releaseLock()
+    await stateManager.releaseLock()
   }
 }
 

@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { run } from '../src/commands/run'
-import { JsonTaskAdapter } from '../src/backends/json'
+import { JsonTaskAdapter } from '../src/backends'
 import { failureState } from '../src/core/failure-state'
 
 describe('Run Command with Deadletter Policy', () => {

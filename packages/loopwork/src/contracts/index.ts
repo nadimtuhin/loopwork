@@ -115,6 +115,9 @@ export { DEFAULT_RETRY_POLICY } from '../core/retry'
 export type { ICliExecutor } from './executor'
 export type { IStateManager, StateSnapshot, IStateManagerConstructor } from './state'
 
+// Documentation types
+export type { IDocGenerator, IChangeLogProvider } from '@loopwork-ai/contracts'
+
 // Spawner types
 export type {
   SpawnedProcess,

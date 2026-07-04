@@ -38,11 +38,15 @@ export default {
     // Analyzer option 1: Built-in pattern-based analyzer (fast, no API calls)
     analyzer: 'pattern',     // Detects common patterns like "TODO:", "FIXME:", unhandled errors
 
-    // Analyzer option 2: LLM-based analyzer (more intelligent, requires API)
-    // analyzer: 'llm',      // Uses AI to understand context and suggest tasks
+    // Analyzer option 2: LLM-based analyzer (more intelligent, requires AI analysis)
+    // analyzer: 'llm',      // Uses AI to understand output context and suggest tasks
 
-    // Analyzer option 3: Custom analyzer instance
-    // analyzer: new PatternAnalyzer({ patterns: [...] }),
+    // Analyzer option 3: Custom analyzer implementation
+    // analyzer: { 
+    //   async analyze(task, result) { 
+    //     return { shouldCreateTasks: true, suggestedTasks: [...], reason: '...' } 
+    //   } 
+    // },
 
     createSubTasks: true,    // Create generated tasks as sub-tasks of completed task
     maxTasksPerExecution: 5, // Limit new tasks per completed task (prevents task explosion)

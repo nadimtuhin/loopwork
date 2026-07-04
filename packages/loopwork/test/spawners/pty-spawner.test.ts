@@ -3,12 +3,12 @@ import path from 'path'
 import fs from 'fs'
 import os from 'os'
 
-import { PtySpawner, isPtyAvailable } from '../../src/core/spawners/pty-spawner'
-import { isPtyFunctional } from '../../src/core/spawners'
-import type { ProcessSpawner } from '../../src/contracts/spawner'
+import { PtySpawner, isPtyAvailable } from '@loopwork-ai/process-manager/spawner'
+import { isPtyFunctional } from '@loopwork-ai/process-manager/spawner'
+import type { ISpawner } from '@loopwork-ai/contracts/process'
 
 describe('PtySpawner', () => {
-  let spawner: ProcessSpawner
+  let spawner: ISpawner
   let tempDir: string
 
   beforeEach(() => {
@@ -144,7 +144,7 @@ describe('PtySpawner', () => {
       const proc = spawner.spawn('sh', ['-c', 'exit 42'])
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('exit', (code) => resolve(code))
+        proc.on('exit', (code: number | null) => resolve(code))
       })
 
       expect(code).toBe(42)
@@ -155,7 +155,7 @@ describe('PtySpawner', () => {
       const proc = spawner.spawn('echo', ['success'])
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('exit', (code) => resolve(code))
+        proc.on('exit', (code: number | null) => resolve(code))
       })
 
       expect(code).toBe(0)
@@ -240,8 +240,8 @@ describe('PtySpawner', () => {
       proc.stdin?.end()  // This should trigger EOF to be sent to PTY
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('close', (c) => resolve(c))
-        proc.on('exit', (c) => resolve(c))
+        proc.on('close', (c: number | null) => resolve(c))
+        proc.on('exit', (c: number | null) => resolve(c))
       })
 
       // cat should exit with 0 when it receives EOF

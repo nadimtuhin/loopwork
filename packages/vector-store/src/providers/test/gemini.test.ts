@@ -171,7 +171,9 @@ describe('GeminiEmbeddingProvider', () => {
 
       expect(capturedUrl).toContain(':batchEmbedContents')
       expect(capturedBody?.requests).toHaveLength(2)
+      expect(capturedBody?.requests[0].model).toBe('models/embedding-001')
       expect(capturedBody?.requests[0].content.parts[0].text).toBe('text1')
+      expect(capturedBody?.requests[1].model).toBe('models/embedding-001')
       expect(capturedBody?.requests[1].content.parts[0].text).toBe('text2')
       
       expect(result).toHaveLength(2)

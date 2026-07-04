@@ -10,6 +10,8 @@
  */
 
 import type { LoopworkPlugin, PluginTask, ConfigWrapper, TaskContext, PluginTaskResult } from '@loopwork-ai/loopwork/contracts'
+import type { INotificationProvider, NotificationOptions } from '@loopwork-ai/contracts'
+import { logger } from '@loopwork-ai/common'
 
 export interface DiscordConfig {
   webhookUrl?: string
@@ -183,6 +185,52 @@ export class DiscordClient {
 }
 
 /**
+ * Discord Notification Provider
+ */
+export class DiscordNotificationProvider implements INotificationProvider {
+  readonly name = 'discord'
+  private readonly client: DiscordClient | null = null
+
+  constructor(config: DiscordConfig = {}) {
+    const webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL
+    if (webhookUrl) {
+      this.client = new DiscordClient(webhookUrl, {
+        username: config.username || 'Loopwork',
+        avatarUrl: config.avatarUrl,
+      })
+    }
+  }
+
+  async verify(): Promise<boolean> {
+    return this.client !== null
+  }
+
+  async notify(message: string, options?: NotificationOptions): Promise<void> {
+    if (!this.client) {
+      logger.warn('DiscordNotificationProvider: Missing webhookUrl')
+      return
+    }
+
+    const color = options?.priority === 'high' ? COLORS.red : 
+                  options?.priority === 'low' ? COLORS.blue : 
+                  COLORS.green
+
+    try {
+      await this.client.sendEmbed({
+        title: options?.title || 'Notification',
+        description: message,
+        color,
+        fields: options?.url ? [{ name: 'URL', value: options.url }] : [],
+        timestamp: new Date().toISOString(),
+        footer: options?.metadata ? { text: JSON.stringify(options.metadata) } : undefined
+      })
+    } catch (e: any) {
+      logger.error(`Discord notification failed: ${e.message}`)
+    }
+  }
+}
+
+/**
  * Format seconds to human readable duration
  */
 function formatDuration(seconds: number): string {
@@ -201,7 +249,7 @@ function formatDuration(seconds: number): string {
 export function withDiscord(config: DiscordConfig = {}): ConfigWrapper {
   const webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL
 
-  return (baseConfig) => ({
+  return (baseConfig: any) => ({
     ...baseConfig,
     discord: {
       webhookUrl,

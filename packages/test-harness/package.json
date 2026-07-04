@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@loopwork-ai/contracts": "workspace:*",
-    "@loopwork-ai/loopwork": "workspace:*"
+    "@loopwork-ai/loopwork": "workspace:*",
+    "memfs": "^4.56.10"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -27,7 +27,7 @@ function cleanupTestDir(dir: string): void {
 
 function createConfigFile(dir: string, content: string): void {
   fs.writeFileSync(
-    path.join(dir, 'loopwork.config.ts'),
+    path.join(dir, 'loopwork.config.js'),
     content
   )
 }
@@ -92,12 +92,11 @@ describe('Config Hot Reload - Integration Tests', () => {
   describe('Config file watching', () => {
     test('should start watching config file', async () => {
       // Simple JS config without imports
-      const configContent = `
-module.exports = {
-  cli: 'claude',
-  maxIterations: 10,
-}
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
       createTasksFile(testDir)
@@ -161,12 +160,11 @@ module.exports = {
     }, 5000)
 
     test('should emit reload events on config change', async () => {
-      const configContent = `
-module.exports = {
-  cli: 'claude',
-  maxIterations: 10,
-}
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -239,12 +237,11 @@ this is not valid javascript
 
   describe('Config reload behavior', () => {
     test('should preserve CLI options when reloading', async () => {
-      const configContent = `
-module.exports = {
-  cli: 'claude',
-  maxIterations: 10,
-}
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -305,86 +302,6 @@ module.exports = {
   cli: 'claude',
   maxIterations: -5,
 }
-`
-
-      createConfigFile(testDir, invalidConfig)
-
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      const currentConfig = manager.getCurrentConfig()
-
-      // Should keep old valid config
-      expect(currentConfig).not.toBeNull()
-      expect(currentConfig?.maxIterations).toBe(10)
-    }, 5000)
-  })
-`
-
-      createConfigFile(testDir, configContent)
-
-      const manager = getConfigHotReloadManager()
-
-      // Load with CLI option
-      const initialConfig = await getConfig({
-        hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
-        timeout: 900,
-      })
-
-      expect(initialConfig.timeout).toBe(900)
-
-      await new Promise(resolve => setTimeout(resolve, 200))
-
-      // Change config file
-      const modifiedConfig = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 20,
-})
-`
-
-      createConfigFile(testDir, modifiedConfig)
-
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      const currentConfig = manager.getCurrentConfig()
-
-      // Reload should not override CLI options
-      expect(currentConfig?.maxIterations).toBe(20) // Changed from file
-      // Note: In production, we'd want to merge CLI options, but for this test we verify reload works
-    }, 5000)
-
-    test('should validate reloaded config', async () => {
-      const validConfig = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
-
-      createConfigFile(testDir, validConfig)
-
-      const manager = getConfigHotReloadManager()
-
-      await getConfig({
-        hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
-      })
-
-      await new Promise(resolve => setTimeout(resolve, 200))
-
-      // Write invalid config (negative maxIterations)
-      const invalidConfig = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: -5,
-})
 `
 
       createConfigFile(testDir, invalidConfig)
@@ -401,14 +318,11 @@ export default defineConfig({
 
   describe('Watcher lifecycle', () => {
     test('should stop watching when stop is called', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -416,7 +330,7 @@ export default defineConfig({
 
       await getConfig({
         hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
       })
 
       expect(manager.isWatching()).toBe(true)
@@ -428,14 +342,11 @@ export default defineConfig({
     })
 
     test('should allow stopping and restarting watcher', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -443,7 +354,7 @@ export default defineConfig({
 
       await getConfig({
         hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
       })
 
       expect(manager.isWatching()).toBe(true)
@@ -453,22 +364,19 @@ export default defineConfig({
       expect(manager.isWatching()).toBe(false)
 
       // Restart
-      manager.start(path.join(testDir, 'loopwork.config.ts'), await getConfig({
-        config: path.join(testDir, 'loopwork.config.ts'),
+      manager.start(path.join(testDir, 'loopwork.config.js'), await getConfig({
+        config: path.join(testDir, 'loopwork.config.js'),
       }))
 
       expect(manager.isWatching()).toBe(true)
     })
 
     test('should remove event listeners when offReload is called', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -479,7 +387,7 @@ export default defineConfig({
 
       await getConfig({
         hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
       })
 
       await new Promise(resolve => setTimeout(resolve, 200))
@@ -491,12 +399,10 @@ export default defineConfig({
 
       // Modify config
       const modifiedConfig = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
+module.exports = {
   cli: 'claude',
   maxIterations: 20,
-})
+}
 `
 
       createConfigFile(testDir, modifiedConfig)
@@ -510,14 +416,11 @@ export default defineConfig({
 
   describe('Environment variable configuration', () => {
     test('should not start hot reload when flag is false', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -525,28 +428,25 @@ export default defineConfig({
 
       await getConfig({
         hotReload: false,
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
       })
 
       expect(manager.isWatching()).toBe(false)
     })
 
     test('should not start hot reload when flag is not provided', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
       const manager = getConfigHotReloadManager()
 
       await getConfig({
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
         // hotReload not provided
       })
 
@@ -554,14 +454,11 @@ export default defineConfig({
     })
 
     test('should start hot reload when environment variable is set', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -573,7 +470,7 @@ export default defineConfig({
 
       try {
         await getConfig({
-          config: path.join(testDir, 'loopwork.config.ts'),
+          config: path.join(testDir, 'loopwork.config.js'),
         })
 
         expect(manager.isWatching()).toBe(true)
@@ -605,14 +502,11 @@ export default defineConfig({
     })
 
     test('should handle rapid config changes', async () => {
-      const configContent = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: 10,
-})
-`
+      const configObj = {
+        cli: 'claude',
+        maxIterations: 10
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj, null, 2)
 
       createConfigFile(testDir, configContent)
 
@@ -625,21 +519,19 @@ export default defineConfig({
 
       await getConfig({
         hotReload: true,
-        config: path.join(testDir, 'loopwork.config.ts'),
+        config: path.join(testDir, 'loopwork.config.js'),
       })
 
       await new Promise(resolve => setTimeout(resolve, 200))
 
       // Rapidly change config multiple times
-      for (let i = 0; i < 3; i++) {
-        const modifiedConfig = `
-import { defineConfig } from 'loopwork'
-
-export default defineConfig({
-  cli: 'claude',
-  maxIterations: ${10 + i * 5},
-})
-`
+      const iterations = [15, 20, 25]
+      for (const maxIterations of iterations) {
+        const configObj = {
+          cli: 'claude',
+          maxIterations
+        }
+        const modifiedConfig = 'module.exports = ' + JSON.stringify(configObj, null, 2)
         createConfigFile(testDir, modifiedConfig)
         await new Promise(resolve => setTimeout(resolve, 100))
       }
@@ -650,5 +542,93 @@ export default defineConfig({
       // Should handle multiple changes (maybe deduplicate or handle all)
       expect(reloadEvents.length).toBeGreaterThan(0)
     }, 10000)
+  })
+
+  describe('Advanced config reloading', () => {
+    test('should reload namespace configuration', async () => {
+      const configObj1 = {
+        cli: 'claude',
+        maxIterations: 10,
+        namespace: 'default'
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj1, null, 2)
+      
+      createConfigFile(testDir, configContent)
+
+      const manager = getConfigHotReloadManager()
+      const initialConfig = await getConfig({
+        hotReload: true,
+        config: path.join(testDir, 'loopwork.config.js'),
+      })
+
+      expect(initialConfig.namespace).toBe('default')
+
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      const configObj2 = {
+        cli: 'claude',
+        maxIterations: 10,
+        namespace: 'production'
+      }
+      const modifiedConfig = 'module.exports = ' + JSON.stringify(configObj2, null, 2)
+      
+      createConfigFile(testDir, modifiedConfig)
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const currentConfig = manager.getCurrentConfig()
+      expect(currentConfig).not.toBeNull()
+      expect(currentConfig?.namespace).toBe('production')
+    })
+
+    test('should reload plugin configuration', async () => {
+      const configObj1 = {
+        cli: 'claude',
+        maxIterations: 10,
+        plugins: [
+          {
+            name: 'test-plugin',
+            enabled: true
+          }
+        ]
+      }
+      const configContent = 'module.exports = ' + JSON.stringify(configObj1, null, 2)
+      
+      createConfigFile(testDir, configContent)
+
+      const manager = getConfigHotReloadManager()
+      const initialConfig = await getConfig({
+        hotReload: true,
+        config: path.join(testDir, 'loopwork.config.js'),
+      })
+
+      expect(initialConfig.plugins).toHaveLength(1)
+      // @ts-ignore
+      expect(initialConfig.plugins[0].enabled).toBe(true)
+
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      const configObj2 = {
+        cli: 'claude',
+        maxIterations: 10,
+        plugins: [
+          {
+            name: 'test-plugin',
+            enabled: false
+          }
+        ]
+      }
+      const modifiedConfig = 'module.exports = ' + JSON.stringify(configObj2, null, 2)
+      
+      createConfigFile(testDir, modifiedConfig)
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const currentConfig = manager.getCurrentConfig()
+      expect(currentConfig).not.toBeNull()
+      expect(currentConfig?.plugins).toHaveLength(1)
+      // @ts-ignore
+      expect(currentConfig?.plugins[0].enabled).toBe(false)
+    })
   })
 })

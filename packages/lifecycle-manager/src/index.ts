@@ -21,3 +21,5 @@ export type {
   IHeartbeatProvider,
   IHealthMonitor,
 } from '@loopwork-ai/contracts'
+
+export { FileHeartbeatProvider } from './heartbeat'

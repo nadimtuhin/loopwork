@@ -7,8 +7,11 @@ import type {
   ISpawnOptions
 } from '../../contracts/process-manager'
 import type { ISpawner } from '@loopwork-ai/contracts'
-import { ProcessRegistry } from './registry'
-import { OrphanDetector } from './orphan-detector'
+import {
+  ProcessRegistry,
+  OrphanDetector,
+  FilePersistence
+} from '@loopwork-ai/process-manager'
 import { ProcessCleaner } from './cleaner'
 import { createSpawner } from '@loopwork-ai/executor'
 import { ProcessResourceMonitor, type ResourceLimits } from './monitor'
@@ -267,7 +270,8 @@ export function createProcessManager(options?: {
   const resourceLimits = options?.resourceLimits
 
   // Create dependencies
-  const registry = new ProcessRegistry(storageDir)
+  const persistence = new FilePersistence({ storageDir })
+  const registry = new ProcessRegistry(persistence)
   const detector = new OrphanDetector(registry, patterns, staleTimeoutMs)
   const cleaner = new ProcessCleaner(registry, gracePeriodMs)
 

@@ -117,3 +117,12 @@ export function reportError(error: LoopworkError): void {
 export function isLoopworkError(error: unknown): error is LoopworkError {
   return error instanceof LoopworkError
 }
+
+// Re-export CentralErrorRegistry and helpers from registry module
+export {
+  CentralErrorRegistry,
+  centralErrorRegistry,
+  getErrorDocsUrl,
+  getErrorSuggestions,
+  formatErrorMessage
+} from './registry'

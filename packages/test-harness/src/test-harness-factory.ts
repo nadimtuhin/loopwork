@@ -4,7 +4,7 @@ import type {
 } from '@loopwork-ai/contracts'
 import { MockProvider } from './mock-provider'
 import { TestEnvironment } from './test-environment'
-import { VirtualFileSystem } from './virtual-file-system'
+import { VirtualFileSystem } from './mocks/fs'
 
 /**
  * TestHarnessFactory - Factory for creating test harness components

@@ -1,0 +1,26 @@
+{
+  "name": "@loopwork-ai/backend-json",
+  "version": "0.1.0",
+  "description": "JSON file-based task backend for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/common": "workspace:*",
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/spec-parser": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

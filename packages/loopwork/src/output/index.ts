@@ -35,5 +35,5 @@ export type {
 } from './renderer'
 
 export { BaseRenderer } from './renderer'
-export { InkRenderer } from './ink-renderer'
+export { InkRenderer } from '@loopwork-ai/ui'
 export { ConsoleRenderer } from './console-renderer'

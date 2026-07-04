@@ -10,7 +10,7 @@ import type { TaskContext } from '../contracts/plugin'
 import type { PluginTaskResult } from '../contracts/plugin'
 import type { TaskAnalyzer, SuggestedTask } from '../contracts/analysis'
 import type { ConfigWrapper } from '../contracts'
-import { PatternAnalyzer } from '../analyzers/pattern-analyzer'
+import { PatternAnalyzer, LLMAnalyzer } from '../analyzers'
 import { logger } from '../core/utils'
 
 /**
@@ -21,7 +21,7 @@ export interface DynamicTasksOptions {
   enabled?: boolean
 
   /** Custom task analyzer to use (default: PatternAnalyzer) */
-  analyzer?: TaskAnalyzer
+  analyzer?: 'pattern' | 'llm' | TaskAnalyzer
 
   /** Whether to create tasks as sub-tasks of the completed task (default: true) */
   createSubTasks?: boolean
@@ -51,14 +51,14 @@ export interface DynamicTasksOptions {
  * ```
  */
 export function withDynamicTasks(options: DynamicTasksOptions = {}): ConfigWrapper {
-  return (config) => ({
+  return (config: any) => ({
     ...config,
     dynamicTasks: {
       enabled: options.enabled ?? true,
+      analyzer: options.analyzer ?? 'pattern',
       createSubTasks: options.createSubTasks ?? true,
       maxTasksPerExecution: options.maxTasksPerExecution ?? 5,
       autoApprove: options.autoApprove ?? true,
-      logCreatedTasks: options.logCreatedTasks ?? true
     }
   })
 }
@@ -77,9 +77,15 @@ export function withDynamicTasks(options: DynamicTasksOptions = {}): ConfigWrapp
 export function createDynamicTasksPlugin(
   options: DynamicTasksOptions = {}
 ): LoopworkPlugin {
-  const config: Required<DynamicTasksOptions> = {
+  const resolvedAnalyzer = options.analyzer === 'llm' 
+    ? new LLMAnalyzer() 
+    : (options.analyzer === 'pattern' || !options.analyzer)
+      ? new PatternAnalyzer()
+      : options.analyzer
+
+  const config: Required<Omit<DynamicTasksOptions, 'analyzer'>> & { analyzer: TaskAnalyzer } = {
     enabled: options.enabled ?? true,
-    analyzer: options.analyzer ?? new PatternAnalyzer(),
+    analyzer: resolvedAnalyzer,
     createSubTasks: options.createSubTasks ?? true,
     maxTasksPerExecution: options.maxTasksPerExecution ?? 5,
     autoApprove: options.autoApprove ?? true,

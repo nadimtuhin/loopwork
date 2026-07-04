@@ -22,7 +22,11 @@ export type {
   DEFAULT_SINGLE_WILDCARD,
   DEFAULT_MULTI_WILDCARD,
   matchTopicPattern,
-} from '@loopwork-ai/contracts/messaging'
+} from '@loopwork-ai/contracts'
+
+// Export LocalEventBus implementation
+export { LocalEventBus, createEvent } from './local-bus'
+export { IpcMessageBus } from './ipc-bus'
 
 // Export version info
 export const VERSION = '0.1.0'

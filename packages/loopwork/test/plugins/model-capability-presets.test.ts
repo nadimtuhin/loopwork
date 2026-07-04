@@ -71,6 +71,20 @@ describe('ModelCapabilityPresets', () => {
       expect(model.timeout).toBe(1000)
       expect(model.name).toBe('claude-code-opus')
     })
+
+    test('models have capabilities populated', () => {
+      const sonnet = ModelPresets.claudeSonnet()
+      expect(sonnet.capability).toBe('medium')
+      expect(sonnet.primaryRole).toBe('senior-engineer')
+
+      const opus = ModelPresets.claudeOpus()
+      expect(opus.capability).toBe('high')
+      expect(opus.primaryRole).toBe('architect')
+
+      const haiku = ModelPresets.claudeHaiku()
+      expect(haiku.capability).toBe('low')
+      expect(haiku.primaryRole).toBe('junior-engineer')
+    })
   })
 
   describe('Roles', () => {

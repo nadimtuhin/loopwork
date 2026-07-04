@@ -1,0 +1,24 @@
+{
+  "name": "@loopwork-ai/plugin-smart-tasks",
+  "version": "0.1.0",
+  "description": "Smart task generation plugin for Loopwork - automated test suggestions and task decomposition",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/*.ts --outdir dist --target node --external bun",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
+  "keywords": [
+    "loopwork",
+    "plugin",
+    "smart-tasks",
+    "automation",
+    "testing",
+    "task-decomposition"
+  ],
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

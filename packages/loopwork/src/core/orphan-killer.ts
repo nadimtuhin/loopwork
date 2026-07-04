@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { OrphanProcess } from './orphan-detector'
+import type { OrphanInfo } from '@loopwork-ai/contracts/process'
 import { logger } from './utils'
 
 export interface KillResult {
@@ -61,7 +61,7 @@ export class OrphanKiller extends EventEmitter {
   /**
    * Kill orphan processes with safety checks
    */
-  async kill(orphans: OrphanProcess[], options: KillOptions = {}): Promise<KillResult> {
+  async kill(orphans: OrphanInfo[], options: KillOptions = {}): Promise<KillResult> {
     const {
       force = false,
       dryRun = false,
@@ -76,7 +76,9 @@ export class OrphanKiller extends EventEmitter {
     }
 
     for (const orphan of orphans) {
-      const { pid, command, classification } = orphan
+      const { pid, reason, process: procInfo } = orphan
+      const command = procInfo.command
+      const classification = reason === 'untracked' ? 'suspected' : 'confirmed'
 
       // Safety check: NEVER kill PID 1 or system processes
       if (pid <= 1 || pid < 100) {

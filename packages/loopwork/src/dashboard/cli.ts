@@ -42,10 +42,10 @@ class Dashboard {
   /**
    * Display full dashboard
    */
-  display(): void {
+  async display(): Promise<void> {
     console.clear()
     this.printHeader()
-    this.printRunningLoops()
+    await this.printRunningLoops()
     this.printRecentActivity()
     this.printHelp()
   }
@@ -58,7 +58,7 @@ class Dashboard {
     process.stdout.write('\n')
   }
 
-  private printRunningLoops(): void {
+  private async printRunningLoops(): Promise<void> {
     const { running, namespaces } = this.monitor.getStatus()
 
     process.stdout.write(chalk.bold.white('┌─ Running Loops ─────────────────────────────────────────────┐') + '\n')
@@ -67,7 +67,7 @@ class Dashboard {
       process.stdout.write(chalk.gray('│  No loops currently running                                 │') + '\n')
     } else {
       for (const proc of running) {
-        const stats = this.getNamespaceStats(proc.namespace)
+        const stats = await this.getNamespaceStats(proc.namespace)
         const uptime = this.getUptime(proc.startedAt)
 
         process.stdout.write(chalk.green(`│  ● ${chalk.bold(proc.namespace.padEnd(15))} PID: ${String(proc.pid).padEnd(8)} Uptime: ${uptime.padEnd(10)} │`) + '\n')
@@ -128,7 +128,7 @@ class Dashboard {
   /**
    * Get stats for a specific namespace
    */
-  private getNamespaceStats(namespace: string): NamespaceStats {
+  private async getNamespaceStats(namespace: string): Promise<NamespaceStats> {
     const stats: NamespaceStats = {
       namespace,
       status: 'stopped',
@@ -147,7 +147,7 @@ class Dashboard {
     }
 
     // Load state using StateManager
-    const state = this.loadStateForNamespace(namespace)
+    const state = await this.loadStateForNamespace(namespace)
     if (state) {
       stats.currentTask = `Task #${state.lastIssue}`
       stats.iterations = state.lastIteration
@@ -178,10 +178,10 @@ class Dashboard {
    * Load state for a specific namespace using StateManager
    * Falls back to manual parsing for legacy formats
    */
-  private loadStateForNamespace(namespace: string): { lastIssue: number; lastIteration: number } | null {
+  private async loadStateForNamespace(namespace: string): Promise<{ lastIssue: number; lastIteration: number } | null> {
     try {
       // Create a minimal config for StateManager
-      const config: Config = {
+      const config = ({
         namespace,
         projectRoot: this.projectRoot,
         cli: 'claude',
@@ -189,15 +189,20 @@ class Dashboard {
         outputDir: '',
         sessionId: '',
         debug: false,
-      }
+        resume: false,
+        backend: { type: 'json', tasksFile: '' },
+        parallel: 1,
+        parallelFailureMode: 'stop',
+        logLevel: 'info',
+      } as unknown) as Config
 
       const stateManager = new StateManager(config)
-      const state = stateManager.loadState()
+      const state = await stateManager.loadState()
 
-      if (state) {
+      if (state && state.snapshot) {
         return {
-          lastIssue: state.lastIssue,
-          lastIteration: state.lastIteration,
+          lastIssue: state.snapshot.lastIssue,
+          lastIteration: state.snapshot.lastIteration,
         }
       }
     } catch {
@@ -474,9 +479,9 @@ class Dashboard {
   /**
    * One-time status display
    */
-  static display(): void {
+  static async display(): Promise<void> {
     const dashboard = new Dashboard()
-    dashboard.display()
+    await dashboard.display()
   }
 }
 
@@ -497,7 +502,7 @@ async function main() {
 
     case 'status':
     default:
-      dashboard.display()
+      await dashboard.display()
       break
   }
 }

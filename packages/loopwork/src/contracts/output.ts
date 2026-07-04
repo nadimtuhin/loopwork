@@ -135,3 +135,26 @@ export interface DecomposeJsonOutput {
   }
   dryRun?: boolean
 }
+
+/**
+ * JSON output for 'checkpoint' command
+ */
+export interface CheckpointJsonOutput {
+  command: 'checkpoint list' | 'checkpoint show' | 'checkpoint delete' | 'checkpoint cleanup'
+  timestamp: string
+  checkpoints?: Array<{ id: string }>
+  checkpoint?: {
+    id: string
+    taskId?: string
+    agentName?: string
+    iteration: number
+    phase: string
+    lastToolCall?: string
+    state?: Record<string, unknown>
+    timestamp: string
+  }
+  partialOutput?: string
+  deleted?: string | string[]
+  count?: number
+  maxAgeDays?: number
+}

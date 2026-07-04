@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { auditMiddleware } from '../middleware/audit'
+import { auditMiddleware } from '../audit'
 
 /**
  * audit Tests

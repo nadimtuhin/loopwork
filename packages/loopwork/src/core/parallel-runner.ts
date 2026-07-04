@@ -121,6 +121,7 @@ export class ParallelRunner {
   }) => Promise<void>
   private buildPrompt: (task: Task, retryContext?: string) => string
   private debugger?: Debugger
+  private messageBus?: IMessageBus
   private retryBudget: IRetryBudget
   private checkpointIntegrator?: ICheckpointIntegrator
   private failureState: IFailureState
@@ -166,6 +167,7 @@ export class ParallelRunner {
     this.onWorkerStatus = options.onWorkerStatus
     this.buildPrompt = options.buildPrompt
     this.debugger = options.debugger
+    this.messageBus = options.messageBus
     this.circuitBreakerThreshold = options.config.circuitBreakerThreshold ?? 5
     this.tasksPerWorker = new Array(this.workers).fill(0)
     
@@ -344,6 +346,7 @@ export class ParallelRunner {
       startTime: new Date(),
       namespace,
       workerId,
+      messageBus: this.messageBus,
     }
 
     this.activeContexts.set(task.id, taskContext)
@@ -400,6 +403,31 @@ export class ParallelRunner {
     const now = Date.now()
     if (now - this.lastCleanupTime < this.cleanupInterval) return
     this.lastCleanupTime = now
+  }
+
+  abort(): void {
+    this.isAborted = true
+  }
+
+  async notifyAbort(): Promise<void> {
+    const promises = Array.from(this.activeContexts.values()).map(ctx => {
+      if (this.onTaskAbort) {
+        return this.onTaskAbort(ctx)
+      }
+      return Promise.resolve()
+    })
+    await Promise.allSettled(promises)
+  }
+
+  async resetInterruptedTasks(taskIds: string[]): Promise<void> {
+    for (const id of taskIds) {
+      try {
+        await this.backend.resetToPending(id)
+        this.logger.debug(`Reset interrupted task ${id} to pending`)
+      } catch (err) {
+        this.logger.error(`Failed to reset interrupted task ${id}: ${err}`)
+      }
+    }
   }
 
   getState(): ParallelState {

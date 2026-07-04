@@ -1,4 +1,5 @@
-import { logger, Table } from '../core/utils'
+import React from 'react'
+import { logger, renderInk, InkTable } from '../core/utils'
 import { LoopworkError } from '../core/errors'
 import type { Config } from '../core/config'
 import type { TaskBackend } from '../backends'
@@ -49,33 +50,36 @@ export async function list(options: DeadletterListOptions = {}, deps = defaultDe
 
   deps.logger.info(`Dead Letter Queue (${tasks.length} quarantined tasks)\n`)
 
-  const table = new Table(
-    ['ID', 'Title', 'Failures', 'Quarantined At', 'Last Error'],
-    [
-      { width: 12, align: 'left' },
-      { width: 30, align: 'left' },
-      { width: 10, align: 'center' },
-      { width: 25, align: 'left' },
-      { width: 35, align: 'left' },
-    ]
-  )
-
-  for (const task of tasks) {
+  const rows = tasks.map(task => {
     const error = task.lastError || task.events?.find(e => e.type === 'quarantined')?.message || 'Unknown'
-    const quarantinedAt = task.timestamps?.quarantinedAt 
-      ? new Date(task.timestamps.quarantinedAt).toLocaleString() 
+    const quarantinedAt = task.timestamps?.quarantinedAt
+      ? new Date(task.timestamps.quarantinedAt).toLocaleString()
       : '-'
-      
-    table.addRow([
+
+    return [
       task.id,
       task.title.substring(0, 29),
       (task.failureCount || 0).toString(),
       quarantinedAt,
       error.substring(0, 34)
-    ])
-  }
+    ]
+  }) as string[][]
 
-  deps.logger.raw(table.render())
+  const tableOutput = await renderInk(
+    React.createElement(InkTable, {
+      headers: ['ID', 'Title', 'Failures', 'Quarantined At', 'Last Error'],
+      rows,
+      columnConfigs: [
+        { width: 12, align: 'left' },
+        { width: 30, align: 'left' },
+        { width: 10, align: 'center' },
+        { width: 25, align: 'left' },
+        { width: 35, align: 'left' },
+      ],
+    })
+  )
+
+  deps.logger.raw(tableOutput)
   
   if (config.deadletter?.enabled) {
     deps.logger.raw('')

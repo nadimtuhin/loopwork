@@ -1,7 +1,9 @@
 import { IEmbeddingProvider, IEmbeddingConfig } from '@loopwork-ai/contracts'
 import { RateLimitError, isRateLimitError, isTransientError } from '@loopwork-ai/resilience'
 
-export type OpenAIEmbeddingConfig = IEmbeddingConfig
+export type OpenAIEmbeddingConfig = IEmbeddingConfig & {
+  dimensions?: number
+}
 
 export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   readonly name = 'openai-embedding'
@@ -63,12 +65,10 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
         const errorText = await response.text()
         const errorMessage = `OpenAI API error: ${response.status} - ${errorText}`
 
-        // Check for rate limit errors (429)
         if (response.status === 429 || isRateLimitError(errorText)) {
           throw new RateLimitError(errorMessage, response.status)
         }
 
-        // Check for transient errors (5xx, timeouts, connection issues)
         if (isTransientError(errorText) || response.status >= 500) {
           throw new Error(`Transient error: ${errorMessage}`)
         }
@@ -80,17 +80,14 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
 
       return data.data.map(item => item.embedding)
     } catch (error) {
-      // Handle AbortController timeout
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error(`OpenAI API timeout after ${this.timeoutMs}ms`)
       }
 
-      // Re-throw RateLimitError as-is
       if (error instanceof RateLimitError) {
         throw error
       }
 
-      // Check if it's a rate limit or transient error
       if (isRateLimitError(error)) {
         throw new RateLimitError(String(error), 429)
       }

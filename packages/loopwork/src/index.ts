@@ -1,7 +1,82 @@
 import { Command } from 'commander'
-import { logger } from './core/utils' // TODO: Will be moved to @loopwork-ai/common after utils refactor
+import { logger, setErrorRegistry } from './core/utils'
+import { CentralErrorRegistry } from '@loopwork-ai/error-service'
 import { handleError, LoopworkError } from './core/errors'
+import { container } from './core/di/container'
 import packageJson from '../package.json'
+
+// Import command classes from cli-commands package
+import {
+  InitCommand,
+  ConfigCommand,
+  RescheduleCommand,
+  CheckpointCommand,
+} from '@loopwork-ai/cli-commands'
+
+// Import command registry and context builder
+import { getCommandRegistry } from './registry/command-registry'
+import { buildCommandContext } from './registry/context-builder'
+
+// Import backend utilities for dependency injection
+import { getBackendAndConfig } from './commands/shared'
+
+/**
+ * Helper function to execute a registered command
+ * Bridges ICommand interface with commander.js action handlers
+ */
+async function executeRegisteredCommand(commandName: string, options: Record<string, unknown>) {
+  const registry = getCommandRegistry()
+  const command = registry.get(commandName)
+
+  if (!command) {
+    logger.error(`Command '${commandName}' not found in registry`)
+    logger.error('Check if the command is properly registered')
+    process.exit(1)
+  }
+
+  // Validate options before execution
+  const validationError = command.validate?.(options)
+  if (validationError) {
+    logger.error(`Validation error: ${validationError}`)
+    process.exit(1)
+  }
+
+  // Build command context with backend dependency if needed
+  let deps: Record<string, unknown> = {}
+  
+  // For reschedule command, inject backend
+  if (commandName === 'reschedule') {
+    const { backend } = await getBackendAndConfig({})
+    deps = { backend }
+  }
+
+  // For checkpoint command, inject checkpointManager
+  if (commandName === 'checkpoint') {
+    const { createCheckpointManager } = await import('@loopwork-ai/checkpoint')
+    const path = await import('path')
+    const checkpointManager = createCheckpointManager({
+      basePath: path.join(process.cwd(), '.loopwork/checkpoints'),
+    })
+    deps = { checkpointManager }
+  }
+  
+  const context = buildCommandContext(deps)
+
+  // Execute command
+  command.execute(context, options)
+    .then((result) => {
+      if (result.success) {
+        process.exit(result.code)
+      } else {
+        logger.error(result.message)
+        process.exit(result.code)
+      }
+    })
+    .catch((err) => {
+      handleError(err)
+      process.exit(1)
+    })
+}
 
 // Export library API for use in config files
 export {
@@ -15,8 +90,12 @@ export {
   withAIMonitor,
   withDynamicTasks,
   withGitAutoCommit,
+  withSmartTasks,
+  withSmartTasksConservative,
+  withSmartTasksAggressive,
   withSmartTestTasks,
   withTaskRecovery,
+  withSafety,
   // CLI configuration
   withCli,
   withModels,
@@ -38,6 +117,10 @@ export {
 export type { SimpleConfigOptions } from './plugins/simple-config'
 export { logger } from './core/utils' // TODO: Will be moved to @loopwork-ai/common after utils refactor
 export type { LoopworkConfig, LoopworkPlugin, ConfigWrapper, DynamicTasksConfig } from './contracts'
+export type {
+  IDocGenerator,
+  IChangeLogProvider,
+} from '@loopwork-ai/contracts'
 export type {
   ModelConfig,
   CliExecutorConfig,
@@ -75,6 +158,23 @@ export type {
 export { PatternAnalyzer, LLMAnalyzer } from './analyzers'
 export type { PatternAnalyzerConfig } from './analyzers'
 export type { TaskAnalyzer, TaskAnalysisResult, SuggestedTask } from './contracts/analysis'
+
+// Export memory/retrieval and context management
+export {
+  MemoryRetriever,
+  createMemoryRetriever,
+  type RetrievalOptions,
+  type RetrievalResult,
+  type RetrievalStats,
+} from './memory/retriever'
+export {
+  SlidingWindowContextManager,
+  createSlidingWindowContextManager,
+  type ContextItem,
+  type SlidingWindowOptions,
+  type ContextStats,
+  type ContextSummary,
+} from './memory/sliding-window-context'
 export type {
   ILLMAnalyzer,
   LLMAnalyzerConfig,
@@ -105,7 +205,7 @@ export { ParallelRunnerFactory } from './core/parallel-runner-factory'
 export type { IParallelRunnerFactory } from './core/parallel-runner-factory'
 
 // Export adapters for bridging to agent packages
-export { CliRunnerAdapter, GitRunnerAdapter } from './adapters'
+export { CliAdapter, GitAdapter, CliRunnerAdapter, GitRunnerAdapter } from './adapters'
 
 // Re-export from @loopwork-ai/agents
 export {
@@ -211,11 +311,37 @@ export {
   CompletionSummary,
 } from './components'
 
+// Re-export isolation providers
+export { LocalIsolationProvider as LocalProvider } from '@loopwork-ai/isolation'
+export type { SandboxHandle } from '@loopwork-ai/isolation'
+
+// Theme system with dark/light mode support
+export {
+  ThemeProvider,
+  useTheme,
+  useThemeColors,
+  useThemeColor,
+  createTheme,
+  getAvailableThemes,
+  isHighContrast,
+  defaultTheme,
+  type ThemeContextValue,
+  type ThemeVariant,
+  type ThemeConfig,
+  type ThemeColors,
+} from './theme'
+export {
+  lightThemeColors,
+  darkThemeColors,
+  highContrastLightColors,
+  highContrastDarkColors,
+  type InkColor,
+} from './theme'
+
 // Export error handling
 export {
   LoopworkError,
   handleError,
-  ERROR_CODES,
   type ErrorCode,
   createCliNotFoundError,
   createNoTasksError,
@@ -301,6 +427,11 @@ function shouldAutoInsertRun(args: string[]): boolean {
 // Only run CLI if this is the main module
 if (import.meta.main) {
   async function main() {
+    // Initialize central error registry and inject it into the utility layer
+    const errorRegistryInstance = new CentralErrorRegistry()
+    setErrorRegistry(errorRegistryInstance)
+    container.registerInstance('IErrorRegistry', errorRegistryInstance)
+
     const program = new Command()
 
     program
@@ -308,7 +439,9 @@ if (import.meta.main) {
       .description('AI-powered task automation framework')
       .version(packageJson.version)
       .option('-q, --quiet', 'Quiet mode: errors only')
-      .option('-v, --verbose', 'Verbose mode: add debug info (-v=debug, -vv=verbose, -vvv=trace)', false)
+      .option('-v, --verbose', 'Verbose mode: add debug info (use -v, -vv, or -vvv for increasing verbosity)', (_, prev) => {
+        return (prev || 0) + 1
+      }, 0)
 
     // Apply global verbosity settings before any command runs
     program.hook('preAction', (thisCommand) => {
@@ -316,9 +449,8 @@ if (import.meta.main) {
 
       if (opts.quiet) {
         logger.setLogLevel('error')
-      } else if (opts.verbose) {
-        // Count how many times -v was specified
-        const verbosityCount = typeof opts.verbose === 'number' ? opts.verbose : 1
+      } else if (opts.verbose && opts.verbose > 0) {
+        const verbosityCount = opts.verbose
 
         if (verbosityCount >= 3) {
           logger.setLogLevel('trace')
@@ -335,6 +467,13 @@ if (import.meta.main) {
     if (shouldAutoInsertRun(args)) {
       process.argv.splice(2, 0, 'run')
     }
+
+    // Register commands with the command registry
+    const registry = getCommandRegistry()
+    registry.register(new InitCommand())
+    registry.register(new ConfigCommand())
+    registry.register(new RescheduleCommand())
+    registry.register(new CheckpointCommand())
 
     // Kill command (alias for stop, more intuitive name)
     program
@@ -424,13 +563,18 @@ if (import.meta.main) {
       .option('--feature <name>', 'Feature name')
       .option('--all', 'Reschedule all completed tasks')
       .action(async (id, options) => {
-        try {
-          const { reschedule } = await import('./commands/reschedule')
-          await reschedule(id, options)
-        } catch (err) {
-          handleError(err)
-          process.exit(1)
-        }
+        executeRegisteredCommand('reschedule', { ...options, id })
+      })
+
+    // Config command
+    program
+      .command('config')
+      .description('Display and inspect the current Loopwork configuration')
+      .option('--format <type>', 'Output format: json or pretty', 'pretty')
+      .option('--keys <keys...>', 'Show only specific config keys')
+      .option('--validate', 'Validate config without outputting')
+      .action(async (options) => {
+        executeRegisteredCommand('config', options)
       })
 
     // PS command - Docker Compose-style process list
@@ -731,13 +875,7 @@ if (import.meta.main) {
       .command('init')
       .description('Initialize a new loopwork project')
       .action(async () => {
-        try {
-          const { init } = await import('./commands/init')
-          await init()
-        } catch (err) {
-          handleError(err)
-          process.exit(1)
-        }
+        executeRegisteredCommand('init', {})
       })
 
     // Start command with daemon support
@@ -975,6 +1113,26 @@ if (import.meta.main) {
           handleError(err)
           process.exit(1)
         }
+      })
+
+    // Checkpoint command
+    program
+      .command('checkpoint <subcommand> [args...]')
+      .description('Manage execution checkpoints')
+      .option('--json', 'Output as JSON')
+      .option('--max-age-days <number>', 'Delete checkpoints older than N days')
+      .action(async (subcommand, args, options) => {
+        await executeRegisteredCommand('checkpoint', { ...options, subcommand, args })
+      })
+
+    // Checkpoint cleanup subcommand with options
+    program
+      .command('checkpoint:cleanup')
+      .description('Clean up old checkpoints')
+      .option('--max-age-days <number>', 'Delete checkpoints older than N days', '7')
+      .option('--json', 'Output as JSON')
+      .action(async (options) => {
+        await executeRegisteredCommand('checkpoint', { ...options, subcommand: 'cleanup' })
       })
 
     // Scaffold command

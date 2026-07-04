@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware } from '../auth'
 
 /**
  * auth Tests

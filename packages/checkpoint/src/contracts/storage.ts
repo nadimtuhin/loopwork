@@ -26,4 +26,6 @@ export interface ICheckpointManager {
   restore(agentId: string): Promise<RestoredContext | null>
   onEvent(agentId: string, event: CheckpointEvent): Promise<void>
   clear(agentId: string): Promise<void>
+  list(): Promise<string[]>
+  cleanup(maxAgeDays: number): Promise<number>
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@loopwork-ai/backend-github",
+  "version": "0.1.0",
+  "description": "GitHub Issues-based task backend for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/common": "workspace:*",
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/resilience": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

@@ -1,58 +1,118 @@
-import path from 'path';
-import { ScaffoldGenerator } from '../core/scaffold';
-import { logger } from '../core/utils';
-import { LoopworkError } from '../core/errors';
+import path from 'path'
+import { ScaffoldGenerator } from '../core/scaffold'
+import { InputValidator } from '../core/scaffold/input-validator'
+import { logger } from '../core/utils'
+import { LoopworkError } from '../core/errors'
+import { ScaffoldHooks } from '../core/scaffold/types'
 
 export interface ScaffoldCommandOptions {
-  output?: string;
-  dryRun?: boolean;
-  force?: boolean;
-  [key: string]: unknown;
+  output?: string
+  dryRun?: boolean
+  force?: boolean
+  skipValidation?: boolean
+  hooks?: ScaffoldHooks
+  [key: string]: unknown
+  'plugin'?: string
 }
 
 export async function scaffold(templateName: string, name: string, options: ScaffoldCommandOptions) {
-  const cwd = process.cwd();
-  // Convention: Look for templates in .specs/templates
-  const templatesDir = path.join(cwd, '.specs/templates'); 
-  const templatePath = path.join(templatesDir, templateName);
+  const cwd = process.cwd()
+  const templatesDir = path.join(cwd, '.specs/templates')
+  const templatePath = path.join(templatesDir, templateName)
 
-  const outputDir = options.output ? path.resolve(cwd, options.output) : cwd;
+  logger.info(`Scaffolding '${templateName}' with name '${name}'...`)
+  logger.debug(`Template source: ${templatePath}`)
+  logger.debug(`Output target: ${options.output || cwd}`)
 
-  // Context construction (include CLI options as context variables)
-  const context = {
+  if (!options.skipValidation) {
+    const validator = new InputValidator()
+    const data = { templateName, name, ...options }
+
+    const templateConfig = InputValidator.defaultTemplateNameValidator()
+    const nameConfig = InputValidator.defaultNameValidator()
+
+    const templateResult = validator.validate(data, templateConfig)
+    const nameResult = validator.validate(data, nameConfig)
+
+    const allErrors = [...templateResult.errors, ...nameResult.errors]
+    const allWarnings = [...templateResult.warnings, ...nameResult.warnings]
+
+    for (const warning of allWarnings) {
+      logger.warn(`Validation warning: ${warning.message}`)
+    }
+
+    if (allErrors.length > 0) {
+      logger.error('Input validation failed:')
+      allErrors.forEach(e => logger.error(`  ${e.field}: ${e.message}`))
+      throw new LoopworkError(
+        'ERR_PREFLIGHT_FAILED',
+        'Scaffolding input validation failed',
+        [
+          'Fix the validation errors above',
+          'Use --skip-validation to bypass validation (not recommended)'
+        ]
+      )
+    }
+  }
+
+  const context: Record<string, unknown> = {
     name,
     ...options
-  };
+  }
 
-  logger.info(`Scaffolding '${templateName}' with name '${name}'...`);
-  logger.debug(`Template source: ${templatePath}`);
-  logger.debug(`Output target: ${outputDir}`);
+  const hooks = options.hooks || createDefaultHooks()
 
-  const generator = new ScaffoldGenerator();
-  const result = await generator.generate({
+  const result = await new ScaffoldGenerator().generate({
     templateDir: templatePath,
-    outputDir,
+    outputDir: options.output ? path.resolve(cwd, options.output) : cwd,
     context,
     dryRun: options.dryRun,
-    force: options.force
-  });
+    force: options.force,
+    hooks
+  })
 
   if (result.errors.length > 0) {
-    logger.error('Scaffolding encountered errors:');
-    result.errors.forEach(e => logger.error(`- ${e.message}`));
+    logger.error('Scaffolding encountered errors:')
+    result.errors.forEach(e => logger.error(`  ${e.message}`))
     if (result.filesCreated.length === 0) {
-        throw new LoopworkError(
-          'ERR_UNKNOWN',
-          'Scaffolding failed completely',
-          [
-            'Check the template syntax and requirements',
-            'Ensure you have write permissions in the output directory',
-            'Try running with --dry-run to see what would happen'
-          ]
-        );
+      throw new LoopworkError(
+        'ERR_UNKNOWN',
+        'Scaffolding failed completely',
+        [
+          'Check template syntax and requirements',
+          'Ensure you have write permissions in the output directory',
+          'Try running with --dry-run to see what would happen'
+        ]
+      )
     }
-  } else {
-    logger.success(`Scaffolding complete in ${result.duration}ms`);
-    logger.info(`Created: ${result.filesCreated.length}, Skipped: ${result.filesSkipped.length}`);
+  }
+
+  logger.success(`Scaffolding complete in ${result.duration}ms`)
+  logger.info(`Created: ${result.filesCreated.length}, Skipped: ${result.filesSkipped.length}`)
+}
+
+function createDefaultHooks(): ScaffoldHooks {
+  return {
+    onStart: (context) => {
+      logger.debug(`Starting scaffolding with context: ${JSON.stringify(context)}`)
+    },
+    onFileCreated: (filePath, content) => {
+      logger.debug(`File created hook: ${filePath}`)
+    },
+    onFileSkipped: (filePath) => {
+      logger.info(`File already exists, skipping: ${filePath}`)
+    },
+    onFileError: (filePath, error) => {
+      logger.error(`Error creating file ${filePath}: ${error.message}`)
+    },
+    onComplete: (result) => {
+      logger.debug(`Scaffolding completed with ${result.filesCreated.length} files created, ${result.errors.length} errors`)
+    },
+    onSuccess: (result) => {
+      logger.success(`Successfully created ${result.filesCreated.length} file(s)`)
+    },
+    onFailure: (error) => {
+      logger.error(`Scaffolding failed: ${error.message}`)
+    }
   }
 }

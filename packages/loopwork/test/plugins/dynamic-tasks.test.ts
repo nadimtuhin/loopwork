@@ -22,10 +22,10 @@ describe('withDynamicTasks config wrapper', () => {
     expect(wrappedConfig).toHaveProperty('dynamicTasks')
     expect(wrappedConfig.dynamicTasks).toEqual({
       enabled: true,
+      analyzer: 'pattern',
       createSubTasks: true,
       maxTasksPerExecution: 3,
       autoApprove: false,
-      logCreatedTasks: true
     })
   })
 
@@ -35,10 +35,10 @@ describe('withDynamicTasks config wrapper', () => {
 
     expect(wrappedConfig.dynamicTasks).toEqual({
       enabled: true,
+      analyzer: 'pattern',
       createSubTasks: true,
       maxTasksPerExecution: 5,
       autoApprove: true,
-      logCreatedTasks: true
     })
   })
 })

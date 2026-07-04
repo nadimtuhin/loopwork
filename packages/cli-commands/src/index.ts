@@ -6,4 +6,7 @@
  * into a separate, testable package.
  */
 
-export {}
+export { InitCommand, createInitCommand, type InitOptions } from './init'
+export { ConfigCommand, createConfigCommand, type ConfigOptions } from './config'
+export { RescheduleCommand, createRescheduleCommand, type RescheduleOptions } from './reschedule'
+export { CheckpointCommand, createCheckpointCommand, type CheckpointOptions } from './checkpoint'

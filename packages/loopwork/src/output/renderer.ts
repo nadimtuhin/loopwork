@@ -11,20 +11,12 @@ import type {
   OutputConfig,
   LogEvent,
 } from './contracts'
+import type { IRenderer } from '@loopwork-ai/contracts'
 
 /**
  * Output renderer interface - implemented by all renderers
  */
-export interface OutputRenderer {
-  readonly name: string
-  readonly isSupported: boolean
-
-  render(event: OutputEvent): void
-  renderEvent(event: OutputEvent): void
-  subscribe(subscriber: OutputEventSubscriber): () => void
-  configure(config: Partial<OutputConfig>): void
-  dispose(): void
-}
+export type OutputRenderer = IRenderer
 
 /**
  * Renderer factory type

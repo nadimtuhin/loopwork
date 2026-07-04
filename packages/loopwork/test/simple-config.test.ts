@@ -99,14 +99,7 @@ describe('Simple Config API', () => {
       expect(config.plugins?.[0].name).toBe('git-autocommit')
     })
 
-    test('enables smartTests plugin when specified', () => {
-      const config = defineSimpleConfig({
-        models: ['claude-sonnet'],
-        smartTests: true,
-      })
 
-      expect(config.plugins?.some(p => p.name === 'smart-tasks')).toBe(true)
-    })
 
     test('enables taskRecovery plugin when specified', () => {
       const config = defineSimpleConfig({

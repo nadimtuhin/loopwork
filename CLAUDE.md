@@ -10,16 +10,27 @@ Loopwork is a monorepo for an AI-powered task automation framework. It runs AI C
 
 This is a Bun workspace monorepo with the following packages:
 
-- `packages/loopwork/` - Core framework with task backends (JSON, GitHub), CLI runner, state management
-- `packages/telegram/` - Telegram bot plugin for notifications and commands
-- `packages/discord/` - Discord webhook plugin for notifications
-- `packages/asana/` - Asana API integration plugin for task sync
-- `packages/everhour/` - Everhour time tracking plugin
-- `packages/todoist/` - Todoist task sync plugin
-- `packages/cost-tracking/` - Token usage and cost monitoring plugin
-- `packages/notion/` - Notion database backend plugin
-- `packages/dashboard/` - Interactive dashboard package
-- `packages/dashboard/web/` - Next.js web UI (nested workspace)
+- `packages/contracts/` - **Source of Truth**. Core interfaces and domain contracts (zero dependencies).
+- `packages/common/` - **Shared Utilities**. Stateless helpers, custom loggers, and basic error types.
+- `packages/state/` - **State Domain**. Implements session tracking, plugin state, and exclusive locking.
+- `packages/executor/` - **Execution Engine**. AI CLI execution logic, model selection, and health monitoring.
+- `packages/process-manager/` - **Process Infrastructure**. Lifecycle management for spawned processes and orphan cleanup.
+- `packages/resilience/` - **Resilience Engine**. Retry strategies, backoff policies, and circuit breakers.
+- `packages/loopwork/` - **Main Framework**. Orchestrates all components and provides the CLI entry point.
+- `packages/telegram/`, `packages/discord/`, `packages/asana/`, etc. - **Plugin Packages**. Extensible integrations.
+- `packages/dashboard/` - Interactive dashboard package.
+- `packages/dashboard/web/` - Next.js web UI (nested workspace).
+- `packages/control-api/` - REST API plugin for task management and loop control.
+
+### Dependency Flow
+
+The architecture follows a strict downward dependency flow:
+`loopwork` (App) → `executor` / `state` → `common` → `contracts`
+
+1. **contracts**: No dependencies.
+2. **common**: Depends only on `contracts`.
+3. **state / executor / process-manager**: Depend on `contracts` and `common`.
+4. **loopwork**: Depends on everything.
 
 ## Development Commands
 
@@ -54,10 +65,44 @@ cd packages/loopwork && bun run build
 - Test framework: Bun's built-in test runner
 - Test files: `test/**/*.test.ts` in each package
 - Use `describe`, `test`, `expect`, `mock`, `beforeEach`, `afterEach` from `bun:test`
+- Use DI for testability: Inject `MockProcessManager` or `MemoryPersistenceLayer` in unit tests
+- **No Filesystem Side Effects**: Unit tests should never write to the real disk. Use memory mocks.
 - Global fetch is mocked in integration tests for external APIs
 - E2E tests exist in `packages/loopwork/test/e2e.test.ts`
 
 ## Core Architecture
+
+### Dependency Injection Patterns
+
+The codebase uses Dependency Injection (DI) to decouple business logic from infrastructure and enable testing with mocks.
+
+#### CliExecutor DI Example
+`CliExecutor` injects its infrastructure dependencies via the constructor:
+```typescript
+import { IProcessManager, IPluginRegistry, ILogger } from '@loopwork-ai/contracts'
+
+export class CliExecutor {
+  constructor(
+    protected config: CliExecutorConfig,
+    protected processManager: IProcessManager, // Injected
+    protected pluginRegistry: IPluginRegistry,   // Injected
+    protected logger: ILogger                    // Injected
+  ) {}
+}
+```
+
+#### StateManager + IPersistenceLayer Example
+The `PersistenceStateManager` delegates actual persistence to an injected layer:
+```typescript
+import { IStateManager, IPersistenceLayer } from '@loopwork-ai/contracts'
+
+export class PersistenceStateManager implements IStateManager {
+  constructor(
+    private config: StateManagerConfig,
+    private persistence: IPersistenceLayer // Injected persistence engine
+  ) {}
+}
+```
 
 ### Plugin System
 
@@ -328,6 +373,33 @@ Architecture docs are in `docs/`:
 3. New CLI commands → Update architecture-overview.md (CLI Commands section)
 4. Changed execution flow → Update cli-invocation.md
 5. Process management changes → Update process-management.md
+
+## Architectural Guidelines & AI Safety
+
+### Strict Layering Rules
+1. **Contracts Only**: Packages must communicate primarily through interfaces defined in `@loopwork-ai/contracts`.
+2. **Downward Flow**: Lower layers (contracts, common) must NEVER depend on higher layers (executor, loopwork).
+3. **Domain Isolation**: Domain packages (`state`, `executor`) should not have direct dependencies on each other. Use `contracts` for cross-domain interaction.
+
+### Import Examples
+- ✅ **Correct**: `import type { IStateManager } from '@loopwork-ai/contracts'`
+- ✅ **Correct**: `import { logger } from '@loopwork-ai/common'`
+- ❌ **Incorrect**: `import { CliExecutor } from '@loopwork-ai/executor'` (inside `state` package)
+- ❌ **Incorrect**: `import { MemoryPersistenceLayer } from '@loopwork-ai/state'` (inside `contracts` package)
+
+## Common Development Tasks
+
+### Working with Contracts
+When adding new functionality:
+1. Define the interface in `packages/contracts/src/`.
+2. Export the interface from `packages/contracts/src/index.ts`.
+3. Implement the interface in the appropriate domain package.
+
+### Creating Injectable Services
+Always use constructor-based DI:
+1. Define a `Config` interface for the service.
+2. Accept dependencies as interfaces in the constructor.
+3. Provide a default implementation or factory function in the main package (`loopwork`).
 
 ## Important Notes
 

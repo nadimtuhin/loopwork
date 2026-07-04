@@ -6,6 +6,14 @@ import {
   RetryAttempt,
   IBackoffPolicy
 } from '@loopwork-ai/contracts'
+import {
+  RetryAlertConfig,
+  RetryAlertSeverity,
+  RetryAlertType,
+  RetryTelemetryConfig,
+  RetryMetrics,
+  RetryAlert
+} from '@loopwork-ai/contracts'
 import { 
   ExponentialBackoff, 
   ConstantBackoff, 
@@ -162,6 +170,23 @@ export class ResilienceRunner implements IResilienceEngine {
     averageAttemptsPerOperation: 0,
   }
 
+  // Telemetry state
+  private telemetryConfig: RetryTelemetryConfig | null = null
+  private detailedMetrics: RetryMetrics = {
+    totalOperations: 0,
+    immediateSuccess: 0,
+    retriedOperations: 0,
+    totalRetries: 0,
+    recoveredOperations: 0,
+    permanentlyFailedOperations: 0,
+    totalRetryDelayMs: 0,
+    retryRate: 0,
+    averageAttempts: 0,
+    activeRetries: 0,
+  }
+  private consecutiveFailures = 0
+  private lastRetryTimestamp: Date | null = null
+
   constructor(options: Partial<ResilienceRunnerOptions> = {}) {
     this.options = {
       ...DEFAULT_RESILIENCE_OPTIONS,
@@ -223,6 +248,20 @@ export class ResilienceRunner implements IResilienceEngine {
       totalAttempts: 0,
       averageAttemptsPerOperation: 0,
     }
+    this.detailedMetrics = {
+      totalOperations: 0,
+      immediateSuccess: 0,
+      retriedOperations: 0,
+      totalRetries: 0,
+      recoveredOperations: 0,
+      permanentlyFailedOperations: 0,
+      totalRetryDelayMs: 0,
+      retryRate: 0,
+      averageAttempts: 0,
+      activeRetries: 0,
+    }
+    this.consecutiveFailures = 0
+    this.lastRetryTimestamp = null
   }
 
   getStats() {
@@ -255,8 +294,10 @@ export class ResilienceRunner implements IResilienceEngine {
     } = activeConfig
     
     this.stats.totalOperations++
+    this.detailedMetrics.totalOperations++
     const attemptHistory: RetryAttempt[] = []
     const startTime = Date.now()
+    let totalDelay = 0
     
     let attempt = 0
     let lastError: Error | undefined
@@ -269,10 +310,18 @@ export class ResilienceRunner implements IResilienceEngine {
       
       if (attempt > 1) {
         currentDelay = backoffPolicy.calculateDelay(attempt - 1, lastError)
+        totalDelay += currentDelay
+        this.detailedMetrics.totalRetryDelayMs += currentDelay
+
+        if (attempt === 2) {
+          this.detailedMetrics.retriedOperations++
+        }
 
         if (onRetry && lastError) {
           onRetry(attempt, lastError, currentDelay)
         }
+
+        this.recordRetryEvent('retry', { attempt, delay: currentDelay, error: lastError?.message })
 
         await new Promise(resolve => setTimeout(resolve, currentDelay))
       }
@@ -303,7 +352,14 @@ export class ResilienceRunner implements IResilienceEngine {
         attemptHistory.push(retryAttempt)
         
         this.stats.successfulOperations++
+        if (attempt === 1) {
+          this.detailedMetrics.immediateSuccess++
+        } else {
+          this.detailedMetrics.recoveredOperations++
+        }
         this.updateAverageAttempts()
+        
+        this.recordRetryEvent('success', { attempt, totalDelay })
         
         const finalResult: RetryResult<T> = {
           success: true,
@@ -312,6 +368,8 @@ export class ResilienceRunner implements IResilienceEngine {
           result,
           attemptHistory,
         }
+
+        this.checkAlertThresholds(finalResult)
 
         if (onComplete) {
           onComplete(finalResult)
@@ -337,7 +395,11 @@ export class ResilienceRunner implements IResilienceEngine {
     }
 
     this.stats.failedOperations++
+    this.detailedMetrics.permanentlyFailedOperations++
     this.updateAverageAttempts()
+    this.updateDetailedMetricsFromStats()
+
+    this.recordRetryEvent('failure', { attempt, totalDelay, error: lastError?.message })
 
     const finalResult: RetryResult<T> = {
       success: false,
@@ -346,6 +408,8 @@ export class ResilienceRunner implements IResilienceEngine {
       attemptHistory,
       finalError: lastError,
     }
+
+    this.checkAlertThresholds(finalResult)
 
     if (onComplete) {
       onComplete(finalResult)
@@ -378,6 +442,129 @@ export class ResilienceRunner implements IResilienceEngine {
 
   getRateLimitWaitMs(): number {
     return this.options.rateLimitWaitMs
+  }
+
+  configureTelemetry(config: RetryTelemetryConfig): void {
+    this.telemetryConfig = config
+  }
+
+  getMetrics(): RetryMetrics {
+    return { ...this.detailedMetrics }
+  }
+
+  recordRetryEvent(event: 'retry' | 'success' | 'failure', data?: Record<string, unknown>): void {
+    if (!this.telemetryConfig) {
+      return
+    }
+
+    if (event === 'success') {
+      if (this.consecutiveFailures > 0) {
+        this.consecutiveFailures = 0
+      }
+    } else if (event === 'failure') {
+      this.consecutiveFailures++
+    }
+
+    if (!this.telemetryConfig.enableMetrics) {
+      return
+    }
+
+    const operationName = this.telemetryConfig.operationName || 'resilience'
+
+    switch (event) {
+      case 'retry':
+        this.detailedMetrics.totalRetries++
+        this.detailedMetrics.activeRetries++
+        this.lastRetryTimestamp = new Date()
+        break
+      case 'success':
+        this.detailedMetrics.activeRetries = Math.max(0, this.detailedMetrics.activeRetries - 1)
+        break
+      case 'failure':
+        this.detailedMetrics.activeRetries = Math.max(0, this.detailedMetrics.activeRetries - 1)
+        break
+    }
+
+    this.updateDetailedMetrics()
+  }
+
+  private updateDetailedMetrics(): void {
+    const totalOps = this.detailedMetrics.totalOperations || this.stats.totalOperations
+    const failedOps = this.detailedMetrics.permanentlyFailedOperations || this.stats.failedOperations
+    const successfulOps = this.detailedMetrics.recoveredOperations + this.detailedMetrics.immediateSuccess
+
+    this.detailedMetrics.totalOperations = totalOps
+    this.detailedMetrics.permanentlyFailedOperations = failedOps
+
+    if (totalOps > 0) {
+      this.detailedMetrics.retryRate = this.detailedMetrics.retriedOperations / totalOps
+      this.detailedMetrics.averageAttempts = this.detailedMetrics.totalRetries / totalOps + 1
+    }
+  }
+
+  private checkAlertThresholds(result: RetryResult<unknown>): void {
+    if (!this.telemetryConfig?.enableAlerts || !this.telemetryConfig.alertConfig) {
+      return
+    }
+
+    const alertConfig = this.telemetryConfig.alertConfig
+    const alerts: RetryAlert[] = []
+
+    if (alertConfig.maxRetryRate !== undefined && this.detailedMetrics.totalOperations > (alertConfig.minOperationsForRate || 10)) {
+      if (this.detailedMetrics.retryRate > alertConfig.maxRetryRate) {
+        alerts.push({
+          type: RetryAlertType.HIGH_RETRY_RATE,
+          severity: RetryAlertSeverity.WARNING,
+          message: `Retry rate (${(this.detailedMetrics.retryRate * 100).toFixed(1)}%) exceeds threshold (${(alertConfig.maxRetryRate * 100).toFixed(1)}%)`,
+          retryRate: this.detailedMetrics.retryRate,
+          totalRetries: this.detailedMetrics.totalRetries,
+          operation: this.telemetryConfig.operationName,
+          timestamp: new Date(),
+        })
+      }
+    }
+
+    if (alertConfig.maxConsecutiveFailures !== undefined && this.consecutiveFailures >= alertConfig.maxConsecutiveFailures) {
+      alerts.push({
+        type: RetryAlertType.CONSECUTIVE_FAILURES,
+        severity: this.consecutiveFailures >= alertConfig.maxConsecutiveFailures * 2 ? RetryAlertSeverity.ERROR : RetryAlertSeverity.WARNING,
+        message: `${this.consecutiveFailures} consecutive failures detected`,
+        consecutiveFailures: this.consecutiveFailures,
+        operation: this.telemetryConfig.operationName,
+        timestamp: new Date(),
+      })
+    }
+
+    if (alertConfig.maxRetriesPerOperation !== undefined && result.attempts > alertConfig.maxRetriesPerOperation) {
+      alerts.push({
+        type: RetryAlertType.MAX_RETRIES_EXCEEDED,
+        severity: RetryAlertSeverity.ERROR,
+        message: `Operation exceeded max retries (${result.attempts}/${alertConfig.maxRetriesPerOperation})`,
+        totalRetries: result.attempts - 1,
+        operation: this.telemetryConfig.operationName,
+        timestamp: new Date(),
+        metadata: {
+          attemptHistory: result.attemptHistory.map(a => ({ attempt: a.attempt, success: a.success })),
+        },
+      })
+    }
+
+    for (const alert of alerts) {
+      if (alertConfig.onAlert) {
+        alertConfig.onAlert(alert)
+      }
+    }
+  }
+
+  private updateDetailedMetricsFromStats(): void {
+    this.detailedMetrics.totalOperations = this.stats.totalOperations
+    this.detailedMetrics.recoveredOperations = this.stats.successfulOperations - this.detailedMetrics.immediateSuccess
+    this.detailedMetrics.permanentlyFailedOperations = this.stats.failedOperations
+
+    if (this.stats.totalOperations > 0) {
+      this.detailedMetrics.retryRate = this.stats.totalAttempts / this.stats.totalOperations - 1
+      this.detailedMetrics.averageAttempts = this.stats.totalAttempts / this.stats.totalOperations
+    }
   }
 }
 

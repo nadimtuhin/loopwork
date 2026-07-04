@@ -16,6 +16,7 @@
 - [Command Reference](#command-reference)
 - [Key Constants](#key-constants)
 - [Dependency Graph](#dependency-graph)
+- [Architecture Diagrams](../diagrams/architecture-diagrams.md)
 
 ## Project Overview
 
@@ -331,6 +332,36 @@ delay = initialDelay * (multiplier ^ attempt)
 finalDelay = delay * (1 + random(-0.1, 0.1))
 ```
 
+### Alerting & Telemetry
+
+The resilience engine includes built-in telemetry and alerting to detect systemic issues:
+
+**Configuration:**
+```typescript
+interface RetryTelemetryConfig {
+  enableMetrics: boolean
+  enableAlerts: boolean
+  alertConfig: {
+    maxRetryRate: number          // e.g., 0.3 (30%)
+    maxConsecutiveFailures: number // e.g., 5
+    maxRetriesPerOperation: number // e.g., 10
+    minOperationsForRate: number   // e.g., 10
+    onAlert: (alert: RetryAlert) => void
+  }
+}
+```
+
+**Metrics Tracked:**
+- Total operations & attempts
+- Retry rate (retried ops / total ops)
+- Consecutive failures
+- Recovery rate
+
+**Alert Types:**
+- `HIGH_RETRY_RATE`: System is struggling but recovering
+- `CONSECUTIVE_FAILURES`: Repeated operation failures
+- `MAX_RETRIES_EXCEEDED`: Single operation hitting limit
+
 ## Plugin System
 
 ### LoopworkPlugin Interface
@@ -422,7 +453,7 @@ export default compose(
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enable/disable automatic task generation |
-| `analyzer` | `'pattern' \| 'llm' \| TaskAnalyzer` | `'pattern'` | Analysis strategy: pattern-based regex matching, LLM-based with Claude, or custom analyzer |
+| `analyzer` | `'pattern' \| 'llm' \| TaskAnalyzer` | `'pattern'` | Analysis strategy: pattern-based regex matching, LLM-based with AI, or custom analyzer |
 | `createSubTasks` | `boolean` | `true` | Create generated tasks as sub-tasks (maintains hierarchy) |
 | `maxTasksPerExecution` | `number` | `5` | Maximum new tasks to create per task completion |
 | `autoApprove` | `boolean` | `true` | Auto-create tasks or queue for human approval |
@@ -2171,6 +2202,147 @@ src/index.ts (CLI entry)
         ├── task.ts ─────────────────→ Task data model
         ├── cli.ts ──────────────────→ CLI executor config
         └── executor.ts ─────────────→ ICliExecutor interface
+```
+
+## Telemetry and Observability
+
+**Directory:** `src/telemetry/`
+
+Loopwork provides comprehensive observability through OpenTelemetry-based tracing and metrics. The telemetry system tracks task execution, CLI invocations, and MCP tool calls for monitoring and debugging.
+
+### Telemetry Manager
+
+**File:** `src/telemetry/index.ts`
+
+```typescript
+class TelemetryManager {
+  startTaskSpan(taskId: string, model: string, feature?: string, parentId?: string): Span
+  startLoopSpan(namespace: string): Span
+  startCliSpan(cli: string, model: string, taskId: string): Span
+  startToolSpan(toolName: string, taskId?: string, args?: Record<string, unknown>): Span
+  recordToolExecution(toolName: string, durationMs: number, success: boolean, taskId?: string, error?: string): void
+  recordTokenUsage(taskId: string, model: string, inputTokens: number, outputTokens: number, cost: number, durationSeconds: number, status: 'success' | 'failed', error?: string): void
+  recordTaskCompletion(taskId: string, model: string, durationMs: number, inputTokens: number, outputTokens: number, cost: number, success: boolean, error?: string): void
+}
+```
+
+### Spans and Metrics
+
+The telemetry system captures:
+
+| Span Type | Description | Attributes |
+|-----------|-------------|------------|
+| `task.execution` | Task execution lifecycle | task.id, task.model, task.feature, task.parent_id |
+| `task.loop` | Main automation loop | loop.namespace |
+| `cli.execution` | CLI tool invocation | cli.type, cli.model, task.id |
+| `tool.execution` | MCP tool execution | tool.name, task.id, tool.args.keys |
+| `agent.reasoning` | AI reasoning phase | task.id, model |
+
+**Metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ai.tokens.total` | Counter | Total tokens used by AI models |
+| `ai.tokens.cost` | Counter | Token usage cost in USD |
+| `ai.tokens.per_second` | Histogram | Tokens processed per second |
+| `ai.errors.total` | Counter | Total errors encountered |
+| `task.duration` | Histogram | Task execution duration in milliseconds |
+| `tool.execution.duration` | Histogram | Tool execution duration |
+| `tool.execution.count` | Counter | Total tool execution count |
+| `tool.execution.errors` | Counter | Tool execution errors |
+
+### Tool Execution Tracing
+
+**File:** `src/mcp/server.ts`
+
+The MCP server automatically traces all tool executions:
+
+```typescript
+async handleToolCall(name: string, args: Record<string, unknown>): Promise<unknown> {
+  const startTime = Date.now()
+  const telemetry = TelemetryManager.getInstance()
+  const span = telemetry.startToolSpan(name, taskId, args)
+
+  try {
+    const result = await this.executeToolCall(name, args)
+    const durationMs = Date.now() - startTime
+
+    telemetry.recordToolExecution(name, durationMs, true, taskId)
+    span?.setAttributes({ 'tool.duration_ms': durationMs, 'tool.success': true })
+    span?.setStatus({ code: 1 })
+    return result
+  } catch (error) {
+    telemetry.recordToolExecution(name, durationMs, false, taskId, errorMessage)
+    span?.setStatus({ code: 2, message: errorMessage })
+    throw error
+  }
+}
+```
+
+### Telemetry Plugin
+
+**File:** `src/plugins/telemetry.ts`
+
+The telemetry plugin integrates with the plugin lifecycle:
+
+```typescript
+export function createTelemetryPlugin(): LoopworkPlugin {
+  return {
+    name: 'telemetry',
+
+    async onTaskStart(context: TaskContext) {
+      const span = telemetry.startTaskSpan(context.task.id, context.model, context.task.feature)
+      taskSpans.set(context.task.id, span)
+    },
+
+    async onTaskComplete(context: TaskContext, result) {
+      const span = taskSpans.get(context.task.id)
+      span?.setAttributes({ 'task.duration_ms': result.duration * 1000 })
+      span?.end()
+    },
+
+    async onToolCall(event: ToolCallEvent) {
+      // Additional plugin-level handling
+      logger.debug(`Tool call: ${event.toolName}`)
+    },
+  }
+}
+```
+
+### Configuration
+
+```typescript
+import { compose, defineConfig, withTelemetry } from '@loopwork-ai/loopwork'
+
+export default compose(
+  withTelemetry(),
+)(defineConfig({
+  cli: 'claude',
+  telemetry: {
+    enabled: true,
+    tracesEndpoint: 'http://localhost:4317',
+    metricsEndpoint: 'http://localhost:4318',
+    serviceName: 'loopwork',
+    consoleLogs: true,
+  }
+}))
+```
+
+**Environment Variables:**
+
+| Variable | Description |
+|----------|-------------|
+| `DEBUG` | Enable debug logging |
+| `NODE_ENV` | Set to 'development' for console telemetry logs |
+
+### Usage
+
+View telemetry data:
+
+```bash
+loopwork telemetry                    # Display telemetry report
+loopwork telemetry --json             # Output as JSON
+loopwork telemetry --namespace prod   # Filter by namespace
 ```
 
 ## Architecture Patterns

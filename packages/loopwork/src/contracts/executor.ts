@@ -1,4 +1,5 @@
 import type { ExecutionOptions, ITaskMinimal } from '@loopwork-ai/contracts'
+import type { Config } from '../core/config'
 
 export interface ICliExecutor {
   execute(
@@ -20,4 +21,10 @@ export interface ICliExecutor {
   resetFallback(): void
   cleanup(): Promise<void>
   getNextModel?(): { cli: string; model: string; displayName?: string } | null
+  
+  /**
+   * Update executor configuration at runtime (for hot reload support).
+   * Updates model pool, retry config, process manager settings, etc.
+   */
+  updateConfig?(newConfig: Config): void
 }

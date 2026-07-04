@@ -1,3 +1,9 @@
+import type { ISpawnedProcess, SpawnOptions } from '@loopwork-ai/contracts'
+
+/**
+ * Core isolation provider interfaces
+ */
+
 export interface SandboxProvider {
   /** Unique provider identifier */
   readonly name: string
@@ -42,6 +48,14 @@ export interface SandboxHandle {
   /** Check if handle is still active */
   isActive(): boolean | Promise<boolean>
 
+  /**
+   * Spawn a process within the sandbox
+   * @param command Command to execute
+   * @param args Arguments for the command
+   * @param options Spawn options
+   */
+  spawn(command: string, args: string[], options?: SpawnOptions): Promise<ISpawnedProcess>
+
   /** Terminate the sandbox process */
   terminate(signal?: string): Promise<void>
 
@@ -49,44 +63,14 @@ export interface SandboxHandle {
   cleanup(): Promise<void>
 }
 
-export class LocalProcessProvider implements SandboxProvider {
-  readonly name = 'local'
+/**
+ * Re-export provider implementations
+ */
+export { LocalIsolationProvider } from './local-provider'
+export { DockerIsolationProvider } from './docker-provider'
 
-  async isAvailable(): Promise<boolean> {
-    return true
-  }
-
-  async acquire(config: SandboxConfig): Promise<SandboxHandle> {
-    return new LocalProcessHandle(config)
-  }
-
-  async release(_handle: SandboxHandle): Promise<void> {
-    // No-op for local processes
-  }
-}
-
-class LocalProcessHandle implements SandboxHandle {
-  readonly id: string
-  readonly provider = 'local'
-  pid?: number
-  private _isTerminated = false
-
-  constructor(private config: SandboxConfig) {
-    this.id = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  isActive(): boolean {
-    return !this._isTerminated
-  }
-
-  async terminate(signal = 'SIGTERM'): Promise<void> {
-    this._isTerminated = true
-    this.pid = undefined
-  }
-
-  async cleanup(): Promise<void> {
-    // Local processes don't need special cleanup
-  }
-}
-
-export const defaultProvider = new LocalProcessProvider()
+/**
+ * Default provider instance for backward compatibility
+ */
+import { LocalIsolationProvider } from './local-provider'
+export const defaultProvider = new LocalIsolationProvider()

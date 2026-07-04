@@ -2,11 +2,12 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { LoopworkMonitor } from '../src/monitor'
+import { LoopworkMonitor } from '../src/monitor/index'
 
 describe('LoopworkMonitor', () => {
   let tempDir: string
   let monitor: LoopworkMonitor
+  let spawnedPids: number[] = []
 
   beforeEach(() => {
     tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ralph-monitor-test-')))
@@ -16,10 +17,58 @@ describe('LoopworkMonitor', () => {
     // Create .loopwork directory for state storage
     fs.mkdirSync(path.join(tempDir, '.loopwork'), { recursive: true })
     monitor = new LoopworkMonitor(tempDir)
+    spawnedPids = []
   })
 
-  afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true })
+  afterEach(async () => {
+    try {
+      monitor.stopAll()
+    } catch {
+    }
+
+    for (const pid of spawnedPids) {
+      try {
+        process.kill(pid, 'SIGTERM')
+      } catch (err: unknown) {
+        if ((err as { code?: string }).code !== 'ESRCH') {
+          try {
+            process.kill(pid, 'SIGKILL')
+          } catch {
+          }
+        }
+      }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    for (const pid of spawnedPids) {
+      try {
+        process.kill(pid, 0)
+        process.kill(pid, 'SIGKILL')
+      } catch {
+      }
+    }
+
+    let retries = 5
+    while (retries > 0) {
+      try {
+        if (fs.existsSync(tempDir)) {
+          if (fs.promises.rm) {
+            await fs.promises.rm(tempDir, { recursive: true, force: true })
+          } else {
+            await fs.promises.rmdir(tempDir, { recursive: true })
+          }
+        }
+        break
+      } catch (err) {
+        retries--
+        if (retries === 0) {
+          console.error(`Failed to cleanup tempDir: ${tempDir}`, err)
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 100 * (6 - retries)))
+        }
+      }
+    }
   })
 
   test('getRunningProcesses returns empty array when no state', () => {
@@ -306,31 +355,22 @@ describe('LoopworkMonitor', () => {
     const logsDir = path.join(tempDir, '.loopwork/runs', 'new-ns', 'monitor-logs')
     const result = await monitor.start('new-ns')
 
-    expect(fs.existsSync(logsDir)).toBe(true)
-
-    // Clean up
     if (result.success && result.pid) {
-      try {
-        process.kill(result.pid, 'SIGTERM')
-      } catch {}
+      spawnedPids.push(result.pid)
     }
+
+    expect(fs.existsSync(logsDir)).toBe(true)
   })
 
   test('start accepts extra arguments', async () => {
     const result = await monitor.start('args-ns', ['--extra', 'arg'])
 
-    if (result.success) {
+    if (result.success && result.pid) {
+      spawnedPids.push(result.pid)
       const running = monitor.getRunningProcesses()
       const proc = running.find(p => p.namespace === 'args-ns')
       expect(proc?.args).toContain('--extra')
       expect(proc?.args).toContain('arg')
-
-      // Clean up
-      if (result.pid) {
-        try {
-          process.kill(result.pid, 'SIGTERM')
-        } catch {}
-      }
     }
   })
 })

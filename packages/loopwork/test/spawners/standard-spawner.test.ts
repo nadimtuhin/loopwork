@@ -4,11 +4,11 @@ import fs from 'fs'
 import os from 'os'
 
 // Import will fail until we implement - that's TDD!
-import { StandardSpawner } from '../../src/core/spawners/standard-spawner'
-import type { ProcessSpawner, SpawnedProcess } from '../../src/contracts/spawner'
+import { StandardSpawner } from '@loopwork-ai/process-manager/spawner'
+import type { ISpawner, ISpawnedProcess } from '@loopwork-ai/contracts/process'
 
 describe('StandardSpawner', () => {
-  let spawner: ProcessSpawner
+  let spawner: ISpawner
   let tempDir: string
 
   beforeEach(() => {
@@ -112,7 +112,7 @@ describe('StandardSpawner', () => {
       const proc = spawner.spawn('sh', ['-c', 'exit 42'])
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('close', (code) => resolve(code))
+        proc.on('close', (code: number | null) => resolve(code))
       })
 
       expect(code).toBe(42)
@@ -122,7 +122,7 @@ describe('StandardSpawner', () => {
       const proc = spawner.spawn('echo', ['success'])
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('close', (code) => resolve(code))
+        proc.on('close', (code: number | null) => resolve(code))
       })
 
       expect(code).toBe(0)
@@ -158,7 +158,7 @@ describe('StandardSpawner', () => {
       expect(killed).toBe(true)
 
       const code = await new Promise<number | null>((resolve) => {
-        proc.on('close', (code) => resolve(code))
+        proc.on('close', (code: number | null) => resolve(code))
       })
 
       // Process was killed, so code should be null or non-zero

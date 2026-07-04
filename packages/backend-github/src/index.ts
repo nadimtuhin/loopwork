@@ -1,0 +1,692 @@
+import { $ } from 'bun'
+import { createResilienceRunner, DEFAULT_RATE_LIMIT_WAIT_MS } from '@loopwork-ai/resilience'
+import type { TaskBackend, Task, FindTaskOptions, UpdateResult } from '@loopwork-ai/contracts'
+import { logger } from '@loopwork-ai/common'
+
+/**
+ * GitHub labels for task management
+ */
+export const LABELS = {
+  LOOPWORK_TASK: 'loopwork-task',
+  STATUS_PENDING: 'loopwork:pending',
+  STATUS_IN_PROGRESS: 'loopwork:in-progress',
+  STATUS_FAILED: 'loopwork:failed',
+  STATUS_QUARANTINED: 'loopwork:quarantined',
+  SUB_TASK: 'loopwork:sub-task',
+  PRIORITY_HIGH: 'priority:high',
+  PRIORITY_MEDIUM: 'priority:medium',
+  PRIORITY_LOW: 'priority:low',
+}
+
+/**
+ * Custom error class for backend operations
+ */
+export class BackendError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public suggestions?: string[]
+  ) {
+    super(message)
+    this.name = 'BackendError'
+  }
+}
+
+/**
+ * Patterns for parsing dependencies and parent references from issue body
+ */
+const PARENT_PATTERN = /(?:^|\n)\s*(?:Parent|parent):\s*(?:#?(\d+)|([A-Z]+-\d+-\d+[a-z]?)|(?:[\w-]+\/[\w-]+)?#(\d+))/i
+const DEPENDS_PATTERN = /(?:^|\n)\s*(?:Depends on|depends on|Dependencies|dependencies):\s*(.+?)(?:\n|$)/i
+const SCHEDULED_FOR_PATTERN = /(?:^|\n)\s*(?:Scheduled for|scheduled for|Schedule):\s*(.+?)(?:\n|$)/i
+
+/**
+ * GitHub issue interface (matching gh CLI JSON output)
+ */
+interface GitHubIssue {
+  number: number
+  title: string
+  body?: string
+  state: 'open' | 'closed'
+  labels: { name: string }[]
+  url: string
+  createdAt: string
+  updatedAt: string
+  closedAt: string | null
+}
+
+/**
+ * GitHub backend configuration
+ */
+export interface GitHubBackendConfig {
+  repo?: string
+}
+
+/**
+ * Retry configuration constants
+ */
+const GITHUB_RETRY_BASE_DELAY_MS = 1000
+const GITHUB_MAX_RETRIES = 3
+
+/**
+ * GitHub Issues Adapter
+ *
+ * Adapts GitHub Issues API (via gh CLI) to the TaskBackend interface.
+ */
+export class GitHubTaskAdapter implements TaskBackend {
+  readonly name = 'github'
+  private repo?: string
+  private maxRetries = GITHUB_MAX_RETRIES
+  private baseDelayMs = GITHUB_RETRY_BASE_DELAY_MS
+  private rateLimitWaitMs = DEFAULT_RATE_LIMIT_WAIT_MS
+
+  constructor(config: GitHubBackendConfig = {}) {
+    this.repo = config.repo
+  }
+
+  private repoFlag(): string {
+    return this.repo ? `--repo ${this.repo}` : ''
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>, retries = this.maxRetries): Promise<T> {
+    const runner = createResilienceRunner({
+      maxAttempts: retries + 1,
+      retryOnRateLimit: true,
+      retryOnTransient: true,
+      rateLimitWaitMs: this.rateLimitWaitMs,
+      exponentialBackoff: true,
+      exponentialBackoffBaseDelay: this.baseDelayMs,
+    })
+
+    const result = await runner.execute(fn)
+
+    if (result.success) {
+      return result.result as T
+    }
+
+    throw result.finalError || new Error('Retry failed')
+  }
+
+  private extractIssueNumber(taskId: string): number | null {
+    if (taskId.startsWith('GH-')) return parseInt(taskId.slice(3), 10)
+    const num = parseInt(taskId, 10)
+    if (!isNaN(num)) return num
+    const hashMatch = taskId.match(/#(\d+)/)
+    if (hashMatch) return parseInt(hashMatch[1], 10)
+    return null
+  }
+
+  async findNextTask(options?: FindTaskOptions): Promise<Task | null> {
+    const tasks = await this.listPendingTasks(options)
+    const task = tasks[0] || null
+    if (!task) return null
+
+    return this.getTask(task.id)
+  }
+
+  async getTask(taskId: string): Promise<Task | null> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return null
+
+    try {
+      return await this.withRetry(async () => {
+        const result = await $`gh issue view ${issueNumber} ${this.repoFlag()} --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt`.quiet()
+        const issue: GitHubIssue = JSON.parse(result.stdout.toString())
+        return this.adaptIssue(issue)
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async listTasks(options?: FindTaskOptions): Promise<Task[]> {
+    try {
+      return await this.withRetry(async () => {
+        let stateFilter = 'open'
+        if (options?.status) {
+          const statuses = Array.isArray(options.status) ? options.status : [options.status]
+          if (statuses.includes('completed')) {
+            stateFilter = statuses.length === 1 ? 'closed' : 'all'
+          }
+        }
+
+        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state ${stateFilter} --json number,title,body,labels,url,state,createdAt,updatedAt,closedAt --limit 100`.quiet()
+        const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
+        const allTasks = issues.map(issue => this.adaptIssue(issue))
+
+        let tasks = allTasks
+
+        if (options?.status) {
+          const statuses = Array.isArray(options.status) ? options.status : [options.status]
+          tasks = tasks.filter(t => {
+            if (statuses.includes(t.status)) return true
+
+            if (t.status === 'failed' && statuses.includes('pending') && options.retryCooldown !== undefined) {
+              const failedAt = t.timestamps?.failedAt
+              if (!failedAt) return false
+              const elapsed = Date.now() - new Date(failedAt).getTime()
+              return elapsed > options.retryCooldown
+            }
+            return false
+          })
+        }
+
+        if (options?.feature) {
+          tasks = tasks.filter(t => t.feature === options.feature)
+        }
+
+        if (options?.priority) {
+          tasks = tasks.filter(t => t.priority === options.priority)
+        }
+
+        if (options?.parentId) {
+          const parentNum = this.extractIssueNumber(options.parentId)
+          tasks = tasks.filter(t => {
+            if (!t.parentId) return false
+            const tParentNum = this.extractIssueNumber(t.parentId)
+            return tParentNum === parentNum || t.parentId === options.parentId
+          })
+        }
+
+        if (options?.topLevelOnly) {
+          tasks = tasks.filter(t => !t.parentId)
+        }
+
+        tasks = tasks.filter(t => {
+          if (!t.scheduledFor) return true
+          const scheduledDate = new Date(t.scheduledFor)
+          if (isNaN(scheduledDate.getTime())) return true
+          return scheduledDate <= new Date()
+        })
+
+        const priorityOrder: Record<string, number> = {
+          'high': 0,
+          'medium': 1,
+          'low': 2,
+          'background': 3
+        }
+        tasks.sort((a, b) => {
+          const pa = priorityOrder[a.priority] ?? 1
+          const pb = priorityOrder[b.priority] ?? 1
+          return pa - pb
+        })
+
+        return tasks
+      })
+    } catch {
+      return []
+    }
+  }
+
+  async listPendingTasks(options?: FindTaskOptions): Promise<Task[]> {
+    return this.listTasks({ ...options, status: 'pending' })
+  }
+
+  async countPending(options?: FindTaskOptions): Promise<number> {
+    const tasks = await this.listPendingTasks(options)
+    return tasks.length
+  }
+
+  async markInProgress(taskId: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_PENDING}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_FAILED}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async markCompleted(taskId: string, comment?: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        const msg = comment || 'Completed by Loopwork'
+        await $`gh issue close ${issueNumber} ${this.repoFlag()} --comment "${msg}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async markFailed(taskId: string, error: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_FAILED}"`.quiet()
+        const commentText = `**Loopwork Failed**\n\n\`\`\`\n${error}\n\`\`\``
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${commentText}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async markQuarantined(taskId: string, reason: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_PENDING}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_QUARANTINED}"`.quiet()
+        const commentText = `**Loopwork Quarantined**\n\nReason: ${reason}`
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${commentText}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async resetToPending(taskId: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_FAILED}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_PENDING}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async rescheduleCompleted(taskId: string, scheduledFor?: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      const task = await this.getTask(taskId)
+      if (!task) return { success: false, error: 'Task not found' }
+
+      if (task.status !== 'completed') {
+        return {
+          success: false,
+          error: `Task ${taskId} is not completed (current status: ${task.status})`
+        }
+      }
+
+      await this.withRetry(async () => {
+        await $`gh issue reopen ${issueNumber} ${this.repoFlag()}`.quiet()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_IN_PROGRESS}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.STATUS_FAILED}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${LABELS.STATUS_PENDING}"`.quiet()
+
+        if (scheduledFor) {
+          let newBody = task.description
+          if (SCHEDULED_FOR_PATTERN.test(newBody)) {
+            newBody = newBody.replace(SCHEDULED_FOR_PATTERN, `\nScheduled for: ${scheduledFor}\n`)
+          } else {
+            newBody = `Scheduled for: ${scheduledFor}\n\n${newBody}`
+          }
+          await $`gh issue edit ${issueNumber} ${this.repoFlag()} --body "${newBody}"`.quiet()
+        }
+
+        const msg = `Task rescheduled to pending${scheduledFor ? ` for ${scheduledFor}` : ''}`
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${msg}"`.quiet()
+      })
+      return { success: true, scheduledFor }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async addComment(taskId: string, comment: string): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue comment ${issueNumber} ${this.repoFlag()} --body "${comment}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async ping(): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+    const start = Date.now()
+    try {
+      const result = await $`gh auth status`.quiet()
+      return { ok: result.exitCode === 0, latencyMs: Date.now() - start }
+    } catch (e: unknown) {
+      return { ok: false, latencyMs: Date.now() - start, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async getSubTasks(taskId: string): Promise<Task[]> {
+    const allTasks = await this.listAllTasks()
+    const parentIssueNum = this.extractIssueNumber(taskId)
+    if (!parentIssueNum) return []
+
+    return allTasks.filter(task => {
+      if (!task.parentId) return false
+      const parentNum = this.extractIssueNumber(task.parentId)
+      return parentNum === parentIssueNum || task.parentId === taskId
+    })
+  }
+
+  async getDependencies(taskId: string): Promise<Task[]> {
+    const task = await this.getTask(taskId)
+    if (!task || !task.dependsOn || task.dependsOn.length === 0) return []
+
+    const deps: Task[] = []
+    for (const depId of task.dependsOn) {
+      const depTask = await this.getTask(depId)
+      if (depTask) deps.push(depTask)
+    }
+    return deps
+  }
+
+  async getDependents(taskId: string): Promise<Task[]> {
+    const allTasks = await this.listAllTasks()
+    return allTasks.filter(task => task.dependsOn?.includes(taskId))
+  }
+
+  async areDependenciesMet(taskId: string): Promise<boolean> {
+    const deps = await this.getDependencies(taskId)
+    return deps.every(dep => dep.status === 'completed')
+  }
+
+  async createSubTask(parentId: string, task: Omit<Task, 'id' | 'parentId' | 'status'>): Promise<Task> {
+    const parentNum = this.extractIssueNumber(parentId)
+    if (!parentNum) {
+      throw new BackendError(
+        'ERR_TASK_INVALID',
+        'Invalid parent task ID',
+        [
+          `Parent ID "${parentId}" cannot be parsed`,
+          'Expected format: #123 or FEATURE-001',
+        ]
+      )
+    }
+
+    const body = `Parent: #${parentNum}\n\n${task.description}`
+    const labels = [
+      LABELS.LOOPWORK_TASK,
+      LABELS.STATUS_PENDING,
+      LABELS.SUB_TASK,
+      `priority:${task.priority}`,
+    ]
+    if (task.feature) labels.push(`feat:${task.feature}`)
+
+    const result = await this.withRetry(async () => {
+      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url,createdAt,updatedAt,closedAt`.quiet()
+      return JSON.parse(r.stdout.toString())
+    })
+
+    return this.adaptIssue(result)
+  }
+
+  async addDependency(taskId: string, dependsOnId: string): Promise<UpdateResult> {
+    const task = await this.getTask(taskId)
+    if (!task) return { success: false, error: 'Task not found' }
+
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    const currentDeps = task.dependsOn || []
+    if (currentDeps.includes(dependsOnId)) return { success: true }
+
+    const newDeps = [...currentDeps, dependsOnId]
+    const depsLine = `Depends on: ${newDeps.join(', ')}`
+
+    let newBody = task.description
+    if (DEPENDS_PATTERN.test(newBody)) {
+      newBody = newBody.replace(DEPENDS_PATTERN, `\nDepends on: ${newDeps.join(', ')}\n`)
+    } else {
+      newBody = `${depsLine}\n\n${newBody}`
+    }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --body "${newBody}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async removeDependency(taskId: string, dependsOnId: string): Promise<UpdateResult> {
+    const task = await this.getTask(taskId)
+    if (!task) return { success: false, error: 'Task not found' }
+
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    const currentDeps = task.dependsOn || []
+    const newDeps = currentDeps.filter(d => d !== dependsOnId)
+
+    let newBody = task.description
+    if (newDeps.length > 0) {
+      newBody = newBody.replace(DEPENDS_PATTERN, `\nDepends on: ${newDeps.join(', ')}\n`)
+    } else {
+      newBody = newBody.replace(DEPENDS_PATTERN, '\n')
+    }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --body "${newBody}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async createTask(task: Omit<Task, 'id' | 'status'>): Promise<Task> {
+    const labels = [
+      LABELS.LOOPWORK_TASK,
+      LABELS.STATUS_PENDING,
+      `priority:${task.priority}`,
+    ]
+    if (task.feature) labels.push(`feat:${task.feature}`)
+
+    if (task.parentId) {
+      labels.push(LABELS.SUB_TASK)
+    }
+
+    let body = task.description
+
+    if (task.parentId) {
+      const parentNum = this.extractIssueNumber(task.parentId)
+      if (parentNum) {
+        body = `Parent: #${parentNum}\n\n${body}`
+      } else {
+        body = `Parent: ${task.parentId}\n\n${body}`
+      }
+    }
+
+    if (task.dependsOn && task.dependsOn.length > 0) {
+      const depsRefs = task.dependsOn.map(dep => {
+        const num = this.extractIssueNumber(dep)
+        return num ? `#${num}` : dep
+      })
+      const depsLine = `Depends on: ${depsRefs.join(', ')}`
+      body = task.parentId ? body.replace(task.description, `${depsLine}\n\n${task.description}`) : `${depsLine}\n\n${body}`
+    }
+
+    const result = await this.withRetry(async () => {
+      const r = await $`gh issue create ${this.repoFlag()} --title "${task.title}" --body "${body}" --label "${labels.join(',')}" --json number,title,body,labels,url,createdAt,updatedAt,closedAt`.quiet()
+      return JSON.parse(r.stdout.toString())
+    })
+
+    return this.adaptIssue(result)
+  }
+
+  async setPriority(taskId: string, priority: Task['priority']): Promise<UpdateResult> {
+    const issueNumber = this.extractIssueNumber(taskId)
+    if (!issueNumber) return { success: false, error: 'Invalid task ID' }
+
+    try {
+      await this.withRetry(async () => {
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.PRIORITY_HIGH}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.PRIORITY_MEDIUM}"`.quiet().nothrow()
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --remove-label "${LABELS.PRIORITY_LOW}"`.quiet().nothrow()
+
+        const priorityLabel = `priority:${priority}`
+        await $`gh issue edit ${issueNumber} ${this.repoFlag()} --add-label "${priorityLabel}"`.quiet()
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  private async listAllTasks(): Promise<Task[]> {
+    try {
+      return await this.withRetry(async () => {
+        const result = await $`gh issue list ${this.repoFlag()} --label "${LABELS.LOOPWORK_TASK}" --state open --json number,title,body,labels,url,createdAt,updatedAt,closedAt --limit 200`.quiet()
+        const issues: GitHubIssue[] = JSON.parse(result.stdout.toString())
+        return issues.map(issue => this.adaptIssue(issue))
+      })
+    } catch {
+      return []
+    }
+  }
+
+  private adaptIssue(issue: GitHubIssue): Task {
+    const labels = issue.labels.map(l => l.name)
+    const body = issue.body || ''
+
+    const taskIdMatch = issue.title.match(/TASK-\d+-\d+[a-z]?/i)
+    const id = taskIdMatch ? taskIdMatch[0].toUpperCase() : `GH-${issue.number}`
+
+    let status: Task['status'] = 'pending'
+    if (labels.includes(LABELS.STATUS_IN_PROGRESS)) status = 'in-progress'
+    else if (labels.includes(LABELS.STATUS_FAILED)) status = 'failed'
+    else if (labels.includes(LABELS.STATUS_QUARANTINED)) status = 'quarantined'
+    else if (issue.state === 'closed') status = 'completed'
+
+    let priority: Task['priority'] = 'medium'
+    if (labels.includes(LABELS.PRIORITY_HIGH)) priority = 'high'
+    else if (labels.includes(LABELS.PRIORITY_LOW)) priority = 'low'
+
+    const featureLabel = labels.find(l => l.startsWith('feat:'))
+    const feature = featureLabel?.replace('feat:', '')
+
+    const timestamps: Task['timestamps'] = {
+      createdAt: issue.createdAt,
+    }
+    if (issue.closedAt) {
+      timestamps.completedAt = issue.closedAt
+    }
+
+    if (status === 'in-progress') {
+      timestamps.startedAt = issue.updatedAt
+    } else if (status === 'failed') {
+      timestamps.failedAt = issue.updatedAt
+    } else if (status === 'quarantined') {
+      timestamps.quarantinedAt = issue.updatedAt
+    }
+
+    const events: Task['events'] = [
+      {
+        timestamp: issue.createdAt,
+        type: 'created',
+        message: 'Task created (from GitHub issue)',
+      },
+    ]
+
+    if (status === 'in-progress') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'started',
+        message: 'Task marked as in-progress (on GitHub)',
+      })
+    } else if (status === 'failed') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'failed',
+        message: 'Task marked as failed (on GitHub)',
+      })
+    } else if (status === 'quarantined') {
+      events.push({
+        timestamp: issue.updatedAt,
+        type: 'quarantined',
+        message: 'Task quarantined (on GitHub)',
+      })
+    } else if (issue.state === 'closed') {
+      events.push({
+        timestamp: issue.closedAt || issue.updatedAt,
+        type: 'completed',
+        message: 'Task completed (issue closed on GitHub)',
+      })
+    }
+
+    let parentId: string | undefined
+    let scheduledFor: string | null | undefined
+    const scheduledMatch = body.match(SCHEDULED_FOR_PATTERN)
+    if (scheduledMatch) {
+      scheduledFor = scheduledMatch[1].trim()
+    }
+
+    const parentMatch = body.match(PARENT_PATTERN)
+    if (parentMatch) {
+      if (parentMatch[1]) {
+        parentId = `GH-${parentMatch[1]}`
+      } else if (parentMatch[2]) {
+        parentId = parentMatch[2]
+      } else if (parentMatch[3]) {
+        parentId = `GH-${parentMatch[3]}`
+      }
+    }
+
+    let dependsOn: string[] | undefined
+    const depsMatch = body.match(DEPENDS_PATTERN)
+    if (depsMatch) {
+      const depsStr = depsMatch[1]
+      dependsOn = depsStr.split(/[,\s]+/).filter(Boolean).map(d => {
+        const repoIssueMatch = d.match(/(?:[\w-]+\/[\w-]+)?#(\d+)/)
+        if (repoIssueMatch) {
+          return `GH-${repoIssueMatch[1]}`
+        }
+
+        const num = d.replace('#', '')
+        if (/^\d+$/.test(num)) {
+          return `GH-${num}`
+        }
+
+        return d
+      })
+    }
+
+    const lastFailureEvent = events.slice().reverse().find(e => e.type === 'failed' || e.type === 'quarantined')
+    const lastError = lastFailureEvent?.message
+
+    return {
+      id,
+      title: issue.title,
+      description: body,
+      status,
+      priority,
+      feature,
+      parentId,
+      dependsOn,
+      scheduledFor,
+      metadata: { issueNumber: issue.number, url: issue.url, labels },
+      lastError,
+      timestamps,
+      events,
+    }
+  }
+}

@@ -77,7 +77,10 @@ export class DailyBriefingManager {
       includeMetrics: config.includeMetrics ?? true,
       includeFileChanges: config.includeFileChanges ?? true,
       model: config.model || 'gpt-4o-mini',
-      ...config,
+      openaiApiKey: config.openaiApiKey,
+      claudeApiKey: config.claudeApiKey,
+      botToken: config.botToken,
+      chatId: config.chatId,
     }
 
     this.telegramSender = telegramSender

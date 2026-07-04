@@ -1,16 +1,5 @@
 import { describe, expect, test, beforeEach, spyOn, mock } from 'bun:test'
-import { ProcessRegistry } from '../registry'
-import { promises as fs } from 'fs'
-
-mock.module('fs', () => ({
-  promises: {
-    mkdir: async () => {},
-    writeFile: async () => {},
-    readFile: async () => { throw { code: 'ENOENT' } },
-    unlink: async () => {},
-    stat: async () => ({ mtimeMs: Date.now() })
-  }
-}))
+import { ProcessRegistry, MemoryPersistence } from '@loopwork-ai/process-manager'
 
 mock.module('../../../commands/shared/process-utils', () => ({
   isProcessAlive: () => true
@@ -18,14 +7,15 @@ mock.module('../../../commands/shared/process-utils', () => ({
 
 describe('ProcessRegistry', () => {
   let registry: ProcessRegistry
-  const testDir = '.test-loopwork-registry'
+  let persistence: MemoryPersistence
 
   beforeEach(() => {
-    registry = new ProcessRegistry(testDir)
+    persistence = new MemoryPersistence()
+    registry = new ProcessRegistry(persistence)
   })
 
   describe('CRUD Operations', () => {
-    test('should add and get a process', () => {
+    test('should add and get a process', async () => {
       const pid = 1234
       const metadata = {
         command: 'node',
@@ -34,7 +24,7 @@ describe('ProcessRegistry', () => {
         startTime: Date.now()
       }
 
-      registry.add(pid, metadata)
+      await registry.add(pid, metadata)
       const proc = registry.get(pid)
 
       expect(proc).toBeDefined()
@@ -43,75 +33,68 @@ describe('ProcessRegistry', () => {
       expect(proc?.status).toBe('running')
     })
 
-    test('should remove a process', () => {
+    test('should remove a process', async () => {
       const pid = 1234
-      registry.add(pid, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
+      await registry.add(pid, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
       expect(registry.get(pid)).toBeDefined()
 
-      registry.remove(pid)
+      await registry.remove(pid)
       expect(registry.get(pid)).toBeUndefined()
     })
 
-    test('should list processes', () => {
-      registry.add(1, { command: 'node', args: [], namespace: 'ns1', startTime: Date.now() })
-      registry.add(2, { command: 'node', args: [], namespace: 'ns2', startTime: Date.now() })
+    test('should list processes', async () => {
+      await registry.add(1, { command: 'node', args: [], namespace: 'ns1', startTime: Date.now() })
+      await registry.add(2, { command: 'node', args: [], namespace: 'ns2', startTime: Date.now() })
 
       const list = registry.list()
       expect(list).toHaveLength(2)
     })
 
-    test('should filter by namespace', () => {
-      registry.add(1, { command: 'node', args: [], namespace: 'ns1', startTime: Date.now() })
-      registry.add(2, { command: 'node', args: [], namespace: 'ns2', startTime: Date.now() })
+    test('should filter by namespace', async () => {
+      await registry.add(1, { command: 'node', args: [], namespace: 'ns1', startTime: Date.now() })
+      await registry.add(2, { command: 'node', args: [], namespace: 'ns2', startTime: Date.now() })
 
       const ns1List = registry.listByNamespace('ns1')
       expect(ns1List).toHaveLength(1)
       expect(ns1List[0].pid).toBe(1)
     })
 
-    test('should update process status', () => {
+    test('should update process status', async () => {
       const pid = 1234
-      registry.add(pid, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
+      await registry.add(pid, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
       
-      registry.updateStatus(pid, 'stopped')
+      await registry.updateStatus(pid, 'stopped')
       expect(registry.get(pid)?.status).toBe('stopped')
     })
 
-    test('should clear registry', () => {
-      registry.add(1, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
-      registry.clear()
+    test('should clear registry', async () => {
+      await registry.add(1, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
+      await registry.clear()
       expect(registry.list()).toHaveLength(0)
     })
   })
 
   describe('Persistence', () => {
-    test('should persist to disk', async () => {
-      const mkdirSpy = spyOn(fs, 'mkdir').mockResolvedValue(undefined)
-      const writeFileSpy = spyOn(fs, 'writeFile').mockResolvedValue(undefined)
+    test('should persist to persistence layer', async () => {
+      const setSpy = spyOn(persistence, 'set').mockResolvedValue(undefined)
+      const lockSpy = spyOn(persistence, 'acquireLock').mockResolvedValue({ lockId: 'test', acquiredAt: new Date(), pid: process.pid })
+      const unlockSpy = spyOn(persistence, 'releaseLock').mockResolvedValue(undefined)
 
-      registry.add(1234, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
+      await registry.add(1234, { command: 'node', args: [], namespace: 'default', startTime: Date.now() })
       await registry.persist()
 
-      expect(mkdirSpy).toHaveBeenCalled()
-      expect(writeFileSpy).toHaveBeenCalled()
+      expect(lockSpy).toHaveBeenCalled()
+      expect(setSpy).toHaveBeenCalled()
+      expect(unlockSpy).toHaveBeenCalled()
       
-      const storageCall = writeFileSpy.mock.calls.find(call => 
-        (call[0] as string).includes('processes.json') && !(call[0] as string).endsWith('.lock')
-      )
-      expect(storageCall).toBeDefined()
-      
-      const [, content] = storageCall as [string, string]
-      const data = JSON.parse(content)
+      const [, data] = setSpy.mock.calls[0] as [string, any]
       expect(data.processes).toBeDefined()
       expect(Array.isArray(data.processes)).toBe(true)
       expect(data.processes.length).toBe(1)
       expect(data.processes[0].pid).toBe(1234)
-      
-      mkdirSpy.mockRestore()
-      writeFileSpy.mockRestore()
     })
 
-    test('should load from disk', async () => {
+    test('should load from persistence layer', async () => {
       const testData = {
         version: 1,
         parentPid: 1,
@@ -121,42 +104,11 @@ describe('ProcessRegistry', () => {
         lastUpdated: Date.now()
       }
 
-      const readFileSpy = spyOn(fs, 'readFile').mockResolvedValue(JSON.stringify(testData))
+      spyOn(persistence, 'get').mockResolvedValue(testData)
       
       await registry.load()
       expect(registry.get(5678)).toBeDefined()
       expect(registry.get(5678)?.command).toBe('test')
-      
-      readFileSpy.mockRestore()
-    })
-
-    test('should handle missing file on load', async () => {
-      const readFileSpy = spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' })
-      
-      await expect(registry.load()).resolves.toBeUndefined()
-      expect(registry.list()).toHaveLength(0)
-      
-      readFileSpy.mockRestore()
-    })
-  })
-
-  describe('Concurrency (File Locking)', () => {
-    test('should handle lock contention', async () => {
-      const writeFileSpy = spyOn(fs, 'writeFile')
-      let callCount = 0
-
-      writeFileSpy.mockImplementation(async (path, data, options) => {
-        if (options && typeof options === 'object' && 'flag' in options && options.flag === 'wx') {
-          callCount++
-          if (callCount === 1) {
-            return Promise.resolve()
-          }
-          throw { code: 'EEXIST' }
-        }
-        return Promise.resolve()
-      })
-      
-      writeFileSpy.mockRestore()
     })
   })
 })

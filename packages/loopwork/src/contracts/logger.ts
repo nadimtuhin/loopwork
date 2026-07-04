@@ -1,4 +1,5 @@
 import type { JsonEvent } from './output'
+import type { OutputRenderer } from '../output/renderer'
 
 /**
  * Logger interface for run command
@@ -14,6 +15,7 @@ export interface RunLogger {
   debug(message: string): void
   raw(message: string): void
   setLogFile(filePath: string): void
+  setRenderer?(renderer: OutputRenderer): void
   jsonEvent?(event: JsonEvent): void
   setOutputFormat?(format: 'human' | 'json'): void
   json?(data: unknown): void

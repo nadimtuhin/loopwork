@@ -15,7 +15,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { render, Box, Text, useApp, useInput } from 'ink'
-import { ProgressBar as InkProgressBar } from '../components/ProgressBar'
+import { ProgressBar as InkProgressBar, Banner as InkBanner, ThemeProvider } from '@loopwork-ai/ui-components'
 import type { LoopworkPlugin } from '../contracts/plugin'
 
 interface DashboardTask {
@@ -89,17 +89,6 @@ function subscribe(fn: (state: DashboardState) => void) {
   }
 }
 
-function Header({ namespace }: { namespace: string }) {
-  return (
-    <Box borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text bold color="cyan">
-        {'🤖 Loopwork Dashboard'}
-      </Text>
-      <Text color="gray"> | </Text>
-      <Text color="yellow">namespace: {namespace}</Text>
-    </Box>
-  )
-}
 
 export function CurrentTasks({ tasks }: { tasks: DashboardTask[] }) {
   // Timer component for individual tasks
@@ -287,7 +276,12 @@ function Dashboard() {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Header namespace={state.namespace} />
+      <InkBanner
+        title="🤖 Loopwork Dashboard"
+        rows={[{ key: 'namespace', value: <Text color="yellow">{state.namespace}</Text> }]}
+        borderColor="cyan"
+        style="round"
+      />
 
       <Box marginTop={1}>
         <ElapsedTime startTime={state.loopStartTime} />
@@ -326,7 +320,11 @@ function formatTimestamp(date: Date): string {
  */
 export function renderDashboard(): Promise<void> {
   return new Promise((resolve) => {
-    const { unmount, waitUntilExit } = render(<Dashboard />)
+    const { unmount, waitUntilExit } = render(
+      <ThemeProvider>
+        <Dashboard />
+      </ThemeProvider>
+    )
 
     waitUntilExit().then(() => {
       unmount()

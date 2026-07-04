@@ -1,38 +1,41 @@
-import fs from 'fs'
 import path from 'path'
+import type { IStateManager, LoadStateResult } from '@loopwork-ai/contracts/state'
 import type { Config } from './config'
 import { logger } from './utils'
 import { LoopworkState } from './loopwork-state'
+import { PersistenceStateManager, FilePersistenceLayer } from '@loopwork-ai/state'
 
-/**
- * Type guard for Node.js file system errors
- */
-interface NodeJSError extends Error {
-  code?: string
-}
-
-function isNodeJSError(error: unknown): error is NodeJSError {
-  return error instanceof Error && 'code' in error
-}
-
-/**
- * State Manager for loopwork
- *
- * Note: Primary state (task status) lives in GitHub Issues.
- * This manages local session state and locking only.
- */
-export class StateManager {
-  private stateFile: string
-  private lockFile: string
+export class StateManager implements IStateManager {
   private namespace: string
   private loopworkState: LoopworkState
+  private persistenceManager: IStateManager
+  private stateFile: string
+  private lockFile: string
 
-  constructor(private config: Config) {
+  constructor(
+    private config: Config,
+    stateManager?: IStateManager
+  ) {
     this.namespace = config.namespace || 'default'
     this.loopworkState = new LoopworkState({
       projectRoot: config.projectRoot,
       namespace: this.namespace,
     })
+
+    if (stateManager) {
+      this.persistenceManager = stateManager
+    } else {
+      const persistence = new FilePersistenceLayer({
+        baseDir: this.loopworkState.dir,
+      })
+
+      this.persistenceManager = new PersistenceStateManager({
+        persistence,
+        namespace: this.namespace,
+        debug: config.debug || false,
+      })
+    }
+
     this.stateFile = this.loopworkState.paths.session()
     this.lockFile = this.loopworkState.paths.sessionLock()
   }
@@ -49,185 +52,58 @@ export class StateManager {
     return this.stateFile
   }
 
-  /**
-   * Ensure the .loopwork directory exists
-   */
-  private ensureLoopworkDir(): void {
-    this.loopworkState.ensureDir()
+  async acquireLock(retryCount = 0): Promise<boolean> {
+    return this.persistenceManager.acquireLock(retryCount)
   }
 
-  /**
-   * Acquire exclusive lock to prevent multiple instances
-   */
-  acquireLock(retryCount = 0): boolean {
-    this.ensureLoopworkDir()
-    if (retryCount > 3) {
-      logger.error('Failed to acquire lock after multiple attempts')
-      return false
-    }
+  async releaseLock(): Promise<void> {
+    return this.persistenceManager.releaseLock()
+  }
 
-    try {
-      fs.mkdirSync(this.lockFile)
-      fs.writeFileSync(path.join(this.lockFile, 'pid'), process.pid.toString())
-      return true
-    } catch {
-      // Check if lock is stale
-      try {
-        const pidFile = path.join(this.lockFile, 'pid')
-        if (fs.existsSync(pidFile)) {
-          const pid = fs.readFileSync(pidFile, 'utf-8')
-          try {
-            process.kill(parseInt(pid, 10), 0)
-            logger.error(`Another loopwork is running (PID: ${pid})`)
-            return false
-          } catch {
-            logger.warn(`Stale lock found (process ${pid} not running), removing...`)
-            fs.rmSync(this.lockFile, { recursive: true, force: true })
-            return this.acquireLock(retryCount + 1)
-          }
-        }
-      } catch {
-        logger.error('Failed to acquire lock (unknown reason)')
-        return false
-      }
+  async isLocked(): Promise<boolean> {
+    if (this.persistenceManager.isLocked) {
+      return this.persistenceManager.isLocked()
     }
     return false
   }
 
-  /**
-   * Release the lock
-   */
-  releaseLock(): void {
-    try {
-      if (fs.existsSync(this.lockFile)) {
-        fs.rmSync(this.lockFile, { recursive: true, force: true })
-      }
-    } catch {
-      logger.error('Failed to release lock')
+  async getPluginState<T = unknown>(pluginName: string): Promise<T | null> {
+    return this.persistenceManager.getPluginState<T>(pluginName)
+  }
+
+  async setPluginState<T = unknown>(pluginName: string, state: T): Promise<void> {
+    return this.persistenceManager.setPluginState(pluginName, state)
+  }
+
+  async deletePluginState(pluginName: string): Promise<void> {
+    if (this.persistenceManager.deletePluginState) {
+      return this.persistenceManager.deletePluginState(pluginName)
     }
   }
 
-  /**
-   * Get plugin-specific state
-   */
-  getPluginState<T = unknown>(pluginName: string): T | null {
-    const pluginStateFile = this.loopworkState.paths.pluginState()
-
-    if (!fs.existsSync(pluginStateFile)) {
-      return null
+  async hasPluginState(pluginName: string): Promise<boolean> {
+    if (this.persistenceManager.hasPluginState) {
+      return this.persistenceManager.hasPluginState(pluginName)
     }
-
-    try {
-      const allPluginState = this.loopworkState.readJson<Record<string, unknown>>(pluginStateFile)
-      return (allPluginState[pluginName] as T) || null
-    } catch (error) {
-      logger.error(`Failed to read plugin state for ${pluginName}:`, error)
-      return null
-    }
+    return false
   }
 
-  /**
-   * Set plugin-specific state
-   */
-  setPluginState<T = unknown>(pluginName: string, state: T): void {
-    this.ensureLoopworkDir()
-    const pluginStateFile = this.loopworkState.paths.pluginState()
-
-    try {
-      let allPluginState: Record<string, unknown> = {}
-
-      if (fs.existsSync(pluginStateFile)) {
-        allPluginState = this.loopworkState.readJson<Record<string, unknown>>(pluginStateFile)
-      }
-
-      allPluginState[pluginName] = state
-
-      this.loopworkState.writeJson(pluginStateFile, allPluginState)
-
-      if (this.config.debug) {
-        logger.info(`Plugin state saved for ${pluginName}`)
-      }
-    } catch (error) {
-      logger.error(`Failed to save plugin state for ${pluginName}:`, error)
+  async listPlugins(): Promise<string[]> {
+    if (this.persistenceManager.listPlugins) {
+      return this.persistenceManager.listPlugins()
     }
+    return []
   }
 
-  /**
-   * Save current session state
-   */
-  saveState(currentIssue: number, iteration: number): void {
-    this.ensureLoopworkDir()
-
-    const content = [
-      `NAMESPACE=${this.namespace}`,
-      `LAST_ISSUE=${currentIssue}`,
-      `LAST_ITERATION=${iteration}`,
-      `LAST_OUTPUT_DIR=${this.config.outputDir}`,
-      `SESSION_ID=${this.config.sessionId}`,
-      `SAVED_AT=${new Date().toISOString()}`,
-    ].join('\n')
-
-    try {
-      fs.writeFileSync(this.stateFile, content, { mode: 0o600 })
-      if (this.config.debug) {
-        logger.info(`State saved: issue=#${currentIssue}, iteration=${iteration} → ${this.stateFile}`)
-      }
-    } catch {
-      logger.error('Failed to save state')
-    }
+  async saveState(currentIssue: number, iteration: number): Promise<void> {
+    await this.persistenceManager.saveState(currentIssue, iteration)
   }
 
-  /**
-   * Load previous session state
-   */
-  loadState(): { lastIssue: number; lastIteration: number; lastOutputDir: string; startedAt?: number } | null {
-    if (!fs.existsSync(this.stateFile)) {
-      return null
-    }
-
-    try {
-      const content = fs.readFileSync(this.stateFile, 'utf-8')
-      const state: Record<string, string> = {}
-
-      content.split('\n').forEach((line) => {
-        const trimmedLine = line.trim()
-        const idx = trimmedLine.indexOf('=')
-        if (idx !== -1) {
-          const key = trimmedLine.substring(0, idx).trim()
-          const value = trimmedLine.substring(idx + 1).trim()
-          if (key && value) state[key] = value
-        }
-      })
-
-      if (!state.LAST_ISSUE) return null
-
-      return {
-        lastIssue: parseInt(state.LAST_ISSUE, 10),
-        lastIteration: parseInt(state.LAST_ITERATION || '0', 10),
-        lastOutputDir: state.LAST_OUTPUT_DIR || '',
-        startedAt: state.SAVED_AT ? new Date(state.SAVED_AT).getTime() : undefined,
-      }
-    } catch {
-      logger.error('Failed to load state')
-      return null
-    }
+  async loadState(): Promise<LoadStateResult> {
+    return this.persistenceManager.loadState()
   }
 
-  /**
-   * Clear saved state
-   */
-  clearState(): void {
-    try {
-      if (fs.existsSync(this.stateFile)) {
-        fs.unlinkSync(this.stateFile)
-        if (this.config.debug) {
-          logger.info('State cleared')
-        }
-      }
-    } catch (e: unknown) {
-      if (!isNodeJSError(e) || e.code !== 'ENOENT') {
-        logger.error('Failed to clear state')
-      }
-    }
+  async clearState(): Promise<void> {
+    return this.persistenceManager.clearState()
   }
 }

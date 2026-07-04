@@ -1,14 +1,8 @@
 // Re-export output utilities for convenience
 export { Table, Banner, ProgressBar, CompletionSummary, separator, supportsEmoji, getEmoji, BOX_CHARS } from './output'
 
-// Re-export Ink components from their individual files
-export { InkBanner } from '../components/InkBanner'
-export { InkCompletionSummary } from '../components/InkCompletionSummary'
-export { ProgressBar as InkProgressBar } from '../components/ProgressBar'
-export { InkTable } from '../components/InkTable'
-export { InkLog } from '../components/InkLog'
-export { InkSpinner } from '../components/InkSpinner'
-export { InkStream } from '../components/InkStream'
+// Re-export Ink components from UI package
+export { InkBanner, InkCompletionSummary, ProgressBar as InkProgressBar, InkTable, InkLog, InkSpinner, InkStream, Separator as InkSeparator, type SeparatorType } from '@loopwork-ai/ui'
 
 /**
  * Helper function to render Ink components interactively (for TTY mode)

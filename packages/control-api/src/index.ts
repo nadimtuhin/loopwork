@@ -3,7 +3,7 @@ import { ControlServer } from './server'
 import type { ControlApiConfig, ControlApiContext } from './types'
 
 export function withControlApi(config: ControlApiConfig = {}): ConfigWrapper {
-  return (loopworkConfig: LoopworkConfig) => ({
+  return (loopworkConfig: any) => ({
     ...loopworkConfig,
     plugins: [...(loopworkConfig.plugins || []), createControlApi(config)]
   })

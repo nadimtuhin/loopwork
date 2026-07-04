@@ -2,10 +2,12 @@
   "tasks": [
     {
       "id": "TASK-001",
-      "status": "pending",
+      "status": "in-progress",
       "priority": "high",
       "timestamps": {
-        "createdAt": "2026-01-31T16:40:30.296Z"
+        "createdAt": "2026-01-31T16:40:30.296Z",
+        "updatedAt": "2026-02-02T13:55:29.588Z",
+        "startedAt": "2026-02-02T13:55:29.586Z"
       },
       "events": [
         {
@@ -16,8 +18,25 @@
             "oldStatus": "pending",
             "newStatus": "pending"
           }
+        },
+        {
+          "taskId": "TASK-001",
+          "timestamp": "2026-02-02T13:55:29.586Z",
+          "type": "started",
+          "message": "Task started",
+          "level": "info",
+          "actor": "system",
+          "metadata": {
+            "oldStatus": "pending",
+            "newStatus": "in-progress"
+          }
         }
-      ]
+      ],
+      "metadata": {
+        "cli": "claude",
+        "model": "claude",
+        "modelDisplayName": "claude"
+      }
     },
     {
       "id": "TASK-002",

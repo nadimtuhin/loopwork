@@ -2,7 +2,7 @@ import type { LoopworkMonitor } from '../monitor'
 import type { ProcessInfo } from '../contracts/process-manager'
 import type { ChalkInstance } from 'chalk'
 import React from 'react'
-import { logger, separator, InkTable, getEmoji, renderInk } from '../core/utils'
+import { logger, InkTable, getEmoji, renderInk, InkSeparator } from '../core/utils'
 import type { StatusJsonOutput } from '../contracts/output'
 
 export interface StatusDeps {
@@ -87,7 +87,10 @@ export async function status(deps: StatusDeps): Promise<void> {
   // Human-readable output
   activeLogger.raw('')
   activeLogger.raw(chalk.bold('Loopwork Status'))
-  activeLogger.raw(separator('light'))
+  const separatorOutput = await renderInk(
+    React.createElement(InkSeparator, { separatorType: 'light' })
+  )
+  activeLogger.raw(separatorOutput)
 
   // Show CLI processes (from run command)
   if (cliProcesses.length > 0) {

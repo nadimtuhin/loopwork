@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { StatusDeps, status } from '../commands/status'
+import { StatusDeps, status } from '../status'
 
 /**
  * status Tests

@@ -21,7 +21,7 @@ describe('Dashboard state parsing', () => {
     }
   })
 
-  test('parses current state format using StateManager', () => {
+  test('parses current state format using StateManager', async () => {
     // Create a state file in current format
     const stateDir = path.join(TEST_DIR, '.loopwork')
     fs.mkdirSync(stateDir, { recursive: true })
@@ -38,7 +38,7 @@ describe('Dashboard state parsing', () => {
     fs.writeFileSync(stateFile, stateContent)
 
     const dashboard = new Dashboard(TEST_DIR)
-    const stats = (dashboard as any).getNamespaceStats('default')
+    const stats = await (dashboard as any).getNamespaceStats('default')
 
     expect(stats.currentTask).toBe('Task #123')
     expect(stats.iterations).toBe(5)
@@ -214,7 +214,7 @@ describe('Dashboard state parsing', () => {
     expect(state).toBeNull()
   })
 
-  test('loadStateForNamespace returns correct data when state exists', () => {
+  test('loadStateForNamespace returns correct data when state exists', async () => {
     const stateDir = path.join(TEST_DIR, '.loopwork')
     fs.mkdirSync(stateDir, { recursive: true })
     const stateFile = path.join(stateDir, 'state.json')
@@ -228,7 +228,7 @@ describe('Dashboard state parsing', () => {
     fs.writeFileSync(stateFile, stateContent)
 
     const dashboard = new Dashboard(TEST_DIR)
-    const state = (dashboard as any).loadStateForNamespace('default')
+    const state = await (dashboard as any).loadStateForNamespace('default')
 
     expect(state).not.toBeNull()
     expect(state?.lastIssue).toBe(999)

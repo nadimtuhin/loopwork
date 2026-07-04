@@ -14,7 +14,9 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@loopwork-ai/contracts": "workspace:*"
+    "@loopwork-ai/checkpoint": "workspace:*",
+    "@loopwork-ai/contracts": "workspace:*",
+    "chalk": "4.1.2"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach, spyOn } from 'bun:test'
 import React from 'react'
 import { render } from 'ink-testing-library'
-import { InkApp, type InkAppState } from '../../src/output/InkApp'
+import { InkApp, type InkAppState } from '@loopwork-ai/ui'
 
 // Mock worker status data
 const mockWorkerStatus = {

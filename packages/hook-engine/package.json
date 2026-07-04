@@ -1,0 +1,24 @@
+{
+  "name": "@loopwork-ai/hook-engine",
+  "version": "0.1.0",
+  "description": "Hook engine for the new plugin system",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

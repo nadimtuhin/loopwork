@@ -23,6 +23,5 @@ export {
 } from './monitor'
 
 // Internal components (for advanced use)
-export { ProcessRegistry } from './registry'
-export { OrphanDetector } from './orphan-detector'
+export { ProcessRegistry, OrphanDetector, FilePersistence, MemoryPersistence, type IPersistence } from '@loopwork-ai/process-manager'
 export { ProcessCleaner } from './cleaner'

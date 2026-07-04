@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { JsonTaskAdapter } from '../src/backends/json'
+import { JsonTaskAdapter } from '../src/backends'
 
 describe('Deadletter Policy', () => {
   let tempDir: string

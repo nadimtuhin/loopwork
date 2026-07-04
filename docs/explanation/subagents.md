@@ -13,7 +13,8 @@ packages/
 ├── agents/           # @loopwork-ai/agents - Agent definitions and execution
 ├── result-parser/    # @loopwork-ai/result-parser - Output parsing
 ├── checkpoint/       # @loopwork-ai/checkpoint - State persistence
-└── loopwork/         # Core package with adapters and integration
+├── adapters/         # @loopwork-ai/adapters - Bridge adapters
+└── loopwork/         # Core package and integration
 ```
 
 ## Package: @loopwork-ai/agents
@@ -241,16 +242,16 @@ const deleted = await manager.storage.cleanup(7)  // Remove > 7 days old
 
 ### Adapters
 
-The core package provides adapters to bridge existing infrastructure:
+The `@loopwork-ai/adapters` package provides adapters to bridge existing infrastructure:
 
 ```typescript
-import { CliRunnerAdapter, GitRunnerAdapter } from 'loopwork/adapters'
+import { CliAdapter, GitAdapter } from '@loopwork-ai/adapters'
 
 // Wrap existing CliExecutor
-const cliRunner = new CliRunnerAdapter(existingCliExecutor)
+const cliRunner = new CliAdapter(existingCliExecutor)
 
 // Create git runner for artifact detection
-const gitRunner = new GitRunnerAdapter('/path/to/project')
+const gitRunner = new GitAdapter('/path/to/project')
 ```
 
 ### Re-exports
@@ -275,6 +276,8 @@ import {
   createCheckpointManager,
 
   // Adapters
+  CliAdapter,
+  GitAdapter,
   CliRunnerAdapter,
   GitRunnerAdapter,
 } from 'loopwork'

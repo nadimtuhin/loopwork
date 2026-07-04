@@ -73,6 +73,7 @@ List tasks with filtering, sorting, and pagination.
 - `feature`: Filter by feature name
 - `sort`: Field to sort by (`id`, `title`, `status`, `priority`, `createdAt`)
 - `order`: Sort order (`asc` or `desc`, default: `asc`)
+- `fields`: Comma-separated list of fields to include in response (e.g. `id,title,status`)
 
 **Response:**
 ```json

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
-import { createSpawner, getDefaultSpawner, isPtyFunctional } from '../../src/core/spawners'
-import { isPtyAvailable } from '../../src/core/spawners/pty-spawner'
-import type { ProcessSpawner } from '../../src/contracts/spawner'
+import { createSpawner, getDefaultSpawner, isPtyFunctional } from '@loopwork-ai/process-manager/spawner'
+import { isPtyAvailable } from '@loopwork-ai/process-manager/spawner'
+import type { ISpawner } from '@loopwork-ai/contracts/process'
 
 describe('Spawner Factory', () => {
   afterEach(() => {

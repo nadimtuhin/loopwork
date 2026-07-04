@@ -1,0 +1,26 @@
+{
+  "name": "@loopwork-ai/orchestrator",
+  "version": "0.1.0",
+  "description": "Orchestration engine for Loopwork",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/"
+  ],
+  "scripts": {
+    "build": "echo 'No build needed for orchestrator'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@loopwork-ai/contracts": "workspace:*",
+    "@loopwork-ai/common": "workspace:*",
+    "@loopwork-ai/utils-fs": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "author": "Nadim Tuhin",
+  "license": "MIT"
+}

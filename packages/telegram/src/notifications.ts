@@ -10,6 +10,8 @@
  */
 
 import type { LoopworkPlugin, PluginTask, LoopStats, PluginTaskResult, TaskContext } from '@loopwork-ai/loopwork/contracts'
+import type { INotificationProvider, NotificationOptions } from '@loopwork-ai/contracts'
+import { logger } from '@loopwork-ai/common'
 
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error'
 
@@ -44,6 +46,80 @@ const LEVEL_EMOJI: Record<NotificationLevel, string> = {
   success: '✅',
   warning: '⚠️',
   error: '❌',
+}
+
+/**
+ * Telegram Notification Provider
+ */
+export class TelegramNotificationProvider implements INotificationProvider {
+  readonly name = 'telegram'
+  private readonly config: TelegramConfig
+
+  constructor(config?: Partial<TelegramConfig>) {
+    this.config = {
+      botToken: config?.botToken || process.env.TELEGRAM_BOT_TOKEN || '',
+      chatId: config?.chatId || process.env.TELEGRAM_CHAT_ID || '',
+      parseMode: config?.parseMode || 'HTML',
+      disableNotification: config?.disableNotification ?? false,
+    }
+  }
+
+  async verify(): Promise<boolean> {
+    if (!this.config.botToken || !this.config.chatId) {
+      return false
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${this.config.botToken}/getMe`
+      const response = await fetch(url)
+      if (!response.ok) return false
+      const data = await response.json() as { ok: boolean }
+      return data.ok
+    } catch {
+      return false
+    }
+  }
+
+  async notify(message: string, options?: NotificationOptions): Promise<void> {
+    if (!this.config.botToken || !this.config.chatId) {
+      logger.warn('TelegramNotificationProvider: Missing botToken or chatId')
+      return
+    }
+
+    const title = options?.title || 'Notification'
+    const emoji = options?.priority === 'high' ? '🚨' : options?.priority === 'low' ? 'ℹ️' : '🔔'
+    
+    let text = `${emoji} <b>${escapeHtml(title)}</b>\n\n${escapeHtml(message)}`
+
+    if (options?.url) {
+      text += `\n\n<a href="${options.url}">View Details</a>`
+    }
+
+    if (options?.metadata && Object.keys(options.metadata).length > 0) {
+      text += `\n\n<code>Task: ${escapeHtml(JSON.stringify(options.metadata, null, 2))}</code>`
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${this.config.botToken}/sendMessage`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: this.config.chatId,
+          text,
+          parse_mode: this.config.parseMode,
+          disable_notification: this.config.disableNotification,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { description?: string }
+        throw new Error(data.description || `HTTP ${response.status}`)
+      }
+    } catch (e: any) {
+      logger.error(`Telegram notification failed: ${e.message}`)
+    }
+  }
 }
 
 /**

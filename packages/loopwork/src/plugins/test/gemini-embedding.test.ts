@@ -1,11 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { GeminiEmbeddingProvider, GeminiEmbeddingConfig, createGeminiEmbeddingProvider } from '../plugins/gemini-embedding'
-
-/**
- * gemini-embedding Tests
- * 
- * Auto-generated test suite for gemini-embedding
- */
+import { GeminiEmbeddingProvider, GeminiEmbeddingConfig, createGeminiEmbeddingProvider } from '../gemini-embedding'
 
 describe('gemini-embedding', () => {
 
@@ -24,8 +18,9 @@ describe('gemini-embedding', () => {
   })
 
   describe('GeminiEmbeddingConfig', () => {
-    test('should be defined', () => {
-      expect(GeminiEmbeddingConfig).toBeDefined()
+    test('should be used as a type', () => {
+      const config: GeminiEmbeddingConfig = { apiKey: 'test' }
+      expect(config.apiKey).toBe('test')
     })
   })
 

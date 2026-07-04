@@ -13,11 +13,16 @@
     "test": "bun test"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.8",
     "@types/node": "^20.0.0"
   },
   "author": "Nadim Tuhin",
   "license": "MIT",
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
   "dependencies": {
-    "@loopwork-ai/contracts": "workspace:*"
+    "@types/pdfkit": "^0.17.4",
+    "pdfkit": "^0.17.2"
   }
 }

@@ -854,7 +854,8 @@ export default compose(
   withDynamicTasks({
     enabled: true,
     analyzer: 'pattern',        // Fast: looks for TODO, FIXME, etc.
-    // analyzer: 'llm',          // Smart: Claude analyzes output
+    // analyzer: 'llm',          // Smart: AI analyzes output
+    // analyzer: myCustomAnalyzer, // Use a custom TaskAnalyzer implementation
     createSubTasks: true,
     maxTasksPerExecution: 5,
     autoApprove: true,
@@ -866,7 +867,12 @@ export default compose(
 }))
 ```
 
-When AI completes a task and outputs "TODO: refactor this", Loopwork automatically creates a follow-up task.
+When AI completes a task and outputs "TODO: refactor this", Loopwork automatically creates a follow-up task. You can also use the `llm` analyzer for more intelligent task generation, or provide your own implementation of the `TaskAnalyzer` interface.
+
+To disable dynamic task creation at runtime, use the CLI flag:
+```bash
+loopwork run --no-dynamic-tasks
+```
 
 ### 8. Sync with Asana or Todoist
 

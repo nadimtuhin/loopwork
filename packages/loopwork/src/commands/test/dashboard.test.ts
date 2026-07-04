@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { DashboardOptions, dashboard, createDashboardCommand } from '../commands/dashboard'
+import { DashboardOptions, dashboard, createDashboardCommand } from '../dashboard'
 
 /**
  * dashboard Tests
@@ -9,11 +9,6 @@ import { DashboardOptions, dashboard, createDashboardCommand } from '../commands
 
 describe('dashboard', () => {
 
-  describe('DashboardOptions', () => {
-    test('should be defined', () => {
-      expect(DashboardOptions).toBeDefined()
-    })
-  })
 
   describe('dashboard', () => {
     test('should be a function', () => {

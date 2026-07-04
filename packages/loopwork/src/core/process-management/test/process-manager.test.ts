@@ -1,7 +1,6 @@
 import { describe, expect, test, beforeEach, spyOn, mock } from 'bun:test'
 import { ProcessManager } from '../process-manager'
-import { ProcessRegistry } from '../registry'
-import { OrphanDetector } from '../orphan-detector'
+import { ProcessRegistry, OrphanDetector, MemoryPersistence } from '@loopwork-ai/process-manager'
 import { ProcessCleaner } from '../cleaner'
 
 describe('ProcessManager', () => {
@@ -12,7 +11,7 @@ describe('ProcessManager', () => {
   let spawner: any
 
   beforeEach(() => {
-    registry = new ProcessRegistry('.test-pm')
+    registry = new ProcessRegistry(new MemoryPersistence())
     spyOn(registry, 'persist').mockResolvedValue(undefined)
     
     detector = new OrphanDetector(registry, [], 1000)
@@ -36,7 +35,7 @@ describe('ProcessManager', () => {
 
   test('should cleanup orphans', async () => {
     const scanSpy = spyOn(detector, 'scan').mockResolvedValue([])
-    const cleanupSpy = spyOn(cleaner, 'cleanup').mockResolvedValue({ cleaned: [], failed: [], alreadyGone: [] })
+    const cleanupSpy = spyOn(cleaner, 'cleanup').mockResolvedValue({ cleaned: [], errors: [], alreadyGone: [] })
     
     await manager.cleanup()
     

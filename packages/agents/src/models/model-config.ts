@@ -7,6 +7,8 @@
  * - Brand/Model: "google/antigravity-gemini-3-flash" (actual CLI model string)
  */
 
+import type { ModelCapabilityLevel, ModelRoleType } from '@loopwork-ai/contracts'
+
 export interface ModelConfig {
   /** Generic name - internal reference (e.g., 'gemini-flash') */
   name: string
@@ -20,6 +22,10 @@ export interface ModelConfig {
   timeout?: number
   /** Cost weight for budget tracking */
   costWeight?: number
+  /** Capability level */
+  capability?: ModelCapabilityLevel
+  /** Primary role */
+  primaryRole?: ModelRoleType
 }
 
 export interface IModelConfigRegistry {
@@ -106,6 +112,8 @@ export const ModelPresets = {
     model: 'google/antigravity-gemini-3-flash',
     timeout: 180,
     costWeight: 15,
+    capability: 'low',
+    primaryRole: 'engineer',
     ...overrides,
   }),
 
@@ -119,6 +127,8 @@ export const ModelPresets = {
     model: 'google/gemini-1.5-pro',
     timeout: 300,
     costWeight: 50,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
 
@@ -132,6 +142,8 @@ export const ModelPresets = {
     model: 'sonnet',
     timeout: 300,
     costWeight: 30,
+    capability: 'medium',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
 
@@ -145,6 +157,8 @@ export const ModelPresets = {
     model: 'opus',
     timeout: 600,
     costWeight: 100,
+    capability: 'high',
+    primaryRole: 'architect',
     ...overrides,
   }),
 
@@ -158,6 +172,8 @@ export const ModelPresets = {
     model: 'haiku',
     timeout: 120,
     costWeight: 5,
+    capability: 'low',
+    primaryRole: 'junior-engineer',
     ...overrides,
   }),
 
@@ -171,6 +187,8 @@ export const ModelPresets = {
     model: 'openai/gpt-4o',
     timeout: 300,
     costWeight: 60,
+    capability: 'high',
+    primaryRole: 'architect',
     ...overrides,
   }),
 
@@ -184,6 +202,8 @@ export const ModelPresets = {
     model: 'openai/gpt-4-turbo',
     timeout: 300,
     costWeight: 40,
+    capability: 'high',
+    primaryRole: 'senior-engineer',
     ...overrides,
   }),
 }

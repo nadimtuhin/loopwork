@@ -2,12 +2,19 @@
  * Task Backend Module
  *
  * Provides adapter pattern for multiple task sources.
- * Use createBackend() factory to instantiate the appropriate adapter.
+ * Use createBackend() factory to instantiate appropriate adapter.
+ */
+
+/**
+ * Task Backend Module
+ *
+ * Provides adapter pattern for multiple task sources.
+ * Use createBackend() factory to instantiate appropriate adapter.
  */
 
 export * from './types'
-export { GitHubTaskAdapter } from './github'
-export { JsonTaskAdapter } from './json'
+export { JsonTaskAdapter } from '@loopwork-ai/backend-json'
+export { GitHubTaskAdapter } from '@loopwork-ai/backend-github'
 export { FallbackTaskBackend } from './fallback'
 export { LocalVectorStore } from '../vector-stores/local-vector-store'
 export {
@@ -19,12 +26,13 @@ export {
   createGitHubBackendPlugin,
   createFallbackBackendPlugin,
   type BackendPlugin,
+  type BackendConfig,
   type FallbackBackendConfig,
 } from './plugin'
 
-import type { TaskBackend, BackendConfig } from './types'
-import { GitHubTaskAdapter } from './github'
-import { JsonTaskAdapter } from './json'
+import type { TaskBackend, BackendConfig, JsonBackendConfig, GithubBackendConfig } from './types'
+import { JsonTaskAdapter, type JsonBackendConfig as JsonBackendConfigType } from '@loopwork-ai/backend-json'
+import { GitHubTaskAdapter, type GitHubBackendConfig as GitHubBackendConfigType } from '@loopwork-ai/backend-github'
 import { LoopworkError } from '../core/errors'
 
 /**
@@ -44,10 +52,13 @@ import { LoopworkError } from '../core/errors'
 export function createBackend(config: BackendConfig): TaskBackend {
   switch (config.type) {
     case 'github':
-      return new GitHubTaskAdapter(config)
+      return new GitHubTaskAdapter({ repo: config.repo } as GitHubBackendConfigType)
 
     case 'json':
-      return new JsonTaskAdapter(config)
+      return new JsonTaskAdapter({
+        tasksFile: config.tasksFile,
+        tasksDir: config.tasksDir,
+      } as JsonBackendConfigType)
 
     case 'fallback':
       throw new LoopworkError(

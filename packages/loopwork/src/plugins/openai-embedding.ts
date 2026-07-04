@@ -1,19 +1,8 @@
-/**
- * OpenAI Embedding Provider
- *
- * Provides embeddings using OpenAI API
- */
+import type { IEmbeddingProvider, IEmbeddingConfig } from '@loopwork-ai/contracts'
 
-import type { EmbeddingProvider } from '../contracts/embedding'
+export type OpenAIEmbeddingConfig = IEmbeddingConfig
 
-export interface OpenAIEmbeddingConfig {
-  apiKey?: string
-  model?: string
-  dimensions?: number
-  baseUrl?: string
-}
-
-export class OpenAIEmbeddingProvider implements EmbeddingProvider {
+export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   readonly name = 'openai-embedding'
 
   private apiKey: string

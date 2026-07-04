@@ -12,5 +12,6 @@ Welcome to the Loopwork documentation.
 ## Key Documents
 
 - [Architecture Overview](./explanation/architecture-overview.md)
+- [Architecture Diagrams](./diagrams/architecture-diagrams.md) - Visual Mermaid diagrams for all major systems
 - [CLI Invocation Algorithm](./explanation/cli-invocation.md)
 - [Process Management](./explanation/process-management.md)

@@ -19,6 +19,7 @@ export function useDashboardStream() {
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<DashboardEvent | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,6 +36,7 @@ export function useDashboardStream() {
 
       es.onopen = () => {
         setIsConnected(true);
+        setIsLoading(true);
       };
 
       es.onmessage = (event) => {
@@ -52,6 +54,7 @@ export function useDashboardStream() {
             const newTasks = dashboardEvent.payload.tasks || dashboardEvent.payload;
             if (Array.isArray(newTasks)) {
               setTasks(newTasks);
+              setIsLoading(false);
             }
           }
         } catch (error) {
@@ -81,6 +84,7 @@ export function useDashboardStream() {
       es.onerror = (error) => {
         console.error('Dashboard stream connection error');
         setIsConnected(false);
+        setIsLoading(false);
         es.close();
         
         if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
@@ -105,6 +109,7 @@ export function useDashboardStream() {
   return {
     isConnected,
     lastEvent,
-    tasks
+    tasks,
+    isLoading
   };
 }

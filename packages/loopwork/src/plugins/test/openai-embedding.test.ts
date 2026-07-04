@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { OpenAIEmbeddingProvider, OpenAIEmbeddingConfig, createOpenAIEmbeddingProvider } from '../plugins/openai-embedding'
+import { OpenAIEmbeddingProvider, OpenAIEmbeddingConfig, createOpenAIEmbeddingProvider } from '../openai-embedding'
 
 /**
  * openai-embedding Tests
@@ -24,8 +24,9 @@ describe('openai-embedding', () => {
   })
 
   describe('OpenAIEmbeddingConfig', () => {
-    test('should be defined', () => {
-      expect(OpenAIEmbeddingConfig).toBeDefined()
+    test('should be used as a type', () => {
+      const config: OpenAIEmbeddingConfig = { apiKey: 'test' }
+      expect(config.apiKey).toBe('test')
     })
   })
 

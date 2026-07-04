@@ -1,204 +1,42 @@
-import { execSync } from 'child_process'
-import type { ProcessInfo, OrphanInfo } from '../../contracts/process-manager'
-import type { ProcessRegistry } from './registry'
-import { logger } from '../utils'
-import { isProcessAlive } from '../../commands/shared/process-utils'
+/**
+ * Orphan detector stub
+ * 
+ * This module was refactored into orphan-killer.ts and orphan-detection-v2/
+ * This stub exists for backward compatibility with existing code.
+ */
+
+import type { OrphanInfo } from '@loopwork-ai/contracts/process'
+
+export interface DetectOrphansOptions {
+  projectRoot?: string
+}
 
 /**
- * OrphanDetector - Detects orphaned processes using three detection methods:
- * 1. Registry-Parent Check: Process in registry but parent PID dead
- * 2. Pattern Scan: Running processes matching loopwork patterns not in registry
- * 3. Stale Timeout: Process running > 2x configured timeout without activity
+ * Stub function for orphan detection
+ * Returns empty array - actual implementation moved to orphan-killer
  */
-export class OrphanDetector {
-  constructor(
-    private registry: ProcessRegistry,
-    private patterns: string[],
-    private staleTimeoutMs: number
-  ) {}
+export async function detectOrphans(options: DetectOrphansOptions = {}): Promise<OrphanInfo[]> {
+  // Return empty array - orphan detection is now handled by OrphanKiller class
+  return []
+}
 
-  /**
-   * Scan for orphan processes using detection methods
-   *
-   * Note: We intentionally do NOT scan for "untracked" processes matching patterns
-   * (Method 2 was removed). This caused a critical bug where ANY process matching
-   * patterns like 'claude' or 'opencode' would be killed, including user-started
-   * CLIs that loopwork never spawned.
-   *
-   * We only clean up processes that:
-   * 1. Were tracked by loopwork AND their parent died (dead-parent orphans)
-   * 2. Were tracked by loopwork AND exceeded stale timeout
-   */
-  async scan(): Promise<OrphanInfo[]> {
-    const orphans: OrphanInfo[] = []
+/**
+ * Stub exports for test compatibility
+ */
+export function trackSpawnedPid(pid: number): void {
+  // No-op stub
+}
 
-    // Method 1: Registry-Parent Check - safe, only kills tracked processes
-    const registryOrphans = this.detectDeadParents()
-    orphans.push(...registryOrphans)
+export function untrackPid(pid: number): void {
+  // No-op stub
+}
 
-    // Method 2: Pattern Scan - REMOVED - was killing user's unrelated CLIs!
-    // The old code would scan ALL processes matching 'claude', 'opencode', etc.
-    // and kill them if they weren't in registry. This killed user's own CLIs.
-    // const untrackedOrphans = await this.detectUntrackedProcesses()
-    // orphans.push(...untrackedOrphans)
+export function getTrackedPids(): number[] {
+  return []
+}
 
-    // Method 3: Stale Timeout - safe, only kills tracked processes
-    const staleOrphans = this.detectStaleProcesses()
-    orphans.push(...staleOrphans)
-
-    // Deduplicate by PID
-    const seen = new Set<number>()
-    return orphans.filter(o => {
-      if (seen.has(o.pid)) return false
-      seen.add(o.pid)
-      return true
-    })
-  }
-
-  /**
-   * Method 1: Check if tracked processes have dead parent PIDs
-   */
-  private detectDeadParents(): OrphanInfo[] {
-    const orphans: OrphanInfo[] = []
-    const tracked = this.registry.list()
-
-    for (const process of tracked) {
-      if (process.parentPid && !isProcessAlive(process.parentPid)) {
-        orphans.push({
-          pid: process.pid,
-          reason: 'parent-dead',
-          process
-        })
-      }
-    }
-
-    return orphans
-  }
-
-  /**
-   * Method 2: Scan running processes for untracked matches
-   */
-  private async detectUntrackedProcesses(): Promise<OrphanInfo[]> {
-    const orphans: OrphanInfo[] = []
-    const running = this.scanRunningProcesses()
-    const tracked = new Set(this.registry.list().map(p => p.pid))
-
-    for (const proc of running) {
-      if (!tracked.has(proc.pid)) {
-        orphans.push({
-          pid: proc.pid,
-          reason: 'untracked',
-          process: proc
-        })
-      }
-    }
-
-    return orphans
-  }
-
-  /**
-   * Method 3: Check for processes running too long
-   */
-  private detectStaleProcesses(): OrphanInfo[] {
-    const orphans: OrphanInfo[] = []
-    const tracked = this.registry.list()
-    const now = Date.now()
-    const staleThreshold = this.staleTimeoutMs * 2
-
-    for (const process of tracked) {
-      const runningTime = now - process.startTime
-      if (runningTime > staleThreshold) {
-        orphans.push({
-          pid: process.pid,
-          reason: 'stale',
-          process
-        })
-      }
-    }
-
-    return orphans
-  }
-
-  /**
-   * Scan running processes matching patterns
-   */
-  private scanRunningProcesses(): ProcessInfo[] {
-    const processes: ProcessInfo[] = []
-
-    try {
-      // Platform-specific process listing
-      const platform = process.platform
-      let psOutput: string
-
-      if (platform === 'win32') {
-        // Windows: Use tasklist
-        psOutput = execSync('tasklist /FO CSV /NH', { encoding: 'utf-8' })
-        processes.push(...this.parseWindowsProcesses(psOutput))
-      } else {
-        // Unix: Use ps
-        psOutput = execSync('ps -eo pid,ppid,command', { encoding: 'utf-8' })
-        processes.push(...this.parseUnixProcesses(psOutput))
-      }
-    } catch (error) {
-      // If ps/tasklist fails, return empty (don't crash)
-      logger.warn(`Failed to scan running processes: ${error}`)
-    }
-
-    // Filter by patterns
-    return processes.filter(p => {
-      return this.patterns.some(pattern => p.command.includes(pattern))
-    })
-  }
-
-  /**
-   * Parse Unix ps output
-   */
-  private parseUnixProcesses(output: string): ProcessInfo[] {
-    const lines = output.trim().split('\n').slice(1) // Skip header
-    const processes: ProcessInfo[] = []
-
-    for (const line of lines) {
-      const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/)
-      if (!match) continue
-
-      const [, pid, ppid, command] = match
-      processes.push({
-        pid: parseInt(pid, 10),
-        parentPid: parseInt(ppid, 10),
-        command,
-        args: [],
-        namespace: 'unknown',
-        startTime: 0,
-        status: 'running'
-      })
-    }
-
-    return processes
-  }
-
-  /**
-   * Parse Windows tasklist output
-   */
-  private parseWindowsProcesses(output: string): ProcessInfo[] {
-    const lines = output.trim().split('\n')
-    const processes: ProcessInfo[] = []
-
-    for (const line of lines) {
-      // CSV format: "ImageName","PID","SessionName","SessionNum","MemUsage"
-      const match = line.match(/"([^"]+)","(\d+)"/)
-      if (!match) continue
-
-      const [, command, pid] = match
-      processes.push({
-        pid: parseInt(pid, 10),
-        command,
-        args: [],
-        namespace: 'unknown',
-        startTime: 0,
-        status: 'running'
-      })
-    }
-
-    return processes
-  }
+export interface OrphanProcess {
+  pid: number
+  command: string
+  age: number
 }

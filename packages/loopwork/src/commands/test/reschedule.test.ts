@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { reschedule } from '../commands/reschedule'
+import { reschedule } from '../reschedule'
 
 /**
  * reschedule Tests

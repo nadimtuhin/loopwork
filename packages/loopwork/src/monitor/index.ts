@@ -3,7 +3,8 @@ import path from 'path'
 import { spawn, ChildProcess } from 'child_process'
 import chalk from 'chalk'
 import { logger } from '../core/utils'
-import { detectOrphans, OrphanProcess } from '../core/orphan-detector'
+import { OrphanDetector, ProcessRegistry, MemoryPersistence } from '@loopwork-ai/process-manager'
+import type { OrphanInfo } from '@loopwork-ai/contracts/process'
 import { OrphanKiller } from '../core/orphan-killer'
 import { LoopworkState, type SessionMetadata } from '../core/loopwork-state'
 import { isProcessAlive } from '../commands/shared/process-utils'
@@ -352,11 +353,9 @@ export class LoopworkMonitor {
         this.orphanWatch.lastCheck = new Date().toISOString()
 
         // Detect orphans
-        const orphans = await detectOrphans({
-          projectRoot: this.projectRoot,
-          patterns,
-          maxAge: 0, // Get all orphans, we'll filter by age below
-        })
+        const registry = new ProcessRegistry(new MemoryPersistence())
+        const detector = new OrphanDetector(registry, patterns, maxAge)
+        const orphans = await detector.scan()
 
         this.orphanWatch.orphansDetected += orphans.length
 
@@ -366,7 +365,8 @@ export class LoopworkMonitor {
         }
 
         // Filter orphans by age
-        const oldOrphans = orphans.filter(o => o.age >= maxAge)
+        const now = Date.now()
+        const oldOrphans = orphans.filter((o: OrphanInfo) => (now - o.process.startTime) >= maxAge)
 
         if (oldOrphans.length === 0) {
           logger.debug(`Found ${orphans.length} orphans but none exceed maxAge (${maxAge}ms)`)
@@ -389,7 +389,7 @@ export class LoopworkMonitor {
 
           // Log killed orphans
           for (const pid of result.killed) {
-            const orphan = oldOrphans.find(o => o.pid === pid)
+            const orphan = oldOrphans.find((o: OrphanInfo) => o.pid === pid)
             if (orphan) {
               this.logOrphanEvent(orphan, 'KILLED', 'exceeded maxAge')
             }
@@ -397,7 +397,7 @@ export class LoopworkMonitor {
 
           // Log skipped orphans
           for (const pid of result.skipped) {
-            const orphan = oldOrphans.find(o => o.pid === pid)
+            const orphan = oldOrphans.find((o: OrphanInfo) => o.pid === pid)
             if (orphan) {
               this.logOrphanEvent(orphan, 'SKIPPED', 'suspected, autoKill disabled')
             }
@@ -463,7 +463,7 @@ export class LoopworkMonitor {
   /**
    * Log orphan events to file
    */
-  private logOrphanEvents(orphans: OrphanProcess[], event: string): void {
+  private logOrphanEvents(orphans: OrphanInfo[], event: string): void {
     for (const orphan of orphans) {
       this.logOrphanEvent(orphan, event)
     }
@@ -472,15 +472,17 @@ export class LoopworkMonitor {
   /**
    * Log a single orphan event
    */
-  private logOrphanEvent(orphan: OrphanProcess, event: string, reason?: string): void {
+  private logOrphanEvent(orphan: OrphanInfo, event: string, reason?: string): void {
     this.loopworkState.ensureDir()
     const logFile = this.loopworkState.paths.orphanEvents()
     const timestamp = new Date().toISOString()
-    const ageMin = Math.floor(orphan.age / 60000)
-    const statusStr = `status=${orphan.classification}`
+    const age = Date.now() - orphan.process.startTime
+    const ageMin = Math.floor(age / 60000)
+    const classification = orphan.reason === 'untracked' ? 'suspected' : 'confirmed'
+    const statusStr = `status=${classification}`
     const reasonStr = reason ? ` reason="${reason}"` : ''
 
-    const logLine = `[${timestamp}] ${event} pid=${orphan.pid} cmd="${orphan.command}" age=${ageMin}min ${statusStr}${reasonStr}\n`
+    const logLine = `[${timestamp}] ${event} pid=${orphan.pid} cmd="${orphan.process.command}" age=${ageMin}min ${statusStr}${reasonStr}\n`
 
     try {
       fs.appendFileSync(logFile, logLine, 'utf-8')

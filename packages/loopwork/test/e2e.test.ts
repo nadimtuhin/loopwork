@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-// Removed type-only import from '../src/backends/json'
+import { JsonTaskAdapter } from '../src/backends'
 import { StateManager } from '../src/core/state'
 import { CliExecutor } from '../src/core/cli'
 import type { Config } from '../src/core/config'
@@ -51,7 +51,7 @@ describe('Loopwork E2E with JSON Backend', () => {
       circuitBreakerThreshold: 3,
       taskDelay: 0,
       retryDelay: 0,
-    }
+    } as Config
 
     // Initialize backend and state manager
     backend = new JsonTaskAdapter(config.backend)
@@ -307,7 +307,7 @@ describe('Loopwork E2E with JSON Backend', () => {
 
   test('state manager handles locking', async () => {
     // Acquire lock
-    const acquired = stateManager.acquireLock()
+    const acquired = await stateManager.acquireLock()
     expect(acquired).toBe(true)
 
     // Lock file should exist
@@ -316,35 +316,35 @@ describe('Loopwork E2E with JSON Backend', () => {
 
     // Second acquire should fail
     const stateManager2 = new StateManager(config)
-    const acquired2 = stateManager2.acquireLock()
+    const acquired2 = await stateManager2.acquireLock()
     expect(acquired2).toBe(false)
 
     // Release lock
-    stateManager.releaseLock()
+    await stateManager.releaseLock()
     expect(fs.existsSync(lockFile)).toBe(false)
 
     // Now second manager can acquire
-    const acquired3 = stateManager2.acquireLock()
+    const acquired3 = await stateManager2.acquireLock()
     expect(acquired3).toBe(true)
-    stateManager2.releaseLock()
+    await stateManager2.releaseLock()
   })
 
   test('state manager saves and loads state', async () => {
     // Save state
-    stateManager.saveState(42, 5)
+    await stateManager.saveState(42, 5)
 
     // State file should exist
     const stateFile = stateManager.getStateFile()
     expect(fs.existsSync(stateFile)).toBe(true)
 
     // Load state
-    const loadedState = stateManager.loadState()
+    const loadedState = await stateManager.loadState()
     expect(loadedState).not.toBeNull()
     expect(loadedState!.lastIssue).toBe(42)
     expect(loadedState!.lastIteration).toBe(5)
 
     // Clear state
-    stateManager.clearState()
+    await stateManager.clearState()
     expect(fs.existsSync(stateFile)).toBe(false)
   })
 
