@@ -13,6 +13,9 @@
     "@loopwork-ai/config-engine": "workspace:*",
     "@loopwork-ai/common": "workspace:*"
   },
+  "peerDependencies": {
+    "@loopwork-ai/loopwork": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^20.0.0"

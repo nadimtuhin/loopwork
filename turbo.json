@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "bin/**"]
     },
+    "@loopwork-ai/loopwork#build": {
+      "dependsOn": [],
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["build"],
       "outputs": [],
