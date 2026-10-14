@@ -139,6 +139,9 @@ export class ModelSelector {
         continue
       }
 
+      if (this.enableCircuitBreaker) {
+        this.circuitBreakers.recordAttempt(model.name)
+      }
       return model
     }
 

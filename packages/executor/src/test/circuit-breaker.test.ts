@@ -120,6 +120,24 @@ describe('CircuitBreaker', () => {
       expect(cb.isClosed()).toBe(true)
     })
 
+    test('should cap probes in half-open at halfOpenMaxCalls', async () => {
+      const cb = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeoutMs: 50,
+        halfOpenMaxCalls: 2
+      })
+
+      cb.recordFailure()
+      await new Promise(r => setTimeout(r, 60))
+
+      expect(cb.canExecute()).toBe(true)
+      expect(cb.canExecute()).toBe(true)
+      cb.recordAttempt()
+      expect(cb.canExecute()).toBe(true)
+      cb.recordAttempt()
+      expect(cb.canExecute()).toBe(false)
+    })
+
     test('should re-open on failure in half-open state', async () => {
       const cb = new CircuitBreaker({ 
         failureThreshold: 1, 
