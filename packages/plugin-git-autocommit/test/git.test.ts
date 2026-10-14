@@ -4,13 +4,49 @@ import type { TaskContext, PluginTaskResult } from '@loopwork-ai/contracts'
 
 const mockExecSync = mock((cmd: string, options?: any) => '')
 
+const mockExecFileSync = mock((file: string, args: string[], options?: any) =>
+  mockExecSync([file, ...args].join(' '), options)
+)
+
 mock.module('child_process', () => ({
   execSync: mockExecSync,
+  execFileSync: mockExecFileSync,
 }))
 
 describe('Git Auto-Commit Plugin', () => {
   beforeEach(() => {
     mockExecSync.mockClear()
+    mockExecFileSync.mockClear()
+  })
+
+  test('passes message and paths as argv, never through a shell', async () => {
+    const plugin = createGitAutoCommitPlugin({ scope: 'task-only' })
+    const hostileTitle = '"; touch pwned; $(id) `id`'
+    let statusCalls = 0
+    mockExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('git status --porcelain')) {
+        statusCalls++
+        return statusCalls === 1 ? '' : ' M evil"; rm -rf x; ".txt\n'
+      }
+      return ''
+    })
+
+    const context: TaskContext = {
+      task: { id: 'T-1', title: hostileTitle, description: '', status: 'in-progress', priority: 'medium' },
+      config: {} as any,
+      iteration: 1,
+      startTime: new Date(),
+      namespace: 'default',
+    }
+    await plugin.onTaskStart!(context)
+    await plugin.onTaskComplete!(context, { duration: 1, success: true })
+
+    const add = mockExecFileSync.mock.calls.find((c: any) => c[1][0] === 'add')!
+    expect(add[0]).toBe('git')
+    expect(add[1]).toEqual(['add', '--', 'evil"; rm -rf x; ".txt'])
+    const commit = mockExecFileSync.mock.calls.find((c: any) => c[1][0] === 'commit')!
+    expect(commit[1].slice(0, 3)).toEqual(['commit', '--no-verify', '-m'])
+    expect(commit[1][3]).toContain(hostileTitle)
   })
 
   test('should create plugin with default options', () => {
