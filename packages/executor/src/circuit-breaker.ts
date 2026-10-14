@@ -66,6 +66,17 @@ export class CircuitBreaker {
   }
 
   /**
+   * Record that a call is about to be made. Consumes one half-open probe;
+   * canExecute() stays side-effect free so it can be polled safely.
+   */
+  recordAttempt(): void {
+    this.transitionIfNeeded()
+    if (this.state.state === 'half-open') {
+      this.halfOpenCalls++
+    }
+  }
+
+  /**
    * Record a successful call
    */
   recordSuccess(): void {
@@ -263,6 +274,13 @@ export class CircuitBreakerRegistry {
    */
   canExecute(modelName: string): boolean {
     return this.get(modelName).canExecute()
+  }
+
+  /**
+   * Record that a call to a model is about to be made
+   */
+  recordAttempt(modelName: string): void {
+    this.get(modelName).recordAttempt()
   }
 
   /**

@@ -74,6 +74,11 @@ export class ModelSelector {
     strategy: ModelSelectionStrategy = 'round-robin',
     options: ModelSelectorOptions = {}
   ) {
+    if (strategy === 'capability') {
+      throw new Error(
+        "Model selection strategy 'capability' is not supported by ModelSelector: it needs per-task criteria. Use 'round-robin', 'priority', 'cost-aware' or 'random'."
+      )
+    }
     this.primaryModels = primaryModels.filter(m => m.enabled !== false)
     this.fallbackModels = fallbackModels.filter(m => m.enabled !== false)
     this.strategy = strategy
@@ -139,6 +144,9 @@ export class ModelSelector {
         continue
       }
 
+      if (this.enableCircuitBreaker) {
+        this.circuitBreakers.recordAttempt(model.name)
+      }
       return model
     }
 

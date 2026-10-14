@@ -828,8 +828,9 @@ export class CliExecutor {
       const maxAttempts = this.modelSelector.getTotalModelCount() * (this.retryConfig.retrySameModel ? this.retryConfig.maxRetriesPerModel : 1)
 
       let currentModelName: string | null = null
+      let outcomeRecorded = false
 
-      const retryResult = await this.resilienceEngine.execute(async () => {
+      const runAttempt = async (): Promise<number> => {
         const modelConfig = this.modelSelector.getNext()
         if (!modelConfig) {
           throw new Error('No more CLI configurations available')
@@ -844,6 +845,7 @@ export class CliExecutor {
         if (!cliPath) {
           // Track failure for circuit breaker
           this.modelSelector.recordFailure(modelConfig.name)
+          outcomeRecorded = true
           throw new Error(`CLI tool ${modelConfig.cli} not found`)
         }
 
@@ -974,6 +976,7 @@ export class CliExecutor {
           // Track failure for circuit breaker
           if (currentModelName) {
             const justOpened = this.modelSelector.recordFailure(currentModelName)
+            outcomeRecorded = true
             if (justOpened) {
               const sleepStatus = this.modelSelector.getModelSleepStatus(currentModelName)
               const sleepStr = sleepStatus.isSleeping
@@ -990,9 +993,24 @@ export class CliExecutor {
         // Track success for circuit breaker
         if (currentModelName) {
           this.modelSelector.recordSuccess(currentModelName)
+          outcomeRecorded = true
         }
 
         return 0
+      }
+
+      const retryResult = await this.resilienceEngine.execute(async () => {
+        currentModelName = null
+        outcomeRecorded = false
+        try {
+          return await runAttempt()
+        } catch (error) {
+          // getNext() consumed a half-open probe; an unreported exit would leave it stuck
+          if (currentModelName && !outcomeRecorded) {
+            this.modelSelector.recordFailure(currentModelName)
+          }
+          throw error
+        }
       }, {
         retryStrategy: new StandardRetryStrategy({
           maxAttempts: maxAttempts,

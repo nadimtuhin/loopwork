@@ -61,11 +61,9 @@ export class FallbackTaskBackend implements TaskBackend {
     )
   }
 
+  // Claiming mutates task state, so it is a write and uses primary only
   async claimTask(options?: FindTaskOptions): Promise<Task | null> {
-    return this.tryWithFallback(
-      (backend) => backend.claimTask?.(options) || backend.findNextTask(options),
-      'claimTask'
-    )
+    return this.primaryBackend.claimTask?.(options) || this.primaryBackend.findNextTask(options)
   }
 
   async getTask(taskId: string): Promise<Task | null> {

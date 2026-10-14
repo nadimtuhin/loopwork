@@ -6,7 +6,7 @@
 
 import type { LoopworkPlugin, TaskContext, PluginTaskResult } from '@loopwork-ai/contracts'
 import { logger } from '@loopwork-ai/common'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 interface LoopworkConfig {
   plugins?: LoopworkPlugin[]
@@ -97,7 +97,7 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
           logger.debug(`[git-autocommit] Adding ${taskFiles.size} task-specific files`)
           for (const file of Array.from(taskFiles)) {
             try {
-              execSync(`git add "${file}"`, { stdio: 'pipe' })
+              execFileSync('git', ['add', '--', file], { stdio: 'pipe' })
             } catch (error) {
               logger.warn(`Failed to add file ${file}: ${error}`)
             }
@@ -108,7 +108,7 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
           if (addAll) {
             logger.debug('[git-autocommit] Running git add -A to stage all changes')
             try {
-              execSync('git add -A', { stdio: 'pipe' })
+              execFileSync('git', ['add', '-A'], { stdio: 'pipe' })
               logger.debug('[git-autocommit] Successfully staged all changes')
             } catch (error) {
               logger.warn(`[git-autocommit] Failed to stage changes: ${error}`)
@@ -119,13 +119,11 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
         }
 
         const message = generateCommitMessage(context, coAuthor)
-        const escapedMessage = escapeCommitMessage(message)
         logger.debug(`[git-autocommit] Generated commit message:\n${message}`)
-        logger.debug(`[git-autocommit] Escaped message length: ${escapedMessage.length}`)
 
         try {
           // Use --no-verify to skip pre-commit hooks (husky/lint-staged) to prevent failures due to missing eslint config or circular deps
-          execSync(`git commit --no-verify -m "${escapedMessage}"`, { stdio: 'pipe' })
+          execFileSync('git', ['commit', '--no-verify', '-m', message], { stdio: 'pipe' })
           logger.info(`[git-autocommit] Auto-committed changes for task ${context.task.id}`)
         } catch (error) {
           logger.debug(`[git-autocommit] Git commit failed: ${error}`)
@@ -139,7 +137,7 @@ export function createGitAutoCommitPlugin(options: GitAutoCommitOptions = {}): L
 
 function isGitRepo(): boolean {
   try {
-    execSync('git rev-parse --is-inside-work-tree', { stdio: 'pipe' })
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { stdio: 'pipe' })
     return true
   } catch {
     return false
@@ -148,7 +146,7 @@ function isGitRepo(): boolean {
 
 function hasChanges(): boolean {
   try {
-    const status = execSync('git status --porcelain', { stdio: 'pipe' }).toString().trim()
+    const status = execFileSync('git', ['status', '--porcelain'], { stdio: 'pipe' }).toString().trim()
     return status.length > 0
   } catch {
     return false
@@ -157,7 +155,7 @@ function hasChanges(): boolean {
 
 function getChangedFiles(): Set<string> {
   try {
-    const status = execSync('git status --porcelain', { stdio: 'pipe' }).toString()
+    const status = execFileSync('git', ['status', '--porcelain'], { stdio: 'pipe' }).toString()
     const files = status
       .split('\n')
       .filter((line) => line.trim())
@@ -216,10 +214,6 @@ function generateCommitMessage(context: TaskContext, coAuthor: string): string {
   }
 
   return lines.join('\n')
-}
-
-function escapeCommitMessage(message: string): string {
-  return message.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
 }
 
 export function withGitAutoCommit(options: GitAutoCommitOptions = {}): ConfigWrapper {

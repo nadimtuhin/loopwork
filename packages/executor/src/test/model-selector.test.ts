@@ -95,6 +95,12 @@ describe('ModelSelector', () => {
       expect(['model1', 'model2', 'model3']).toContain(model?.name)
     })
 
+    test('should reject the unsupported capability strategy', () => {
+      expect(() => new ModelSelector(createMockModels(), [], 'capability')).toThrow(
+        /capability.*not supported/i
+      )
+    })
+
     test('should default to round-robin for unknown strategy', () => {
       const models = createMockModels()
       const selector = new ModelSelector(models, [], 'unknown' as any)
