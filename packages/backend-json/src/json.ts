@@ -161,7 +161,7 @@ export class JsonTaskAdapter implements TaskBackend {
   /**
    * Execute a function with file lock
    */
-  private async withLock<T>(fn: () => T): Promise<T> {
+  private async withLock<T>(fn: () => T | Promise<T>): Promise<T> {
     const acquired = await this.acquireLock()
     if (!acquired) {
       throw new LoopworkError(
@@ -176,7 +176,7 @@ export class JsonTaskAdapter implements TaskBackend {
     }
 
     try {
-      return fn()
+      return await fn()
     } finally {
       this.releaseLock()
     }
