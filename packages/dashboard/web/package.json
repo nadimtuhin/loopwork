@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "echo 'No tests for dashboard-web'",
+    "test": "bun test",
     "start": "next start",
     "lint": "next lint"
   },

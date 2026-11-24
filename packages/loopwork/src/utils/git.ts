@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execSync, execFileSync } from 'child_process'
 import { logger } from '../core/utils'
 
 /**
@@ -54,8 +54,8 @@ export function createCommit(
       execSync('git add -A', { stdio: 'pipe', cwd: workDir })
     }
     
-    const escapedMessage = message.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
-    execSync(`git commit -m "${escapedMessage}"`, { stdio: 'pipe', cwd: workDir })
+    // Pass argv directly: the message often comes from an untrusted task title
+    execFileSync('git', ['commit', '-m', message], { stdio: 'pipe', cwd: workDir })
     
     return getCurrentHash(workDir)
   } catch (error) {
@@ -69,8 +69,7 @@ export function createCommit(
  */
 export function createStash(message: string, workDir: string = process.cwd()): string | null {
   try {
-    const escapedMessage = message.replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`')
-    execSync(`git stash push -u -m "${escapedMessage}"`, { stdio: 'pipe', cwd: workDir })
+    execFileSync('git', ['stash', 'push', '-u', '-m', message], { stdio: 'pipe', cwd: workDir })
     
     // Get the stash ref (it will be stash@{0})
     const stashList = execSync('git stash list', { stdio: 'pipe', cwd: workDir }).toString()
@@ -89,7 +88,7 @@ export function createStash(message: string, workDir: string = process.cwd()): s
  */
 export function applyStash(stashRef: string, workDir: string = process.cwd()): boolean {
   try {
-    execSync(`git stash apply ${stashRef}`, { stdio: 'pipe', cwd: workDir })
+    execFileSync('git', ['stash', 'apply', stashRef], { stdio: 'pipe', cwd: workDir })
     return true
   } catch (error) {
     logger.debug(`Failed to apply git stash ${stashRef}: ${error}`)
@@ -103,7 +102,7 @@ export function applyStash(stashRef: string, workDir: string = process.cwd()): b
 export function rollbackTo(ref: string, hard: boolean = true, workDir: string = process.cwd()): boolean {
   try {
     const mode = hard ? '--hard' : '--soft'
-    execSync(`git reset ${mode} ${ref}`, { stdio: 'pipe', cwd: workDir })
+    execFileSync('git', ['reset', mode, ref], { stdio: 'pipe', cwd: workDir })
     return true
   } catch (error) {
     logger.debug(`Failed to rollback to ${ref}: ${error}`)
@@ -139,7 +138,7 @@ export function getDiffNames(ref: string, workDir: string = process.cwd()): stri
     // --name-only lists changed files
     // ref is the starting point. We compare ref..HEAD (commits) AND uncommitted changes.
     // Actually "git diff --name-only ref" compares ref to working directory.
-    const output = execSync(`git diff --name-only ${ref}`, { stdio: 'pipe', cwd: workDir }).toString()
+    const output = execFileSync('git', ['diff', '--name-only', ref], { stdio: 'pipe', cwd: workDir }).toString()
     return output.split('\n').filter(line => line.trim().length > 0)
   } catch (error) {
     logger.debug(`Failed to get diff names from ${ref}: ${error}`)
@@ -153,9 +152,8 @@ export function getDiffNames(ref: string, workDir: string = process.cwd()): stri
 export function checkoutFiles(ref: string, files: string[], workDir: string = process.cwd()): boolean {
   if (files.length === 0) return true
   try {
-    // Quote files to handle spaces
-    const fileArgs = files.map(f => `"${f.replace(/"/g, '\\"')}"`).join(' ')
-    execSync(`git checkout ${ref} -- ${fileArgs}`, { stdio: 'pipe', cwd: workDir })
+    // File names are passed as argv so spaces and shell metacharacters are literal
+    execFileSync('git', ['checkout', ref, '--', ...files], { stdio: 'pipe', cwd: workDir })
     return true
   } catch (error) {
     logger.debug(`Failed to checkout files from ${ref}: ${error}`)

@@ -3,7 +3,7 @@ import { logger } from '../core/utils'
 import type { TaskContext } from '../contracts'
 import { join } from 'path'
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 /**
  * Git Snapshot Utilities
@@ -122,7 +122,7 @@ export async function rollbackFiles(snapshot: GitSnapshot, files: string[]): Pro
       // Check if file exists in snapshot hash
       // git cat-file -e hash:path returns 0 if exists
       // We need to export a helper for this in git.ts or use execSync here
-      execSync(`git cat-file -e ${snapshot.hash}:"${file}"`, { 
+      execFileSync('git', ['cat-file', '-e', `${snapshot.hash}:${file}`], {
         stdio: 'ignore', 
         cwd: workDir 
       })
