@@ -15,10 +15,10 @@ const mockGit = {
 
 mock.module('../git', () => mockGit)
 
-// Mock child_process for direct execSync calls in rollbackFiles
+// Mock child_process for direct execFileSync calls in rollbackFiles
 const mockExecSync = mock(() => '')
 mock.module('child_process', () => ({
-  execSync: mockExecSync
+  execFileSync: mockExecSync
 }))
 
 // Mock fs for unlinkSync
@@ -49,7 +49,7 @@ describe('git-snapshots', () => {
       description: 'test'
     }
 
-    // execSync is called to check if file exists (git cat-file)
+    // execFileSync is called to check if file exists (git cat-file)
     // We want it to succeed (return empty string/not throw)
     mockExecSync.mockImplementation(() => '')
 
@@ -57,7 +57,7 @@ describe('git-snapshots', () => {
 
     expect(result).toBe(true)
     // Should verify file existence
-    expect(mockExecSync).toHaveBeenCalledWith(expect.stringContaining('git cat-file -e hash123:"file1.ts"'), expect.any(Object))
+    expect(mockExecSync).toHaveBeenCalledWith('git', ['cat-file', '-e', 'hash123:file1.ts'], expect.any(Object))
     // Should checkout file
     expect(mockGit.checkoutFiles).toHaveBeenCalledWith('hash123', ['file1.ts'], expect.any(String))
   })
@@ -73,7 +73,7 @@ describe('git-snapshots', () => {
       description: 'test'
     }
 
-    // execSync throws for new file (git cat-file fails)
+    // execFileSync throws for new file (git cat-file fails)
     mockExecSync.mockImplementation(() => { throw new Error('Not found') })
     // existsSync returns true for the file on disk
     mockExistsSync.mockReturnValue(true)
@@ -82,7 +82,7 @@ describe('git-snapshots', () => {
 
     expect(result).toBe(true)
     // Should try to check file existence
-    expect(mockExecSync).toHaveBeenCalledWith(expect.stringContaining('git cat-file'), expect.any(Object))
+    expect(mockExecSync).toHaveBeenCalledWith('git', ['cat-file', '-e', 'hash123:newfile.ts'], expect.any(Object))
     // Should NOT checkout file
     expect(mockGit.checkoutFiles).not.toHaveBeenCalled()
     // Should delete file
