@@ -32,6 +32,9 @@ export function stripModelPrefix(modelString: string): string {
   return parseModelName(modelString).model
 }
 
+/** Time between SIGTERM and SIGKILL when a CLI exceeds its timeout */
+const KILL_GRACE_MS = 5000
+
 export abstract class BaseCliInvoker implements ICliInvoker {
   abstract readonly name: string
   abstract readonly description: string
@@ -65,9 +68,16 @@ export abstract class BaseCliInvoker implements ICliInvoker {
 
       // Set up timeout
       const timeoutMs = (options.timeout ?? 600) * 1000
+      let killTimer: ReturnType<typeof setTimeout> | undefined
       const timer = setTimeout(() => {
         timedOut = true
         proc.kill('SIGTERM')
+        // Escalate if the CLI ignores SIGTERM, otherwise invoke() never settles
+        killTimer = setTimeout(() => {
+          if (proc.exitCode === null && proc.signalCode === null) {
+            proc.kill('SIGKILL')
+          }
+        }, KILL_GRACE_MS)
       }, timeoutMs)
 
       // Send prompt via stdin
@@ -84,6 +94,7 @@ export abstract class BaseCliInvoker implements ICliInvoker {
 
       proc.on('close', (code) => {
         clearTimeout(timer)
+        clearTimeout(killTimer)
         resolve({
           exitCode: code ?? 1,
           output,
@@ -94,6 +105,7 @@ export abstract class BaseCliInvoker implements ICliInvoker {
 
       proc.on('error', (error) => {
         clearTimeout(timer)
+        clearTimeout(killTimer)
         resolve({
           exitCode: 1,
           output: error.message,
