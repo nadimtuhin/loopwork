@@ -1,17 +1,36 @@
-import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
+import { describe, test, expect, mock, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test'
 import { createGitAutoCommitPlugin, type GitAutoCommitOptions } from '@loopwork-ai/plugin-git-autocommit'
 import type { TaskContext, PluginTaskResult } from '../src/contracts/plugin'
 import { execSync } from 'child_process'
 
-// Mock execSync
-const mockExecSync = mock(() => '')
+// The plugin runs git via execFileSync(argv). Route it through one mock that
+// sees the joined command line, so no real git command ever runs here.
+const mockExecSync = mock((cmd: string, options?: any) => '' as any)
+const mockExecFileSync = mock((file: string, args: string[], options?: any) =>
+  mockExecSync([file, ...args].join(' '), options)
+)
 mock.module('child_process', () => ({
   execSync: mockExecSync,
+  execFileSync: mockExecFileSync,
 }))
 
+// Bun.spawnSync is not affected by the child_process mock, so it sees the real repo
+const realHead = () =>
+  Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { stdout: 'pipe', stderr: 'pipe' }).stdout.toString().trim()
+
 describe('Git Auto-Commit Plugin', () => {
+  let headBefore = ''
+  beforeAll(() => {
+    headBefore = realHead()
+  })
+  afterAll(() => {
+    // Running this suite must never commit into the developer's checkout
+    expect(realHead()).toBe(headBefore)
+  })
+
   beforeEach(() => {
     mockExecSync.mockClear()
+    mockExecFileSync.mockClear()
   })
 
   test('should create plugin with default options', () => {
