@@ -455,19 +455,36 @@ export class VerificationEngine {
         cwd: this.config.cwd,
         shell: true,
         env: { ...process.env, CI: 'true' }, // CI mode for consistent output
+        // Own process group, so a timeout kills the command and not only the shell
+        detached: process.platform !== 'win32',
       })
+
+      let closed = false
+      const killTree = (signal: NodeJS.Signals) => {
+        try {
+          if (process.platform !== 'win32' && child.pid) {
+            process.kill(-child.pid, signal)
+          } else {
+            child.kill(signal)
+          }
+        } catch {
+          // Already exited
+        }
+      }
 
       let stdout = ''
       let stderr = ''
       let timedOut = false
 
+      let forceKillId: ReturnType<typeof setTimeout> | undefined
       const timeoutId = setTimeout(() => {
         timedOut = true
-        child.kill('SIGTERM')
-        // Force kill after 5 seconds if still running
-        setTimeout(() => {
-          if (!child.killed) {
-            child.kill('SIGKILL')
+        killTree('SIGTERM')
+        // Force kill after 5 seconds if still running. `child.killed` turns
+        // true as soon as SIGTERM is sent, so track whether output closed instead.
+        forceKillId = setTimeout(() => {
+          if (!closed) {
+            killTree('SIGKILL')
           }
         }, 5000)
       }, timeout)
@@ -482,6 +499,8 @@ export class VerificationEngine {
 
       child.on('close', (code) => {
         clearTimeout(timeoutId)
+        clearTimeout(forceKillId)
+        closed = true
 
         const output = stdout + stderr
 
@@ -496,6 +515,8 @@ export class VerificationEngine {
 
       child.on('error', (error) => {
         clearTimeout(timeoutId)
+        clearTimeout(forceKillId)
+        closed = true
         resolve({ passed: false, output: `Failed to run command: ${error.message}` })
       })
     })
