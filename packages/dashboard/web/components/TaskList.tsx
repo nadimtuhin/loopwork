@@ -98,7 +98,8 @@ export default function TaskList({ tasks = [], isLoading = false }: TaskListProp
             </span>
           </div>
         </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }
